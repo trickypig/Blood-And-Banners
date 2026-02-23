@@ -91,6 +91,13 @@
             text-align: center;
         }
 
+        .abilities-row {
+            background-color: #f5f5f5 !important;
+            font-style: italic;
+            color: #555;
+            padding: 6px 5px !important;
+        }
+
         /* Print styles */
         @media print {
             body {
@@ -166,8 +173,21 @@
                             <td class="track-column">&nbsp;</td>
                         `;
                         table.appendChild(row);
+
+                        // Add abilities row if creature has abilities
+                        if (creature.abilities && creature.abilities.length > 0) {
+                            const abilitiesRow = document.createElement('tr');
+                            abilitiesRow.classList.add('abilities-row');
+                            const abilitiesText = creature.abilities
+                                .map(ability => `* ${ability.name} (${ability.type}): ${ability.description}`)
+                                .join('<br>');
+                            abilitiesRow.innerHTML = `
+                                <td colspan="11">${abilitiesText}</td>
+                            `;
+                            table.appendChild(abilitiesRow);
+                        }
                     });
-                });
+                }); 
 
                 document.body.appendChild(table);
             } catch (error) {
