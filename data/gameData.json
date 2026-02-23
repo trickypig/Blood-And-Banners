@@ -1,0 +1,1662 @@
+{
+    "heroes": [
+        {
+            "name": "Thorgrim Shattershield",
+            "image": "/images/heroes/Thorgrim Shattershield_card.png",
+            "move": 3,
+            "range": 1,
+            "power": 5,
+            "defense": 5,
+            "hp": 7,
+            "abilities": [
+                
+                {
+                    "name": "Shield Wall",
+                    "type": "Ability",
+                    "description": "Grant one adjacent unit +1 Defense until the start of your next turn"
+                }
+            ]
+        },
+        {
+            "name": "Azgaroth Halfcrown",
+            "image": "/images/heroes/Azgaroth Halfcrown_card.png",
+            "move": 4,
+            "range": 1,
+            "power": 4,
+            "defense": 5,
+            "hp": 7,
+            "abilities": [
+                {
+                    "name": "One Last Horn",
+                    "type": "Essence",
+                    "description": "The first time Azgaroth would be defeated each game, he survives with 1 HP instead"
+                }
+            ]
+        },
+        {
+            "name": "Durgin Stonefist",
+            "image": "/images/heroes/Durgin Stonefist_card.png",
+            "move": 3,
+            "range": 1,
+            "power": 6,
+            "defense": 4,
+            "hp": 7,
+            "abilities": [
+                {
+                    "name": "Warlord's Command",
+                    "type": "Ability",
+                    "description": "Grant one adjacent unit +1 Power"
+                }
+            ]
+        },
+        {
+            "name": "Malachar the Voidcaller",
+            "image": "/images/heroes/Malachar the Voidcaller_card.png",
+            "move": 4,
+            "range": 5,
+            "power": 4,
+            "defense": 3,
+            "hp": 6,
+            "abilities": [
+                {
+                    "name": "Bolt of Annihilation",
+                    "type": "Attack",
+                    "description": "Power 6, Range 5"
+                },
+                {
+                    "name": "Mystic Shield",
+                    "type": "Attack",
+                    "description": "Grant target ally (in Range 4) +3 Defense until your next turn"
+                },
+                {
+                    "name": "Teleport",
+                    "type": "Attack",
+                    "description": "Move a friendly unit (in Range 3) up to 3 hexes (2 levels of height count as 1 movement)"
+                },
+                {
+                    "name": "Fragile Focus",
+                    "type": "Essence",
+                    "description": "If Malachar takes any Wounds, he cannot cast spells on his next turn"
+                }
+            ]
+        },
+        {
+            "name": "Thalion Windrider",
+            "image": "/images/heroes/Thalion Windrider_card.png",
+            "move": 4,
+            "range": 1,
+            "power": 4,
+            "defense": 4,
+            "hp": 6,
+            "abilities": [
+                {
+                    "name": "Flying",
+                    "type": "Essence",
+                    "description": "Height 4. Not impacted by water or ice. Can fly over lava if he has the moves, but can't end a turn on lava."
+                },
+                {
+                    "name": "Gust of Wind",
+                    "type": "Ability",
+                    "description": "Instead of moving, he can push back an enemy unit, if the other unit has movement > 2."
+                }
+            ]
+        },
+        {
+            "name": "Champion of Chaos",
+            "image": "/images/heroes/Champion of Chaos_card.png",
+            "move": 4,
+            "range": 2,
+            "power": 5,
+            "defense": 5,
+            "hp": 6,
+            "abilities": [
+                {
+                    "name": "Chaos Strike",
+                    "type": "Attack",
+                    "description": "Roll a d20: 10-20 = Double attack dice; 1-9 = No attack. Regardless of outcome, he has -2 Defense until next turn"
+                }
+            ]
+        },
+        {
+            "name": "Urgrok Skullcrusher",
+            "image": "/images/heroes/Urgrok Skullcrusher_card.png",
+            "move": 3,
+            "range": 1,
+            "power": 7,
+            "defense": 3,
+            "hp": 7,
+            "abilities": [
+                {
+                    "name": "Trembling Fear",
+                    "type": "Essence",
+                    "description": "Any non-hero attacking him gets -1 Power."
+                }
+            ]
+        },
+        {
+            "name": "Ignar Duskfire",
+            "image": "/images/heroes/Ignar Duskfire_card.png",
+            "move": 4,
+            "range": 2,
+            "power": 5,
+            "defense": 3,
+            "hp": 6,
+            "abilities": [
+                {
+                    "name": "Flame Strike",
+                    "type": "Attack",
+                    "description": "Power 3, Range 5"
+                },
+                {
+                    "name": "Lava Walker",
+                    "type": "Essence",
+                    "description": "Walk on lava, +2 Defense against fire attacks, -2 Defense against water, 1 dice damage if walking through water."
+                }
+            ]
+        }
+    ],
+    "armies": [
+        {
+            "name": "Sol Invictus",
+            "color": "Gold",
+            "units": [
+                {
+                    "name": "Cleric",
+                    "image": "/images/units/gold_cleric_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 5,
+                    "abilities": []
+                },
+                {
+                    "name": "Ranger",
+                    "image": "/images/units/gold_ranger_card.png",
+                    "move": 3,
+                    "range": 6,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": []
+                },
+                {
+                    "name": "Warrior",
+                    "image": "/images/units/gold_warrior_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": []
+                },
+                {
+                    "name": "Juggernaut",
+                    "image": "/images/units/gold_juggernaut_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 3,
+                    "hp": 5,
+                    "abilities": []
+                },
+                {
+                    "name": "Wizard",
+                    "image": "/images/units/gold_wizard_card.png",
+                    "move": 3,
+                    "range": 4,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Fireball",
+                            "type": "Attack",
+                            "description": "Power 4, Range 4, also damages everyone adjacent to the target for 1 attack die with no defense roll"
+                        }
+                    ]
+                },
+                {
+                    "name": "Thief",
+                    "image": "/images/units/gold_thief_card.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 1,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Evasion",
+                            "type": "Essence",
+                            "description": "When attacked, roll d20. If >10, the attack misses"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Blackmaw",
+            "color": "Black",
+            "race": "Orcs",
+            "units": [
+                {
+                    "name": "Tank",
+                    "image": "/images/units/black_tank_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 5,
+                    "hp": 5,
+                    "abilities": []
+                },
+                {
+                    "name": "Grunt",
+                    "image": "/images/units/black_grunt_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 5,
+                    "abilities": []
+                },
+                {
+                    "name": "Spearman",
+                    "image": "/images/units/black_spearman_card.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": []
+                },
+                {
+                    "name": "Scout",
+                    "image": "/images/units/black_scout_card.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": []
+                },
+                {
+                    "name": "Sorcerer",
+                    "image": "/images/units/black_sorcerer_card.png",
+                    "move": 3,
+                    "range": 5,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Chain Lightning",
+                            "type": "Attack",
+                            "description": "Power 3, Attack up to 3 units in a 5-hex path"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ravager",
+                    "image": "/images/units/black_ravager_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 1,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Dual Strike",
+                            "type": "Essence",
+                            "description": "May attack twice per turn"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Deepstone Guard",
+            "color": "Dark Blue",
+            "race": "Dwarves",
+            "units": [
+                {
+                    "name": "Hammerer",
+                    "image": "/images/units/dwarf_hammerer.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Knockback",
+                            "type": "Essence",
+                            "description": "When attacking, the defending unit makes a save roll of 11 or higher. If fail, they get knocked back 1 hex. If they roll a 1, knockback 2."
+                        }
+                    ]
+                },
+                {
+                    "name": "Berserker",
+                    "image": "/images/units/dwarf_berserker.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 2,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Reckless Fury",
+                            "type": "Essence",
+                            "description": "+1 Power for each wound he has"
+                        }
+                    ]
+                },
+                {
+                    "name": "Rune Smith",
+                    "image": "/images/units/dwarf_runesmith.png",
+                    "move": 2,
+                    "range": 3,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Rune of Warding",
+                            "type": "Ability",
+                            "description": "Give an ally in range +2 Defense until next turn"
+                        },
+                        {
+                            "name": "Rune of Distraction",
+                            "type": "Ability",
+                            "description": "Give a unit in range -2 Defense until next turn"
+                        }
+                    ]
+                },
+                {
+                    "name": "Crossbowman",
+                    "image": "/images/units/dwarf_crossbowman.png",
+                    "move": 2,
+                    "range": 5,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Ironguard",
+                    "image": "/images/units/dwarf_ironguard.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 5,
+                    "hp": 5,
+                    "abilities": []
+                },
+                {
+                    "name": "Line-backer",
+                    "image": "/images/units/dwarf_linebacker_card.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": []
+                }
+            ]
+        },
+        {
+            "name": "Sellsword Marauders",
+            "color": "Gray",
+            "race": "Humans",
+            "units": [
+                {
+                    "name": "Left Guard",
+                    "image": "/images/units/gray_left_guard.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Unbreakable Line",
+                            "type": "Essence",
+                            "description": "If Right Guard or Center are adjacent, they get +1 Defense"
+                        }
+                    ]
+                },
+                {
+                    "name": "Center",
+                    "image": "/images/units/gray_center.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": []
+                },
+                {
+                    "name": "Right Guard",
+                    "image": "/images/units/gray_right_guard.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Unbreakable Line",
+                            "type": "Essence",
+                            "description": "If Left Guard or Center are adjacent, they get +1 Defense"
+                        }
+                    ]
+                },
+                {
+                    "name": "Bruiser",
+                    "image": "/images/units/gray_bruiser.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 1,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Stunning Blow",
+                            "type": "Essence",
+                            "description": "Defending unit makes a save roll of 11 or higher. If they fail, they are stunned. Next turn, they cannot move, do not make disengagement attacks, and get -2 Power."
+                        }
+                    ]
+                },
+                {
+                    "name": "Blade Dancer",
+                    "image": "/images/units/gray_bladedancer.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Twin Strikes",
+                            "type": "Essence",
+                            "description": "May attack twice per turn"
+                        }
+                    ]
+                },
+                {
+                    "name": "Scoundrel",
+                    "image": "/images/units/gray_scoundrel.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 3,
+                    "abilities": []
+                }
+            ]
+        }
+    ],
+    "monsters": [
+        {
+            "biome": "Ice",
+            "color": "White",
+            "creatures": [
+                {
+                    "name": "Lesser Ice Elemental",
+                    "tier": "common",
+                    "image": "/images/monsters/ice_elemental_lesser_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 1,
+                    "abilities": []
+                },
+                {
+                    "name": "Greater Ice Elemental",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 2,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 5,
+                    "abilities": [
+                        {
+                            "name": "Frost Aura",
+                            "type": "Essence",
+                            "description": "Adjacent enemy units get -1 Movement"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ice Wolf",
+                    "tier": "common",
+                    "image": "/images/monsters/ice_wolf_card.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 2,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Pack Tactics",
+                            "type": "Essence",
+                            "description": "Gains +1 Power for each Wolf within 2 hexes (max +2)"
+                        }]
+                },
+                {
+                    "name": "Dire Wolf",
+                    "tier": "elite",
+                    "image": "/images/monsters/dire_wolf.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Pack Tactics",
+                            "type": "Essence",
+                            "description": "Gains +1 Power for each Wolf within 2 hexes (max +2)"
+                        }
+                    ]
+                },
+                {
+                    "name": "Polar Bear",
+                    "tier": "elite",
+                    "image": "/images/monsters/polar_bear_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Hibernation",
+                            "type": "Essence",
+                            "description": "If this unit did not move or attack last turn, it has +2 Defense"
+                        }
+                    ]
+                },
+                {
+                    "name": "Frost Giant",
+                    "tier": "boss",
+                    "image": "/images/monsters/frost_giant.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 6,
+                    "defense": 4,
+                    "hp": 8,
+                    "abilities": [
+                    ]
+                },
+                {
+                    "name": "Storm Giant",
+                    "tier": "boss",
+                    "image": "/images/monsters/storm_giant.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 4,
+                    "hp": 7,
+                    "abilities": [
+                        {
+                            "name": "Frost Storm",
+                            "type": "Attack",
+                            "description": "Power 5, Range 3. Can attack 3 enemies, but -1 Power for each additional unit attacked. Cannot use Frost Storm next turn."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "River",
+            "color": "Light Blue",
+            "creatures": [
+                {
+                    "name": "Lesser Water Elemental",
+                    "tier": "common",
+                    "image": "/images/monsters/water_elemental_lesser_card.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Greater Water Elemental",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 3,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Aquatic Surge",
+                            "type": "Essence",
+                            "description": "Can move through water hexes without penalty"
+                        }
+                    ]
+                },
+                {
+                    "name": "Merman",
+                    "tier": "common",
+                    "image": "/images/monsters/merman.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Water Affinity",
+                            "type": "Essence",
+                            "description": "Must remain adjacent to or in a water hex, +2 Defense against ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Mermaid",
+                    "tier": "common",
+                    "image": "/images/monsters/mermaid.png",
+                    "move": 3,
+                    "range": 3,
+                    "power": 0,
+                    "defense": 1,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Siren's Song",
+                            "type": "Attack",
+                            "description": "Once per turn, enchant a unit at Range 3. Target makes a save roll of 15 or higher. If they fail, they are charmed and must move toward the Mermaid on their next activation and cannot attack"
+                        },
+                        {
+                            "name": "Water Affinity",
+                            "type": "Essence",
+                            "description": "Must remain adjacent to or in a water hex, +2 Defense against ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Sahuagin",
+                    "tier": "elite",
+                    "image": "/images/monsters/sahuagin.png",
+                    "move": 4,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Shark Instinct",
+                            "type": "Essence",
+                            "description": "When attacking a wounded unit (not at full HP), gains +1 Power"
+                        },
+                        {
+                            "name": "Water Affinity",
+                            "type": "Essence",
+                            "description": "-1 Move and -1 Power on land"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ewashia, Mistress of Tides",
+                    "tier": "elite",
+                    "image": "/images/monsters/ewashia.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Water Twister",
+                            "type": "Attack",
+                            "description": "Power 4, Range 3. Can only be used if Ewashia is in or adjacent to water. Target must be in range and visible from a water tile"
+                        }
+                    ]
+                },
+                {
+                    "name": "Kraken",
+                    "tier": "boss",
+                    "image": "/images/monsters/kraken.png",
+                    "move": 2,
+                    "range": 0,
+                    "power": 0,
+                    "defense": 2,
+                    "hp": 7,
+                    "abilities": [
+                        {
+                            "name": "Tentacle Regeneration",
+                            "type": "Attack",
+                            "description": "Summon one Kraken Tentacle (Lesser) adjacent to this unit. There can be max 4 total Tentacles at a time."
+                        },
+                        {
+                            "name": "Water Bound",
+                            "type": "Essence",
+                            "description": "Can only move in water hexes"
+                        },
+                        {
+                            "name": "Submerged",
+                            "type": "Essence",
+                            "description": "If neither Kraken nor any of its Tentacles are enganged in combat, Kraken is immune to ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Kraken Tentacle (Lesser)",
+                    "tier": "common",
+                    "image": "/images/monsters/kraken_tentacle_lesser.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Water Bound",
+                            "type": "Essence",
+                            "description": "Can only move in water hexes"
+                        },
+                        {
+                            "name": "Submerged",
+                            "type": "Essence",
+                            "description": "If neither Kraken nor any of its Tentacles are enganged in combat, Kraken Tentacles are immune to ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Kraken Tentacle (Greater)",
+                    "tier": "elite",
+                    "image": "/images/monsters/kraken_tentacle_great.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Water Bound",
+                            "type": "Essence",
+                            "description": "Can only move in water hexes"
+                        },
+                        {
+                            "name": "Submerged",
+                            "type": "Essence",
+                            "description": "If neither Kraken nor any of its Tentacles are enganged in combat, Kraken Tentacles are immune to ranged attacks"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Swamp",
+            "color": "Dark Green",
+            "creatures": [
+                {
+                    "name": "Bog Crawler",
+                    "hidden": true,
+                    "tier": "common",
+                    "move": 2,
+                    "range": 1,
+                    "power": 2,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": []
+                },
+                {
+                    "name": "Swamp Troll",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Regeneration",
+                            "type": "Essence",
+                            "description": "Heals 1 HP at the start of each turn while in swamp terrain"
+                        }
+                    ]
+                },
+                {
+                    "name": "Spore Sprout",
+                    "tier": "common",
+                    "image": "images/monsters/spore_sprout.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Spore Release",
+                            "type": "Essence",
+                            "description": "If defeated by an adjacent enemy, the attacking unit must make a save roll of 10 or higher, or become poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Fungal Archer",
+                    "tier": "common",
+                    "image": "images/monsters/fungal_archer.png",
+                    "move": 2,
+                    "range": 4,
+                    "power": 2,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Poison Arrows",
+                            "type": "Essence",
+                            "description": "When attacking, defending units must make a save roll of 15, or be poisoned"
+                        },
+                        {
+                            "name": "Spore Release",
+                            "type": "Essence",
+                            "description": "If defeated by an adjacent enemy, the attacking unit must make a save roll of 10 or higher, or become poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Shroom Bomb",
+                    "tier": "common",
+                    "image": "images/monsters/shroom_bomb.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 2,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Spore Bomb",
+                            "type": "Attack",
+                            "description": "All enemy units within 2 hexes must make a save roll of 17 or higher, or become poisoned. Shroom Bomb is defeated"
+                        },
+                        {
+                            "name": "Spore Release",
+                            "type": "Essence",
+                            "description": "If defeated by an adjacent enemy, the attacking unit must make a save roll of 10 or higher, or become poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Shroom Kicker",
+                    "tier": "common",
+                    "image": "images/monsters/shroom_kicker.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Stunning Kick",
+                            "type": "Essence",
+                            "description": "If attack does damage, defending unit must make a save roll of 10 or higher. If failed, it is stunned and gets -1 Power next turn"
+                        },
+                        {
+                            "name": "Mycelium Network",
+                            "type": "Essence",
+                            "description": "Instead of moving, can teleport to any hex adjacent to any other mushroom. Does not take a disengagement attack"
+                        },
+                        {
+                            "name": "Spore Release",
+                            "type": "Essence",
+                            "description": "If defeated by an adjacent enemy, the attacking unit must make a save roll of 10 or higher, or become poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Myconid",
+                    "tier": "elite",
+                    "image": "images/monsters/myconid.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 3,
+                    "hp": 5,
+                    "abilities": [
+                        {
+                            "name": "Spore Cloud",
+                            "type": "Attack",
+                            "description": "All enemy units within 3 hexes must make a save roll of 13 or become poisoned"
+                        },
+                        {
+                            "name": "Spore Release",
+                            "type": "Attack",
+                            "description": "When defeated, all enemy units within 2 hexes must make a save roll of 10 or higher, or become poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Marsh Hydra",
+                    "tier": "boss",
+                    "image": "/images/monsters/marsh_hydra.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Multiple Heads",
+                            "type": "Essence",
+                            "description": "Can make one attack per turn for each HP remaining."
+                        },
+                        {
+                            "name": "Poisonous Bite",
+                            "type": "Essence",
+                            "description": "Attacks apply poison to target (even if no damage), unless the target makes a save roll of 11 or higher. If not already poisoned, take poison damage roll"
+                        },
+                        {
+                            "name": "Outrage",
+                            "type": "Essence",
+                            "description": "If Marsh Hydra only has 1 HP remaining, it gets +2 Power"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Lava",
+            "color": "Red",
+            "creatures": [
+                {
+                    "name": "Lesser Fire Elemental",
+                    "tier": "common",
+                    "image": "/images/monsters/fire_elemental_lesser_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Greater Fire Elemental",
+                    "tier": "elite",
+                    "image": "/images/monsters/fire_elemental_greater_card.png",
+                    "move": 2,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Inferno",
+                            "type": "Essence",
+                            "description": "All adjacent units take 1 die of fire damage each turn with no defense roll. Damage is taken when first moving adjacent to Greater Fire Elemental, for each step taken while adjacent, or when starting that unit's turn adjacent. Fire and Water units are immune. Forest and Ice units take 2 dice of damage"
+                        }
+                    ]
+                },
+                {
+                    "name": "Magma Golem",
+                    "hidden": true,
+                    "tier": "boss",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 5,
+                    "hp": 8,
+                    "abilities": [
+                        {
+                            "name": "Molten Shell",
+                            "type": "Essence",
+                            "description": "Takes 1 less damage from all attacks"
+                        },
+                        {
+                            "name": "Lava Burst",
+                            "type": "Essence",
+                            "description": "When hit for 2+ damage, counterattack deals 2 damage to attacker"
+                        }
+                    ]
+                },
+                {
+                    "name": "Pyromancer",
+                    "tier": "elite",
+                    "image": "/images/monsters/pyromancer_card.png",
+                    "move": 2,
+                    "range": 4,
+                    "power": 6,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Fireball",
+                            "type": "Attack",
+                            "description": "Attack also damages up to 2 enemies adjacent to the target for 2 Power with no defense roll"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Forest",
+            "color": "Light Green",
+            "creatures": [
+                {
+                    "name": "Forest Sprite",
+                    "hidden": true,
+                    "tier": "common",
+                    "move": 4,
+                    "range": 1,
+                    "power": 2,
+                    "defense": 1,
+                    "hp": 2,
+                    "abilities": []
+                },
+                {
+                    "name": "Satyr Archer",
+                    "tier": "common",
+                    "image": "/images/monsters/satyr_archer.png",
+                    "move": 3,
+                    "range": 3,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Pan Pipes",
+                            "type": "Attack",
+                            "description": "Play enchanted pan pipes. Until next turn, any unit that attacks a Satyr within 3 hexes of this unit must make a save roll of 15 or higher. If they fail, they must attack their own unit instead"
+                        }
+                    ]
+                },
+                {
+                    "name": "Satyr Warrior",
+                    "tier": "elite",
+                    "image": "/images/monsters/satyr_warrior.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Feral Charge",
+                            "type": "Essence",
+                            "description": "If Satyr Warrior moved this turn towards the target unit, it gains +2 Power its attack"
+                        }
+                    ]
+                },
+                {
+                    "name": "Krampus",
+                    "tier": "elite",
+                    "image": "/images/monsters/krampus.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Frightening Presence",
+                            "type": "Essence",
+                            "description": "All adjacent non-hero enemy units get -1 Power"
+                        }
+                    ]
+                },
+                {
+                    "name": "Treant",
+                    "tier": "boss",
+                    "image": "/images/monsters/treant.png",
+                    "move": 2,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 5,
+                    "abilities": [
+                        {
+                            "name": "Column Swing",
+                            "type": "Attack",
+                            "description": "Power 5, Range 2. Cannot be used if he has already used Column Toss"
+                        },
+                        {
+                            "name": "Column Toss",
+                            "type": "Attack",
+                            "description": "Power 7, Range 4. Cannot be used if he has already used Column Toss. Cannot use if target is in range of Column Swing"
+                        },
+                        {
+                            "name": "Branch Attack",
+                            "type": "Essence",
+                            "description": "Treant may use his normal attack twice per turn (if not using a special attack)"
+                        },
+                        {
+                            "name": "Nature's Wrath",
+                            "type": "Essence",
+                            "description": "If a forest creature was killed last turn, Treant gets +1 Power and +1 Defense"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Wasteland",
+            "color": "Beige",
+            "creatures": [
+                {
+                    "name": "Sand Scorpion",
+                    "tier": "common",
+                    "image": "/images/monsters/sand_scorpion_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 2,
+                    "defense": 1,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Venom",
+                            "type": "Essence",
+                            "description": "If their attack does damage, the target is also poisoned. If their attack does no damage, target makes a save roll of 8 or higher, if failed they are poisoned"
+                        }
+                    ]
+                },
+                {
+                    "name": "Desert Tyrant",
+                    "hidden": true,
+                    "tier": "boss",
+                    "move": 3,
+                    "range": 2,
+                    "power": 5,
+                    "defense": 4,
+                    "hp": 7,
+                    "abilities": [
+                        {
+                            "name": "Territorial",
+                            "description": "Gets +1 Defense when in wasteland terrain"
+                        },
+                        {
+                            "name": "Sandstorm Summon",
+                            "type": "Ability",
+                            "description": "Once per battle, can summon 2 Sand Scorpions"
+                        }
+                    ]
+                },
+                {
+                    "name": "Slatescale Worm",
+                    "tier": "common",
+                    "image": "/images/monsters/slatescale_worm_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 3,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Burrow",
+                            "type": "Essence",
+                            "description": "Immune to ranged attacks until he is engaged in combat"
+                        }
+                    ]
+                },
+                {
+                    "name": "Husk",
+                    "tier": "common",
+                    "image": "/images/monsters/husk.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 3,
+                    "hp": 2,
+                    "abilities": []
+                },
+                {
+                    "name": "Stray",
+                    "tier": "common",
+                    "image": "/images/monsters/stray.png",
+                    "move": 2,
+                    "range": 5,
+                    "power": 3,
+                    "defense": 1,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Arrows of Slowness",
+                            "type": "Essence",
+                            "description": "Any unit damaged by Stray's attack has -1 Move until the end of next turn"
+                        },
+                        {
+                            "name": "Hollow Bones",
+                            "type": "Essence",
+                            "description": "+2 Defense against ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Basilisk",
+                    "tier": "elite",
+                    "image": "/images/monsters/basilisk_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 2,
+                    "abilities": [
+                        {
+                            "name": "Petrifying Gaze",
+                            "type": "Attack",
+                            "description": "Power 0, Range 3. Defending unit makes a save roll of 13 or higher. If they fail, they are petrified and cannot move or attack or defend (roll no defense dice) until the start of your next turn"
+                        }
+                    ]
+                },
+                {
+                    "name": "Dune Wyvern",
+                    "tier": "boss",
+                    "image": "/images/monsters/dune_wyvern_card.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Tail Slash",
+                            "type": "Attack",
+                            "description": "Power 4, Range 1. Defending unit is knocked back 1 hex unless it makes a save roll of 11 or higher. Can use both normal attack (bite) and Tail Slash every turn, on the same target or different targets"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Hills",
+            "color": "Rust Red",
+            "creatures": [
+                {
+                    "name": "Rock Elemental",
+                    "hidden": true,
+                    "tier": "common",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Earth Elemental",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 5,
+                    "hp": 5,
+                    "abilities": [
+                        {
+                            "name": "Stone Form",
+                            "type": "Essence",
+                            "description": "Takes 1 less damage from all attacks, cannot move next turn after being hit"
+                        }
+                    ]
+                },
+                {
+                    "name": "Hill Giant",
+                    "hidden": true,
+                    "tier": "boss",
+                    "move": 2,
+                    "range": 1,
+                    "power": 6,
+                    "defense": 5,
+                    "hp": 8,
+                    "abilities": [
+                        {
+                            "name": "Crushing Blow",
+                            "type": "Essence",
+                            "description": "Attack deals bonus damage equal to target's Defense value divided by 2"
+                        },
+                        {
+                            "name": "Unmovable",
+                            "type": "Essence",
+                            "description": "Cannot be pushed or knocked back by any effect"
+                        }
+                    ]
+                },
+                {
+                    "name": "Stonekin Brute",
+                    "tier": "common",
+                    "image": "/images/monsters/stonekin_brute_card.png",
+                    "move": 2,
+                    "range": 3,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Stoneskin",
+                            "type": "Essence",
+                            "description": "+2 Defense against ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Stonekin Mauler",
+                    "tier": "common",
+                    "image": "/images/monsters/stonekin_mauler_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Stoneskin",
+                            "type": "Essence",
+                            "description": "+2 Defense against ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Stonekin Boulderfist",
+                    "tier": "elite",
+                    "image": "/images/monsters/stonekin_boulderfist_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 6,
+                    "abilities": [
+                        {
+                            "name": "Stoneskin",
+                            "type": "Essence",
+                            "description": "+2 Defense against ranged attacks"
+                        },
+                        {
+                            "name": "Stone Swat",
+                            "type": "Attack",
+                            "description": "Power 4, Range 1, Knockback 2"
+                        },
+                        {
+                            "name": "Stone Grip",
+                            "type": "Attack",
+                            "description": "Power 2, Range 1. If target unit fails a save roll of 12 or higher, they are entrapped and cannot move or attack next turn. If target unit makes their save roll, this attack does no damage"
+                        }
+                    ]
+                },
+                {
+                    "name": "Stoneking",
+                    "tier": "elite",
+                    "image": "/images/monsters/stoneking_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 5,
+                    "hp": 6,
+                    "abilities": [
+                        {
+                            "name": "Boulder Throw",
+                            "type": "Attack",
+                            "description": "Power 3, Range 3, Knockback 1"
+                        },
+                        {
+                            "name": "Stoneskin",
+                            "type": "Essence",
+                            "description": "+2 Defense against ranged attacks"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Mountain",
+            "color": "Gray",
+            "creatures": [
+                {
+                    "name": "Stone Drake",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 3,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Mountain Climb",
+                            "type": "Essence",
+                            "description": "Can move up elevation freely without restriction"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ancient Dragon",
+                    "hidden": true,
+                    "tier": "boss",
+                    "move": 3,
+                    "range": 3,
+                    "power": 5,
+                    "defense": 4,
+                    "hp": 9,
+                    "abilities": [
+                        {
+                            "name": "Dragon's Breath",
+                            "type": "Attack",
+                            "description": "Can attack all units in a cone, Range 3"
+                        },
+                        {
+                            "name": "Aerial Supremacy",
+                            "type": "Essence",
+                            "description": "Cannot be attacked by non-flying units from Range > 2"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ogre",
+                    "tier": "common",
+                    "image": "/images/monsters/ogre_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 6,
+                    "defense": 3,
+                    "hp": 6,
+                    "abilities": [
+                        {
+                            "name": "Ogre Rivalry",
+                            "type": "Essence",
+                            "description": "-1 Power if adjacent to another Ogre"
+                        }
+                    ]
+                },
+                {
+                    "name": "Ogre Chief",
+                    "tier": "elite",
+                    "image": "/images/monsters/ogre_chief_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 5,
+                    "hp": 7,
+                    "abilities": []
+                },
+                {
+                    "name": "Crystal Golem",
+                    "tier": "elite",
+                    "image": "/images/monsters/crystal_golem_card.png",
+                    "move": 2,
+                    "range": 1,
+                    "power": 3,
+                    "defense": 4,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Reflective Surface",
+                            "type": "Essence",
+                            "description": "When attacked, Crystal Golem attempts a save roll. If 16 or higher, the attack is reflected back at the attacker. The attacking unit then makes its own Defense roll and damages itself"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "biome": "Void",
+            "color": "Dark Purple",
+            "creatures": [
+                {
+                    "name": "Shadow Wraith",
+                    "tier": "common",
+                    "image": "/images/monsters/shadow_wraith.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Dark Spectre",
+                    "hidden": true,
+                    "tier": "elite",
+                    "move": 3,
+                    "range": 2,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Darkness Veil",
+                            "type": "Essence",
+                            "description": "Takes 1 less damage from ranged attacks"
+                        }
+                    ]
+                },
+                {
+                    "name": "Void Lord",
+                    "hidden": true,
+                    "tier": "boss",
+                    "move": 2,
+                    "range": 3,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 6,
+                    "abilities": [
+                        {
+                            "name": "Reality Tear",
+                            "type": "Ability",
+                            "description": "Once per turn, can teleport up to 3 hexes away"
+                        },
+                        {
+                            "name": "Void Corruption",
+                            "type": "Essence",
+                            "description": "Units damaged by Void Lord attacks get -1 Defense until next turn"
+                        }
+                    ]
+                },
+                {
+                    "name": "Void Hydra",
+                    "tier": "elite",
+                    "image": "/images/monsters/void_hydra.png",
+                    "move": 3,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 7,
+                    "abilities": [
+                        {
+                            "name": "Many Heads",
+                            "type": "Essence",
+                            "description": "Can make 4 attacks per turn. For each 2 wounds, a head is chopped off, and it makes one less attack"
+                        },
+                        {
+                            "name": "Outrage",
+                            "type": "Essence",
+                            "description": "If Void Hydra has 1 HP remaining, it gets +1 Power"
+                        }
+                    ]
+                },
+                {
+                    "name": "Void Dragon",
+                    "tier": "boss",
+                    "image": "/images/monsters/void_dragon.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 4,
+                    "hp": 8,
+                    "abilities": [
+                        {
+                            "name": "Dragon Breath",
+                            "type": "Attack",
+                            "description": "Power 6, Range 4. Also damages all units adjacent to the target for the same damage -1 (roll once for the attack, each defending unit rolls separately for defense)."
+                        },
+                        {
+                            "name": "Sky Toss",
+                            "type": "Attack",
+                            "description": "Power 0, Range 1. Target unit attempts a save roll of 15 or higher. If made, the attack has no effect. If failed, the Dragon hurls the unit up to 4 hexes away from the target's original spot. The unit takes 3 dice of fall damage with no save"
+                        },
+                        {
+                            "name": "Flying",
+                            "type": "Essence",
+                            "description": "Not affected by water, lava, or poison terrain"
+                        },
+                        {
+                            "name": "Dragon Slayer",
+                            "type": "Essence",
+                            "description": "The unit that defeats Void Dragon gets +1 Power and +1 Defense for the rest of the game"
+                        }
+                    ]
+                },
+                {
+                    "name": "Void Portal",
+                    "tier": "boss",
+                    "move": 0,
+                    "range": 1,
+                    "power": 0,
+                    "defense": 0,
+                    "hp": 15,
+                    "abilities": [
+                    ]
+                }
+            ]
+        }
+    ],
+    "terrainObjects": [
+        {
+            "name": "Fire Crystal",
+            "biome": "Lava",
+            "rarity": "rare",
+            "image": "/images/objects/fire_crystal.png",
+            "description": "A glowing crystal of pure flame essence",
+            "benefit": {
+                "name": "Essence of Flame",
+                "type": "AttackBonus",
+                "value": 2,
+                "target": "Forest Creatures",
+                "description": "+2 Power when attacking Forest biome creatures"
+            }
+        },
+        {
+            "name": "Forest Crystal",
+            "biome": "Forest",
+            "rarity": "rare",
+            "image": "/images/objects/forest_crystal.png",
+            "description": "A living crystal pulsing with nature's energy",
+            "benefit": {
+                "name": "Essence of Nature",
+                "type": "AttackBonus",
+                "value": 2,
+                "target": "Water Creatures",
+                "description": "+4 Defense when defending against Water attacks"
+            }
+        },
+        {
+            "name": "Water Crystal",
+            "biome": "River",
+            "rarity": "rare",
+            "image": "/images/objects/water_crystal.png",
+            "description": "A crystalline structure flowing with aquatic magic",
+            "benefit": {
+                "name": "Essence of Water",
+                "type": "AttackBonus",
+                "value": 2,
+                "target": "Fire and Lava Creatures",
+                "description": "+1 Power when attacking Lava or Fire biome creatures. +2 Defense when defending against Fire attacks"
+            }
+        }
+    ]
+}

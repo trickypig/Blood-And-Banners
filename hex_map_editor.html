@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood & Banners - Hex Map Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #d4af37;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .map-container {
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 20px;
+            overflow: auto;
+            max-height: calc(100vh - 200px);
+            position: relative;
+        }
+
+        .toolbar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .toolbar-section {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding-right: 15px;
+            border-right: 1px solid #d4af37;
+        }
+
+        .toolbar-section:last-child {
+            border-right: none;
+        }
+
+        .toolbar-label {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .toolbar-btn {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85em;
+            color: #e8e8e8;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .toolbar-btn:hover {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.2);
+        }
+
+        .toolbar-btn.active {
+            border-color: #ffd700;
+            background: rgba(212,175,55,0.4);
+            font-weight: bold;
+        }
+
+        .terrain-color-btn {
+            width: 35px;
+            height: 35px;
+            padding: 0;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .terrain-color-btn:hover {
+            border-color: #d4af37;
+            transform: scale(1.1);
+        }
+
+        .terrain-color-btn.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+
+        .action-btn {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85em;
+            color: #e8e8e8;
+            min-width: 45px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .action-btn:hover {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.2);
+        }
+
+        .action-btn.active {
+            border-color: #ffd700;
+            background: rgba(212,175,55,0.4);
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            background: rgba(212,175,55,0.3);
+            border: 2px solid #d4af37;
+            border-radius: 5px;
+            color: #ffd700;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(212,175,55,0.5);
+            transform: scale(1.05);
+        }
+
+        .zoom-level {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 0.9em;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #d4af37;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section.collapsible h2 {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 20px;
+        }
+
+        .section.collapsible h2::after {
+            content: "▼";
+            position: absolute;
+            right: 0;
+            font-size: 0.8em;
+            transition: transform 0.3s;
+        }
+
+        .section.collapsible.collapsed h2::after {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .section.collapsed .section-content {
+            max-height: 0 !important;
+        }
+
+        h2 {
+            color: #d4af37;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .button-row button {
+            width: 100%;
+            padding: 8px;
+            font-size: 0.85em;
+            margin-bottom: 0;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+
+        .input-group input {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            color: #ffd700;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #d4af37;
+            border-radius: 5px;
+            color: #e8e8e8;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #d4af37;
+            border: none;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #ffd700;
+            transform: translateY(-2px);
+        }
+
+        .terrain-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .terrain-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .terrain-btn:hover {
+            border-color: #d4af37;
+            transform: scale(1.05);
+        }
+
+        .terrain-btn.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+
+        .terrain-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: #ffd700;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            pointer-events: none;
+            margin-bottom: 5px;
+            border: 1px solid #d4af37;
+        }
+
+        .terrain-btn:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .height-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .height-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #d4af37;
+            border-radius: 5px;
+            color: #e8e8e8;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .height-btn:hover {
+            background: rgba(212,175,55,0.3);
+        }
+
+        .player-marker-select, .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .player-marker-btn, .action-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85em;
+            color: #fff;
+        }
+
+        .player-marker-btn:hover, .action-btn:hover {
+            border-color: #d4af37;
+            transform: scale(1.05);
+        }
+
+        .player-marker-btn.active, .action-btn.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+
+        .player-marker-btn::after, .action-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: #ffd700;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            pointer-events: none;
+            margin-bottom: 5px;
+            border: 1px solid #d4af37;
+            z-index: 100;
+        }
+
+        .player-marker-btn:hover::after, .action-btn:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .action-btn {
+            background: rgba(255,255,255,0.1);
+        }
+
+        #hexCanvas {
+            display: block;
+            cursor: crosshair;
+            background: #2a2a3e;
+            border-radius: 5px;
+        }
+
+        .info-box {
+            background: rgba(212,175,55,0.1);
+            border: 1px solid #d4af37;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .player-marker-select {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .player-marker-btn {
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .player-marker-btn:hover {
+            border-color: #d4af37;
+        }
+
+        .player-marker-btn.active {
+            border-color: #ffd700;
+            background: rgba(212,175,55,0.3);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 10px;
+            background: #d4af37;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .file-input-label:hover {
+            background: #ffd700;
+        }
+
+        .main-nav {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .menu-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .menu-icon:hover {
+            background: rgba(212,175,55,0.3);
+            transform: scale(1.05);
+        }
+
+        .menu-icon::before {
+            content: "☰";
+            color: #ffd700;
+            font-size: 1.8em;
+            line-height: 1;
+        }
+
+        .main-nav ul {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            list-style: none;
+            background: rgba(0,0,0,0.95);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 0;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+        }
+
+        .main-nav:hover ul {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .main-nav li {
+            margin: 0;
+        }
+
+        .main-nav a {
+            color: #ffd700;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 12px 16px;
+            display: block;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .main-nav a:hover {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.2);
+        }
+
+        .main-nav a.active {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.3);
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⬡ Hex Map Editor ⬡</h1>
+            <p>Design your battlefield for Realm Wars</p>
+        </header>
+
+        <nav class="main-nav">
+            <div class="menu-icon"></div>
+            <ul>
+                <li><a href="rulebook.html">Rulebook</a></li>
+                <li><a href="hex_map_editor.html" class="active">Map Editor</a></li>
+            </ul>
+        </nav>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="section collapsible">
+                    <h2 onclick="toggleSection(this)">Map Settings</h2>
+                    <div class="section-content" style="max-height: 500px;">
+                        <label>Map Name:</label>
+                        <input type="text" id="mapName" value="New Map" placeholder="Enter map name">
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Columns:</label>
+                                <input type="number" id="columns" value="15" min="5" max="30">
+                            </div>
+                            <div class="input-group">
+                                <label>Rows:</label>
+                                <input type="number" id="rows" value="10" min="5" max="30">
+                            </div>
+                        </div>
+
+                        <div class="button-row">
+                            <button onclick="generateMap()">New Map</button>
+                            <button onclick="clearMap()">Clear</button>
+                            <button onclick="exportMap()">Export</button>
+                            <button onclick="document.getElementById('importFile').click()">Import</button>
+                        </div>
+                        <input type="file" id="importFile" accept=".json" onchange="importMap(event)" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Actions</h2>
+                    <div class="action-buttons">
+                        <div class="action-btn active" data-action="paint" data-tooltip="Paint Terrain" onclick="selectAction('paint')">🎨</div>
+                        <div class="action-btn" data-action="height" data-tooltip="Adjust Height" onclick="selectAction('height')">⛰️</div>
+                        <div class="action-btn" data-action="player" data-tooltip="Set Player Start" onclick="selectAction('player')">👤</div>
+                    </div>
+                </div>
+
+                <div class="section" id="terrainSection">
+                    <h2>Terrain Type</h2>
+                    <div class="terrain-grid">
+                        <div class="terrain-btn active" data-terrain="grass" data-tooltip="Grass" onclick="selectTerrain('grass')" style="background-color: #4a7c4e;"></div>
+                        <div class="terrain-btn" data-terrain="water" data-tooltip="Water" onclick="selectTerrain('water')" style="background-color: #4a7c9e;"></div>
+                        <div class="terrain-btn" data-terrain="stone" data-tooltip="Stone" onclick="selectTerrain('stone')" style="background-color: #6b6b6b;"></div>
+                        <div class="terrain-btn" data-terrain="sand" data-tooltip="Sand" onclick="selectTerrain('sand')" style="background-color: #d4a76a;"></div>
+                        <div class="terrain-btn" data-terrain="forest" data-tooltip="Forest" onclick="selectTerrain('forest')" style="background-color: #2d5016;"></div>
+                        <div class="terrain-btn" data-terrain="darkness" data-tooltip="Darkness" onclick="selectTerrain('darkness')" style="background-color: #1a1a1a;"></div>
+                        <div class="terrain-btn" data-terrain="lava" data-tooltip="Lava" onclick="selectTerrain('lava')" style="background-color: #c4381c;"></div>
+                        <div class="terrain-btn" data-terrain="ice" data-tooltip="Ice" onclick="selectTerrain('ice')" style="background-color: #a8d8e8;"></div>
+                    </div>
+                </div>
+
+                <div class="section" id="playerSection" style="display: none;">
+                    <h2>Player Starts</h2>
+                    <div class="player-marker-select">
+                        <div class="player-marker-btn active" data-player="none" data-tooltip="Remove Start" onclick="selectPlayerMarker('none')">✕</div>
+                        <div class="player-marker-btn" data-player="1" data-tooltip="Player 1" onclick="selectPlayerMarker('1')" style="background-color: #c41e3a;">P1</div>
+                        <div class="player-marker-btn" data-player="2" data-tooltip="Player 2" onclick="selectPlayerMarker('2')" style="background-color: #0051ba;">P2</div>
+                        <div class="player-marker-btn" data-player="3" data-tooltip="Player 3" onclick="selectPlayerMarker('3')" style="background-color: #00a86b;">P3</div>
+                        <div class="player-marker-btn" data-player="4" data-tooltip="Player 4" onclick="selectPlayerMarker('4')" style="background-color: #ffaa00;">P4</div>
+                    </div>
+                </div>
+
+                <div class="section" id="heightSection" style="display: none;">
+                    <h2>Height Adjustment</h2>
+                    <div class="action-buttons">
+                        <div class="action-btn active" data-height="raise" data-tooltip="Raise Height" onclick="selectHeightAction('raise')">+</div>
+                        <div class="action-btn" data-height="lower" data-tooltip="Lower Height" onclick="selectHeightAction('lower')">-</div>
+                        <div class="action-btn" data-height="reset" data-tooltip="Reset to Zero" onclick="selectHeightAction('reset')">0</div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2>Selected Hex Info</h2>
+                    <div class="info-box" id="hexInfo">
+                        Click a hex to see details
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div class="toolbar">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomOut()">−</button>
+                        <span class="zoom-level" id="zoomLevel">100%</span>
+                        <button class="zoom-btn" onclick="zoomIn()">+</button>
+                        <button class="zoom-btn" onclick="resetZoom()" style="width: auto; padding: 5px 8px;">Reset</button>
+                    </div>
+                </div>
+                <canvas id="hexCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Terrain colors and properties
+        const terrainTypes = {
+            grass: { color: '#4a7c4e', name: 'Grass' },
+            water: { color: '#4a7c9e', name: 'Water' },
+            stone: { color: '#6b6b6b', name: 'Stone' },
+            sand: { color: '#d4a76a', name: 'Sand' },
+            forest: { color: '#2d5016', name: 'Forest' },
+            darkness: { color: '#1a1a1a', name: 'Darkness' },
+            lava: { color: '#c4381c', name: 'Lava' },
+            ice: { color: '#a8d8e8', name: 'Ice' }
+        };
+
+        const playerColors = {
+            1: '#c41e3a',
+            2: '#0051ba',
+            3: '#00a86b',
+            4: '#ffaa00'
+        };
+
+        // Map state
+        let mapData = {
+            name: 'New Map',
+            columns: 15,
+            rows: 10,
+            hexes: []
+        };
+
+        let currentTerrain = 'grass';
+        let currentPlayerMarker = 'none';
+        let currentAction = 'paint'; // 'paint', 'player', or 'height'
+        let currentHeightAction = 'raise'; // 'raise', 'lower', or 'reset'
+        let selectedHex = null;
+        let zoomLevel = 1.0;
+
+        // Toggle collapsible section
+        function toggleSection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+        }
+
+        // Action selection
+        function selectAction(action) {
+            currentAction = action;
+
+            // Update active states
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-action="${action}"]`).classList.add('active');
+
+            // Show/hide relevant sections
+            document.getElementById('terrainSection').style.display = action === 'paint' ? 'block' : 'none';
+            document.getElementById('playerSection').style.display = action === 'player' ? 'block' : 'none';
+            document.getElementById('heightSection').style.display = action === 'height' ? 'block' : 'none';
+        }
+
+        // Terrain selection
+        function selectTerrain(terrain) {
+            currentTerrain = terrain;
+            currentActionValue = terrain;
+
+            document.querySelectorAll('.terrain-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-terrain="${terrain}"]`).classList.add('active');
+        }
+
+        // Player marker selection
+        function selectPlayerMarker(player) {
+            currentPlayerMarker = player;
+
+            document.querySelectorAll('.player-marker-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-player="${player}"]`).classList.add('active');
+        }
+
+        // Height action selection
+        function selectHeightAction(action) {
+            currentHeightAction = action;
+
+            // Update active states in height section
+            document.querySelectorAll('#heightSection .action-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-height="${action}"]`).classList.add('active');
+        }
+
+        const canvas = document.getElementById('hexCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const baseHexSize = 40;
+        
+        function getHexSize() {
+            return baseHexSize * zoomLevel;
+        }
+        
+        function getHexDimensions() {
+            const size = getHexSize();
+            // For pointy-top hexagons:
+            // width = sqrt(3) * size
+            // height = 2 * size
+            // But we're drawing flat-top, so we need different calculations
+            // For flat-top hexagons (which is what the angle pattern creates):
+            const width = 2 * size;
+            const height = Math.sqrt(3) * size;
+            return { width, height };
+        }
+
+        // Initialize
+        function init() {
+            generateMap();
+            canvas.addEventListener('click', handleCanvasClick);
+            canvas.addEventListener('mousemove', handleCanvasHover);
+        }
+
+        // Generate new map
+        function generateMap() {
+            const cols = parseInt(document.getElementById('columns').value);
+            const rows = parseInt(document.getElementById('rows').value);
+            const name = document.getElementById('mapName').value;
+
+            mapData = {
+                name: name,
+                columns: cols,
+                rows: rows,
+                hexes: []
+            };
+
+            // Initialize hexes
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    mapData.hexes.push({
+                        row: row,
+                        col: col,
+                        terrain: 'grass',
+                        height: 0,
+                        playerStart: null
+                    });
+                }
+            }
+
+            resizeCanvas();
+            drawMap();
+        }
+
+        // Resize canvas to fit map
+        function resizeCanvas() {
+            const cols = mapData.columns;
+            const rows = mapData.rows;
+            const dims = getHexDimensions();
+            
+            canvas.width = cols * dims.width * 0.75 + dims.width * 0.25 + 40;
+            canvas.height = rows * dims.height + dims.height / 2 + 40;
+        }
+
+        // Get hex center position (flat-top hexagons)
+        function getHexCenter(col, row) {
+            const dims = getHexDimensions();
+            const x = 20 + col * dims.width * 0.75 + dims.width / 2;
+            const y = 20 + row * dims.height + dims.height / 2;
+            const yOffset = (col % 2) * (dims.height / 2);
+            return { x, y: y + yOffset };
+        }
+
+        // Draw a hexagon (flat-top)
+        function drawHexagon(x, y, hex, isSelected = false) {
+            const size = getHexSize();
+            
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = Math.PI / 3 * i;
+                const hx = x + size * Math.cos(angle);
+                const hy = y + size * Math.sin(angle);
+                if (i === 0) {
+                    ctx.moveTo(hx, hy);
+                } else {
+                    ctx.lineTo(hx, hy);
+                }
+            }
+            ctx.closePath();
+
+            // Base terrain color with height shading
+            const terrain = terrainTypes[hex.terrain];
+            const heightShade = hex.height * 15;
+            const baseColor = terrain.color;
+            
+            // Parse hex color and adjust brightness
+            const r = parseInt(baseColor.substr(1, 2), 16);
+            const g = parseInt(baseColor.substr(3, 2), 16);
+            const b = parseInt(baseColor.substr(5, 2), 16);
+            
+            const newR = Math.min(255, r + heightShade);
+            const newG = Math.min(255, g + heightShade);
+            const newB = Math.min(255, b + heightShade);
+            
+            ctx.fillStyle = `rgb(${newR}, ${newG}, ${newB})`;
+            ctx.fill();
+
+            // Border
+            ctx.strokeStyle = isSelected ? '#ffd700' : '#d4af37';
+            ctx.lineWidth = isSelected ? 3 : 1;
+            ctx.stroke();
+
+            // Height indicator
+            if (hex.height !== 0) {
+                ctx.fillStyle = hex.height > 0 ? '#ffffff' : '#000000';
+                ctx.font = `bold ${Math.max(10, 14 * zoomLevel)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(hex.height > 0 ? `+${hex.height}` : hex.height, x, y - 10 * zoomLevel);
+            }
+
+            // Player start marker
+            if (hex.playerStart) {
+                const markerSize = 12 * zoomLevel;
+                ctx.beginPath();
+                ctx.arc(x, y + 10 * zoomLevel, markerSize, 0, Math.PI * 2);
+                ctx.fillStyle = playerColors[hex.playerStart];
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.max(10, 12 * zoomLevel)}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`P${hex.playerStart}`, x, y + 10 * zoomLevel);
+            }
+        }
+
+        // Draw entire map
+        function drawMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            mapData.hexes.forEach(hex => {
+                const pos = getHexCenter(hex.col, hex.row);
+                const isSelected = selectedHex &&
+                    selectedHex.row === hex.row &&
+                    selectedHex.col === hex.col;
+                drawHexagon(pos.x, pos.y, hex, isSelected);
+            });
+        }
+
+        // Redraw a single hex and adjacent hexes
+        function redrawHex(hex) {
+            const pos = getHexCenter(hex.col, hex.row);
+            const size = getHexSize();
+
+            // Clear the hex area (slightly larger to handle borders)
+            ctx.clearRect(pos.x - size - 5, pos.y - size - 5, size * 2 + 10, size * 2 + 10);
+
+            // Redraw all hexes that might overlap with this area
+            mapData.hexes.forEach(h => {
+                const hPos = getHexCenter(h.col, h.row);
+                const distance = Math.sqrt((pos.x - hPos.x) ** 2 + (pos.y - hPos.y) ** 2);
+                if (distance < size * 2.5) {
+                    const hIsSelected = selectedHex &&
+                        selectedHex.row === h.row &&
+                        selectedHex.col === h.col;
+                    drawHexagon(hPos.x, hPos.y, h, hIsSelected);
+                }
+            });
+        }
+
+        // Clear previous hex selection and redraw it
+        function clearPreviousSelection(prevHex) {
+            if (prevHex) {
+                redrawHex(prevHex);
+            }
+        }
+
+        // Get hex at point
+        function getHexAtPoint(x, y) {
+            const size = getHexSize();
+            for (let hex of mapData.hexes) {
+                const pos = getHexCenter(hex.col, hex.row);
+                const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+                if (distance < size) {
+                    return hex;
+                }
+            }
+            return null;
+        }
+
+        // Handle canvas click
+        function handleCanvasClick(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const hex = getHexAtPoint(x, y);
+            if (hex) {
+                const previousHex = selectedHex;
+                selectedHex = hex;
+
+                // Apply the current action
+                if (currentAction === 'paint') {
+                    hex.terrain = currentTerrain;
+                } else if (currentAction === 'player') {
+                    if (currentPlayerMarker !== 'none') {
+                        // Remove this player marker from any other hex
+                        mapData.hexes.forEach(h => {
+                            if (h.playerStart === parseInt(currentPlayerMarker)) {
+                                h.playerStart = null;
+                            }
+                        });
+                        hex.playerStart = parseInt(currentPlayerMarker);
+                    } else {
+                        hex.playerStart = null;
+                    }
+                } else if (currentAction === 'height') {
+                    // Apply the selected height action
+                    if (currentHeightAction === 'raise') {
+                        hex.height = Math.min(10, hex.height + 1);
+                    } else if (currentHeightAction === 'lower') {
+                        hex.height = Math.max(0, hex.height - 1);
+                    } else if (currentHeightAction === 'reset') {
+                        hex.height = 0;
+                    }
+                }
+
+                updateHexInfo(hex);
+                // Only redraw the previous hex if it's different from the current one
+                if (previousHex && (previousHex.row !== hex.row || previousHex.col !== hex.col)) {
+                    redrawHex(previousHex);
+                }
+                redrawHex(hex);
+            }
+        }
+
+        // Handle canvas hover
+        function handleCanvasHover(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const hex = getHexAtPoint(x, y);
+            canvas.style.cursor = hex ? 'pointer' : 'crosshair';
+        }
+
+
+        // Update hex info display
+        function updateHexInfo(hex) {
+            const info = document.getElementById('hexInfo');
+            const terrain = terrainTypes[hex.terrain].name;
+            const playerInfo = hex.playerStart ? `Player ${hex.playerStart} Start` : 'No player start';
+
+            info.innerHTML = `
+                <strong>Position:</strong> Row ${hex.row}, Col ${hex.col}<br>
+                <strong>Terrain:</strong> ${terrain}<br>
+                <strong>Height:</strong> ${hex.height}<br>
+                <strong>Player Start:</strong> ${playerInfo}
+            `;
+        }
+
+        // Clear map
+        function clearMap() {
+            if (confirm('Are you sure you want to clear the entire map?')) {
+                mapData.hexes.forEach(hex => {
+                    hex.terrain = 'grass';
+                    hex.height = 0;
+                    hex.playerStart = null;
+                });
+                selectedHex = null;
+                document.getElementById('hexInfo').textContent = 'Click a hex to see details';
+                drawMap();
+            }
+        }
+
+        // Export map to JSON
+        function exportMap() {
+            const mapName = document.getElementById('mapName').value || 'map';
+            const dataStr = JSON.stringify(mapData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${mapName.replace(/\s+/g, '_')}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert('Map exported successfully!');
+        }
+
+        // Import map from JSON
+        function importMap(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    
+                    // Validate map data
+                    if (!imported.columns || !imported.rows || !imported.hexes) {
+                        throw new Error('Invalid map format');
+                    }
+
+                    mapData = imported;
+                    document.getElementById('mapName').value = mapData.name || 'Imported Map';
+                    document.getElementById('columns').value = mapData.columns;
+                    document.getElementById('rows').value = mapData.rows;
+                    
+                    resizeCanvas();
+                    drawMap();
+                    
+                    alert('Map imported successfully!');
+                } catch (error) {
+                    alert('Error importing map: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset file input
+            event.target.value = '';
+        }
+
+        // Zoom functions
+        function zoomIn() {
+            zoomLevel = Math.min(2.0, zoomLevel + 0.1);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+            updateZoom();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1.0;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+            resizeCanvas();
+            drawMap();
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

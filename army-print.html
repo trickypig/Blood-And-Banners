@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood &amp; Banners - Army Sheet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cinzel', 'Georgia', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            line-height: 1.4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+            color: #d4af37;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 3px;
+        }
+
+        .army-info {
+            color: #b8860b;
+            font-size: 0.95em;
+            font-style: italic;
+        }
+
+        .units-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .unit-card {
+            background: linear-gradient(135deg, rgba(40,40,60,0.9), rgba(20,20,40,0.9));
+            border: 2px solid #d4af37;
+            border-radius: 6px;
+            padding: 10px;
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .unit-header {
+            display: flex;
+            flex-direction: row-reverse;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .unit-image {
+            width: 70px;
+            height: 90px;
+            object-fit: cover;
+            object-position: center;
+            border: 1px solid #d4af37;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .unit-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .unit-name {
+            font-size: 1.1em;
+            color: #ffd700;
+            margin-bottom: 6px;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            border-bottom: 1px solid #d4af37;
+            padding-bottom: 3px;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-auto-flow: column;
+            grid-template-rows: auto auto;
+            gap: 2px 4px;
+            margin-bottom: 6px;
+        }
+
+        .stat {
+            display: contents;
+        }
+
+        .stat-label {
+            color: #b8860b;
+            font-size: 1em;
+            font-weight: bold;
+            margin: 0;
+            text-align: center;
+        }
+
+        .stat-value {
+            color: #ffd700;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .abilities {
+            margin-top: 4px;
+        }
+
+        .ability {
+            background: rgba(212,175,55,0.15);
+            border-left: 1px solid #d4af37;
+            padding: 4px 6px;
+            margin: 3px 0;
+            border-radius: 2px;
+            font-size: 0.75em;
+        }
+
+        .ability-name {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-bottom: 1px;
+        }
+
+        .ability-description {
+            color: #e8e8e8;
+            font-size: 0.7em;
+            line-height: 1.2;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #d4af37;
+            border: none;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #ffd700;
+            transform: translateY(-2px);
+        }
+
+        .back-link {
+            color: #ffd700;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            color: #d4af37;
+        }
+
+        .error {
+            background: rgba(212, 65, 65, 0.3);
+            border: 2px solid #d44141;
+            color: #ff9999;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                max-width: 100%;
+                background: white;
+                border: none;
+                padding: 10px;
+                box-shadow: none;
+            }
+
+            .controls {
+                display: none;
+            }
+
+            .back-link {
+                display: none;
+            }
+
+            .units-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+
+            header {
+                page-break-after: avoid;
+                margin-bottom: 10px;
+            }
+
+            .unit-card {
+                background: white;
+                border: 1px solid #000;
+                box-shadow: none;
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .unit-image {
+                width: 60px;
+                height: 75px;
+            }
+
+            h1, .unit-name, .ability-name {
+                color: #000;
+            }
+
+            .stat-label, .army-info, .ability {
+                color: #333;
+            }
+
+            .stat-value {
+                color: #000;
+                font-weight: bold;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .units-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <a href="rulebook.html" class="back-link">← Back to Rulebook</a>
+            <button onclick="window.print()">🖨️ Print Sheet</button>
+        </div>
+
+        <div id="content">
+            <header>
+                <h1 id="armyTitle">Loading...</h1>
+                <div class="army-info" id="armyInfo"></div>
+            </header>
+
+            <div class="units-grid" id="unitsContainer">
+                <div class="error">Loading army data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameData = null;
+
+        // Get the army name from URL parameter
+        function getArmyNameFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('army');
+        }
+
+        // Load game data
+        async function loadGameData() {
+            try {
+                const response = await fetch('data/gameData.json');
+                gameData = await response.json();
+                displayArmySheet();
+            } catch (error) {
+                console.error('Error loading game data:', error);
+                showError('Error loading game data');
+            }
+        }
+
+        // Display the army sheet
+        function displayArmySheet() {
+            const armyName = getArmyNameFromURL();
+
+            if (!armyName) {
+                showError('No army selected. Please select an army from the rulebook.');
+                return;
+            }
+
+            const army = gameData.armies.find(a => a.name === decodeURIComponent(armyName));
+
+            if (!army) {
+                showError(`Army "${armyName}" not found.`);
+                return;
+            }
+
+            // Update header
+            document.getElementById('armyTitle').textContent = army.name;
+            document.getElementById('armyInfo').textContent =
+                `${army.color}${army.race ? ' - ' + army.race : ''}`;
+
+            // Generate unit cards
+            const unitsContainer = document.getElementById('unitsContainer');
+            unitsContainer.innerHTML = '';
+
+            army.units.forEach(unit => {
+                const unitCard = createUnitCard(unit);
+                unitsContainer.appendChild(unitCard);
+            });
+
+            // Update page title
+            document.title = `${army.name} - Army Sheet - Blood & Banners`;
+        }
+
+        // Create a unit card element
+        function createUnitCard(unit) {
+            const card = document.createElement('div');
+            card.className = 'unit-card';
+
+            let abilitiesHTML = '';
+            if (unit.abilities && unit.abilities.length > 0) {
+                abilitiesHTML = '<div class="abilities">';
+                unit.abilities.forEach(ability => {
+                    abilitiesHTML += `
+                        <div class="ability">
+                            <div class="ability-name">${ability.name}</div>
+                            <div class="ability-description">${ability.description}</div>
+                        </div>
+                    `;
+                });
+                abilitiesHTML += '</div>';
+            }
+
+            let imageHTML = '';
+            if (unit.image) {
+                imageHTML = `<img src="${unit.image}" alt="${unit.name}" class="unit-image">`;
+            }
+
+            card.innerHTML = `
+                <div class="unit-header">
+                    ${imageHTML}
+                    <div class="unit-content">
+                        <div class="unit-name">${unit.name}</div>
+                        <div class="stats-row">
+                            <div class="stat">
+                                <span class="stat-label">🏃</span>
+                                <span class="stat-value">${unit.move}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">🏹</span>
+                                <span class="stat-value">${unit.range}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">⚔️</span>
+                                <span class="stat-value">${unit.attack}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">🛡️</span>
+                                <span class="stat-value">${unit.defense}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">❤️</span>
+                                <span class="stat-value">${unit.hp}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${abilitiesHTML}
+            `;
+
+            return card;
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('unitsContainer').innerHTML =
+                `<div class="error">${message}</div>`;
+            document.getElementById('armyTitle').textContent = 'Error';
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', loadGameData);
+    </script>
+</body>
+</html>

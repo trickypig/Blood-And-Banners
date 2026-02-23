@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood and Banners - Monster Print Sheet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: white;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background-color: #333;
+            color: white;
+            padding: 10px 5px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 12px;
+            border: 1px solid #000;
+        }
+
+        td {
+            padding: 8px 5px;
+            border: 1px solid #ccc;
+            font-size: 11px;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        .tier-common {
+            background-color: #e8f5e9;
+        }
+
+        .tier-elite {
+            background-color: #fff3e0;
+        }
+
+        .tier-boss {
+            background-color: #fce4ec;
+        }
+
+        /* Track columns styling */
+        .track-column {
+            width: 60px;
+            text-align: center;
+            background-color: #f0f0f0;
+        }
+
+        .stats-column {
+            width: 40px;
+            text-align: center;
+        }
+
+        .name-column {
+            width: 150px;
+        }
+
+        .biome-column {
+            width: 90px;
+        }
+
+        .tier-column {
+            width: 60px;
+            text-align: center;
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                margin-bottom: 15px;
+                font-size: 24px;
+                page-break-after: avoid;
+            }
+
+            table {
+                margin-bottom: 20px;
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Blood and Banners - Monster Manual</h1>
+
+    <script>
+        // Load game data
+        async function loadAndDisplay() {
+            try {
+                const response = await fetch('/data/gameData.json');
+                const gameData = await response.json();
+
+                // Create single table
+                const table = document.createElement('table');
+
+                // Create header
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = `
+                    <th class="name-column">Name</th>
+                    <th class="biome-column">Biome</th>
+                    <th class="tier-column">Tier</th>
+                    <th class="stats-column">Move</th>
+                    <th class="stats-column">Range</th>
+                    <th class="stats-column">Power</th>
+                    <th class="stats-column">Def</th>
+                    <th class="stats-column">HP</th>
+                    <th class="track-column">Monster 1 HP</th>
+                    <th class="track-column">Monster 2 HP</th>
+                    <th class="track-column">Monster 3 HP</th>
+                `;
+                table.appendChild(headerRow);
+
+                // Add all creatures from all biomes
+                gameData.monsters.forEach(biomeData => {
+                    const biome = biomeData.biome;
+                    const creatures = biomeData.creatures.filter(c => c.hidden !== true);
+
+                    creatures.forEach(creature => {
+                        const row = document.createElement('tr');
+                        row.classList.add(`tier-${creature.tier}`);
+                        row.innerHTML = `
+                            <td class="name-column">${creature.name}</td>
+                            <td class="biome-column">${biome}</td>
+                            <td class="tier-column">${creature.tier}</td>
+                            <td class="stats-column">${creature.move}</td>
+                            <td class="stats-column">${creature.range}</td>
+                            <td class="stats-column">${creature.power}</td>
+                            <td class="stats-column">${creature.defense}</td>
+                            <td class="stats-column">${creature.hp}</td>
+                            <td class="track-column">&nbsp;</td>
+                            <td class="track-column">&nbsp;</td>
+                            <td class="track-column">&nbsp;</td>
+                        `;
+                        table.appendChild(row);
+                    });
+                });
+
+                document.body.appendChild(table);
+            } catch (error) {
+                console.error('Error loading game data:', error);
+                document.body.innerHTML = '<p>Error loading game data. Make sure gameData.json is in the /data folder.</p>';
+            }
+        }
+
+        // Load data when page loads
+        window.addEventListener('load', loadAndDisplay);
+    </script>
+
+    <noscript>
+        <p style="color: red; text-align: center; margin-top: 50px;">
+            This page requires JavaScript to load the monster data from gameData.json.
+            Please enable JavaScript or use a fallback table below.
+        </p>
+    </noscript>
+</body>
+</html>

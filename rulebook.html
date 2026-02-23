@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood &amp; Banners - Rulebook</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cinzel', 'Georgia', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.3));
+            border-bottom: 3px solid #d4af37;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" font-size="80" opacity="0.05" fill="%23d4af37">⚔</text></svg>') repeat;
+            background-size: 100px 100px;
+            opacity: 0.3;
+        }
+
+        h1 {
+            font-size: 3.5em;
+            color: #d4af37;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            letter-spacing: 3px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #b8860b;
+            margin-top: 10px;
+            font-style: italic;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section {
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        h2 {
+            color: #d4af37;
+            font-size: 2em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #b8860b;
+            padding-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        h3 {
+            color: #ffd700;
+            font-size: 1.5em;
+            margin: 20px 0 10px 0;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .rule-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #d4af37;
+            border-radius: 5px;
+        }
+
+        .rule-title {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        #heroes-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hero-card {
+            background: linear-gradient(180deg, rgba(20,15,40,0.95), rgba(10,5,25,0.95));
+            border: 3px solid #d4af37;
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 8px 20px rgba(212,175,55,0.4), inset 0 1px 0 rgba(212,175,55,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(212,175,55,0.6), inset 0 1px 0 rgba(212,175,55,0.3);
+        }
+
+        .hero-name {
+            font-size: 1.5em;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            padding: 2px;
+            border-bottom: 2px solid #d4af37;
+            text-align: center;
+            margin: 0;
+            background: linear-gradient(90deg, rgba(212,175,55,0.15), transparent);
+        }
+
+        .hero-main {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            align-items: flex-start;
+        }
+
+        .hero-image {
+            width: 240px;
+            height: 360px;
+            object-fit: cover;
+            object-position: center;
+            border: 2px solid rgba(212,175,55,0.4);
+            border-radius: 6px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            display: block;
+        }
+
+        .hero-main .stats {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2px;
+            margin: 0;
+            padding: 0;
+            background: none;
+            border: none;
+        }
+
+        .hero-main .stat {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(212,175,55,0.3);
+            padding: 5px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero-main .stat-label {
+            font-size: 1.3em;
+            margin-bottom: 0;
+            margin-right: 0;
+            flex-shrink: 0;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-main .stat-value {
+            font-size: 1.6em;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero-card:has(.hero-image) .card-content {
+            border-top: 2px solid rgba(212,175,55,0.2);
+        }
+
+        .units-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .creatures-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .unit-card {
+            background: linear-gradient(135deg, rgba(40,40,60,0.9), rgba(20,20,40,0.9));
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 0;
+            box-shadow: 0 4px 15px rgba(212,175,55,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .units-grid .unit-card,
+        .creatures-grid .unit-card {
+            padding: 12px;
+        }
+
+        .unit-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(212,175,55,0.5);
+        }
+
+        .unit-name {
+            font-size: 1.2em;
+            color: #ffd700;
+            margin-bottom: 8px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-weight: bold;
+            border-bottom: 1px solid #d4af37;
+            padding-bottom: 4px;
+        }
+
+        .unit-image {
+            width: 100%;
+            object-fit: cover;
+            object-position: center;
+            border: 2px solid #d4af37;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            margin-bottom: 8px;
+        }
+
+        .units-grid .unit-image,
+        .creatures-grid .unit-image {
+            float: none;
+            margin-right: 0;
+        }
+
+        .unit-header {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .unit-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .unit-image-container {
+            flex-shrink: 0;
+        }
+
+        .unit-image-container .unit-image {
+            width: 100px;
+            height: 150px;
+            margin: 0;
+        }
+
+        .card-content {
+            overflow: hidden;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero-card .card-content {
+            padding: 8px 15px;
+        }
+
+        .unit-card .card-content {
+            padding: 0;
+        }
+
+        .units-grid .unit-card .card-content,
+        .creatures-grid .unit-card .card-content {
+            padding: 0;
+        }
+
+        .army-header {
+            background: linear-gradient(90deg, rgba(212,175,55,0.3), transparent);
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #d4af37;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .army-header a {
+            margin-left: auto;
+        }
+
+        .army-name {
+            font-size: 2em;
+            color: #d4af37;
+            margin-bottom: 5px;
+        }
+
+        .army-color {
+            font-style: italic;
+            color: #b8860b;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin: 0 0 8px 0;
+            background: rgba(0,0,0,0.3);
+            padding: 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(212,175,55,0.2);
+        }
+
+        .units-grid .stats,
+        .creatures-grid .stats {
+            grid-template-columns: repeat(5, 1fr);
+            grid-auto-flow: column;
+            grid-template-rows: auto auto;
+            gap: 8px 4px;
+            padding: 0;
+            margin: 0 0 6px 0;
+            background: none;
+            border: none;
+        }
+
+        .stat {
+            display: contents;
+        }
+
+        .stat-label {
+            color: #d4af37;
+            font-size: 0.9em;
+            font-weight: bold;
+            line-height: 1;
+            margin: 0;
+            text-align: center;
+        }
+
+        .units-grid .stat-label,
+        .creatures-grid .stat-label {
+            font-size: 1.2em;
+            margin: 0;
+        }
+
+        .stat-value {
+            color: #ffd700;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .units-grid .stat-value,
+        .creatures-grid .stat-value {
+            font-size: 0.95em;
+            text-align: center;
+        }
+
+        .hero-card .ability {
+            background: rgba(212,175,55,0.12);
+            border-left: 3px solid #d4af37;
+            border-top: 1px solid rgba(212,175,55,0.3);
+            padding: 2px;
+            margin: 2px 0;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .unit-card .ability {
+            background: rgba(212,175,55,0.1);
+            border-left: 3px solid #d4af37;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .units-grid .unit-card .ability,
+        .creatures-grid .unit-card .ability {
+            padding: 4px;
+            margin: 2px 0;
+            font-size: 0.75em;
+        }
+
+        .ability-name {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1em;
+            margin-bottom: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .ability-type {
+            color: #888;
+            font-weight: normal;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(136, 136, 136, 0.3);
+            border-radius: 3px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .ability-description {
+            color: #e8e8e8;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .lore-text {
+            font-style: italic;
+            color: #b8860b;
+            background: rgba(212,175,55,0.05);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        ul li::before {
+            content: "⚔ ";
+            color: #d4af37;
+            font-weight: bold;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            background: rgba(212,175,55,0.2);
+            border: 2px solid #d4af37;
+            color: #ffd700;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.1em;
+            font-family: inherit;
+        }
+
+        .nav-tab:hover {
+            background: rgba(212,175,55,0.4);
+            transform: translateY(-2px);
+        }
+
+        .nav-tab.active {
+            background: #d4af37;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .main-nav {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .menu-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .menu-icon:hover {
+            background: rgba(212,175,55,0.3);
+            transform: scale(1.05);
+        }
+
+        .menu-icon::before {
+            content: "☰";
+            color: #ffd700;
+            font-size: 1.8em;
+            line-height: 1;
+        }
+
+        .main-nav ul {
+            position: absolute;
+            top: 60px;
+            right: 0;
+            list-style: none;
+            background: rgba(0,0,0,0.95);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 0;
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+        }
+
+        .main-nav:hover ul {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .main-nav li {
+            margin: 0;
+        }
+
+        .main-nav li::before {
+            content: none;
+        }
+
+        .main-nav a {
+            color: #ffd700;
+            text-decoration: none;
+            font-size: 1.1em;
+            padding: 12px 16px;
+            display: block;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .main-nav a:hover {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.2);
+        }
+
+        .main-nav a.active {
+            border-color: #d4af37;
+            background: rgba(212,175,55,0.3);
+        }
+
+        .objects-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .object-card {
+            background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,0,0,0.4));
+            border: 3px solid #d4af37;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 20px rgba(212,175,55,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .object-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 30px rgba(212,175,55,0.5);
+        }
+
+        .object-name {
+            font-size: 1.4em;
+            color: #ffd700;
+            margin-bottom: 8px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-weight: bold;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 8px;
+        }
+
+        .object-biome {
+            color: #b8860b;
+            font-style: italic;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+
+        .object-description {
+            color: #e8e8e8;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .object-benefit {
+            background: rgba(212,175,55,0.2);
+            border-left: 4px solid #d4af37;
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: auto;
+        }
+
+        .benefit-title {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 0.95em;
+        }
+
+        .benefit-description {
+            color: #e8e8e8;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 1200px) {
+            #heroes-container {
+                grid-template-columns: 1fr;
+            }
+
+            .objects-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5em;
+            }
+
+            #heroes-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .hero-main {
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .hero-image {
+                width: 100%;
+                height: 180px;
+                margin: 0 0 8px 0;
+            }
+
+            .hero-main .stats {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 6px;
+            }
+
+            .hero-main .stat {
+                flex-direction: column;
+                padding: 6px 4px;
+            }
+
+            .hero-main .stat-label {
+                font-size: 1em;
+                margin-right: 0;
+                margin-bottom: 3px;
+            }
+
+            .hero-main .stat-value {
+                font-size: 1.3em;
+            }
+
+            .hero-name {
+                font-size: 1.3em;
+                padding: 2px;
+            }
+
+            .card-content {
+                padding: 10px;
+            }
+
+            .units-grid,
+            .creatures-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .unit-card {
+                padding: 10px;
+            }
+
+            .unit-header {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .unit-image-container {
+                width: 100%;
+            }
+
+            .unit-image-container .unit-image {
+                width: 100%;
+            }
+
+            .unit-name {
+                font-size: 1em;
+                margin-bottom: 6px;
+            }
+
+            .unit-image {
+                height: 100px;
+                margin-bottom: 6px;
+            }
+
+            .ability {
+                margin: 6px 0;
+                padding: 8px;
+                font-size: 0.9em;
+            }
+
+            .ability-name {
+                font-size: 0.95em;
+                margin-bottom: 2px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .ability-type {
+                font-size: 0.7em;
+                margin-top: 2px;
+            }
+
+            .ability-description {
+                font-size: 0.85em;
+            }
+
+            .army-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .army-header a {
+                margin-left: 0;
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⚔ BLOOD &amp; BANNERS ⚔</h1>
+        <p class="subtitle">A Tactical Miniature Battle Game</p>
+    </header>
+
+    <nav class="main-nav">
+        <div class="menu-icon"></div>
+        <ul>
+            <li><a href="rulebook.html" class="active">Rulebook</a></li>
+            <li><a href="hex_map_editor.html">Map Editor</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('rules')">Core Rules</button>
+            <button class="nav-tab" onclick="showTab('heroes')">Heroes</button>
+            <button class="nav-tab" onclick="showTab('armies')">Armies</button>
+            <button class="nav-tab" onclick="showTab('biomes')">Biomes &amp; Monsters</button>
+            <button class="nav-tab" onclick="showTab('objects')">Terrain Objects</button>
+        </div>
+
+        <div id="rules-tab" class="tab-content active">
+            <div class="section">
+                <h2>Game Overview</h2>
+                <p class="lore-text">Armies from different Realms teleport through mystical Portals to battle for dominance and plunder resources across the contested lands.</p>
+                <p>Blood &amp; Banners is a hex-based tactical miniature battle game featuring 3D terrain and miniatures for players and NPCs.</p>
+            </div>
+
+            <div class="section">
+                <h2>Setup</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Terrain Setup</div>
+                    <p>Set up terrain using a specific scenario or build an interesting custom map.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Initiative & Selection</div>
+                    <p>Each player rolls a D20 to determine initiative. In initiative order, players take turns choosing:</p>
+                    <ul>
+                        <li>Who goes first in actual game</li>
+                        <li>Starting/home position</li>
+                        <li>Hero selection (1 per player)</li>
+                        <li>Army selection (1 pre-built army per player)</li>
+                    </ul>
+                    <p><em>Note: Any Hero can lead any Army.</em></p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Starting Placement</div>
+                    <p>Each player has a Home hex with a Portal. Place units as follows:</p>
+                    <ul>
+                        <li>First 4 units: Place in the 4 hexes adjacent to Portal closest to opponent</li>
+                        <li>Remaining units: Place adjacent to already-placed units</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Victory Conditions</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Basic Mode</div>
+                    <p>Defeat all opponent units.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Advanced Modes</div>
+                    <ul>
+                        <li>Capture the Flag</li>
+                        <li>NPC monsters that interfere or guard objectives</li>
+                        <li>Other objective-based scenarios</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Turn Structure</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Unit Activation</div>
+                    <p>Each round, a player activates 4 units:</p>
+                    <ul>
+                        <li><strong>If Hero is alive:</strong> May activate Hero + 3 other units. They can be activated in any order</li>
+                        <li><strong>If Hero is defeated:</strong> Activate any 4 units</li>
+                        <li><strong>If fewer than 4 units remain:</strong> Activate each unit one time</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Action Sequence</div>
+                    <p>Activate each unit one at a time. A unit makes all of its actions before activating the next unit</p>
+                    <p>Each activated unit may: <strong>Move</strong> then <strong>Attack</strong> (in that order)</p>
+                    <p>If a unit has special Attacks, they may choose to use one special attack instead of their normal attack</p>
+                    <p>If a unit has special Abilities, they may choose to use each special ability once per turn at any time during your turn. You may not use Abilities during other players turns. Only units that were activated may use any of their Abilities this turn</p>
+                    <p>If a unit has an Essence, that takes effect no matter whose turn it is and whether or not that unit was activated</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Movement</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Basic Movement</div>
+                    <ul>
+                        <li>Move up to unit's Move score (in hexes)</li>
+                        <li>May move less or remain still</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Vertical Movement</div>
+                    <ul>
+                        <li>May move up or down 1 level per horizontal hex</li>
+                        <li>Cannot move between hexes with 2+ level difference</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Moving through Water</div>
+                    <ul>
+                        <li>A unit's movement ends once stepping into water, even if they have additional movement steps</li>
+                        <li>Stepping out of water takes an additional step, and is considered an additional level up. (A normal unit cannot step from water direclty onto a hill)</li>
+                        <li>A unit in water gets -1 Power</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Moving on Ice</div>
+                    <ul>
+                        <li>Ice is slippery. Once a unit steps onto ice, they become <i>Unsteady</i> and begin <i>Slipping</i>.</li>
+                        <li><i>Unsteady:</i> A unit that is slipping on ice gets -1 Power. They remain Unsteady as long as they are on the ice, even if their movement stops. If a unit is Unsteady (but not Slipping) and is engaged in combat with a unit that is not Unsteady or Slipping, the Unsteady unit does not get to take a free disengagement attack if the stable unit leaves combat.</li>
+                        <li><i>Slipping:</i> When a unit is slipping, they must take their full movement each turn, and they cannot change directions.</li>
+                        <li>A slipping character does not get enganged in combat if they slide adjacent to another unit. If their movement gets stopped (so no longer Slipping) while adjacent to another unit, then they are engaged.</li>
+                        <li>If a unit is Slipping and moving, and their next step would land them on a different vertical level or on the same hex as another unit, there is a colision:</li>
+                        <ul>
+                            <li>If a unit collides with an enemy unit, their movement stops before stepping onto the already-occupied hex, and they are no longer Slipping or moving, but will still be unstead. Both units take one attack die of damage with no defence roll.</li>
+                            <li>If a unit is about to collide with or step through a friendly unit, they may choose to:</li>
+                            <ul>
+                                <li>Continue movement like normal. If the unit has enough movement and there is space on the other side of the colliding unit, the original unit may continue their movement like normal stepping onto the occupied hex and then continuing onto the next hex.</li>
+                                <li>Stop their movement before stepping onto the occupied space. Neither unit takes any damage. The unit that was in the process of moving is no longer Slipping or moving. Their movement ends for the turn. They are still Unsteady.</li>
+                                <li>Use the other unit to swing the moving unit in another direction.Step onto the occupied hex and then step to any adjacent square. The original unit is still Slipping, but is now moving in that direction instead.</li>
+                            </ul>
+                            <li>If a unit is about to move onto a hex that is a higher elevation than their current hex, their movement stops on the lower hex, and they are no longer Slipping. They are still Unsteady. A unit may not climb up elevation from one icy hex to another. They may climb up one level of elevation if the higher hex is not ice.</li>
+                            <li>If a unit is about to move onto a hex that is a lower elevation than their current hex, they fall onto the lower tile and continue Slipping. Take one Attack die of damage for each level of elevation dropped, with no Defense roll. If the lower tile is icy, continue Slipping in the same direction. If the lower tile is not icy, the unit's movement ends for the turn, and they are no longer Slipping or Unsteady.</li>
+                        </ul>
+                        <li>A unit may not step onto an icy hex if it is higher elevation than their current hex.</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Flying</div>
+                    <ul>
+                        <li>Flying characters may ignore water and ice movement penalties.</li>
+                        <li>Flying characters may move up 2 levels difference, and down any number of levels difference.</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Melee Engagement</div>
+                    <p>Units are "engaged in melee combat" when adjacent to each other and within 1 level of vertical height difference.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Disengagement Penalty</div>
+                    <p>If a unit moves away from melee combat, the opposing unit gets a free attack:</p>
+                    <ul>
+                        <li>Power 1 (regardless of attacker's actual Power)</li>
+                        <li>No defense roll allowed (automatic hit)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Unit Conditions</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Poison</div>
+                    <p>If a unit steps in poison, their movement ends. Each turn they are in poison, they get poisoned.
+                        Take one attack die of poison damage.
+                        The unit stays poisoned when leaving poison, and continues to make a roll every turn.
+                        Any swords rolled are damage (no defense roll).
+                        If you roll a shield, you are unpoisoned (unless still in the poison).
+                    </p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Unsteady</div>
+                    <p>A unit that is slipping on ice gets -1 Power. They remain Unsteady as long as they are on the ice, even if their movement stops. If a unit is Unsteady (but not Slipping) and is engaged in combat with a unit that is not Unsteady or Slipping, the Unsteady unit does not get to take a free disengagement attack if the stable unit leaves combat.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Slipping</div>
+                    <ul>
+                        <li>When a unit is slipping, they must take their full movement each turn, and they cannot change directions.</li>
+                        <li>A slipping character does not get enganged in combat if they slide adjacent to another unit. If their movement gets stopped (so no longer Slipping) while adjacent to another unit, then they are engaged.</li>
+                        <li>If a unit is Slipping and moving, and their next step would land them on a different vertical level or on the same hex as another unit, there is a colision:</li>
+                        <ul>
+                            <li>If a unit collides with an enemy unit, their movement stops before stepping onto the already-occupied hex, and they are no longer Slipping or moving, but will still be unstead. Both units take one attack die of damage with no defence roll.</li>
+                            <li>If a unit is about to collide with or step through a friendly unit, they may choose to:</li>
+                            <ul>
+                                <li>Continue movement like normal. If the unit has enough movement and there is space on the other side of the colliding unit, the original unit may continue their movement like normal stepping onto the occupied hex and then continuing onto the next hex.</li>
+                                <li>Stop their movement before stepping onto the occupied space. Neither unit takes any damage. The unit that was in the process of moving is no longer Slipping or moving. Their movement ends for the turn. They are still Unsteady.</li>
+                                <li>Use the other unit to swing the moving unit in another direction.Step onto the occupied hex and then step to any adjacent square. The original unit is still Slipping, but is now moving in that direction instead.</li>
+                            </ul>
+                            <li>If a unit is about to move onto a hex that is a higher elevation than their current hex, their movement stops on the lower hex, and they are no longer Slipping. They are still Unsteady. A unit may not climb up elevation from one icy hex to another. They may climb up one level of elevation if the higher hex is not ice.</li>
+                            <li>If a unit is about to move onto a hex that is a lower elevation than their current hex, they fall onto the lower tile and continue Slipping. Take one Attack die of damage for each level of elevation dropped, with no Defense roll. If the lower tile is icy, continue Slipping in the same direction. If the lower tile is not icy, the unit's movement ends for the turn, and they are no longer Slipping or Unsteady.</li>
+                        </ul>
+                        <li>A unit may not step onto an icy hex if it is higher elevation than their current hex.</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Stunned</div>
+                    <p>A stunned unit suffers the following effects until the end of their next activation:</p>
+                    <ul>
+                        <li>Cannot move</li>
+                        <li>Cannot make disengagement attacks if an enemy moves away from melee combat</li>
+                        <li>Gets -2 Power</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Combat</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Attack Range & Line of Sight</div>
+                    <ul>
+                        <li>May attack any unit within Range score (in hexes)</li>
+                        <li>Requires clear line of sight</li>
+                        <li>Terrain and units can block line of sight</li>
+                        <li>Cannot attack directly through a unit in straight line</li>
+                        <li>Can attack around or between 2 units if space exists and Range permits</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Attack Resolution</div>
+                    <ol style="list-style: decimal; padding-left: 40px;">
+                        <li style="margin: 10px 0;"><strong>Attacker rolls:</strong> Number of dice = Power stat, count Sword faces</li>
+                        <li style="margin: 10px 0;"><strong>Defender rolls:</strong> Number of dice = Defense stat, count Shield faces</li>
+                        <li style="margin: 10px 0;"><strong>Damage calculation:</strong> Swords - Shields = Wounds dealt
+                            <ul>
+                                <li>If result ≤ 0: No damage</li>
+                                <li>If result > 0: Defender takes that many Wounds</li>
+                            </ul>
+                        </li>
+                        <li style="margin: 10px 0;"><strong>Defeat:</strong> Unit defeated when Wounds ≥ HP</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Unit Statistics</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Core Stats</div>
+                    <ul>
+                        <li><strong>🏃 Move:</strong> Maximum hexes the unit can move per activation</li>
+                        <li><strong>🏹 Range:</strong> Maximum attack distance in hexes</li>
+                        <li><strong>⚔️ Power:</strong> Number of dice rolled when attacking</li>
+                        <li><strong>🛡️ Defense:</strong> Number of dice rolled when defending</li>
+                        <li><strong>❤️ HP:</strong> Health Points - wounds needed to defeat the unit</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Terrain Objects</h2>
+                <div class="rule-item">
+                    <div class="rule-title">Capturing Objects</div>
+                    <p>Special objects are scattered throughout the battlefield. A unit captures a Terrain Object by moving onto its hex. Once captured, the controlling player gains the object's benefits immediately.</p>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Object Benefits</div>
+                    <p>Each object provides a specific benefit to its controlling player:</p>
+                    <ul>
+                        <li><strong>Fire Crystal (Lava Biome):</strong> +2 Power when attacking Forest biome creatures</li>
+                        <li><strong>Forest Crystal (Forest Biome):</strong> +4 Defense when defending against Water attacks</li>
+                        <li><strong>Water Crystal (River Biome):</strong> +1 Power when attacking Lava or Fire biome creatures. +2 Defense when defending against Fire attacks</li>
+                    </ul>
+                </div>
+                <div class="rule-item">
+                    <div class="rule-title">Losing Control</div>
+                    <p>If a unit controlling an object is defeated or moves away from the object's hex, that player loses the object's benefits. The object remains on the battlefield until captured by another unit.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="heroes-tab" class="tab-content">
+            <div class="section">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Heroes</h2>
+                    <a href="heroes-print.html" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>
+                </div>
+                <div id="heroes-container"></div>
+            </div>
+        </div>
+
+        <div id="armies-tab" class="tab-content">
+            <div class="section">
+                <h2>Armies</h2>
+                <div id="armies-container"></div>
+            </div>
+        </div>
+
+        <div id="biomes-tab" class="tab-content">
+            <div class="section">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Biomes &amp; Monsters</h2>
+                    <a href="monster_print_sheet.html" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>
+                </div>
+                <div id="biomes-container"></div>
+            </div>
+        </div>
+
+        <div id="objects-tab" class="tab-content">
+            <div class="section">
+                <h2>Terrain Objects</h2>
+                <p class="lore-text">Special objects are scattered throughout the battlefield. A player may capture an object by moving a unit onto an adjacent hex. If there are no enemy units adjacent to the object or the capturing unit, that unit now controls the object. The capturing player gains the benefits of the object immediately. That player now controls the object as long as they have a friendly unit adjacent to the object.</p>
+                <div id="objects-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load game data from external JSON file
+        let gameData = null;
+
+        // Fetch game data
+        async function loadGameData() {
+            try {
+                const response = await fetch('data/gameData.json');
+                gameData = await response.json();
+                displayHeroes();
+                displayArmies();
+                displayBiomes();
+                displayTerrainObjects();
+            } catch (error) {
+                console.error('Error loading game data:', error);
+            }
+        }
+
+        // Function to display heroes
+        function displayHeroes() {
+            const container = document.getElementById('heroes-container');
+            container.innerHTML = '';
+            
+            gameData.heroes.forEach(hero => {
+                const heroCard = document.createElement('div');
+                heroCard.className = 'hero-card';
+                
+                let abilitiesHTML = '';
+                if (hero.abilities && hero.abilities.length > 0) {
+                    abilitiesHTML = '';
+                    hero.abilities.forEach(ability => {
+                        const typeLabel = ability.type ? `<span class="ability-type">${ability.type}</span>` : '';
+                        abilitiesHTML += `
+                            <div class="ability">
+                                <div class="ability-name">
+                                    <span>${ability.name}</span>
+                                    ${typeLabel}
+                                </div>
+                                <div class="ability-description">${ability.description}</div>
+                        `;
+                        if (ability.spells) {
+                            abilitiesHTML += '<ul style="margin-top: 8px;">';
+                            ability.spells.forEach(spell => {
+                                abilitiesHTML += `<li>${spell}</li>`;
+                            });
+                            abilitiesHTML += '</ul>';
+                        }
+                        abilitiesHTML += '</div>';
+                    });
+                }
+                
+                let imageHTML = '';
+                if (hero.image) {
+                    imageHTML = `<img src="${hero.image}" alt="${hero.name}" class="hero-image">`;
+                }
+
+                heroCard.innerHTML = `
+                    <div class="hero-name">${hero.name}</div>
+                    <div class="hero-main">
+                        ${imageHTML}
+                        <div class="stats">
+                            <div class="stat">
+                                <span class="stat-label">🏃</span>
+                                <span class="stat-value">${hero.move}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">🏹</span>
+                                <span class="stat-value">${hero.range}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">⚔️</span>
+                                <span class="stat-value">${hero.power}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">🛡️</span>
+                                <span class="stat-value">${hero.defense}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">❤️</span>
+                                <span class="stat-value">${hero.hp}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        ${abilitiesHTML}
+                    </div>
+                `;
+                
+                container.appendChild(heroCard);
+            });
+        }
+
+        // Function to display armies
+        function displayArmies() {
+            const container = document.getElementById('armies-container');
+            container.innerHTML = '';
+
+            gameData.armies.forEach(army => {
+                const armySection = document.createElement('div');
+
+                let armyHeaderHTML = `
+                    <div class="army-header">
+                        <div class="army-name">${army.name}</div>
+                        <div class="army-color">${army.color}${army.race ? ' - ' + army.race : ''}</div>
+                        <a href="army-print.html?army=${encodeURIComponent(army.name)}" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>
+                    </div>
+                `;
+
+                armySection.innerHTML = armyHeaderHTML;
+
+                // Create units grid container
+                const unitsGrid = document.createElement('div');
+                unitsGrid.className = 'units-grid';
+
+                army.units.forEach(unit => {
+                    const unitCard = document.createElement('div');
+                    unitCard.className = 'unit-card';
+
+                    let abilitiesHTML = '';
+                    if (unit.abilities && unit.abilities.length > 0) {
+                        abilitiesHTML = '<div class="ability-list">';
+                        unit.abilities.forEach(ability => {
+                            const typeLabel = ability.type ? `<span class="ability-type">${ability.type}</span>` : '';
+                            abilitiesHTML += `
+                                <div class="ability">
+                                    <div class="ability-name">
+                                        <span>${ability.name}</span>
+                                        ${typeLabel}
+                                    </div>
+                                    <div class="ability-description">${ability.description}</div>
+                                </div>
+                            `;
+                        });
+                        abilitiesHTML += '</div>';
+                    }
+
+                    let imageHTML = '';
+                    if (unit.image) {
+                        imageHTML = `<img src="${unit.image}" alt="${unit.name}" class="unit-image">`;
+                    }
+
+                    unitCard.innerHTML = `
+                        <div class="unit-header">
+                            <div class="unit-info">
+                                <div class="unit-name">${unit.name}</div>
+                                <div class="stats">
+                                    <div class="stat">
+                                        <span class="stat-label">🏃</span>
+                                        <span class="stat-value">${unit.move}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">🏹</span>
+                                        <span class="stat-value">${unit.range}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">⚔️</span>
+                                        <span class="stat-value">${unit.power}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">🛡️</span>
+                                        <span class="stat-value">${unit.defense}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">❤️</span>
+                                        <span class="stat-value">${unit.hp}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ${imageHTML ? `<div class="unit-image-container">${imageHTML}</div>` : ''}
+                        </div>
+                        <div class="card-content">
+                            ${abilitiesHTML}
+                        </div>
+                    `;
+
+                    unitsGrid.appendChild(unitCard);
+                });
+
+                armySection.appendChild(unitsGrid);
+                
+                container.appendChild(armySection);
+            });
+        }
+
+        // Function to display biomes and monsters
+        function displayBiomes() {
+            const container = document.getElementById('biomes-container');
+            container.innerHTML = '';
+
+            gameData.monsters.forEach(biome => {
+                const biomeSection = document.createElement('div');
+
+                let biomeHeaderHTML = `
+                    <div class="army-header" style="background: linear-gradient(90deg, rgba(${getBiomeColor(biome.color)}, 0.3), transparent);">
+                        <div class="army-name">${biome.biome}</div>
+                        <div class="army-color">${biome.color}</div>
+                    </div>
+                `;
+
+                biomeSection.innerHTML = biomeHeaderHTML;
+
+                // Create creatures grid container
+                const creaturesGrid = document.createElement('div');
+                creaturesGrid.className = 'creatures-grid';
+
+                biome.creatures.forEach(creature => {
+                    // Skip creatures with hidden property set to true
+                    if (creature.hidden === true) {
+                        return;
+                    }
+
+                    const creatureCard = document.createElement('div');
+                    creatureCard.className = 'unit-card';
+
+                    let abilitiesHTML = '';
+                    if (creature.abilities && creature.abilities.length > 0) {
+                        abilitiesHTML = '<div class="ability-list">';
+                        creature.abilities.forEach(ability => {
+                            const typeLabel = ability.type ? `<span class="ability-type">${ability.type}</span>` : '';
+                            abilitiesHTML += `
+                                <div class="ability">
+                                    <div class="ability-name">
+                                        <span>${ability.name}</span>
+                                        ${typeLabel}
+                                    </div>
+                                    <div class="ability-description">${ability.description}</div>
+                                </div>
+                            `;
+                        });
+                        abilitiesHTML += '</div>';
+                    }
+
+                    let imageHTML = '';
+                    if (creature.image) {
+                        imageHTML = `<img src="${creature.image}" alt="${creature.name}" class="unit-image">`;
+                    }
+
+                    creatureCard.innerHTML = `
+                        <div class="unit-header"
+                            ${imageHTML}
+                            <div class="unit-info">
+                                <div class="unit-name">${creature.name} <span style="color: #b8860b; font-weight: normal; font-size: 0.75em;">(${creature.tier})</span></div>
+                                <div class="stats">
+                                    <div class="stat">
+                                        <span class="stat-label">🏃</span>
+                                        <span class="stat-value">${creature.move}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">🏹</span>
+                                        <span class="stat-value">${creature.range}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">⚔️</span>
+                                        <span class="stat-value">${creature.power}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">🛡️</span>
+                                        <span class="stat-value">${creature.defense}</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">❤️</span>
+                                        <span class="stat-value">${creature.hp}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            ${imageHTML ? `<div class="unit-image-container">${imageHTML}</div>` : ''}
+                        </div>
+                        <div class="card-content">
+                            ${abilitiesHTML}
+                        </div>
+                    `;
+
+                    creaturesGrid.appendChild(creatureCard);
+                });
+
+                biomeSection.appendChild(creaturesGrid);
+
+                container.appendChild(biomeSection);
+            });
+        }
+
+        // Function to display terrain objects
+        function displayTerrainObjects() {
+            const container = document.getElementById('objects-container');
+            container.innerHTML = '';
+
+            if (!gameData.terrainObjects || gameData.terrainObjects.length === 0) {
+                container.innerHTML = '<p style="color: #b8860b;">No terrain objects defined.</p>';
+                return;
+            }
+
+            const objectsGrid = document.createElement('div');
+            objectsGrid.className = 'objects-grid';
+
+            gameData.terrainObjects.forEach(obj => {
+                const objectCard = document.createElement('div');
+                objectCard.className = 'object-card';
+
+                objectCard.innerHTML = `
+                    <div class="object-name">${obj.name}</div>
+                    <div class="object-biome">${obj.biome} Biome • ${obj.rarity}</div>
+                    <div class="object-description">${obj.description}</div>
+                    <div class="object-benefit">
+                        <div class="benefit-title">${obj.benefit.name}</div>
+                        <div class="benefit-description">${obj.benefit.description}</div>
+                    </div>
+                `;
+
+                objectsGrid.appendChild(objectCard);
+            });
+
+            container.appendChild(objectsGrid);
+        }
+
+        // Helper function to get RGB values from color names for biome header background
+        function getBiomeColor(colorName) {
+            const colors = {
+                'White': '255, 255, 255',
+                'Light Blue': '173, 216, 230',
+                'Dark Green': '34, 139, 34',
+                'Red': '220, 20, 60',
+                'Light Green': '144, 238, 144',
+                'Beige': '245, 245, 220',
+                'Rust Red': '183, 65, 14',
+                'Gray': '128, 128, 128',
+                'Dark Purple': '75, 0, 130'
+            };
+            return colors[colorName] || '128, 128, 128';
+        }
+
+        // Tab switching function
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active from all buttons
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Set active button
+            event.target.classList.add('active');
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadGameData();
+        });
+    </script>
+</body>
+</html>

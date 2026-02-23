@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood &amp; Banners - Heroes Sheet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cinzel', 'Georgia', serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            line-height: 1.4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 2em;
+            color: #d4af37;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 3px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #d4af37;
+            border: none;
+            border-radius: 5px;
+            color: #1a1a2e;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        button:hover {
+            background: #ffd700;
+            transform: translateY(-2px);
+        }
+
+        .back-link {
+            color: #ffd700;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .back-link:hover {
+            color: #d4af37;
+        }
+
+        .heroes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .hero-card {
+            background: linear-gradient(180deg, rgba(20,15,40,0.95), rgba(10,5,25,0.95));
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 0;
+            page-break-inside: avoid;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero-header-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 10px;
+            border-bottom: 1px solid rgba(212,175,55,0.3);
+        }
+
+        .hero-name {
+            font-size: 1.2em;
+            color: #ffd700;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+            margin: 0;
+            text-align: left;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .hero-content {
+            display: flex;
+            gap: 12px;
+            padding: 10px;
+            flex: 1;
+        }
+
+        .hero-image-container {
+            flex-shrink: 0;
+        }
+
+        .hero-image {
+            width: 110px;
+            height: 165px;
+            object-fit: cover;
+            object-position: center;
+            border: 2px solid #d4af37;
+            border-radius: 4px;
+            display: block;
+        }
+
+        .abilities-section {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .stats {
+            display: flex;
+            flex-direction: row;
+            gap: 6px;
+            margin: 0;
+            padding: 0;
+            background: none;
+            border: none;
+            justify-content: flex-end;
+            flex: 1;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            flex: 0 1 auto;
+        }
+
+        .stat-label {
+            color: #b8860b;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .stat-value {
+            color: #ffd700;
+            font-size: 1em;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .abilities {
+            margin-top: 0;
+        }
+
+        .ability {
+            background: rgba(212,175,55,0.12);
+            border-left: 3px solid #d4af37;
+            border-top: 1px solid rgba(212,175,55,0.3);
+            padding: 6px;
+            margin: 4px 0;
+            border-radius: 3px;
+            font-size: 0.75em;
+        }
+
+        .ability-name {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 0.8em;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ability-type {
+            color: #888;
+            font-weight: normal;
+            font-size: 0.6em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1px 4px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(136, 136, 136, 0.3);
+            border-radius: 2px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .ability-description {
+            color: #e8e8e8;
+            font-size: 0.7em;
+            line-height: 1.2;
+        }
+
+        .error {
+            background: rgba(212, 65, 65, 0.3);
+            border: 2px solid #d44141;
+            color: #ff9999;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                max-width: 100%;
+                background: white;
+                border: none;
+                padding: 10px;
+                box-shadow: none;
+            }
+
+            .controls {
+                display: none;
+            }
+
+            .back-link {
+                display: none;
+            }
+
+            .heroes-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            header {
+                page-break-after: avoid;
+                margin-bottom: 10px;
+            }
+
+            .hero-card {
+                background: white;
+                border: 1px solid #000;
+                box-shadow: none;
+                padding: 0;
+                overflow: visible;
+                page-break-inside: avoid;
+            }
+
+            .hero-header-row {
+                border-bottom: 1px solid #000;
+                padding: 8px;
+            }
+
+            .hero-name {
+                color: #000;
+                font-size: 1.1em;
+            }
+
+            .stat-label {
+                font-size: 0.8em;
+            }
+
+            .stat-value {
+                font-size: 0.9em;
+            }
+
+            .hero-content {
+                padding: 8px;
+                gap: 10px;
+            }
+
+            .hero-image-container .hero-image {
+                width: 100px;
+                height: 130px;
+                border: 1px solid #000;
+            }
+
+            .abilities-section {
+                font-size: 0.8em;
+            }
+
+            .stat {
+                background: none;
+                border: none;
+                padding: 3px 0;
+                font-size: 0.9em;
+            }
+
+            .stat-label {
+                color: #333;
+                font-size: 0.9em;
+            }
+
+            .stat-value {
+                color: #000;
+                font-weight: bold;
+            }
+
+            .ability {
+                background: none;
+                border-left: 2px solid #000;
+                border-top: none;
+                padding: 4px 0 4px 6px;
+                margin: 2px 0;
+                color: #333;
+            }
+
+            .ability-name {
+                color: #000;
+                font-size: 0.75em;
+                margin-bottom: 1px;
+            }
+
+            .ability-type {
+                background: none;
+                border: 1px solid #999;
+                color: #666;
+            }
+
+            .ability-description {
+                color: #333;
+                font-size: 0.65em;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .heroes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            .hero-header-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .stats {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 8px;
+            }
+
+            .hero-content {
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px;
+            }
+
+            .hero-image-container .hero-image {
+                width: 100%;
+                height: 200px;
+            }
+
+            .stat {
+                gap: 4px;
+            }
+
+            .stat-label {
+                font-size: 1em;
+            }
+
+            .stat-value {
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <a href="rulebook.html" class="back-link">← Back to Rulebook</a>
+            <button onclick="window.print()">🖨️ Print Sheet</button>
+        </div>
+
+        <div id="content">
+            <header>
+                <h1>Heroes</h1>
+            </header>
+
+            <div class="heroes-grid" id="heroesContainer">
+                <div class="error">Loading heroes...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let gameData = null;
+
+        // Load game data
+        async function loadGameData() {
+            try {
+                const response = await fetch('data/gameData.json');
+                gameData = await response.json();
+                displayHeroes();
+            } catch (error) {
+                console.error('Error loading game data:', error);
+                showError('Error loading game data');
+            }
+        }
+
+        // Display the heroes
+        function displayHeroes() {
+            const heroesContainer = document.getElementById('heroesContainer');
+            heroesContainer.innerHTML = '';
+
+            if (!gameData.heroes || gameData.heroes.length === 0) {
+                showError('No heroes found.');
+                return;
+            }
+
+            gameData.heroes.forEach(hero => {
+                const heroCard = createHeroCard(hero);
+                heroesContainer.appendChild(heroCard);
+            });
+
+            // Update page title
+            document.title = 'Heroes - Blood & Banners';
+        }
+
+        // Create a hero card element
+        function createHeroCard(hero) {
+            const card = document.createElement('div');
+            card.className = 'hero-card';
+
+            let abilitiesHTML = '';
+            if (hero.abilities && hero.abilities.length > 0) {
+                abilitiesHTML = '<div class="abilities">';
+                hero.abilities.forEach(ability => {
+                    const typeLabel = ability.type ? `<span class="ability-type">${ability.type}</span>` : '';
+                    abilitiesHTML += `
+                        <div class="ability">
+                            <div class="ability-name">
+                                <span>${ability.name}</span>
+                                ${typeLabel}
+                            </div>
+                            <div class="ability-description">${ability.description}</div>
+                    `;
+                    if (ability.spells) {
+                        abilitiesHTML += '<ul style="margin-top: 4px; padding-left: 12px;">';
+                        ability.spells.forEach(spell => {
+                            abilitiesHTML += `<li>${spell}</li>`;
+                        });
+                        abilitiesHTML += '</ul>';
+                    }
+                    abilitiesHTML += '</div>';
+                });
+                abilitiesHTML += '</div>';
+            }
+
+            let imageHTML = '';
+            if (hero.image) {
+                imageHTML = `<img src="${hero.image}" alt="${hero.name}" class="hero-image">`;
+            }
+
+            card.innerHTML = `
+                <div class="hero-header-row">
+                    <div class="hero-name">${hero.name}</div>
+                    <div class="stats">
+                        <div class="stat">
+                            <span class="stat-label">🏃</span>
+                            <span class="stat-value">${hero.move}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">🏹</span>
+                            <span class="stat-value">${hero.range}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">⚔️</span>
+                            <span class="stat-value">${hero.attack}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">🛡️</span>
+                            <span class="stat-value">${hero.defense}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">❤️</span>
+                            <span class="stat-value">${hero.hp}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-content">
+                    <div class="hero-image-container">
+                        ${imageHTML}
+                    </div>
+                    <div class="abilities-section">
+                        ${abilitiesHTML || ''}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('heroesContainer').innerHTML =
+                `<div class="error">${message}</div>`;
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', loadGameData);
+    </script>
+</body>
+</html>
