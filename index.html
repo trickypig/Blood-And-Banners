@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood & Banners</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cinzel', 'Georgia', serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+                        url('/images/backgrounds/banners.png') center/cover no-repeat;
+            background-attachment: fixed;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 600px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            color: #d4af37;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            margin-bottom: 20px;
+            letter-spacing: 3px;
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #d4a574;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin-bottom: 60px;
+            font-style: italic;
+        }
+
+        .links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        a {
+            display: inline-block;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            text-decoration: none;
+            border: 2px solid #d4a574;
+            color: #fff;
+            background-color: rgba(20, 20, 20, 0.7);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        a:hover {
+            background-color: #d4a574;
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+        }
+
+        a:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .links {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            a {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Blood & Banners</h1>
+        <p class="subtitle">A Tactical Hex-Based War Game</p>
+        <div class="links">
+            <a href="rulebook.html">Rulebook</a>
+            <a href="hex_map_editor.html">Hex Map Editor</a>
+        </div>
+    </div>
+</body>
+</html>
