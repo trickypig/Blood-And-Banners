@@ -782,6 +782,99 @@
                 align-self: flex-start;
             }
         }
+
+        /* Biome filter popup styles */
+        .biome-filter-wrapper {
+            position: relative;
+        }
+
+        .biome-filter-btn {
+            background: none;
+            border: 1px solid #d4af37;
+            color: #d4af37;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+        }
+
+        .biome-filter-btn:hover {
+            background-color: rgba(212, 175, 55, 0.2);
+            transform: scale(1.1);
+        }
+
+        .biome-filter-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #d4af37;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 8px;
+            min-width: 250px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .biome-filter-popup.active {
+            display: block;
+        }
+
+        .biome-filter-header {
+            color: #d4af37;
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .biome-filter-popup label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            color: #e8e8e8;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .biome-filter-popup label:hover {
+            color: #d4af37;
+        }
+
+        .biome-filter-popup input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            accent-color: #d4af37;
+        }
+
+        .biome-filter-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .biome-filter-actions button {
+            flex: 1;
+            background-color: rgba(212, 175, 55, 0.2);
+            border: 1px solid #d4af37;
+            color: #d4af37;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .biome-filter-actions button:hover {
+            background-color: #d4af37;
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -1076,7 +1169,20 @@
         <div id="biomes-tab" class="tab-content">
             <div class="section">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                    <h2 style="margin: 0;">Biomes &amp; Monsters</h2>
+                    <div style="display: flex; align-items: center; gap: 10px; position: relative;">
+                        <h2 style="margin: 0;">Biomes &amp; Monsters</h2>
+                        <div class="biome-filter-wrapper">
+                            <button class="biome-filter-btn" title="Filter biomes">⚙️</button>
+                            <div class="biome-filter-popup" id="biome-filter-popup">
+                                <div class="biome-filter-header">Select Biomes</div>
+                                <div id="biome-checkboxes"></div>
+                                <div class="biome-filter-actions">
+                                    <button onclick="selectAllBiomes()">Select All</button>
+                                    <button onclick="deselectAllBiomes()">Select None</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <a href="monster_print_sheet.html" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>
                 </div>
                 <div id="biomes-container"></div>
@@ -1095,12 +1201,14 @@
     <script>
         // Load game data from external JSON file
         let gameData = null;
+        let selectedBiomes = {};
 
         // Fetch game data
         async function loadGameData() {
             try {
                 const response = await fetch('data/gameData.json');
                 gameData = await response.json();
+                initializeBiomeFilters();
                 displayHeroes();
                 displayArmies();
                 displayBiomes();
@@ -1109,6 +1217,79 @@
                 console.error('Error loading game data:', error);
             }
         }
+
+        // Initialize biome filter checkboxes
+        function initializeBiomeFilters() {
+            const checkboxContainer = document.getElementById('biome-checkboxes');
+            checkboxContainer.innerHTML = '';
+            selectedBiomes = {};
+
+            gameData.monsters.forEach(biomeData => {
+                selectedBiomes[biomeData.biome] = true;
+
+                const label = document.createElement('label');
+                label.innerHTML = `
+                    <input type="checkbox" value="${biomeData.biome}" checked onchange="handleBiomeToggle(event)">
+                    <span>${biomeData.biome}</span>
+                `;
+                checkboxContainer.appendChild(label);
+            });
+        }
+
+        // Toggle biome filter popup
+        function toggleBiomeFilter(event) {
+            event.stopPropagation();
+            const popup = document.getElementById('biome-filter-popup');
+            popup.classList.toggle('active');
+        }
+
+        // Handle biome checkbox change
+        function handleBiomeToggle(event) {
+            const biome = event.target.value;
+            selectedBiomes[biome] = event.target.checked;
+            displayBiomes();
+        }
+
+        // Select all biomes
+        function selectAllBiomes() {
+            Object.keys(selectedBiomes).forEach(biome => {
+                selectedBiomes[biome] = true;
+            });
+            updateCheckboxes();
+            displayBiomes();
+        }
+
+        // Deselect all biomes
+        function deselectAllBiomes() {
+            Object.keys(selectedBiomes).forEach(biome => {
+                selectedBiomes[biome] = false;
+            });
+            updateCheckboxes();
+            displayBiomes();
+        }
+
+        // Update checkbox UI to match selectedBiomes state
+        function updateCheckboxes() {
+            document.querySelectorAll('#biome-checkboxes input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = selectedBiomes[checkbox.value];
+            });
+        }
+
+        // Add click handler for filter button
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterBtn = document.querySelector('.biome-filter-btn');
+            if (filterBtn) {
+                filterBtn.addEventListener('click', toggleBiomeFilter);
+            }
+            // Close popup when clicking outside
+            document.addEventListener('click', function(event) {
+                const popup = document.getElementById('biome-filter-popup');
+                const wrapper = document.querySelector('.biome-filter-wrapper');
+                if (popup && wrapper && !wrapper.contains(event.target)) {
+                    popup.classList.remove('active');
+                }
+            });
+        });
 
         // Function to display heroes
         function displayHeroes() {
@@ -1282,6 +1463,11 @@
             container.innerHTML = '';
 
             gameData.monsters.forEach(biome => {
+                // Skip biomes not selected in filter
+                if (!selectedBiomes[biome.biome]) {
+                    return;
+                }
+
                 const biomeSection = document.createElement('div');
 
                 let biomeHeaderHTML = `
