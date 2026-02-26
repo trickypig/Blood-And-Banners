@@ -150,8 +150,8 @@
         }
 
         .hero-image {
-            width: 240px;
-            height: 360px;
+            width: 216px;
+            height: 324px;
             object-fit: cover;
             object-position: center;
             border: 2px solid rgba(212,175,55,0.4);
@@ -1053,7 +1053,7 @@
     <!-- Floating navigation menu -->
     <nav class="floating-menu" id="floating-menu">
         <ul>
-            <li class="menu-category active-section" data-section="rules" onclick="selectSection(event, 'rules')">
+            <li class="menu-category active-section" data-section="rules" onclick="selectTab(event, 'rules')">
                 Core Rules
                 <ul class="menu-subcategory">
                     <li><a href="#game-overview" onclick="selectSubsection(event, 'game-overview')">Game Overview</a></li>
@@ -1067,24 +1067,32 @@
                     <li><a href="#terrain-objects-rules" onclick="selectSubsection(event, 'terrain-objects-rules')">Terrain Objects</a></li>
                 </ul>
             </li>
-            <li class="menu-category" data-section="heroes" onclick="selectSection(event, 'heroes')">
+            <li class="menu-category" data-section="heroes" onclick="selectTab(event, 'heroes')">
                 <a href="#heroes" onclick="selectSubsection(event, 'heroes'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Heroes</a>
                 <ul class="menu-subcategory">
                 </ul>
             </li>
-            <li class="menu-category" data-section="armies" onclick="selectSection(event, 'armies')">
+            <li class="menu-category" data-section="armies" onclick="selectTab(event, 'armies')">
                 <a href="#armies" onclick="selectSubsection(event, 'armies'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Armies</a>
                 <ul class="menu-subcategory">
                 </ul>
             </li>
-            <li class="menu-category" data-section="biomes" onclick="selectSection(event, 'biomes')">
+            <li class="menu-category" data-section="biomes" onclick="selectTab(event, 'biomes')">
                 <a href="#biomes-monsters" onclick="selectSubsection(event, 'biomes-monsters'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Biomes &amp; Monsters</a>
                 <ul class="menu-subcategory">
                 </ul>
             </li>
-            <li class="menu-category" data-section="objects" onclick="selectSection(event, 'objects')">
+            <li class="menu-category" data-section="objects" onclick="selectTab(event, 'objects')">
                 <a href="#terrain-objects-full" onclick="selectSubsection(event, 'terrain-objects-full'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Terrain Objects</a>
                 <ul class="menu-subcategory">
+                </ul>
+            </li>
+            <li class="menu-category" data-section="variants" onclick="selectTab(event, 'variants')">
+                <a href="#vanilla-pvp" onclick="selectSubsection(event, 'vanilla-pvp'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Game Variants</a>
+                <ul class="menu-subcategory">
+                    <li><a href="#vanilla-pvp" onclick="selectSubsection(event, 'vanilla-pvp')">Vanilla PVP</a></li>
+                    <li><a href="#coop-mode" onclick="selectSubsection(event, 'coop-mode')">Co-op Mode</a></li>
+                    <li><a href="#battle-royale" onclick="selectSubsection(event, 'battle-royale')">Battle Royale</a></li>
                 </ul>
             </li>
         </ul>
@@ -1106,6 +1114,7 @@
             <button class="nav-tab" onclick="showTab('armies')">Armies</button>
             <button class="nav-tab" onclick="showTab('biomes')">Biomes &amp; Monsters</button>
             <button class="nav-tab" onclick="showTab('objects')">Terrain Objects</button>
+            <button class="nav-tab" onclick="showTab('variants')">Game Variants</button>
         </div>
 
         <div id="rules-tab" class="tab-content active">
@@ -1401,6 +1410,189 @@
                 <h2 id="terrain-objects-full">Terrain Objects</h2>
                 <p class="lore-text">Special objects are scattered throughout the battlefield. A player may capture an object by moving a unit onto an adjacent hex. If there are no enemy units adjacent to the object or the capturing unit, that unit now controls the object. The capturing player gains the benefits of the object immediately. That player now controls the object as long as they have a friendly unit adjacent to the object.</p>
                 <div id="objects-container"></div>
+            </div>
+        </div>
+
+        <div id="variants-tab" class="tab-content">
+            <div class="section">
+                <h2 id="vanilla-pvp">Vanilla PVP</h2>
+                <p class="lore-text">Two players battle each other with no NPCs in a classic head-to-head tactical confrontation.</p>
+
+                <div class="rule-item">
+                    <div class="rule-title">Purpose</div>
+                    <p>Two players battle each other with no NPCs. Units may not respawn. One player wins when the other player's units are all defeated.</p>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Setup</div>
+                    <ul>
+                        <li><strong>Determine Initiative:</strong> Each player rolls a D20. The player with the higher number chooses first.</li>
+                        <li><strong>Selection Phase:</strong> Players take turns (in reverse initiative order) picking:
+                            <ul>
+                                <li>Who goes first in the game</li>
+                                <li>Which Hero (1 per player)</li>
+                                <li>Which Army (1 per player)</li>
+                                <li>Position on the map</li>
+                            </ul>
+                        </li>
+                        <li><strong>Unit Placement:</strong> Each player places their units according to standard starting placement rules (see Core Rules - Setup section).</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Gameplay</div>
+                    <p>Players take turns activating their Hero and three other units each turn. On each turn, players may:</p>
+                    <ul>
+                        <li>Activate their Hero (if alive) + 3 other units, or</li>
+                        <li>Activate any 4 units (if Hero is defeated), or</li>
+                        <li>Activate each remaining unit once (if fewer than 4 units remain)</li>
+                    </ul>
+                    <p>Units that are defeated are removed from the board. <strong>Units may not respawn.</strong></p>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Victory Condition</div>
+                    <p>One player wins when all of the other player's units are defeated.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 id="coop-mode">Co-op Mode</h2>
+                <p class="lore-text">Multiple hero players unite against the Void Lord, fighting to capture magical fountains and destroy the Void Portal before their heroes are overwhelmed.</p>
+
+                <div class="rule-item">
+                    <div class="rule-title">Players</div>
+                    <ul>
+                        <li><strong>The Void Lord:</strong> One player who controls all monsters on the map</li>
+                        <li><strong>Hero Players:</strong> Any number of other players who each control heroes trying to stop the Void Lord's invasion</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Setup</div>
+                    <ul>
+                        <li><strong>Void Lord's Placement:</strong> The Void Lord places all monsters and special items onto the map</li>
+                        <li><strong>Hero Players' Selection:</strong> Other players take turns picking Heroes and Armies. Each hero player controls:
+                            <ul>
+                                <li>Two Heroes</li>
+                                <li>One Army</li>
+                            </ul>
+                        </li>
+                        <li><strong>Starting Position:</strong> All hero players start in the same position</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Gameplay - Turn Order</div>
+                    <p>Players alternate turns with the Void Lord in the order they were selected. The Void Lord takes a turn after each hero player's turn.</p>
+                    <p><strong>Example Turn Sequence:</strong></p>
+                    <ul>
+                        <li>Player 1 activates both heroes and 3 additional units</li>
+                        <li>Void Lord takes a turn with 5 units (responding to Player 1's turn)</li>
+                        <li>Player 2 activates both heroes and 3 additional units</li>
+                        <li>Void Lord takes another turn with 5 units (focusing on Player 2's units, not Player 1's)</li>
+                        <li>Pattern repeats...</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Void Lord Strategy</div>
+                    <p>The Void Lord should respond to the player who just completed their turn, playing units that will attack that player or setting up additional units against them. The Void Lord should not activate monsters that were activated on his previous turn, unless they are threatened by both players' units.</p>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Unit Respawning</div>
+                    <p><strong>Non-Hero units may respawn during the main phase of the game (before the Void Portal appears).</strong> On each player's turn, they may use one of their unit activations to revive a defeated unit at the spawn point. This uses that unit's entire turn and they may not move, attack, or use abilities.</p>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Objectives - Hero Players</div>
+                    <p>Hero players are trying to conquer the entire map and prevent the rise of the Void Lord.</p>
+                    <ul>
+                        <li><strong>Fountain Control:</strong> There are three fountains on the map. When all three are captured by the hero players, their starting portal is replaced by the Void Portal.</li>
+                        <li><strong>Final Objective:</strong> The players must then return to destroy the Void Portal.</li>
+                        <li><strong>Victory Condition:</strong> If the players destroy the Void Portal before all their Heroes are destroyed, the Players win.</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Objectives - Void Lord</div>
+                    <p>The Void Lord is trying to destroy the hero players.</p>
+                    <ul>
+                        <li><strong>Victory Condition:</strong> If all Heroes from all hero players are defeated, the Void Lord wins.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 id="battle-royale">Battle Royale</h2>
+                <p class="lore-text">Multiple players compete for control of the map and dominance, while a Dungeon Master mettles with their plans.</p>
+
+                <div class="rule-item">
+                    <div class="rule-title">Players</div>
+                    <ul>
+                        <li><strong>Dungeon Master:</strong> One player who controls all monsters and NPCs on the map. Monsters should remain passive until player units attack or threaten them.</li>
+                        <li><strong>Competing Players:</strong> The remaining players each compete with each other for control of the map</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Setup</div>
+                    <ul>
+                        <li><strong>DM's Preparation:</strong> The DM player sets up the monsters and terrain objects on the map</li>
+                        <li><strong>Player Initiative:</strong> The remaining players roll a D20 for initiative</li>
+                        <li><strong>Player Selection:</strong> Players then take turns (in initiative order) choosing:
+                            <ul>
+                                <li>2 Heroes</li>
+                                <li>1 Army</li>
+                                <li>Starting position</li>
+                                <li>Who goes first in gameplay</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Gameplay - Turn Order</div>
+                    <p>Players alternate taking turns, followed by a response turn from the DM.</p>
+                    <p><strong>Example Turn Sequence:</strong></p>
+                    <ul>
+                        <li>Player 1 takes a turn with 2 heroes and 3 additional units</li>
+                        <li>DM takes a turn responding to Player 1's units, activating up to 5 units</li>
+                        <li>Player 2 takes a turn with 2 heroes and 3 additional units</li>
+                        <li>DM takes a turn responding to Player 2's units, activating up to 5 units</li>
+                        <li>Pattern repeats with all remaining players...</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">DM Strategy</div>
+                    <ul>
+                        <li><strong>Activation Focus:</strong> The DM should only activate units that are in the same general area and in view of the current player's units</li>
+                        <li><strong>Targeting Priority:</strong> The DM should prioritize the current player's units, and only attack other players if they are in the way of getting to the active player</li>
+                        <li><strong>Flexible Response:</strong> The DM may choose to activate units that just took a turn (in response to a previous player) if both the previous player's units and the current player's units are in the general area of that monster</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Objectives and Scoring</div>
+                    <p>Players compete to reach a set number of points or annihilate all other players. Points are awarded for:</p>
+                    <ul>
+                        <li>Defeating another Hero</li>
+                        <li>Defeating a Boss Monster</li>
+                        <li>Capturing a Terrain Object</li>
+                        <li>Bonus points for capturing all terrain objects of a certain type</li>
+                        <li><em>Additional objectives and point values to be determined (TBD) based on map setup</em></li>
+                    </ul>
+                </div>
+
+                <div class="rule-item">
+                    <div class="rule-title">Victory Conditions</div>
+                    <ul>
+                        <li><strong>Player Victory:</strong> A player wins when reaching a set number of points, or when annihilating all other players</li>
+                        <li><strong>DM Note:</strong> The DM cannot win</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -1870,22 +2062,32 @@
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Remove active from all buttons
             document.querySelectorAll('.nav-tab').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
+
             // Show selected tab
-            document.getElementById(tabName + '-tab').classList.add('active');
-            
-            // Set active button
-            event.target.classList.add('active');
+            const tabElement = document.getElementById(tabName + '-tab');
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+
+            // Set active button - find by text content
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                if (tabName === 'rules' && btn.textContent.includes('Core Rules')) btn.classList.add('active');
+                else if (tabName === 'heroes' && btn.textContent.includes('Heroes')) btn.classList.add('active');
+                else if (tabName === 'armies' && btn.textContent.includes('Armies')) btn.classList.add('active');
+                else if (tabName === 'biomes' && btn.textContent.includes('Biomes')) btn.classList.add('active');
+                else if (tabName === 'objects' && btn.textContent.includes('Terrain Objects')) btn.classList.add('active');
+                else if (tabName === 'variants' && btn.textContent.includes('Variants')) btn.classList.add('active');
+            });
         }
 
         // Initialize on page load
         // Select a tab in the floating menu
-        function selectSection(event, tabId) {
+        function selectTab(event, tabId) {
             event.preventDefault();
 
             // Remove active-section from all menu categories
@@ -1903,7 +2105,8 @@
                 'heroes': 'heroes-tab',
                 'armies': 'armies-tab',
                 'biomes': 'biomes-tab',
-                'objects': 'objects-tab'
+                'objects': 'objects-tab',
+                'variants': 'variants-tab'
             };
 
             const tabContentId = tabMap[tabId];
@@ -1933,7 +2136,10 @@
                 'heroes': 'heroes',
                 'armies': 'armies',
                 'biomes-monsters': 'biomes',
-                'terrain-objects-full': 'objects'
+                'terrain-objects-full': 'objects',
+                'vanilla-pvp': 'variants',
+                'coop-mode': 'variants',
+                'battle-royale': 'variants'
             };
 
             // Determine which tab this subsection belongs to
@@ -2018,7 +2224,10 @@
                 'heroes': 'heroes',
                 'armies': 'armies',
                 'biomes-monsters': 'biomes',
-                'terrain-objects-full': 'objects'
+                'terrain-objects-full': 'objects',
+                'vanilla-pvp': 'variants',
+                'coop-mode': 'variants',
+                'battle-royale': 'variants'
             };
 
             // Get the tab for this subsection
@@ -2063,7 +2272,8 @@
                 'heroes': ['heroes'],
                 'armies': window.armySubsections || ['armies'],
                 'biomes': window.biomeSubsections || ['biomes-monsters'],
-                'objects': ['terrain-objects-full']
+                'objects': ['terrain-objects-full'],
+                'variants': ['vanilla-pvp', 'coop-mode', 'battle-royale']
             };
 
             // Determine which tab is currently active
