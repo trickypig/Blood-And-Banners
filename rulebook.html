@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blood &amp; Banners - Rulebook</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%231a1a2e'/><path d='M50 20 L70 40 L60 40 L60 70 L40 70 L40 40 L30 40 Z' fill='%23d4af37'/><circle cx='50' cy='35' r='3' fill='%231a1a2e'/></svg>">
     <style>
         * {
             margin: 0;
@@ -22,6 +23,7 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            margin-right: 250px;
             padding: 20px;
         }
 
@@ -464,8 +466,12 @@
             font-weight: bold;
         }
 
+        .icon-list li::before {
+            content: none;
+        }
+
         .nav-tabs {
-            display: flex;
+            display: none;
             gap: 10px;
             margin-bottom: 20px;
             flex-wrap: wrap;
@@ -875,6 +881,167 @@
             background-color: #d4af37;
             color: #000;
         }
+
+        /* Floating menu styles */
+        .floating-menu {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 100;
+            min-width: 200px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+        }
+
+        .floating-menu-title {
+            color: #d4af37;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-align: center;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .floating-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .floating-menu li {
+            margin: 2px 0;
+        }
+
+        .floating-menu a {
+            color: #e8e8e8;
+            text-decoration: none;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            display: block;
+            padding: 4px 10px;
+            border-left: 3px solid transparent;
+            padding-left: 10px;
+        }
+
+        .floating-menu a:hover {
+            color: #d4af37;
+            border-left-color: #d4af37;
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+        .floating-menu a.active {
+            color: #d4af37;
+            border-left-color: #d4af37;
+            background-color: rgba(212, 175, 55, 0.15);
+            font-weight: bold;
+        }
+
+        .floating-menu ul li::before {
+            content: none;
+        }
+
+        .floating-menu .menu-category {
+            margin: 8px 0 0 0;
+            font-weight: bold;
+            color: #d4af37;
+            font-size: 0.95em;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            padding: 8px 10px;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .floating-menu .menu-category:first-child {
+            margin-top: 0;
+        }
+
+        .floating-menu .menu-category:hover {
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+
+        .floating-menu .menu-category.active-section {
+            background-color: rgba(212, 175, 55, 0.15);
+            border-left-color: #d4af37;
+        }
+
+        .floating-menu .menu-category > span:first-of-type,
+        .floating-menu .menu-category > a {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .floating-menu .menu-subcategory {
+            list-style: none;
+            margin: 3px 0 0 5px;
+            padding: 0;
+            display: none;
+            width: 100%;
+            transition: display 0.3s ease;
+        }
+
+        .floating-menu .menu-category.active-section .menu-subcategory {
+            display: block;
+        }
+
+        .floating-menu .menu-subcategory li {
+            margin: 0;
+        }
+
+        .floating-menu .menu-subcategory a {
+            color: #e8e8e8;
+            font-size: 0.85em;
+            padding: 3px 5px 3px 5px;
+            display: block;
+            border-left: 2px solid transparent;
+        }
+
+        .floating-menu .menu-subcategory a:hover {
+            color: #d4af37;
+            border-left-color: #d4af37;
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+        .floating-menu .menu-subcategory a.active {
+            color: #d4af37;
+            border-left-color: #d4af37;
+            background-color: rgba(212, 175, 55, 0.15);
+            font-weight: bold;
+        }
+
+        @media (max-width: 1200px) {
+            .floating-menu {
+                right: 10px;
+                min-width: 160px;
+                padding: 15px;
+            }
+
+            .floating-menu-title {
+                font-size: 1em;
+                margin-bottom: 12px;
+            }
+
+            .floating-menu a {
+                font-size: 0.9em;
+                padding: 5px 8px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .floating-menu {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -882,6 +1049,46 @@
         <h1>⚔ BLOOD &amp; BANNERS ⚔</h1>
         <p class="subtitle">A Tactical Miniature Battle Game</p>
     </header>
+
+    <!-- Floating navigation menu -->
+    <nav class="floating-menu" id="floating-menu">
+        <ul>
+            <li class="menu-category active-section" data-section="rules" onclick="selectSection(event, 'rules')">
+                Core Rules
+                <ul class="menu-subcategory">
+                    <li><a href="#game-overview" onclick="selectSubsection(event, 'game-overview')">Game Overview</a></li>
+                    <li><a href="#setup" onclick="selectSubsection(event, 'setup')">Setup</a></li>
+                    <li><a href="#victory-conditions" onclick="selectSubsection(event, 'victory-conditions')">Victory Conditions</a></li>
+                    <li><a href="#turn-structure" onclick="selectSubsection(event, 'turn-structure')">Turn Structure</a></li>
+                    <li><a href="#movement" onclick="selectSubsection(event, 'movement')">Movement</a></li>
+                    <li><a href="#unit-conditions" onclick="selectSubsection(event, 'unit-conditions')">Unit Conditions</a></li>
+                    <li><a href="#combat" onclick="selectSubsection(event, 'combat')">Combat</a></li>
+                    <li><a href="#unit-statistics" onclick="selectSubsection(event, 'unit-statistics')">Unit Statistics</a></li>
+                    <li><a href="#terrain-objects-rules" onclick="selectSubsection(event, 'terrain-objects-rules')">Terrain Objects</a></li>
+                </ul>
+            </li>
+            <li class="menu-category" data-section="heroes" onclick="selectSection(event, 'heroes')">
+                <a href="#heroes" onclick="selectSubsection(event, 'heroes'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Heroes</a>
+                <ul class="menu-subcategory">
+                </ul>
+            </li>
+            <li class="menu-category" data-section="armies" onclick="selectSection(event, 'armies')">
+                <a href="#armies" onclick="selectSubsection(event, 'armies'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Armies</a>
+                <ul class="menu-subcategory">
+                </ul>
+            </li>
+            <li class="menu-category" data-section="biomes" onclick="selectSection(event, 'biomes')">
+                <a href="#biomes-monsters" onclick="selectSubsection(event, 'biomes-monsters'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Biomes &amp; Monsters</a>
+                <ul class="menu-subcategory">
+                </ul>
+            </li>
+            <li class="menu-category" data-section="objects" onclick="selectSection(event, 'objects')">
+                <a href="#terrain-objects-full" onclick="selectSubsection(event, 'terrain-objects-full'); event.stopPropagation();" style="border: none; padding: 0; color: inherit; display: block;">Terrain Objects</a>
+                <ul class="menu-subcategory">
+                </ul>
+            </li>
+        </ul>
+    </nav>
 
     <nav class="main-nav">
         <div class="menu-icon"></div>
@@ -903,13 +1110,13 @@
 
         <div id="rules-tab" class="tab-content active">
             <div class="section">
-                <h2>Game Overview</h2>
+                <h2 id="game-overview">Game Overview</h2>
                 <p class="lore-text">Armies from different Realms teleport through mystical Portals to battle for dominance and plunder resources across the contested lands.</p>
                 <p>Blood &amp; Banners is a hex-based tactical miniature battle game featuring 3D terrain and miniatures for players and NPCs.</p>
             </div>
 
             <div class="section">
-                <h2>Setup</h2>
+                <h2 id="setup">Setup</h2>
                 <div class="rule-item">
                     <div class="rule-title">Terrain Setup</div>
                     <p>Set up terrain using a specific scenario or build an interesting custom map.</p>
@@ -936,7 +1143,7 @@
             </div>
 
             <div class="section">
-                <h2>Victory Conditions</h2>
+                <h2 id="victory-conditions">Victory Conditions</h2>
                 <div class="rule-item">
                     <div class="rule-title">Basic Mode</div>
                     <p>Defeat all opponent units.</p>
@@ -952,7 +1159,7 @@
             </div>
 
             <div class="section">
-                <h2>Turn Structure</h2>
+                <h2 id="turn-structure">Turn Structure</h2>
                 <div class="rule-item">
                     <div class="rule-title">Unit Activation</div>
                     <p>Each round, a player activates 4 units:</p>
@@ -973,7 +1180,7 @@
             </div>
 
             <div class="section">
-                <h2>Movement</h2>
+                <h2 id="movement">Movement</h2>
                 <div class="rule-item">
                     <div class="rule-title">Basic Movement</div>
                     <ul>
@@ -1040,7 +1247,7 @@
             </div>
 
             <div class="section">
-                <h2>Unit Conditions</h2>
+                <h2 id="unit-conditions">Unit Conditions</h2>
                 <div class="rule-item">
                     <div class="rule-title">Poison</div>
                     <p>If a unit steps in poison, their movement ends. Each turn they are in poison, they get poisoned.
@@ -1086,7 +1293,7 @@
             </div>
 
             <div class="section">
-                <h2>Combat</h2>
+                <h2 id="combat">Combat</h2>
                 <div class="rule-item">
                     <div class="rule-title">Attack Range & Line of Sight</div>
                     <ul>
@@ -1114,10 +1321,10 @@
             </div>
 
             <div class="section">
-                <h2>Unit Statistics</h2>
+                <h2 id="unit-statistics">Unit Statistics</h2>
                 <div class="rule-item">
                     <div class="rule-title">Core Stats</div>
-                    <ul>
+                    <ul class="icon-list">
                         <li><strong>🏃 Move:</strong> Maximum hexes the unit can move per activation</li>
                         <li><strong>🏹 Range:</strong> Maximum attack distance in hexes</li>
                         <li><strong>⚔️ Power:</strong> Number of dice rolled when attacking</li>
@@ -1128,7 +1335,7 @@
             </div>
 
             <div class="section">
-                <h2>Terrain Objects</h2>
+                <h2 id="terrain-objects-rules">Terrain Objects</h2>
                 <div class="rule-item">
                     <div class="rule-title">Capturing Objects</div>
                     <p>Special objects are scattered throughout the battlefield. A unit captures a Terrain Object by moving onto its hex. Once captured, the controlling player gains the object's benefits immediately.</p>
@@ -1152,7 +1359,7 @@
         <div id="heroes-tab" class="tab-content">
             <div class="section">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                    <h2 style="margin: 0;">Heroes</h2>
+                    <h2 id="heroes" style="margin: 0;">Heroes</h2>
                     <a href="heroes-print.html" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>
                 </div>
                 <div id="heroes-container"></div>
@@ -1161,7 +1368,7 @@
 
         <div id="armies-tab" class="tab-content">
             <div class="section">
-                <h2>Armies</h2>
+                <h2 id="armies">Armies</h2>
                 <div id="armies-container"></div>
             </div>
         </div>
@@ -1170,7 +1377,7 @@
             <div class="section">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 10px; position: relative;">
-                        <h2 style="margin: 0;">Biomes &amp; Monsters</h2>
+                        <h2 id="biomes-monsters" style="margin: 0;">Biomes &amp; Monsters</h2>
                         <div class="biome-filter-wrapper">
                             <button class="biome-filter-btn" title="Filter biomes">⚙️</button>
                             <div class="biome-filter-popup" id="biome-filter-popup">
@@ -1191,7 +1398,7 @@
 
         <div id="objects-tab" class="tab-content">
             <div class="section">
-                <h2>Terrain Objects</h2>
+                <h2 id="terrain-objects-full">Terrain Objects</h2>
                 <p class="lore-text">Special objects are scattered throughout the battlefield. A player may capture an object by moving a unit onto an adjacent hex. If there are no enemy units adjacent to the object or the capturing unit, that unit now controls the object. The capturing player gains the benefits of the object immediately. That player now controls the object as long as they have a friendly unit adjacent to the object.</p>
                 <div id="objects-container"></div>
             </div>
@@ -1209,6 +1416,7 @@
                 const response = await fetch('data/gameData.json');
                 gameData = await response.json();
                 initializeBiomeFilters();
+                populateFloatingMenu();
                 displayHeroes();
                 displayArmies();
                 displayBiomes();
@@ -1216,6 +1424,50 @@
             } catch (error) {
                 console.error('Error loading game data:', error);
             }
+        }
+
+        // Populate floating menu with armies and biomes
+        function populateFloatingMenu() {
+            // Get the armies and biomes list elements
+            const armiesSubcategoryList = document.querySelector('.floating-menu .menu-category[data-section="armies"] .menu-subcategory');
+            const biomesSubcategoryList = document.querySelector('.floating-menu .menu-category[data-section="biomes"] .menu-subcategory');
+
+            // Populate armies
+            if (armiesSubcategoryList && gameData.armies) {
+                armiesSubcategoryList.innerHTML = '';
+                gameData.armies.forEach(army => {
+                    const armyId = 'army-' + army.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="#${armyId}" onclick="selectSubsection(event, '${armyId}')">${army.name}</a>`;
+                    armiesSubcategoryList.appendChild(li);
+                });
+            }
+
+            // Populate biomes
+            if (biomesSubcategoryList && gameData.monsters) {
+                biomesSubcategoryList.innerHTML = '';
+                gameData.monsters.forEach(biomeData => {
+                    const biomeId = 'biome-' + biomeData.biome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="#${biomeId}" onclick="selectSubsection(event, '${biomeId}')">${biomeData.biome}</a>`;
+                    biomesSubcategoryList.appendChild(li);
+                });
+            }
+
+            // Update the subsection mappings dynamically
+            updateSubsectionMappings();
+        }
+
+        // Update subsection to tab mappings
+        function updateSubsectionMappings() {
+            // This is called during scroll tracking, so we need to make these IDs available
+            // The mapping is built dynamically based on gameData
+            window.armySubsections = gameData.armies.map(army =>
+                'army-' + army.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+            );
+            window.biomeSubsections = gameData.monsters.map(biome =>
+                'biome-' + biome.biome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+            );
         }
 
         // Initialize biome filter checkboxes
@@ -1372,6 +1624,8 @@
 
             gameData.armies.forEach(army => {
                 const armySection = document.createElement('div');
+                const armyId = 'army-' + army.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                armySection.id = armyId;
 
                 let armyHeaderHTML = `
                     <div class="army-header">
@@ -1469,6 +1723,8 @@
                 }
 
                 const biomeSection = document.createElement('div');
+                const biomeId = 'biome-' + biome.biome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                biomeSection.id = biomeId;
 
                 let biomeHeaderHTML = `
                     <div class="army-header" style="background: linear-gradient(90deg, rgba(${getBiomeColor(biome.color)}, 0.3), transparent);">
@@ -1628,8 +1884,247 @@
         }
 
         // Initialize on page load
+        // Select a tab in the floating menu
+        function selectSection(event, tabId) {
+            event.preventDefault();
+
+            // Remove active-section from all menu categories
+            document.querySelectorAll('.floating-menu .menu-category').forEach(cat => {
+                cat.classList.remove('active-section');
+            });
+
+            // Add active-section to the clicked category
+            const categoryItem = event.currentTarget;
+            categoryItem.classList.add('active-section');
+
+            // Switch to the correct tab
+            const tabMap = {
+                'rules': 'rules-tab',
+                'heroes': 'heroes-tab',
+                'armies': 'armies-tab',
+                'biomes': 'biomes-tab',
+                'objects': 'objects-tab'
+            };
+
+            const tabContentId = tabMap[tabId];
+            if (tabContentId) {
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.getElementById(tabContentId).classList.add('active');
+            }
+        }
+
+        // Select a subsection in the floating menu
+        function selectSubsection(event, subsectionId) {
+            event.preventDefault();
+
+            // Map subsections to their tabs
+            const subsectionToTab = {
+                'game-overview': 'rules',
+                'setup': 'rules',
+                'victory-conditions': 'rules',
+                'turn-structure': 'rules',
+                'movement': 'rules',
+                'unit-conditions': 'rules',
+                'combat': 'rules',
+                'unit-statistics': 'rules',
+                'terrain-objects-rules': 'rules',
+                'heroes': 'heroes',
+                'armies': 'armies',
+                'biomes-monsters': 'biomes',
+                'terrain-objects-full': 'objects'
+            };
+
+            // Determine which tab this subsection belongs to
+            let targetTab = subsectionToTab[subsectionId];
+
+            // Check if it's a dynamically loaded subsection
+            if (!targetTab) {
+                if (subsectionId.startsWith('army-')) {
+                    targetTab = 'armies';
+                } else if (subsectionId.startsWith('biome-')) {
+                    targetTab = 'biomes';
+                }
+            }
+
+            // Get the currently active tab
+            let activeTab = 'rules';
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                if (tab.classList.contains('active')) {
+                    activeTab = tab.id.replace('-tab', '');
+                }
+            });
+
+            // If we need to switch tabs, do that first
+            if (targetTab && targetTab !== activeTab) {
+                const tabMap = {
+                    'rules': 'rules-tab',
+                    'heroes': 'heroes-tab',
+                    'armies': 'armies-tab',
+                    'biomes': 'biomes-tab',
+                    'objects': 'objects-tab'
+                };
+
+                // Switch tabs
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.getElementById(tabMap[targetTab]).classList.add('active');
+
+                // Update menu to show the new tab as active
+                document.querySelectorAll('.floating-menu .menu-category').forEach(cat => {
+                    cat.classList.remove('active-section');
+                });
+                const activeCategory = document.querySelector(`.floating-menu .menu-category[data-section="${targetTab}"]`);
+                if (activeCategory) {
+                    activeCategory.classList.add('active-section');
+                }
+            }
+
+            // Remove active class from all links in the floating menu
+            document.querySelectorAll('.floating-menu a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to the clicked link
+            const link = event.currentTarget;
+            link.classList.add('active');
+
+            // Scroll to the subsection
+            const element = document.getElementById(subsectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Floating menu - scroll to subsection
+        function scrollToSection(event) {
+            event.preventDefault();
+            const href = event.currentTarget.getAttribute('href');
+            const subsectionId = href.substring(1); // Remove the # character
+
+            // Map subsections to their tabs
+            const subsectionToTab = {
+                'game-overview': 'rules',
+                'setup': 'rules',
+                'victory-conditions': 'rules',
+                'turn-structure': 'rules',
+                'movement': 'rules',
+                'unit-conditions': 'rules',
+                'combat': 'rules',
+                'unit-statistics': 'rules',
+                'terrain-objects-rules': 'rules',
+                'heroes': 'heroes',
+                'armies': 'armies',
+                'biomes-monsters': 'biomes',
+                'terrain-objects-full': 'objects'
+            };
+
+            // Get the tab for this subsection
+            const tabName = subsectionToTab[subsectionId];
+
+            // Switch to the correct tab if needed
+            if (tabName) {
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelectorAll('.nav-tab').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+
+                // Show the correct tab
+                document.getElementById(tabName + '-tab').classList.add('active');
+
+                // Set the tab button as active
+                document.querySelectorAll('.nav-tab').forEach(btn => {
+                    if (btn.textContent.includes('Core Rules') && tabName === 'rules') btn.classList.add('active');
+                    else if (btn.textContent.includes('Heroes') && tabName === 'heroes') btn.classList.add('active');
+                    else if (btn.textContent.includes('Armies') && tabName === 'armies') btn.classList.add('active');
+                    else if (btn.textContent.includes('Biomes') && tabName === 'biomes') btn.classList.add('active');
+                    else if (btn.textContent.includes('Terrain Objects') && tabName === 'objects') btn.classList.add('active');
+                });
+            }
+
+            // Scroll to the element after tab switch
+            setTimeout(() => {
+                const element = document.querySelector(href);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }, 50);
+        }
+
+        // Update floating menu active link on scroll
+        function updateFloatingMenuActive() {
+            // Define subsections for each tab (includes dynamically loaded ones)
+            const tabSubsections = {
+                'rules': ['game-overview', 'setup', 'victory-conditions', 'turn-structure', 'movement', 'unit-conditions', 'combat', 'unit-statistics', 'terrain-objects-rules'],
+                'heroes': ['heroes'],
+                'armies': window.armySubsections || ['armies'],
+                'biomes': window.biomeSubsections || ['biomes-monsters'],
+                'objects': ['terrain-objects-full']
+            };
+
+            // Determine which tab is currently active
+            let activeTab = 'rules';
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                if (tab.classList.contains('active')) {
+                    activeTab = tab.id.replace('-tab', '');
+                }
+            });
+
+            // Get subsections for the active tab
+            const subsectionsToCheck = tabSubsections[activeTab] || [];
+
+            // Find the currently visible subsection
+            let currentSubsection = '';
+            let closestDistance = Infinity;
+            subsectionsToCheck.forEach(subsectionId => {
+                const element = document.getElementById(subsectionId);
+                if (element) {
+                    const rect = element.getBoundingClientRect();
+                    // Find the subsection with top closest to 150px (closest to viewport top)
+                    if (rect.top <= 150 && rect.top >= -element.offsetHeight) {
+                        const distance = 150 - rect.top;
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            currentSubsection = subsectionId;
+                        }
+                    }
+                }
+            });
+
+            // Update active tab in menu
+            document.querySelectorAll('.floating-menu .menu-category').forEach(cat => {
+                cat.classList.remove('active-section');
+            });
+
+            const activeCategory = document.querySelector(`.floating-menu .menu-category[data-section="${activeTab}"]`);
+            if (activeCategory) {
+                activeCategory.classList.add('active-section');
+            }
+
+            // Remove active class from all menu links
+            document.querySelectorAll('.floating-menu a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Add active class to current subsection
+            if (currentSubsection) {
+                const activeLink = document.querySelector(`.floating-menu a[href="#${currentSubsection}"]`);
+                if (activeLink) {
+                    activeLink.classList.add('active');
+                }
+            }
+        }
+
+        // Add scroll listener for floating menu
+        window.addEventListener('scroll', updateFloatingMenuActive);
+
         window.addEventListener('DOMContentLoaded', () => {
             loadGameData();
+            updateFloatingMenuActive();
         });
     </script>
 </body>
