@@ -107,6 +107,51 @@
             margin-bottom: 5px;
         }
 
+        .variant-rule {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .variant-rule::before {
+            content: "⚔";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #d4af37;
+            font-weight: bold;
+        }
+
+        .variant-coop {
+            border-left-color: #7cb9e8;
+            background: rgba(124, 185, 232, 0.08);
+        }
+
+        .variant-coop::before {
+            content: "◆";
+        }
+
+        .variant-battle-royale {
+            border-left-color: #ff9f43;
+            background: rgba(255, 159, 67, 0.08);
+        }
+
+        .variant-battle-royale::before {
+            content: "★";
+        }
+
+        .variant-vanilla {
+            border-left-color: #d4af37;
+            background: rgba(212, 175, 55, 0.08);
+        }
+
+        .variant-vanilla::before {
+            content: "⚔";
+        }
+
+        .hidden-variant-rule {
+            display: none;
+        }
+
         #heroes-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -994,6 +1039,32 @@
             display: block;
         }
 
+        #variant-selector-wrapper {
+            float: right;
+            margin: 0 0 20px 20px;
+            padding: 12px 15px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        #variant-selector-wrapper label {
+            color: #d4af37;
+            font-weight: bold;
+            margin-right: 10px;
+            display: inline-block;
+        }
+
+        #variant-selector {
+            padding: 6px 10px;
+            background: rgba(0,0,0,0.7);
+            color: #ffd700;
+            border: 1px solid #d4af37;
+            border-radius: 4px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
         .floating-menu .menu-subcategory li {
             margin: 0;
         }
@@ -1119,6 +1190,14 @@
 
         <div id="rules-tab" class="tab-content active">
             <div class="section">
+                <div id="variant-selector-wrapper">
+                    <label for="variant-selector">Game Variant:</label>
+                    <select id="variant-selector" onchange="selectVariant(this.value)">
+                        <option value="vanilla">Vanilla PVP</option>
+                        <option value="coop">Co-op Mode</option>
+                        <option value="battle-royale">Battle Royale</option>
+                    </select>
+                </div>
                 <h2 id="game-overview">Game Overview</h2>
                 <p class="lore-text">Armies from different Realms teleport through mystical Portals to battle for dominance and plunder resources across the contested lands.</p>
                 <p>Blood &amp; Banners is a hex-based tactical miniature battle game featuring 3D terrain and miniatures for players and NPCs.</p>
@@ -1130,16 +1209,37 @@
                     <div class="rule-title">Terrain Setup</div>
                     <p>Set up terrain using a specific scenario or build an interesting custom map.</p>
                 </div>
-                <div class="rule-item">
-                    <div class="rule-title">Initiative & Selection</div>
-                    <p>Each player rolls a D20 to determine initiative. In initiative order, players take turns choosing:</p>
+                <div class="rule-item variant-rule variant-vanilla">
+                    <div class="rule-title">Initiative & Selection (Vanilla PVP)</div>
+                    <p>Each player rolls a D20 to determine initiative. The player with the higher number chooses first. Players then take turns (in reverse initiative order) choosing:</p>
                     <ul>
-                        <li>Who goes first in actual game</li>
+                        <li>Who goes first in the actual game</li>
                         <li>Starting/home position</li>
                         <li>Hero selection (1 per player)</li>
                         <li>Army selection (1 pre-built army per player)</li>
                     </ul>
                     <p><em>Note: Any Hero can lead any Army.</em></p>
+                </div>
+
+                <div class="rule-item variant-rule variant-coop">
+                    <div class="rule-title">Setup (Co-op Mode)</div>
+                    <p>The Void Lord places all monsters and special items on the map. Other players then take turns picking:</p>
+                    <ul>
+                        <li>Two Heroes (per player)</li>
+                        <li>One Army (per player)</li>
+                    </ul>
+                    <p>All hero players start in the same position.</p>
+                </div>
+
+                <div class="rule-item variant-rule variant-battle-royale">
+                    <div class="rule-title">Initiative & Selection (Battle Royale)</div>
+                    <p>The DM sets up monsters and terrain. Other players roll a D20 for initiative, then take turns choosing:</p>
+                    <ul>
+                        <li>Two Heroes (per player)</li>
+                        <li>One Army (per player)</li>
+                        <li>Starting position</li>
+                        <li>Who goes first in gameplay</li>
+                    </ul>
                 </div>
                 <div class="rule-item">
                     <div class="rule-title">Starting Placement</div>
@@ -1153,29 +1253,58 @@
 
             <div class="section">
                 <h2 id="victory-conditions">Victory Conditions</h2>
-                <div class="rule-item">
-                    <div class="rule-title">Basic Mode</div>
-                    <p>Defeat all opponent units.</p>
+                <div class="rule-item variant-rule variant-vanilla">
+                    <div class="rule-title">Vanilla PVP Victory</div>
+                    <p><strong>Win Condition:</strong> One player wins when all of the other player's units are defeated.</p>
                 </div>
-                <div class="rule-item">
-                    <div class="rule-title">Advanced Modes</div>
+
+                <div class="rule-item variant-rule variant-coop">
+                    <div class="rule-title">Co-op Mode Victory</div>
                     <ul>
-                        <li>Capture the Flag</li>
-                        <li>NPC monsters that interfere or guard objectives</li>
-                        <li>Other objective-based scenarios</li>
+                        <li><strong>Hero Players Win:</strong> If the players destroy the Void Portal before all their Heroes are destroyed</li>
+                        <li><strong>Void Lord Wins:</strong> If all Heroes from all hero players are defeated</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item variant-rule variant-battle-royale">
+                    <div class="rule-title">Battle Royale Victory</div>
+                    <ul>
+                        <li><strong>Player Wins:</strong> When reaching a set number of points, or when annihilating all other players</li>
+                        <li><strong>Objectives:</strong> Defeat opponents' Heroes, defeat Boss monsters, capture Terrain Objects, bonus for capturing all of certain types</li>
+                        <li><strong>DM Note:</strong> The DM cannot win</li>
                     </ul>
                 </div>
             </div>
 
             <div class="section">
                 <h2 id="turn-structure">Turn Structure</h2>
-                <div class="rule-item">
-                    <div class="rule-title">Unit Activation</div>
+                <div class="rule-item variant-rule variant-vanilla">
+                    <div class="rule-title">Unit Activation (Vanilla PVP)</div>
                     <p>Each round, a player activates 4 units:</p>
                     <ul>
                         <li><strong>If Hero is alive:</strong> May activate Hero + 3 other units. They can be activated in any order</li>
                         <li><strong>If Hero is defeated:</strong> Activate any 4 units</li>
                         <li><strong>If fewer than 4 units remain:</strong> Activate each unit one time</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item variant-rule variant-coop">
+                    <div class="rule-title">Unit Activation (Co-op Mode)</div>
+                    <p>Players alternate turns with the Void Lord:</p>
+                    <ul>
+                        <li><strong>Hero Player Turn:</strong> Activate both Heroes + 3 additional units</li>
+                        <li><strong>Void Lord Turn:</strong> Activates 5 units, responding to and focusing on the Hero player who just went</li>
+                        <li><strong>Non-Hero Units:</strong> May respawn during the main phase. Players can use one activation to revive a defeated unit at the spawn point</li>
+                    </ul>
+                </div>
+
+                <div class="rule-item variant-rule variant-battle-royale">
+                    <div class="rule-title">Unit Activation (Battle Royale)</div>
+                    <p>Players alternate taking turns, followed by a DM response turn:</p>
+                    <ul>
+                        <li><strong>Player Turn:</strong> Activate 2 Heroes + 3 additional units</li>
+                        <li><strong>DM Turn:</strong> Activates up to 5 units only in the same general area and in view of the current player's units. DM prioritizes the active player and only attacks other players if they block the way</li>
+                        <li><strong>DM Flexibility:</strong> The DM may reactivate units from previous turns if multiple players are in the area</li>
                     </ul>
                 </div>
                 <div class="rule-item">
@@ -1326,6 +1455,18 @@
                         </li>
                         <li style="margin: 10px 0;"><strong>Defeat:</strong> Unit defeated when Wounds ≥ HP</li>
                     </ol>
+                </div>
+                <div class="rule-item variant-rule variant-vanilla">
+                    <div class="rule-title">Unit Defeat (Vanilla PVP)</div>
+                    <p>Units that are defeated are removed from the board permanently. <strong>Units may not respawn.</strong></p>
+                </div>
+                <div class="rule-item variant-rule variant-coop">
+                    <div class="rule-title">Unit Respawning (Co-op Mode)</div>
+                    <p><strong>Non-Hero units may respawn during the main phase of the game (before the Void Portal appears).</strong> On each player's turn, they may use one of their unit activations to revive a defeated unit at the spawn point.</p>
+                </div>
+                <div class="rule-item variant-rule variant-battle-royale">
+                    <div class="rule-title">Unit Defeat (Battle Royale)</div>
+                    <p>Units that are defeated are removed from the board. Only units can be defeated - heroes cannot be permanently eliminated during battle (though all heroes being defeated causes the player to lose).</p>
                 </div>
             </div>
 
@@ -2335,7 +2476,42 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadGameData();
             updateFloatingMenuActive();
+            // Initialize variant selector from localStorage if it exists
+            const savedVariant = localStorage.getItem('selectedVariant') || 'vanilla';
+            document.getElementById('variant-selector').value = savedVariant;
+            selectVariant(savedVariant);
         });
+
+        // Handle variant selection
+        function selectVariant(variant) {
+            // Save selection to localStorage
+            localStorage.setItem('selectedVariant', variant);
+
+            // Remove all variant-specific rule classes from all rules
+            document.querySelectorAll('[class*="variant-"]').forEach(el => {
+                el.classList.remove('hidden-variant-rule');
+            });
+
+            // Hide all variant-specific rules first
+            document.querySelectorAll('.variant-rule').forEach(el => {
+                el.classList.add('hidden-variant-rule');
+            });
+
+            // Show only the rules for the selected variant
+            if (variant === 'vanilla') {
+                document.querySelectorAll('.variant-vanilla').forEach(el => {
+                    el.classList.remove('hidden-variant-rule');
+                });
+            } else if (variant === 'coop') {
+                document.querySelectorAll('.variant-coop').forEach(el => {
+                    el.classList.remove('hidden-variant-rule');
+                });
+            } else if (variant === 'battle-royale') {
+                document.querySelectorAll('.variant-battle-royale').forEach(el => {
+                    el.classList.remove('hidden-variant-rule');
+                });
+            }
+        }
     </script>
 </body>
 </html>
