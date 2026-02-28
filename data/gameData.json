@@ -393,7 +393,7 @@
                 },
                 {
                     "name": "Line-backer",
-                    "image": "/images/units/dwarf_linebacker_card.png",
+                    "image": "/images/units/dwarf_linebacker.png",
                     "move": 3,
                     "range": 2,
                     "power": 3,
@@ -1604,6 +1604,7 @@
                 {
                     "name": "Void Portal",
                     "tier": "boss",
+                    "image": "/images/monsters/void_portal.png",
                     "move": 0,
                     "range": 1,
                     "power": 0,
