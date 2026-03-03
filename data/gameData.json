@@ -493,6 +493,89 @@
                     "abilities": []
                 }
             ]
+        },
+        {
+            "name": "Amethyst Thornguard",
+            "color": "Green-Purple",
+            "race": "Elves",
+            "units": [
+                {
+                    "name": "Elvish Duelist",
+                    "image": "/images/units/elf_duelist.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 5,
+                    "defense": 2,
+                    "hp": 4,
+                    "abilities": [
+                        {
+                            "name": "Moonlight Glare",
+                            "type": "Essence",
+                            "description": "Once on each player's turn, may re-roll one attack or defense die"
+                        }]
+                },
+                {
+                    "name": "Elvish Swordsman",
+                    "image": "/images/units/elf_swordsman.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": []
+                },
+                {
+                    "name": "Briarfang",
+                    "image": "/images/units/elf_briarfang.png",
+                    "move": 4,
+                    "range": 1,
+                    "power": 4,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Dual Strikes",
+                            "type": "Essence",
+                            "description": "May attack twice per turn"
+                        }
+                    ]
+                },
+                {
+                    "name": "Elvish Longbow",
+                    "image": "/images/units/elf_longbow.png",
+                    "move": 3,
+                    "range": 6,
+                    "power": 3,
+                    "defense": 2,
+                    "hp": 3,
+                    "abilities": []
+                },
+                {
+                    "name": "Thornshaft",
+                    "image": "/images/units/elf_thornshaft.png",
+                    "move": 4,
+                    "range": 4,
+                    "power": 3,
+                    "defense": 1,
+                    "hp": 3,
+                    "abilities": [
+                        {
+                            "name": "Silent Sting",
+                            "type": "Essence",
+                            "description": "May choose to use some or all of its move after attacking"
+                        }]
+                },
+                {
+                    "name": "Longthorn",
+                    "image": "/images/units/elf_longthorn.png",
+                    "move": 3,
+                    "range": 2,
+                    "power": 4,
+                    "defense": 3,
+                    "hp": 4,
+                    "abilities": []
+                }
+            ]
         }
     ],
     "monsters": [
