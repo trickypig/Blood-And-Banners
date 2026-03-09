@@ -2060,9 +2060,12 @@
                 biomeSection.id = biomeId;
 
                 let biomeHeaderHTML = `
-                    <div class="army-header" style="background: linear-gradient(90deg, rgba(${getBiomeColor(biome.color)}, 0.3), transparent);">
-                        <div class="army-name">${biome.biome}</div>
-                        <div class="army-color">${biome.color}</div>
+                    <div class="army-header" style="background: linear-gradient(90deg, rgba(${getBiomeColor(biome.color)}, 0.3), transparent); display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <div class="army-name">${biome.biome}</div>
+                            <div class="army-color">${biome.color}</div>
+                        </div>
+                        <a href="biomes-print.html?biome=${encodeURIComponent(biome.biome)}" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap; cursor: pointer;">📄 Print</a>
                     </div>
                 `;
 
