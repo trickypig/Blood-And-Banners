@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 100"
+   fill="none"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="sand-desert.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="7.96"
+     inkscape:cx="50.062814"
+     inkscape:cy="50.062814"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="cactus" />
+  <rect
+     width="100"
+     height="100"
+     fill="#d4a76a"
+     id="rect1" />
+  <g
+     stroke="#81921c"
+     stroke-width="3"
+     id="cactus"
+     style="stroke:#81921c;stroke-opacity:1">
+    <ellipse
+       cx="26"
+       cy="69"
+       id="circle3"
+       rx="6"
+       ry="9" />
+    <ellipse
+       cx="75"
+       cy="68"
+       id="circle2"
+       rx="5"
+       ry="9" />
+    <path
+       d="M 50,74 49.876085,20.988848"
+       id="path1"
+       sodipodi:nodetypes="cc"
+       style="stroke-width:4" />
+    <path
+       d="M50 52 L40 52 L40 42 M50 46 L60 46 L60 38"
+       id="path2"
+       style="stroke-width:4;stroke-dasharray:none" />
+  </g>
+  <g
+     stroke="#7f6440"
+     stroke-width="2"
+     id="rocks"
+     style="stroke:#a78454;stroke-opacity:1">
+    <circle
+       id="circle4"
+       r="5"
+       cy="78.752167"
+       cx="41.328377" />
+    <circle
+       cx="59.420078"
+       cy="66.856255"
+       id="circle5"
+       r="4.0173483" />
+    <path
+       d="m 16.232962,41.759603 6.319702,-5.452292 5.204461,4.460967"
+       id="path8" />
+    <path
+       d="m 67.286245,39.653036 5.204461,-3.965304 3.841388,5.328377"
+       id="path9" />
+    <path
+       d="m 75.161758,39.071932 5.204461,-3.965304 3.841388,5.328377"
+       id="path9-8"
+       style="stroke:#a78454;stroke-opacity:1" />
+  </g>
+</svg>

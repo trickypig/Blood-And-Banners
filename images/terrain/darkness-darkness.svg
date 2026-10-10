@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 100 100"
+   fill="none"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="darkness-darkness.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs5" />
+  <sodipodi:namedview
+     id="namedview5"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="8.07"
+     inkscape:cx="50"
+     inkscape:cy="50"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1912"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg5" />
+  <rect
+     width="100"
+     height="100"
+     fill="#1a1a1a"
+     id="rect1" />
+  <g
+     stroke="#383838"
+     stroke-width="3"
+     id="g3"
+     inkscape:label="skull"
+     style="stroke:#2e2e2e;stroke-opacity:1"
+     transform="matrix(1.4155138,0,0,1.2947536,-21.519188,-13.590546)">
+    <g
+       stroke="#7a1c1c"
+       id="g2"
+       style="stroke:#2e2e2e;stroke-opacity:1">
+      <path
+         d="M 36,58 Q 30,30 50,26 70,30 64,58 l -4,2 V 70 H 40 V 60 Z"
+         id="path1"
+         style="stroke:#2e2e2e;stroke-opacity:1" />
+      <circle
+         cx="42"
+         cy="46"
+         r="5"
+         id="circle1"
+         style="stroke:#2e2e2e;stroke-opacity:1" />
+      <circle
+         cx="58"
+         cy="46"
+         r="5"
+         id="circle2"
+         style="stroke:#2e2e2e;stroke-opacity:1" />
+      <path
+         d="m 50,53 -3,5 h 6 z m -5,11 v 6 m 5,-6 v 6 m 5,-6 v 6"
+         id="path2"
+         style="stroke:#2e2e2e;stroke-opacity:1" />
+    </g>
+  </g>
+  <g
+     stroke="#2a2a2a"
+     stroke-width="2.5"
+     id="g5"
+     inkscape:label="eyes"
+     transform="translate(-2.2304833,0.49566294)">
+    <path
+       style="stroke:#550000;stroke-width:0.972378;stroke-dasharray:none;stroke-opacity:1"
+       d="m 40.385387,50.447513 2.84025,-9.569129 -8.047375,5.888695 9.940875,-0.122681 -7.810688,-5.643332 z"
+       id="path7" />
+    <path
+       style="stroke:#550000;stroke-width:0.972378;stroke-dasharray:none;stroke-opacity:1"
+       d="m 62.938051,50.695344 2.84025,-9.569129 -8.047375,5.888695 9.940875,-0.122681 -7.810688,-5.643332 z"
+       id="path8" />
+  </g>
+</svg>

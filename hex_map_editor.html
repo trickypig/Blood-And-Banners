@@ -334,6 +334,13 @@
             justify-content: center;
         }
 
+        .terrain-current {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #e8e8e8;
+            text-align: center;
+        }
+
         .terrain-btn:hover {
             border-color: #d4af37;
             transform: scale(1.05);
@@ -605,6 +612,28 @@
             background: rgba(212,175,55,0.3);
         }
 
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            background: rgba(20,20,20,0.95);
+            color: #e8e8e8;
+            border: 2px solid #d4af37;
+            border-radius: 5px;
+            padding: 10px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
         @media (max-width: 1200px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -616,7 +645,7 @@
     <div class="container">
         <header>
             <h1>⬡ Hex Map Editor ⬡</h1>
-            <p>Design your battlefield for Realm Wars</p>
+            <p>Design your battlefield for Blood and Banners</p>
         </header>
 
         <nav class="main-nav">
@@ -667,17 +696,10 @@
                 </div>
 
                 <div class="section" id="terrainSection">
-                    <h2>Terrain Type</h2>
-                    <div class="terrain-grid">
-                        <div class="terrain-btn active" data-terrain="grass" data-tooltip="Grass" onclick="selectTerrain('grass')" style="background-color: #4a7c4e;"></div>
-                        <div class="terrain-btn" data-terrain="water" data-tooltip="Water" onclick="selectTerrain('water')" style="background-color: #4a7c9e;"></div>
-                        <div class="terrain-btn" data-terrain="stone" data-tooltip="Stone" onclick="selectTerrain('stone')" style="background-color: #6b6b6b;"></div>
-                        <div class="terrain-btn" data-terrain="sand" data-tooltip="Sand" onclick="selectTerrain('sand')" style="background-color: #d4a76a;"></div>
-                        <div class="terrain-btn" data-terrain="forest" data-tooltip="Forest" onclick="selectTerrain('forest')" style="background-color: #2d5016;"></div>
-                        <div class="terrain-btn" data-terrain="darkness" data-tooltip="Darkness" onclick="selectTerrain('darkness')" style="background-color: #1a1a1a;"></div>
-                        <div class="terrain-btn" data-terrain="lava" data-tooltip="Lava" onclick="selectTerrain('lava')" style="background-color: #c4381c;"></div>
-                        <div class="terrain-btn" data-terrain="ice" data-tooltip="Ice" onclick="selectTerrain('ice')" style="background-color: #a8d8e8;"></div>
-                    </div>
+                    <h2>Biome</h2>
+                    <!-- Buttons are built from the biomes table; click the selected biome again to cycle its terrain -->
+                    <div class="terrain-grid" id="biomeGrid"></div>
+                    <div class="terrain-current" id="currentTerrainLabel"></div>
                 </div>
 
                 <div class="section" id="playerSection" style="display: none;">
@@ -723,17 +745,46 @@
     </div>
 
     <script>
-        // Terrain colors and properties
-        const terrainTypes = {
-            grass: { color: '#4a7c4e', name: 'Grass' },
-            water: { color: '#4a7c9e', name: 'Water' },
-            stone: { color: '#6b6b6b', name: 'Stone' },
-            sand: { color: '#d4a76a', name: 'Sand' },
-            forest: { color: '#2d5016', name: 'Forest' },
-            darkness: { color: '#1a1a1a', name: 'Darkness' },
-            lava: { color: '#c4381c', name: 'Lava' },
-            ice: { color: '#a8d8e8', name: 'Ice' }
+        // Biomes and the terrain types within each. The first terrain is the biome's default.
+        // Each terrain's pattern lives at images/terrain/<biome>-<terrain>.svg
+        const biomes = {
+            plains: { color: '#4a7c4e', name: 'Plains', terrains: { grass: 'Grass', roads: 'Roads' } },
+            water: { color: '#4a7c9e', name: 'Water', terrains: { 'open-water': 'Open Water', 'shallow-water': 'Shallow Water' } },
+            stone: { color: '#6b6b6b', name: 'Stone', terrains: { 'stone-path': 'Stone Path', crags: 'Crags' } },
+            sand: { color: '#d4a76a', name: 'Sand', terrains: { desert: 'Desert', dunes: 'Dunes' } },
+            jungle: { color: '#2d5016', name: 'Jungle', terrains: { jungle: 'Jungle', swamp: 'Swamp' } },
+            darkness: { color: '#1a1a1a', name: 'Darkness', terrains: { darkness: 'Darkness', 'poison-pits': 'Poison Pits' } },
+            lava: { color: '#c4381c', name: 'Lava', terrains: { basalt: 'Basalt', lava: 'Lava' } },
+            ice: { color: '#a8d8e8', name: 'Ice', terrains: { snow: 'Snow', ice: 'Ice' } }
         };
+
+        // Old single-level terrain keys (map format v1) and the biome each became
+        const legacyTerrainBiomes = {
+            grass: 'plains', water: 'water', stone: 'stone', sand: 'sand',
+            forest: 'jungle', darkness: 'darkness', lava: 'lava', ice: 'ice'
+        };
+
+        const MAP_FORMAT_VERSION = 2;
+        const defaultBiome = 'plains';
+
+        function terrainKeys(biome) {
+            return Object.keys(biomes[biome].terrains);
+        }
+
+        function terrainImagePath(biome, terrain) {
+            return `images/terrain/${biome}-${terrain}.svg`;
+        }
+
+        // Terrain pattern images, keyed "biome/terrain" (redraw the map as each one finishes loading)
+        const terrainImages = {};
+        Object.keys(biomes).forEach(biome => {
+            terrainKeys(biome).forEach(terrain => {
+                const img = new Image();
+                img.onload = () => drawMap();
+                img.src = terrainImagePath(biome, terrain);
+                terrainImages[`${biome}/${terrain}`] = img;
+            });
+        });
 
         const playerColors = {
             1: '#c41e3a',
@@ -750,7 +801,10 @@
             hexes: []
         };
 
-        let currentTerrain = 'grass';
+        let currentBiome = defaultBiome;
+        // Last-chosen terrain for each biome, so switching biomes and back keeps the choice
+        const selectedTerrainByBiome = {};
+        Object.keys(biomes).forEach(biome => { selectedTerrainByBiome[biome] = terrainKeys(biome)[0]; });
         let currentPlayerMarker = 'none';
         let currentAction = 'paint'; // 'paint', 'player', or 'height'
         let currentHeightAction = 'raise'; // 'raise', 'lower', or 'reset'
@@ -779,15 +833,61 @@
             document.getElementById('heightSection').style.display = action === 'height' ? 'block' : 'none';
         }
 
-        // Terrain selection
-        function selectTerrain(terrain) {
-            currentTerrain = terrain;
-            currentActionValue = terrain;
-
-            document.querySelectorAll('.terrain-btn').forEach(btn => {
-                btn.classList.remove('active');
+        // Build the biome buttons from the biomes table
+        function buildBiomeButtons() {
+            const grid = document.getElementById('biomeGrid');
+            grid.innerHTML = '';
+            Object.keys(biomes).forEach(biome => {
+                const btn = document.createElement('div');
+                btn.className = 'terrain-btn';
+                btn.dataset.biome = biome;
+                btn.style.backgroundColor = biomes[biome].color;
+                btn.style.backgroundSize = 'cover';
+                btn.onclick = () => selectBiome(biome);
+                grid.appendChild(btn);
             });
-            document.querySelector(`[data-terrain="${terrain}"]`).classList.add('active');
+            updateBiomeButtons();
+        }
+
+        // Biome selection: picking a new biome selects it; clicking the active one cycles its terrain
+        function selectBiome(biome) {
+            if (biome === currentBiome) {
+                const keys = terrainKeys(biome);
+                const next = (keys.indexOf(selectedTerrainByBiome[biome]) + 1) % keys.length;
+                selectedTerrainByBiome[biome] = keys[next];
+            }
+            currentBiome = biome;
+            updateBiomeButtons();
+        }
+
+        // Sync button images, tooltips, highlight, and the current-terrain label
+        function updateBiomeButtons() {
+            document.querySelectorAll('#biomeGrid .terrain-btn').forEach(btn => {
+                const biome = btn.dataset.biome;
+                const terrain = selectedTerrainByBiome[biome];
+                btn.style.backgroundImage = `url('${terrainImagePath(biome, terrain)}')`;
+                btn.dataset.tooltip = `${biomes[biome].name}: ${biomes[biome].terrains[terrain]}`;
+                btn.classList.toggle('active', biome === currentBiome);
+            });
+
+            const keys = terrainKeys(currentBiome);
+            const terrain = selectedTerrainByBiome[currentBiome];
+            document.getElementById('currentTerrainLabel').textContent =
+                `${biomes[currentBiome].name}: ${biomes[currentBiome].terrains[terrain]} (${keys.indexOf(terrain) + 1}/${keys.length})`;
+        }
+
+        // Make a hex's biome/terrain valid, converting v1 hexes ({ terrain: 'grass' }) to biomes
+        function normalizeHexTerrain(hex) {
+            if (!hex.biome && legacyTerrainBiomes[hex.terrain]) {
+                hex.biome = legacyTerrainBiomes[hex.terrain];
+                hex.terrain = terrainKeys(hex.biome)[0];
+            }
+            if (!biomes[hex.biome]) {
+                hex.biome = defaultBiome;
+            }
+            if (!biomes[hex.biome].terrains[hex.terrain]) {
+                hex.terrain = terrainKeys(hex.biome)[0];
+            }
         }
 
         // Player marker selection
@@ -834,6 +934,7 @@
 
         // Initialize
         function init() {
+            buildBiomeButtons();
             generateMap();
             canvas.addEventListener('click', handleCanvasClick);
             canvas.addEventListener('mousemove', handleCanvasHover);
@@ -858,7 +959,8 @@
                     mapData.hexes.push({
                         row: row,
                         col: col,
-                        terrain: 'grass',
+                        biome: defaultBiome,
+                        terrain: terrainKeys(defaultBiome)[0],
                         height: 0,
                         playerStart: null
                     });
@@ -905,22 +1007,24 @@
             }
             ctx.closePath();
 
-            // Base terrain color with height shading
-            const terrain = terrainTypes[hex.terrain];
-            const heightShade = hex.height * 15;
-            const baseColor = terrain.color;
-            
-            // Parse hex color and adjust brightness
-            const r = parseInt(baseColor.substr(1, 2), 16);
-            const g = parseInt(baseColor.substr(3, 2), 16);
-            const b = parseInt(baseColor.substr(5, 2), 16);
-            
-            const newR = Math.min(255, r + heightShade);
-            const newG = Math.min(255, g + heightShade);
-            const newB = Math.min(255, b + heightShade);
-            
-            ctx.fillStyle = `rgb(${newR}, ${newG}, ${newB})`;
-            ctx.fill();
+            // Base terrain: SVG pattern clipped to the hex, falling back to flat color until loaded
+            const image = terrainImages[`${hex.biome}/${hex.terrain}`];
+            ctx.save();
+            ctx.clip();
+            if (image && image.complete && image.naturalWidth) {
+                ctx.drawImage(image, x - size, y - size, size * 2, size * 2);
+            } else {
+                ctx.fillStyle = biomes[hex.biome].color;
+                ctx.fill();
+            }
+
+            // Height shading: lighten raised hexes, darken lowered ones
+            if (hex.height !== 0) {
+                const alpha = Math.min(0.6, Math.abs(hex.height) * 0.08);
+                ctx.fillStyle = hex.height > 0 ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
+                ctx.fill();
+            }
+            ctx.restore();
 
             // Border
             ctx.strokeStyle = isSelected ? '#ffd700' : '#d4af37';
@@ -1022,7 +1126,8 @@
 
                 // Apply the current action
                 if (currentAction === 'paint') {
-                    hex.terrain = currentTerrain;
+                    hex.biome = currentBiome;
+                    hex.terrain = selectedTerrainByBiome[currentBiome];
                 } else if (currentAction === 'player') {
                     if (currentPlayerMarker !== 'none') {
                         // Remove this player marker from any other hex
@@ -1069,7 +1174,8 @@
         // Update hex info display
         function updateHexInfo(hex) {
             const info = document.getElementById('hexInfo');
-            const terrain = terrainTypes[hex.terrain].name;
+            const biome = biomes[hex.biome];
+            const terrain = `${biome.name}: ${biome.terrains[hex.terrain]}`;
             const playerInfo = hex.playerStart ? `Player ${hex.playerStart} Start` : 'No player start';
 
             info.innerHTML = `
@@ -1084,7 +1190,8 @@
         function clearMap() {
             if (confirm('Are you sure you want to clear the entire map?')) {
                 mapData.hexes.forEach(hex => {
-                    hex.terrain = 'grass';
+                    hex.biome = defaultBiome;
+                    hex.terrain = terrainKeys(defaultBiome)[0];
                     hex.height = 0;
                     hex.playerStart = null;
                 });
@@ -1097,7 +1204,7 @@
         // Export map to JSON
         function exportMap() {
             const mapName = document.getElementById('mapName').value || 'map';
-            const dataStr = JSON.stringify(mapData, null, 2);
+            const dataStr = JSON.stringify({ version: MAP_FORMAT_VERSION, ...mapData }, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             
@@ -1109,7 +1216,23 @@
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
-            alert('Map exported successfully!');
+            showToast('Map exported successfully!');
+        }
+
+        // Brief self-dismissing notice (errors still use alert so they get acknowledged)
+        let toastTimer = null;
+        function showToast(message) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'toast';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
         // Import map from JSON
@@ -1127,6 +1250,10 @@
                         throw new Error('Invalid map format');
                     }
 
+                    // Accepts both v2 (biome + terrain) and v1 (terrain only) maps
+                    imported.hexes.forEach(normalizeHexTerrain);
+                    imported.version = MAP_FORMAT_VERSION;
+
                     mapData = imported;
                     document.getElementById('mapName').value = mapData.name || 'Imported Map';
                     document.getElementById('columns').value = mapData.columns;
@@ -1135,7 +1262,7 @@
                     resizeCanvas();
                     drawMap();
                     
-                    alert('Map imported successfully!');
+                    showToast('Map imported successfully!');
                 } catch (error) {
                     alert('Error importing map: ' + error.message);
                 }
