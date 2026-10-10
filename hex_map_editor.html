@@ -915,6 +915,13 @@
         const ctx = canvas.getContext('2d');
 
         const baseHexSize = 40;
+        const baseLiftPerLevel = 5; // pixels each height level raises a tile
+        const maxHeight = 10;
+        const canvasBackground = '#2a2a3e'; // matches #hexCanvas background
+        
+        function getLiftPerLevel() {
+            return baseLiftPerLevel * zoomLevel;
+        }
         
         function getHexSize() {
             return baseHexSize * zoomLevel;
@@ -978,16 +985,77 @@
             const dims = getHexDimensions();
             
             canvas.width = cols * dims.width * 0.75 + dims.width * 0.25 + 40;
-            canvas.height = rows * dims.height + dims.height / 2 + 40;
+            canvas.height = rows * dims.height + dims.height / 2 + 40 + maxHeight * getLiftPerLevel();
         }
 
         // Get hex center position (flat-top hexagons)
         function getHexCenter(col, row) {
             const dims = getHexDimensions();
             const x = 20 + col * dims.width * 0.75 + dims.width / 2;
-            const y = 20 + row * dims.height + dims.height / 2;
+            // Leave room at the top for the tallest possible tiles
+            const y = 20 + maxHeight * getLiftPerLevel() + row * dims.height + dims.height / 2;
             const yOffset = (col % 2) * (dims.height / 2);
             return { x, y: y + yOffset };
+        }
+
+        // Hex center shifted up by its height
+        function getRaisedHexCenter(hex) {
+            const pos = getHexCenter(hex.col, hex.row);
+            return { x: pos.x, y: pos.y - hex.height * getLiftPerLevel() };
+        }
+
+        // Back-to-front order: by ground y, so nearer (lower) tiles paint over the sides of farther ones
+        function hexesInDrawOrder() {
+            return mapData.hexes.slice().sort((a, b) =>
+                getHexCenter(a.col, a.row).y - getHexCenter(b.col, b.row).y || a.col - b.col);
+        }
+
+        // Outline of a raised tile plus the column beneath it down to ground level (flat-top hex)
+        function hexSilhouettePath(x, y, lift) {
+            const size = getHexSize();
+            const path = new Path2D();
+            // Upper half of the raised top: 180°, 240°, 300°, 0°
+            [3, 4, 5, 0].forEach((i, n) => {
+                const angle = Math.PI / 3 * i;
+                const px = x + size * Math.cos(angle);
+                const py = y + size * Math.sin(angle);
+                n === 0 ? path.moveTo(px, py) : path.lineTo(px, py);
+            });
+            // Lower half at ground level: 0°, 60°, 120°, 180°
+            [0, 1, 2, 3].forEach(i => {
+                const angle = Math.PI / 3 * i;
+                path.lineTo(x + size * Math.cos(angle), y + lift + size * Math.sin(angle));
+            });
+            path.closePath();
+            return path;
+        }
+
+        // Spacer filling the gap between a raised tile and the ground
+        function drawHexSides(x, y, lift) {
+            if (lift <= 0) return;
+            const size = getHexSize();
+            ctx.fillStyle = canvasBackground;
+            ctx.fill(hexSilhouettePath(x, y, lift));
+
+            // Vertical edges at the visible corners
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            [0, 1, 2, 3].forEach(i => {
+                const angle = Math.PI / 3 * i;
+                const px = x + size * Math.cos(angle);
+                const py = y + size * Math.sin(angle);
+                ctx.moveTo(px, py);
+                ctx.lineTo(px, py + lift);
+            });
+            // Bottom outline at ground level
+            [0, 1, 2, 3].forEach((i, n) => {
+                const angle = Math.PI / 3 * i;
+                const px = x + size * Math.cos(angle);
+                const py = y + lift + size * Math.sin(angle);
+                n === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            });
+            ctx.stroke();
         }
 
         // Draw a hexagon (flat-top)
@@ -1063,34 +1131,19 @@
         function drawMap() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            mapData.hexes.forEach(hex => {
-                const pos = getHexCenter(hex.col, hex.row);
+            hexesInDrawOrder().forEach(hex => {
+                const pos = getRaisedHexCenter(hex);
                 const isSelected = selectedHex &&
                     selectedHex.row === hex.row &&
                     selectedHex.col === hex.col;
+                drawHexSides(pos.x, pos.y, hex.height * getLiftPerLevel());
                 drawHexagon(pos.x, pos.y, hex, isSelected);
             });
         }
 
-        // Redraw a single hex and adjacent hexes
+        // Redraw after a hex changes. Raised tiles overlap their neighbours, so repaint everything.
         function redrawHex(hex) {
-            const pos = getHexCenter(hex.col, hex.row);
-            const size = getHexSize();
-
-            // Clear the hex area (slightly larger to handle borders)
-            ctx.clearRect(pos.x - size - 5, pos.y - size - 5, size * 2 + 10, size * 2 + 10);
-
-            // Redraw all hexes that might overlap with this area
-            mapData.hexes.forEach(h => {
-                const hPos = getHexCenter(h.col, h.row);
-                const distance = Math.sqrt((pos.x - hPos.x) ** 2 + (pos.y - hPos.y) ** 2);
-                if (distance < size * 2.5) {
-                    const hIsSelected = selectedHex &&
-                        selectedHex.row === h.row &&
-                        selectedHex.col === h.col;
-                    drawHexagon(hPos.x, hPos.y, h, hIsSelected);
-                }
-            });
+            drawMap();
         }
 
         // Clear previous hex selection and redraw it
@@ -1102,11 +1155,11 @@
 
         // Get hex at point
         function getHexAtPoint(x, y) {
-            const size = getHexSize();
-            for (let hex of mapData.hexes) {
-                const pos = getHexCenter(hex.col, hex.row);
-                const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-                if (distance < size) {
+            // Front-most tile wins, matching what is painted on top
+            const ordered = hexesInDrawOrder().reverse();
+            for (let hex of ordered) {
+                const pos = getRaisedHexCenter(hex);
+                if (ctx.isPointInPath(hexSilhouettePath(pos.x, pos.y, hex.height * getLiftPerLevel()), x, y)) {
                     return hex;
                 }
             }
