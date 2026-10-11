@@ -1,11 +1,14 @@
-﻿@page "/"
+@page "/"
 
 @using BloodAndBanners.UI.Components
 @using BloodAndBanners.UI.Services
+@using Microsoft.Extensions.Configuration
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
 <PageTitle>Blood &amp; Banners</PageTitle>
 
 <GameExperience ClientKind="web"
                 InitialJoinCode="@InviteLinks.GameIdFromUri(Navigation.Uri)"
-                InviteBaseUri="@Navigation.BaseUri" />
+                InviteBaseUri="@Navigation.BaseUri"
+                ImageBaseUrl="@Configuration["ImageBaseUrl"]" />

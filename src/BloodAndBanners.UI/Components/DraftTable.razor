@@ -1,0 +1,197 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<main class="draft-table" aria-labelledby="draft-title">
+    <header class="draft-ribbon">
+        <div>
+            <p class="draft-eyebrow">Vanilla duel · @Projection.ScenarioName</p>
+            <h1 id="draft-title">Muster your host</h1>
+        </div>
+        <p data-testid="initiative" class="initiative">@InitiativeText</p>
+        <p data-testid="draft-status" class="draft-status @(IsMyPick ? "my-pick" : null)">@StatusText</p>
+    </header>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p class="draft-error" role="alert">@ErrorMessage</p>
+    }
+
+    <div class="decision-row">
+        <section class="decision" aria-labelledby="first-player-title">
+            <h2 id="first-player-title">First turn</h2>
+            @if (Draft.FirstSeatId is { } first)
+            {
+                <p class="decided">@(first == ViewerSeat ? "You move first." : $"{SeatName(first)} moves first.")</p>
+            }
+            else
+            {
+                <div class="choice-buttons">
+                    @foreach (var seat in Projection.Memberships)
+                    {
+                        <button type="button"
+                                data-action="chooseFirstPlayer"
+                                data-seat="@seat.SeatId"
+                                disabled="@(!Can("chooseFirstPlayer"))"
+                                @onclick="() => ChooseFirst(seat.SeatId)">
+                            @(seat.SeatId == ViewerSeat ? "I move first" : $"{SeatName(seat.SeatId)} moves first")
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="decision" aria-labelledby="start-title">
+            <h2 id="start-title">Start position</h2>
+            @if (Draft.StartBySeat.Values.All(start => start is not null))
+            {
+                <p class="decided">
+                    @string.Join(" · ", Projection.Memberships.Select(seat => $"{SeatName(seat.SeatId)}: start {Draft.StartBySeat[seat.SeatId]}"))
+                </p>
+            }
+            else
+            {
+                <div class="choice-buttons">
+                    @foreach (var start in new[] { 1, 2 })
+                    {
+                        <button type="button"
+                                data-action="chooseStartPosition"
+                                data-start="@start"
+                                disabled="@(!Can("chooseStartPosition"))"
+                                @onclick="() => ChooseStart(start)">
+                            Take start @start
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="roster-section" aria-labelledby="hero-title">
+        <h2 id="hero-title">Heroes</h2>
+        <div class="card-grid">
+            @foreach (var hero in Draft.AvailableHeroes)
+            {
+                var taken = hero.TakenBySeatId is not null;
+                <button type="button"
+                        class="draft-card @(taken ? "taken" : null) @(taken && hero.TakenBySeatId == ViewerSeat ? "mine" : null)"
+                        data-action="pickHero"
+                        data-hero="@hero.Name"
+                        disabled="@(taken || !Can("pickHero"))"
+                        @onclick="() => PickHero(hero.Name)">
+                    @if (CatalogImages.Resolve(ImageBaseUrl, hero.Image) is { } heroImage)
+                    {
+                        <img src="@heroImage" alt="" loading="lazy" />
+                    }
+                    <strong>@hero.Name</strong>
+                    <span class="stat-line">Move @hero.Move · Range @hero.Range · Power @hero.Power · Defense @hero.Defense · HP @hero.Hp</span>
+                    @if (taken)
+                    {
+                        <span class="taken-by">@ClaimText(hero.TakenBySeatId!)</span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+
+    <section class="roster-section" aria-labelledby="army-title">
+        <h2 id="army-title">Armies</h2>
+        <div class="card-grid army-grid">
+            @foreach (var army in Draft.AvailableArmies)
+            {
+                var taken = army.TakenBySeatId is not null;
+                <button type="button"
+                        class="draft-card army-card @(taken ? "taken" : null) @(taken && army.TakenBySeatId == ViewerSeat ? "mine" : null)"
+                        data-action="pickArmy"
+                        data-army="@army.Name"
+                        disabled="@(taken || !Can("pickArmy"))"
+                        @onclick="() => PickArmy(army.Name)">
+                    <strong>@army.Name</strong>
+                    <span class="army-colour">@army.Color banner</span>
+                    <ul>
+                        @foreach (var unit in army.Units)
+                        {
+                            <li>@unit.Name <small>M@unit.Move R@unit.Range P@unit.Power D@unit.Defense HP@unit.Hp</small></li>
+                        }
+                    </ul>
+                    @if (taken)
+                    {
+                        <span class="taken-by">@ClaimText(army.TakenBySeatId!)</span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+</main>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public string? ImageBaseUrl { get; set; }
+
+    [Parameter]
+    public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
+    private DraftProjection Draft => Projection.Draft!;
+
+    private string? ViewerSeat => Projection.Viewer.SeatId;
+
+    private bool IsMyPick => ViewerSeat is not null && Draft.PickingSeatId == ViewerSeat;
+
+    private bool Can(string kind) =>
+        !IsBusy && Projection.Viewer.CanCommand && Projection.LegalActions.Any(action => action.Kind == kind);
+
+    private string StatusText => IsMyPick
+        ? "Your pick"
+        : Draft.PickingSeatId is null
+            ? "The armies are taking the field"
+            : Projection.Viewer.Role == "player"
+                ? "Waiting for the opposing commander"
+                : $"{SeatName(Draft.PickingSeatId)} is choosing";
+
+    private string InitiativeText
+    {
+        get
+        {
+            var rolls = Projection.Memberships
+                .Where(seat => Draft.InitiativeRolls.ContainsKey(seat.SeatId))
+                .Select(seat => $"{SeatName(seat.SeatId)} rolled {string.Join(" → ", Draft.InitiativeRolls[seat.SeatId])}");
+            var winner = Draft.InitiativeRolls.MaxBy(pair => pair.Value.Count == 0 ? 0 : pair.Value[^1]).Key;
+            return $"{string.Join(" · ", rolls)} — {SeatName(winner)} won initiative";
+        }
+    }
+
+    private string SeatName(string seatId)
+    {
+        if (seatId == ViewerSeat)
+        {
+            return "You";
+        }
+        if (Projection.Viewer.Role == "player")
+        {
+            return "Rival";
+        }
+        var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
+        return seat is null ? "Commander" : $"Commander {seat.SeatIndex}";
+    }
+
+    private string ClaimText(string seatId) => seatId == ViewerSeat ? "Yours" : $"Claimed by {SeatName(seatId)}";
+
+    private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
+
+    private Task ChooseFirst(string seatId) => Send("chooseFirstPlayer", new { seatId });
+
+    private Task ChooseStart(int start) => Send("chooseStartPosition", new { start });
+
+    private Task PickHero(string hero) => Send("pickHero", new { hero });
+
+    private Task PickArmy(string army) => Send("pickArmy", new { army });
+}

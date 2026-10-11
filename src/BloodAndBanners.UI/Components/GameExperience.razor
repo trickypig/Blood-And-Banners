@@ -1,4 +1,5 @@
 @namespace BloodAndBanners.UI.Components
+@using System.Net
 @using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Services
 @using Microsoft.JSInterop
@@ -25,6 +26,14 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
                   OnStart="StartGame"
                   OnCopyInvite="CopyInvite" />
 }
+else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
+{
+    <DraftTable Projection="_game"
+                IsBusy="_isBusy"
+                ErrorMessage="@_error"
+                ImageBaseUrl="@ImageBaseUrl"
+                OnCommand="SubmitGameCommand" />
+}
 else
 {
     <GameTable Projection="_game" />
@@ -40,8 +49,13 @@ else
     [Parameter]
     public string InviteBaseUri { get; set; } = string.Empty;
 
+    [Parameter]
+    public string? ImageBaseUrl { get; set; }
+
     private readonly CancellationTokenSource _pollCancellation = new();
     private GameProjection? _game;
+    private readonly List<GameEvent> _events = [];
+    private long _lastSequence;
     private Task? _pollTask;
     private bool _isBusy;
     private string? _status;
@@ -114,6 +128,69 @@ else
         _status = null;
     }, "The draft could not begin. The room has been refreshed; check that everyone is ready.", refreshAfterFailure: true);
 
+    private async Task SubmitGameCommand(GameCommandRequest request)
+    {
+        if (_game is null)
+        {
+            return;
+        }
+
+        var expectedVersion = _game.Version;
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            ApplyProjection(await Sessions.SubmitCommandAsync(expectedVersion, request.Kind, request.Payload, _pollCancellation.Token));
+            ApplyEvents(await Sessions.GetEventsAsync(_lastSequence, _pollCancellation.Token));
+        }
+        catch (OperationCanceledException) when (_pollCancellation.IsCancellationRequested)
+        {
+        }
+        catch (GameApiException error) when (error.StatusCode == HttpStatusCode.Conflict)
+        {
+            _error = "The battlefield changed — try again.";
+            await RefreshAfterFailure();
+        }
+        catch (GameApiException error)
+        {
+            _error = error.Message;
+            await RefreshAfterFailure();
+        }
+        catch (Exception)
+        {
+            _error = "The order could not be delivered. Check your connection and try again.";
+            await RefreshAfterFailure();
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task ReturnToWarRoom()
+    {
+        await Sessions.LeaveAsync();
+        _game = null;
+        _events.Clear();
+        _lastSequence = 0;
+        _error = null;
+        _status = null;
+    }
+
+    private void ApplyEvents(EventPage? page)
+    {
+        if (page is null)
+        {
+            return;
+        }
+        _events.AddRange(page.Events.Where(gameEvent => gameEvent.Sequence > _lastSequence));
+        if (_events.Count > 200)
+        {
+            _events.RemoveRange(0, _events.Count - 200);
+        }
+        _lastSequence = Math.Max(_lastSequence, page.LastSequence);
+    }
+
     private async Task CopyInvite()
     {
         try
@@ -170,7 +247,7 @@ else
 
     private void StartPolling()
     {
-        if (_game is not null && _pollTask is null)
+        if (_game is not null && (_pollTask is null || _pollTask.IsCompleted))
         {
             _pollTask = PollAsync(_pollCancellation.Token);
         }
@@ -189,7 +266,7 @@ else
 
             var interval = PollingCadence.Select(
                 current.Turn.ActiveSeatId == current.Viewer.SeatId,
-                current.PendingChoice?.SeatId == current.Viewer.SeatId,
+                current.PendingChoice?.SeatId == current.Viewer.SeatId || current.Draft?.PickingSeatId == current.Viewer.SeatId,
                 backgrounded: false,
                 failures);
 
@@ -202,11 +279,17 @@ else
                 }
 
                 var refreshed = await Sessions.ReconnectAsync(cancellationToken);
+                EventPage? page = null;
+                if (refreshed is not null && refreshed.Lifecycle != GameLifecycle.Lobby)
+                {
+                    page = await Sessions.GetEventsAsync(_lastSequence, cancellationToken);
+                }
                 if (refreshed is not null)
                 {
                     await InvokeAsync(() =>
                     {
                         ApplyProjection(refreshed);
+                        ApplyEvents(page);
                         failures = 0;
                         StateHasChanged();
                     });
@@ -240,10 +323,10 @@ else
 
     private static string DefaultScenario(GameMode mode) => mode switch
     {
-        GameMode.VanillaPvp => "Training Grounds",
+        GameMode.VanillaPvp => "Proving Field",
         GameMode.Coop => "Portal Watch",
         GameMode.BattleRoyale => "Last Banner",
-        _ => "Training Grounds"
+        _ => "Proving Field"
     };
 
     public async ValueTask DisposeAsync()

@@ -84,6 +84,61 @@ public sealed class GameExperienceTests : BunitContext
             ]
         };
 
+    [Fact]
+    public void Draft_projection_opens_the_draft_table_and_sends_picks_at_the_visible_version()
+    {
+        var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var api = new FakeSessionCoordinator { Reconnected = draft, Commanded = draft with { Version = 10 } };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.WaitForElement("button[data-hero='Thorgrim Shattershield']").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(9, api.CommandRequest?.Version);
+            Assert.Equal("pickHero", api.CommandRequest?.Kind);
+        });
+    }
+
+    [Fact]
+    public void A_version_conflict_tells_the_commander_to_try_again()
+    {
+        var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = draft,
+            CommandFailure = new GameApiException(System.Net.HttpStatusCode.Conflict, "versionConflict", "The game changed before this command arrived.")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-hero='Thorgrim Shattershield']").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("The battlefield changed — try again.", cut.Markup));
+    }
+
+    [Fact]
+    public void A_rejected_order_shows_the_server_reason()
+    {
+        var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = draft,
+            CommandFailure = new GameApiException(System.Net.HttpStatusCode.UnprocessableEntity, "heroTaken", "Another commander has already claimed that hero.")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-hero='Thorgrim Shattershield']").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Another commander has already claimed that hero.", cut.Markup));
+    }
+
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
         public GameProjection? Reconnected { get; init; }
