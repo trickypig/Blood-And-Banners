@@ -122,6 +122,11 @@
             }
         </div>
     </section>
+
+    @if (Projection.Viewer.CanCommand)
+    {
+        <LeaveMatchControl OnLeave="OnReturnToWarRoom" />
+    }
 </main>
 
 @code {
@@ -139,6 +144,9 @@
 
     [Parameter]
     public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
+    [Parameter]
+    public EventCallback OnReturnToWarRoom { get; set; }
 
     private DraftProjection Draft => Projection.Draft!;
 

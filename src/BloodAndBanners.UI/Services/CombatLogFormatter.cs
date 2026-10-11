@@ -7,6 +7,18 @@ public static class CombatLogFormatter
 {
     public static string? Describe(GameEvent gameEvent, GameProjection projection)
     {
+        try
+        {
+            return DescribeCore(gameEvent, projection);
+        }
+        catch (Exception error) when (error is KeyNotFoundException or InvalidOperationException or FormatException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? DescribeCore(GameEvent gameEvent, GameProjection projection)
+    {
         var payload = gameEvent.Payload;
         return gameEvent.Kind switch
         {

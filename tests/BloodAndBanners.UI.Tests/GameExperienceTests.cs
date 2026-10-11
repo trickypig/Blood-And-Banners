@@ -139,6 +139,48 @@ public sealed class GameExperienceTests : BunitContext
         cut.WaitForAssertion(() => Assert.Contains("Another commander has already claimed that hero.", cut.Markup));
     }
 
+    [Fact]
+    public async Task A_poll_that_was_in_flight_cannot_resurrect_a_game_the_player_left()
+    {
+        var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var api = new FakeSessionCoordinator { Reconnected = draft, PollGate = new TaskCompletionSource() };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        Assert.True(SpinWait.SpinUntil(() => api.PollBlocked.Task.IsCompleted, TimeSpan.FromSeconds(5)));
+
+        cut.Find("button[data-action=leaveMatch]").Click();
+        cut.Find("button[data-action=confirmLeave]").Click();
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Muster your host", cut.Markup));
+
+        api.PollGate.SetResult();
+        await Task.Delay(300);
+
+        Assert.True(api.Left);
+        Assert.DoesNotContain("Muster your host", cut.Markup);
+    }
+
+    [Fact]
+    public void A_failed_event_fetch_does_not_hide_a_successful_order()
+    {
+        var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = draft,
+            Commanded = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue") with { Version = 10 },
+            EventsFailure = new HttpRequestException("events down")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-hero='Thorgrim Shattershield']").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Waiting for the opposing commander", cut.Markup));
+        Assert.DoesNotContain("could not be delivered", cut.Markup);
+    }
+
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
         public GameProjection? Reconnected { get; init; }
@@ -152,6 +194,10 @@ public sealed class GameExperienceTests : BunitContext
         public (long Version, string Kind, object Payload)? CommandRequest { get; private set; }
         public EventPage Events { get; set; } = new([], 0);
         public bool Left { get; private set; }
+        public Exception? EventsFailure { get; init; }
+        public TaskCompletionSource? PollGate { get; init; }
+        public TaskCompletionSource PollBlocked { get; } = new();
+        private int _reconnects;
 
         public Task<GameProjection> SubmitCommandAsync(long expectedVersion, string kind, object payload, CancellationToken cancellationToken = default)
         {
@@ -164,7 +210,7 @@ public sealed class GameExperienceTests : BunitContext
         }
 
         public Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Events);
+            EventsFailure is not null ? Task.FromException<EventPage>(EventsFailure) : Task.FromResult(Events);
 
         public Task LeaveAsync()
         {
@@ -181,8 +227,15 @@ public sealed class GameExperienceTests : BunitContext
             return Task.FromResult(Joined ?? throw new InvalidOperationException());
         }
 
-        public Task<GameProjection?> ReconnectAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(Reconnected);
+        public async Task<GameProjection?> ReconnectAsync(CancellationToken cancellationToken = default)
+        {
+            if (PollGate is not null && Interlocked.Increment(ref _reconnects) > 1)
+            {
+                PollBlocked.TrySetResult();
+                await PollGate.Task;
+            }
+            return Reconnected;
+        }
 
         public Task<GameProjection> SetReadyAsync(long expectedVersion, bool ready, CancellationToken cancellationToken = default)
         {

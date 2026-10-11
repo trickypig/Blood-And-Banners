@@ -111,6 +111,11 @@
             </section>
         }
 
+        @if (Projection.Viewer.CanCommand && Projection.Result is null)
+        {
+            <LeaveMatchControl OnLeave="OnReturnToWarRoom" />
+        }
+
         <section class="rosters" aria-label="Armies">
             @foreach (var seat in Projection.Memberships)
             {
@@ -135,7 +140,7 @@
     {
         <section class="match-end" role="dialog" aria-modal="true" aria-labelledby="match-end-title" data-testid="match-end">
             <h2 id="match-end-title">@ResultTitle(result)</h2>
-            <p>Every enemy unit has fallen.</p>
+            <p>@ResultSummary(result)</p>
             @if (Projection.Viewer.CanCommand)
             {
                 <button type="button" data-action="returnToWarRoom" @onclick="() => OnReturnToWarRoom.InvokeAsync()">Return to war room</button>
@@ -195,7 +200,8 @@
         .Select(HexKey)
         .FirstOrDefault();
 
-    private IReadOnlyList<string> FocusHexes => Events.Count == 0 ? [] : Events[^1].FocusHexes;
+    private IReadOnlyList<string> FocusHexes =>
+        Events.Reverse().FirstOrDefault(gameEvent => gameEvent.FocusHexes.Count > 0)?.FocusHexes ?? [];
 
     private string TurnStatus
     {
@@ -212,7 +218,7 @@
             }
             if (IsMyTurn)
             {
-                return $"{round} · Your turn · {Projection.Turn.ActivationsRemaining} activations";
+                return $"{round} · Your turn · {Projection.Turn.ActivationsRemaining} {(Projection.Turn.ActivationsRemaining == 1 ? "activation" : "activations")}";
             }
             return Projection.Viewer.CanCommand ? $"{round} · Opponent's turn" : $"{round} · {SeatName(Projection.Turn.ActiveSeatId)}'s turn";
         }
@@ -306,6 +312,11 @@
         result.WinningSeatId == Projection.Viewer.SeatId
             ? "Victory"
             : Projection.Viewer.Role == "player" ? "Defeat" : $"{SeatName(result.WinningSeatId ?? string.Empty)} wins";
+
+    private string ResultSummary(GameResult result) =>
+        !Projection.Viewer.CanCommand
+            ? "The losing army has fallen."
+            : result.WinningSeatId == Projection.Viewer.SeatId ? "Every enemy unit has fallen." : "Your army has fallen.";
 
     private string? TokenStyle(UnitProjection? unit) =>
         CatalogImages.Resolve(ImageBaseUrl, unit?.Image) is { } image ? $"background-image:url('{image}')" : null;

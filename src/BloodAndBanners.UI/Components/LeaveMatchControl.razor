@@ -1,0 +1,26 @@
+@namespace BloodAndBanners.UI.Components
+
+<div class="leave-match">
+    @if (_confirming)
+    {
+        <button type="button" class="leave-confirm" data-action="confirmLeave" @onclick="Leave">Confirm leave</button>
+        <button type="button" data-action="stayInMatch" @onclick="() => _confirming = false">Stay</button>
+    }
+    else
+    {
+        <button type="button" data-action="leaveMatch" @onclick="() => _confirming = true">Leave match</button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnLeave { get; set; }
+
+    private bool _confirming;
+
+    private async Task Leave()
+    {
+        _confirming = false;
+        await OnLeave.InvokeAsync();
+    }
+}

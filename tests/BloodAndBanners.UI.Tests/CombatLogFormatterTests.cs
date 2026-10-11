@@ -33,6 +33,17 @@ public sealed class CombatLogFormatterTests
         Assert.Null(CombatLogFormatter.Describe(Event("readinessChanged", """{"ready":true}"""), projection));
     }
 
+    [Fact]
+    public void Malformed_payloads_yield_no_line_instead_of_throwing()
+    {
+        var projection = BattleFixtures.Projection();
+
+        Assert.Null(CombatLogFormatter.Describe(Event("attackResolved", "{\"unitId\":\"s1-u3\"}"), projection));
+        Assert.Null(CombatLogFormatter.Describe(Event("unitMoved", "{}"), projection));
+        Assert.Null(CombatLogFormatter.Describe(Event("turnEnded", "{\"round\":\"x\",\"nextSeatId\":\"seat-red\"}"), projection));
+        Assert.Null(CombatLogFormatter.Describe(new GameEvent(1, 1, "unitDefeated", null, [], default, DateTimeOffset.UnixEpoch), projection));
+    }
+
     private static GameEvent Event(string kind, string payload) =>
         new(1, 1, kind, null, [], JsonSerializer.Deserialize<JsonElement>(payload), DateTimeOffset.UnixEpoch);
 }

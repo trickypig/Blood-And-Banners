@@ -84,6 +84,66 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("button[data-action=returnToWarRoom]").Click();
         Assert.True(returned);
     }
+
+    [Fact]
+    public void Leaving_a_match_takes_two_clicks_and_is_only_offered_to_players()
+    {
+        var left = false;
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection())
+            .Add(component => component.OnReturnToWarRoom, () => left = true));
+
+        cut.Find("button[data-action=leaveMatch]").Click();
+        Assert.False(left);
+        cut.Find("button[data-action=stayInMatch]").Click();
+        Assert.Empty(cut.FindAll("button[data-action=confirmLeave]"));
+        cut.Find("button[data-action=leaveMatch]").Click();
+        cut.Find("button[data-action=confirmLeave]").Click();
+        Assert.True(left);
+
+        var spectating = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection() with
+            {
+                Viewer = new ViewerPermissions("spectator", null, false, false),
+                LegalActions = []
+            }));
+        Assert.Empty(spectating.FindAll("[data-action]"));
+    }
+
+    [Fact]
+    public void The_loser_is_told_their_army_has_fallen()
+    {
+        var finished = BattleFixtures.Projection() with
+        {
+            LegalActions = [],
+            Result = new GameResult("annihilation", "seat-blue", new Dictionary<string, int>())
+        };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, finished));
+
+        Assert.Equal("Defeat", cut.Find("#match-end-title").TextContent);
+        Assert.Contains("Your army has fallen.", cut.Find("[data-testid=match-end]").TextContent);
+        Assert.Empty(cut.FindAll("button[data-action=leaveMatch]"));
+    }
+
+    [Fact]
+    public void The_focus_pulse_survives_an_automatic_end_of_turn_and_activations_are_pluralised()
+    {
+        var events = new[]
+        {
+            new GameEvent(1, 5, "attackResolved", null, ["3,4"], JsonSerializer.Deserialize<JsonElement>("{}"), DateTimeOffset.UnixEpoch),
+            new GameEvent(2, 5, "turnEnded", null, [], JsonSerializer.Deserialize<JsonElement>("{}"), DateTimeOffset.UnixEpoch),
+        };
+        var projection = BattleFixtures.Projection();
+
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection with { Turn = new TurnProjection(2, "seat-red", 1) })
+            .Add(component => component.Events, events));
+
+        Assert.Contains("focus", cut.Find("[data-hex='3,4']").ClassList);
+        Assert.Contains("1 activation", cut.Find("[data-testid=turn-status]").TextContent);
+        Assert.DoesNotContain("1 activations", cut.Find("[data-testid=turn-status]").TextContent);
+    }
 }
 
 internal static class BattleFixtures

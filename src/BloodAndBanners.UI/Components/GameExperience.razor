@@ -32,7 +32,8 @@ else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
                 IsBusy="_isBusy"
                 ErrorMessage="@_error"
                 ImageBaseUrl="@ImageBaseUrl"
-                OnCommand="SubmitGameCommand" />
+                OnCommand="SubmitGameCommand"
+                OnReturnToWarRoom="ReturnToWarRoom" />
 }
 else
 {
@@ -62,6 +63,7 @@ else
     private GameProjection? _game;
     private readonly List<GameEvent> _events = [];
     private long _lastSequence;
+    private int _generation;
     private Task? _pollTask;
     private bool _isBusy;
     private string? _status;
@@ -94,6 +96,7 @@ else
 
     private Task CreateGame(GameMode mode) => RunCommand(async () =>
     {
+        _generation++;
         ApplyProjection(await Sessions.CreateGuestGameAsync(
             DeviceId(),
             mode,
@@ -105,6 +108,7 @@ else
 
     private Task JoinGame(string gameId) => RunCommand(async () =>
     {
+        _generation++;
         ApplyProjection(await Sessions.JoinGuestGameAsync(
             DeviceId(),
             gameId,
@@ -142,12 +146,29 @@ else
         }
 
         var expectedVersion = _game.Version;
+        var generation = _generation;
         _isBusy = true;
         _error = null;
         try
         {
-            ApplyProjection(await Sessions.SubmitCommandAsync(expectedVersion, request.Kind, request.Payload, _pollCancellation.Token));
-            ApplyEvents(await Sessions.GetEventsAsync(_lastSequence, _pollCancellation.Token));
+            var updated = await Sessions.SubmitCommandAsync(expectedVersion, request.Kind, request.Payload, _pollCancellation.Token);
+            if (generation != _generation)
+            {
+                return;
+            }
+            ApplyProjection(updated);
+            try
+            {
+                var page = await Sessions.GetEventsAsync(_lastSequence, _pollCancellation.Token);
+                if (generation == _generation)
+                {
+                    ApplyEvents(page);
+                }
+            }
+            catch (Exception) when (!_pollCancellation.IsCancellationRequested)
+            {
+                // The log catches up on the next poll.
+            }
         }
         catch (OperationCanceledException) when (_pollCancellation.IsCancellationRequested)
         {
@@ -175,7 +196,9 @@ else
 
     private async Task ReturnToWarRoom()
     {
+        _generation++;
         await Sessions.LeaveAsync();
+        _generation++;
         _game = null;
         _events.Clear();
         _lastSequence = 0;
@@ -269,6 +292,7 @@ else
             {
                 return;
             }
+            var generation = _generation;
 
             var interval = PollingCadence.Select(
                 current.Turn.ActiveSeatId == current.Viewer.SeatId,
@@ -288,12 +312,23 @@ else
                 EventPage? page = null;
                 if (refreshed is not null && refreshed.Lifecycle != GameLifecycle.Lobby)
                 {
-                    page = await Sessions.GetEventsAsync(_lastSequence, cancellationToken);
+                    try
+                    {
+                        page = await Sessions.GetEventsAsync(_lastSequence, cancellationToken);
+                    }
+                    catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // The projection still applies; the log catches up on the next poll.
+                    }
                 }
                 if (refreshed is not null)
                 {
                     await InvokeAsync(() =>
                     {
+                        if (generation != _generation || (_game is not null && refreshed.GameId != _game.GameId))
+                        {
+                            return;
+                        }
                         ApplyProjection(refreshed);
                         ApplyEvents(page);
                         failures = 0;
@@ -319,7 +354,13 @@ else
 
     private void ApplyProjection(GameProjection projection)
     {
-        if (_game is null || projection.Version >= _game.Version)
+        if (_game is not null && _game.GameId != projection.GameId)
+        {
+            _events.Clear();
+            _lastSequence = 0;
+            _game = projection;
+        }
+        else if (_game is null || projection.Version >= _game.Version)
         {
             _game = projection;
         }

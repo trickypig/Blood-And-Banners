@@ -33,7 +33,7 @@ public sealed class DraftTableTests : BunitContext
             .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-blue", picking: "seat-red") with { LegalActions = [] }));
 
         Assert.Equal("Waiting for the opposing commander", cut.Find("[data-testid=draft-status]").TextContent.Trim());
-        Assert.All(cut.FindAll("button[data-action]"), button => Assert.True(button.HasAttribute("disabled")));
+        Assert.All(cut.FindAll("button[data-action]:not(.leave-match button)"), button => Assert.True(button.HasAttribute("disabled")));
     }
 
     [Fact]
@@ -50,6 +50,20 @@ public sealed class DraftTableTests : BunitContext
         Assert.Equal("seat-blue", JsonSerializer.SerializeToElement(sent[0].Payload).GetProperty("seatId").GetString());
         Assert.Equal(2, JsonSerializer.SerializeToElement(sent[1].Payload).GetProperty("start").GetInt32());
         Assert.Contains("won initiative", cut.Find("[data-testid=initiative]").TextContent);
+    }
+
+    [Fact]
+    public void Players_can_leave_the_draft_after_confirming()
+    {
+        var left = false;
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue"))
+            .Add(component => component.OnReturnToWarRoom, () => left = true));
+
+        cut.Find("button[data-action=leaveMatch]").Click();
+        Assert.False(left);
+        cut.Find("button[data-action=confirmLeave]").Click();
+        Assert.True(left);
     }
 
     [Fact]
