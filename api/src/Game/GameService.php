@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Game;
 
+use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\SecureRandomSource;
+use BloodAndBanners\Rules\Vanilla\Board;
+use BloodAndBanners\Rules\Vanilla\Catalog;
+use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Turn;
 use BloodAndBanners\Scenario\ScenarioService;
 use DomainException;
 use PDO;
@@ -11,10 +17,18 @@ use Throwable;
 final class GameService
 {
     private readonly ScenarioService $scenarios;
+    private readonly RandomSource $random;
+    private readonly MatchEngine $engine;
 
-    public function __construct(private readonly PDO $connection, ?ScenarioService $scenarios = null)
-    {
+    public function __construct(
+        private readonly PDO $connection,
+        ?ScenarioService $scenarios = null,
+        ?RandomSource $random = null,
+        ?MatchEngine $engine = null,
+    ) {
         $this->scenarios = $scenarios ?? new ScenarioService($connection);
+        $this->random = $random ?? new SecureRandomSource();
+        $this->engine = $engine ?? new MatchEngine(new Catalog());
     }
 
     public function createGame(string $hostIdentityId, string $mode, string $scenarioName): array
@@ -108,12 +122,28 @@ final class GameService
             if (count($memberships) < $minimum || $readyCount !== count($memberships)) {
                 throw new GameServiceException('playersNotReady', 'All required players must be ready.', (int)$game['version']);
             }
+            if ($game['mode'] !== 'vanillaPvp') {
+                throw new GameServiceException('modeNotPlayable', 'Only Vanilla duels can be played in this version.', (int)$game['version']);
+            }
+            try {
+                $started = $this->engine->start(
+                    array_column($memberships, 'id'),
+                    Board::fromScenario($this->scenarioDefinition($game)),
+                    $this->random
+                );
+            } catch (GameServiceException $error) {
+                throw new GameServiceException($error->errorCode, $error->getMessage(), (int)$game['version']);
+            }
             $version = (int)$game['version'] + 1;
             $this->connection->prepare(
                 'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
             )->execute(['lifecycle' => 'draft', 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+            $this->saveState($gameId, $version, $started['state']);
             $projection = $this->projection($gameId, $identityId);
             $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => 'draft']);
+            foreach ($started['events'] as $event) {
+                $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
+            }
             $this->writeSnapshot($gameId, $version, $projection);
             $this->connection->commit();
             return $projection;
@@ -133,8 +163,8 @@ final class GameService
 
         $this->connection->beginTransaction();
         try {
-            $this->requireSeatCredential($gameId, $identityId, $seatToken);
-            $receipt = $this->connection->prepare(
+            $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
+            $receipt =$this->connection->prepare(
                 'SELECT response_json FROM command_receipts
                  WHERE game_id = :game AND command_id = :command AND identity_id = :identity'
             );
@@ -155,20 +185,23 @@ final class GameService
                     'Refresh the game projection and retry a still-legal action with a new command ID.'
                 );
             }
-            if ($command['kind'] !== 'setReady' || !is_bool($command['payload']['ready'] ?? null)) {
-                throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
-            }
-            if ($game['lifecycle'] !== 'lobby') {
-                throw new GameServiceException('illegalLifecycle', 'Readiness can only change in the lobby.', $currentVersion);
-            }
-
-            $this->connection->prepare(
-                'UPDATE game_memberships SET ready = :ready WHERE game_id = :game AND identity_id = :identity'
-            )->execute(['ready' => $command['payload']['ready'] ? 1 : 0, 'game' => $gameId, 'identity' => $identityId]);
             $newVersion = $currentVersion + 1;
-            $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
-                ->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId]);
-            $this->appendEvent($gameId, $newVersion, 'readinessChanged', $identityId, ['ready' => $command['payload']['ready']]);
+            if ($command['kind'] === 'setReady') {
+                if (!is_bool($command['payload']['ready'] ?? null)) {
+                    throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
+                }
+                if ($game['lifecycle'] !== 'lobby') {
+                    throw new GameServiceException('illegalLifecycle', 'Readiness can only change in the lobby.', $currentVersion);
+                }
+                $this->connection->prepare(
+                    'UPDATE game_memberships SET ready = :ready WHERE game_id = :game AND identity_id = :identity'
+                )->execute(['ready' => $command['payload']['ready'] ? 1 : 0, 'game' => $gameId, 'identity' => $identityId]);
+                $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
+                    ->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId]);
+                $this->appendEvent($gameId, $newVersion, 'readinessChanged', $identityId, ['ready' => $command['payload']['ready']]);
+            } else {
+                $this->applyMatchCommand($game, (string)$membership['id'], $identityId, $command, $newVersion);
+            }
             $response = $this->projection($gameId, $identityId);
             $this->writeSnapshot($gameId, $newVersion, $response);
             $this->connection->prepare(
@@ -183,6 +216,33 @@ final class GameService
         } catch (Throwable $error) {
             $this->rollback();
             throw $error;
+        }
+    }
+
+    private function applyMatchCommand(array $game, string $seatId, string $identityId, array $command, int $newVersion): void
+    {
+        $currentVersion = (int)$game['version'];
+        $state = $this->loadState($game['id']);
+        if ($state === null || !in_array($game['lifecycle'], ['draft', 'active', 'completed'], true)) {
+            throw new GameServiceException('illegalLifecycle', 'This command is not legal in the current game phase.', $currentVersion);
+        }
+        try {
+            $result = $this->engine->apply(
+                $state,
+                $seatId,
+                (string)$command['kind'],
+                is_array($command['payload']) ? $command['payload'] : [],
+                $this->random
+            );
+        } catch (GameServiceException $error) {
+            throw new GameServiceException($error->errorCode, $error->getMessage(), $currentVersion);
+        }
+        $this->connection->prepare(
+            'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
+        )->execute(['lifecycle' => $result['state']['phase'], 'version' => $newVersion, 'updated' => self::now(), 'id' => $game['id']]);
+        $this->saveState($game['id'], $newVersion, $result['state']);
+        foreach ($result['events'] as $event) {
+            $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
         }
     }
 
@@ -372,27 +432,9 @@ final class GameService
             throw new GameServiceException('spectatorLinkInvalid', 'This spectator link is invalid or has been revoked.');
         }
         $game = $this->gameRow($gameId);
-        $board = $this->boardProjection($game);
-        return [
-            'gameId' => $gameId,
-            'version' => (int)$game['version'],
-            'lifecycle' => $game['lifecycle'],
-            'mode' => $game['mode'],
-            'scenarioName' => $game['scenario_name'],
-            'viewer' => ['role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false],
-            'board' => $board,
-            'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
-            'pendingChoice' => null,
-            'memberships' => array_map(static fn(array $seat): array => [
-                'seatId' => $seat['id'],
-                'seatIndex' => (int)$seat['seat_index'],
-                'ready' => (bool)$seat['ready'],
-                'isHost' => (bool)$seat['is_host'],
-            ], $this->memberships($gameId)),
-            'legalActions' => [],
-            'scores' => [],
-            'result' => null,
-        ];
+        return $this->buildProjection($game, $this->memberships($gameId), [
+            'role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false,
+        ]);
     }
 
     public function revokeSpectatorLink(string $gameId, string $identityId, string $seatToken, string $linkId): void
@@ -411,58 +453,112 @@ final class GameService
     private function projection(string $gameId, string $identityId): array
     {
         $game = $this->gameRow($gameId);
-        $board = $this->boardProjection($game);
         $memberships = $this->memberships($gameId);
         $viewerSeat = null;
-        $scores = [];
         foreach ($memberships as $membership) {
-            $scores[$membership['id']] = 0;
             if ($membership['identity_id'] === $identityId) {
                 $viewerSeat = $membership;
             }
         }
+        return $this->buildProjection($game, $memberships, [
+            'role' => 'player',
+            'seatId' => $viewerSeat['id'] ?? null,
+            'isHost' => $game['host_identity_id'] === $identityId,
+            'canCommand' => true,
+        ]);
+    }
+
+    private function buildProjection(array $game, array $memberships, array $viewer): array
+    {
+        $state = $this->loadState($game['id']);
+        $scores = [];
+        foreach ($memberships as $membership) {
+            $scores[$membership['id']] = 0;
+        }
+        $legalActions = match (true) {
+            $viewer['role'] !== 'player' => [],
+            $game['lifecycle'] === 'lobby' => [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]],
+            $state !== null => $this->engine->legalActions($state, $viewer['seatId']),
+            default => [],
+        };
         return [
-            'gameId' => $gameId,
+            'gameId' => $game['id'],
             'version' => (int)$game['version'],
             'lifecycle' => $game['lifecycle'],
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
-            'viewer' => [
-                'role' => 'player',
-                'seatId' => $viewerSeat['id'] ?? null,
-                'isHost' => $game['host_identity_id'] === $identityId,
-                'canCommand' => true,
+            'viewer' => $viewer,
+            'board' => $this->boardProjection($game, $state),
+            'turn' => [
+                'round' => $state['turn']['round'] ?? 0,
+                'activeSeatId' => $state['turn']['activeSeatId'] ?? null,
+                'activationsRemaining' => $state === null ? 0 : Turn::activationsRemaining($state),
+                'activeUnitId' => $state['turn']['activeUnitId'] ?? null,
             ],
-            'board' => $board,
-            'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
             'pendingChoice' => null,
-            'legalActions' => $game['lifecycle'] === 'lobby'
-                ? [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]]
-                : [],
+            'legalActions' => $legalActions,
             'scores' => $scores,
-            'result' => null,
+            'result' => ($state['result'] ?? null) === null ? null : $state['result'] + ['finalScores' => $scores],
             'memberships' => array_map(static fn(array $seat): array => [
                 'seatId' => $seat['id'],
                 'seatIndex' => (int)$seat['seat_index'],
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
             ], $memberships),
+            'draft' => $state !== null && $state['phase'] === 'draft' ? $this->draftProjection($state) : null,
+            'units' => $state === null ? [] : array_values(array_map(static fn(array $unit): array => [
+                'unitId' => $unit['unitId'],
+                'seatId' => $unit['seatId'],
+                'isHero' => $unit['isHero'],
+                'name' => $unit['name'],
+                'image' => $unit['image'],
+                'move' => $unit['move'],
+                'range' => $unit['range'],
+                'power' => $unit['power'],
+                'defense' => $unit['defense'],
+                'hp' => $unit['hp'],
+                'wounds' => $unit['wounds'],
+                'hex' => $unit['hex'],
+                'activatedThisTurn' => in_array($unit['unitId'], $state['turn']['activated'], true),
+            ], $state['units'])),
         ];
     }
 
-    private function boardProjection(array $game): array
+    private function draftProjection(array $state): array
     {
-        $revisionId = (string)($game['scenario_revision_id'] ?? '');
-        if ($revisionId === '') {
-            $scenario = $this->scenarios->resolveBuiltInRevision($game['scenario_name'], $game['mode']);
-            $revisionId = $scenario['revisionId'];
-            $this->connection->prepare('UPDATE games SET scenario_revision_id = :revision WHERE id = :game')
-                ->execute(['revision' => $revisionId, 'game' => $game['id']]);
-            $definition = $scenario['definition'];
-        } else {
-            $definition = $this->scenarios->getRevision($revisionId);
-        }
+        $draft = $state['draft'];
+        $takenBy = static function (array $claims, string $name): ?string {
+            $seat = array_search($name, $claims, true);
+            return $seat === false ? null : (string)$seat;
+        };
+        $catalog = $this->engine->catalog();
+        return [
+            'initiativeRolls' => $state['initiative']['rolls'],
+            'pickingSeatId' => $draft['pickingSeatId'],
+            'firstSeatId' => $draft['firstSeatId'],
+            'startBySeat' => $draft['startBySeat'],
+            'heroBySeat' => $draft['heroBySeat'],
+            'armyBySeat' => $draft['armyBySeat'],
+            'availableHeroes' => array_map(
+                static fn(array $hero): array => $hero + ['takenBySeatId' => $takenBy($draft['heroBySeat'], $hero['name'])],
+                $catalog->heroes()
+            ),
+            'availableArmies' => array_map(
+                static fn(array $army): array => $army + ['takenBySeatId' => $takenBy($draft['armyBySeat'], $army['name'])],
+                $catalog->armies()
+            ),
+        ];
+    }
 
+    private function boardProjection(array $game, ?array $state): array
+    {
+        $definition = $this->scenarioDefinition($game);
+        $occupants = [];
+        foreach ($state['units'] ?? [] as $unit) {
+            if ($unit['hex'] !== null) {
+                $occupants[$unit['hex']] = $unit['unitId'];
+            }
+        }
         return [
             'columns' => (int)$definition['map']['columns'],
             'rows' => (int)$definition['map']['rows'],
@@ -473,9 +569,23 @@ final class GameService
                 'terrain' => (string)$hex['terrain'],
                 'elevation' => (int)$hex['elevation'],
                 'sightBlocker' => (bool)($hex['sightBlocker'] ?? false),
-                'occupantId' => isset($hex['piece']) ? (string)$hex['piece'] : null,
+                'occupantId' => $state !== null
+                    ? ($occupants["{$hex['q']},{$hex['r']}"] ?? null)
+                    : (isset($hex['piece']) ? (string)$hex['piece'] : null),
             ], $definition['map']['hexes']),
         ];
+    }
+
+    private function scenarioDefinition(array $game): array
+    {
+        $revisionId = (string)($game['scenario_revision_id'] ?? '');
+        if ($revisionId !== '') {
+            return $this->scenarios->getRevision($revisionId);
+        }
+        $scenario = $this->scenarios->resolveBuiltInRevision($game['scenario_name'], $game['mode']);
+        $this->connection->prepare('UPDATE games SET scenario_revision_id = :revision WHERE id = :game')
+            ->execute(['revision' => $scenario['revisionId'], 'game' => $game['id']]);
+        return $scenario['definition'];
     }
 
     private function insertMembership(string $gameId, string $identityId, int $seatIndex, bool $isHost, string $seatToken): void
@@ -535,7 +645,7 @@ final class GameService
         return $game;
     }
 
-    private function appendEvent(string $gameId, int $version, string $kind, string $actor, array $payload): void
+    private function appendEvent(string $gameId, int $version, string $kind, string $actor, array $payload, array $focusHexes = []): void
     {
         $sequence = (int)$this->scalar(
             'SELECT COALESCE(MAX(sequence), 0) + 1 FROM game_events WHERE game_id = :game',
@@ -546,8 +656,9 @@ final class GameService
              (game_id, sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at)
              VALUES (:game, :sequence, :version, :kind, :actor, :focus, :payload, :created)'
         )->execute([
-            'game' => $gameId, 'sequence' => $sequence, 'version' => $version, 'kind' => $kind,
-            'actor' => $actor, 'focus' => '[]', 'payload' => json_encode($payload, JSON_THROW_ON_ERROR), 'created' => self::now(),
+            'game' => $gameId, 'sequence' => $sequence, 'version' => $version, 'kind' => $kind, 'actor' => $actor,
+            'focus' => json_encode(array_values($focusHexes), JSON_THROW_ON_ERROR),
+            'payload' => json_encode($payload, JSON_THROW_ON_ERROR), 'created' => self::now(),
         ]);
     }
 
@@ -561,6 +672,25 @@ final class GameService
         $this->connection->prepare($sql)->execute([
             'game' => $gameId, 'version' => $version,
             'state' => json_encode($projection, JSON_THROW_ON_ERROR), 'updated' => self::now(),
+        ]);
+    }
+
+    private function loadState(string $gameId): ?array
+    {
+        $json = $this->scalar('SELECT state_json FROM game_states WHERE game_id = :game', ['game' => $gameId]);
+        return $json === false ? null : json_decode((string)$json, true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    private function saveState(string $gameId, int $version, array $state): void
+    {
+        $sql = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+            ? 'INSERT INTO game_states (game_id, version, state_json, updated_at) VALUES (:game, :version, :state, :updated)
+               ON DUPLICATE KEY UPDATE version = VALUES(version), state_json = VALUES(state_json), updated_at = VALUES(updated_at)'
+            : 'INSERT INTO game_states (game_id, version, state_json, updated_at) VALUES (:game, :version, :state, :updated)
+               ON CONFLICT(game_id) DO UPDATE SET version = excluded.version, state_json = excluded.state_json, updated_at = excluded.updated_at';
+        $this->connection->prepare($sql)->execute([
+            'game' => $gameId, 'version' => $version,
+            'state' => json_encode($state, JSON_THROW_ON_ERROR), 'updated' => self::now(),
         ]);
     }
 

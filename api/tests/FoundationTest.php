@@ -68,7 +68,7 @@ function foundation_tests(): array
             [$db, $auth, $games] = test_services_with_games();
             $host = $auth->createGuest('host-device');
             $rival = $auth->createGuest('rival-device');
-            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Proving Field');
             $joined = $games->joinGame($created['gameId'], $rival['identityId']);
             $games->setReady($created['gameId'], $host['identityId'], $created['seatToken'], true);
             $games->setReady($created['gameId'], $rival['identityId'], $joined['seatToken'], true);
@@ -103,7 +103,7 @@ function foundation_tests(): array
             [$db, $auth, $games] = test_services_with_games();
             $host = $auth->createGuest('rollback-host');
             $rival = $auth->createGuest('rollback-rival');
-            $game = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $game = $games->createGame($host['identityId'], 'vanillaPvp', 'Proving Field');
             $joined = $games->joinGame($game['gameId'], $rival['identityId']);
             $games->setReady($game['gameId'], $host['identityId'], $game['seatToken'], true);
             $games->setReady($game['gameId'], $rival['identityId'], $joined['seatToken'], true);
@@ -316,11 +316,11 @@ function foundation_tests(): array
             $host = $auth->createGuest('scenario-freeze-host');
             $rival = $auth->createGuest('scenario-freeze-rival');
 
-            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Proving Field');
             $revisionId = $db->query('SELECT scenario_revision_id FROM games LIMIT 1')->fetchColumn();
             expect_true(is_string($revisionId) && $revisionId !== '', 'game should reference a concrete scenario revision');
-            expect_same(3, $created['board']['columns'], 'selected scenario columns should be projected in the lobby');
-            expect_same(7, count($created['board']['hexes']), 'selected scenario hexes should be projected in the lobby');
+            expect_same(11, $created['board']['columns'], 'selected scenario columns should be projected in the lobby');
+            expect_same(99, count($created['board']['hexes']), 'selected scenario hexes should be projected in the lobby');
 
             $joined = $games->joinGame($created['gameId'], $rival['identityId']);
             $games->setReady($created['gameId'], $host['identityId'], $created['seatToken'], true);
@@ -329,7 +329,7 @@ function foundation_tests(): array
             $startedRevisionId = $db->query('SELECT scenario_revision_id FROM games LIMIT 1')->fetchColumn();
 
             expect_same($revisionId, $startedRevisionId, 'starting must retain the revision selected for the match');
-            expect_same(7, count($started['board']['hexes']), 'started match should use the frozen scenario board');
+            expect_same(99, count($started['board']['hexes']), 'started match should use the frozen scenario board');
         },
 
         'game creation rejects unknown and mode incompatible scenarios' => static function (): void {

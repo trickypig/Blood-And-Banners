@@ -281,6 +281,52 @@ function api_tests(): array
             expect_same(0, (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn(), 'account insert must roll back');
             expect_same(null, $db->query('SELECT converted_user_id FROM guest_identities LIMIT 1')->fetchColumn(), 'guest must remain convertible');
         },
+
+        'two commanders can play a vanilla duel to annihilation over HTTP' => static function (): void {
+            [$db, $auth] = test_services();
+            $app = new Application($auth, new GameService($db, null, new ScriptedRandom(), new \BloodAndBanners\Rules\Vanilla\MatchEngine(test_catalog())));
+            $headers = [];
+            foreach (['host', 'rival'] as $who) {
+                $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => "duel-{$who}"]));
+                $headers[$who] = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
+            }
+            $created = $app->handle(new Request('POST', '/api/v1/games', $headers['host'], ['mode' => 'vanillaPvp', 'scenarioName' => 'Proving Field']));
+            $gameId = $created->body['game']['gameId'];
+            $headers['host']['x-seat-token'] = $created->body['seatToken'];
+            $joined = $app->handle(new Request('POST', "/api/v1/games/{$gameId}/join", $headers['rival']));
+            $headers['rival']['x-seat-token'] = $joined->body['seatToken'];
+            $seats = ['host' => $created->body['game']['viewer']['seatId'], 'rival' => $joined->body['game']['viewer']['seatId']];
+
+            $send = static function (string $who, string $kind, array $payload) use ($app, $headers, $gameId): array {
+                $view = $app->handle(new Request('GET', "/api/v1/games/{$gameId}", $headers[$who]))->body;
+                $response = $app->handle(new Request('POST', "/api/v1/games/{$gameId}/commands", $headers[$who], [
+                    'commandId' => bin2hex(random_bytes(8)), 'expectedVersion' => $view['version'], 'kind' => $kind, 'payload' => $payload,
+                ]));
+                expect_same(200, $response->status, "{$kind} by {$who} should succeed: " . json_encode($response->body));
+                return $response->body;
+            };
+            $send('host', 'setReady', ['ready' => true]);
+            $send('rival', 'setReady', ['ready' => true]);
+            $started = $app->handle(new Request('POST', "/api/v1/games/{$gameId}/start", $headers['host']));
+            expect_same(200, $started->status, 'the host starts the draft');
+
+            $match = ['host' => ['seat' => $seats['host']]];
+            foreach (vanilla_draft_picks($match) as [$who, $kind, $payload]) {
+                $state = $send($who, $kind, $payload);
+            }
+            for ($commands = 0; $commands < 600 && $state['lifecycle'] !== 'completed'; $commands++) {
+                $who = $state['turn']['activeSeatId'] === $seats['host'] ? 'host' : 'rival';
+                $view = $app->handle(new Request('GET', "/api/v1/games/{$gameId}", $headers[$who]))->body;
+                [$kind, $payload] = vanilla_bot_choice($view);
+                $state = $send($who, $kind, $payload);
+            }
+
+            expect_same('completed', $state['lifecycle'], 'the scripted duel should finish');
+            expect_same('annihilation', $state['result']['reason'], 'the duel ends by annihilation');
+            expect_true(in_array($state['result']['winningSeatId'], $seats, true), 'a seated commander wins');
+            $events = $app->handle(new Request('GET', "/api/v1/games/{$gameId}/events", $headers['host'], query: ['after' => '0']))->body['events'];
+            expect_true(in_array('attackResolved', array_column($events, 'kind'), true), 'attacks are logged');
+        },
     ];
 }
 
@@ -295,4 +341,37 @@ function test_application_with_db(): array
     (new Migrator($db))->migrate();
     $auth = new AuthService($db, 'test-signing-key-with-at-least-32-bytes');
     return [new Application($auth, new GameService($db)), $db];
+}
+
+function vanilla_bot_choice(array $view): array
+{
+    $unitsByHex = [];
+    $enemyHexes = [];
+    foreach ($view['units'] as $unit) {
+        if ($unit['hex'] === null) {
+            continue;
+        }
+        $unitsByHex[$unit['hex']] = $unit['unitId'];
+        if ($unit['seatId'] !== $view['viewer']['seatId']) {
+            $enemyHexes[] = $unit['hex'];
+        }
+    }
+    foreach ($view['legalActions'] as $action) {
+        if ($action['kind'] === 'attackUnit') {
+            return ['attackUnit', ['unitId' => $action['unitId'], 'targetUnitId' => $unitsByHex[$action['targetHexes'][0]]]];
+        }
+    }
+    $best = null;
+    foreach ($view['legalActions'] as $action) {
+        if ($action['kind'] !== 'moveUnit') {
+            continue;
+        }
+        foreach ($action['targetHexes'] as $hex) {
+            $distance = min(array_map(static fn(string $enemy): int => \BloodAndBanners\Rules\Vanilla\Hex::distance($hex, $enemy), $enemyHexes));
+            if ($best === null || $distance < $best[0]) {
+                $best = [$distance, $action['unitId'], $hex];
+            }
+        }
+    }
+    return $best === null ? ['endTurn', []] : ['moveUnit', ['unitId' => $best[1], 'to' => $best[2]]];
 }
