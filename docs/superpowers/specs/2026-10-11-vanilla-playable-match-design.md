@@ -48,7 +48,7 @@ Where the rulebook is silent or ambiguous, the choice below is the decision for 
 - Each seat's home is the hex with the matching `playerStart` value. The home hex itself is not used for units.
 - Units are placed hero first, then army units in catalog order.
 - The first 4 go on the walkable, unoccupied neighbours of the home hex, nearest the opponent's home first (hex distance).
-- The rest go on walkable, unoccupied hexes adjacent to an already-placed friendly unit, again nearest the opponent's home first.
+- The rest go on walkable, unoccupied hexes adjacent to an already-placed friendly unit, nearest their own home first (so the army stays clustered instead of marching up the board), then nearest the opponent's home.
 - Ties break by `q`, then `r`, so placement is deterministic.
 - Walkable means: on the board and not `sightBlocker`.
 - `startGame` rejects a scenario whose starts cannot each fit 7 units with `scenarioTooSmall`. Training Grounds therefore can no longer start a match; Proving Field becomes the Vanilla default.
@@ -64,7 +64,7 @@ Where the rulebook is silent or ambiguous, the choice below is the decision for 
 - A unit's activation begins with its first `moveUnit` or `attackUnit` and consumes one activation.
 - Within an activation the unit may move once, then attack once. Attacking without moving is allowed; moving after attacking is not. An attack ends the activation.
 - Starting a different unit ends the current activation. `endActivation` ends it explicitly.
-- The turn passes automatically when no activations remain and the active unit (if any) has no legal move or attack left. `endTurn` passes it at any time.
+- After each move, attack or `endActivation`, the turn passes automatically if the active seat has no legal move or attack left. That covers spent activations and boxed-in armies alike. `endTurn` passes it at any time.
 
 ### Movement
 
@@ -162,7 +162,7 @@ Appended to `game_events` with `focusHexes` set to the hexes involved.
 All 422 unless noted. Illegal commands never change state.
 
 - Draft: `notYourPick`, `decisionAlreadyMade`, `heroTaken`, `armyTaken`, `unknownHero`, `unknownArmy`, `invalidStart`, `invalidSeat`.
-- Battle: `notYourTurn`, `unknownUnit`, `notYourUnit`, `unitAlreadyActivated`, `noActivationsRemaining`, `heroActivationRequired` (4th non-hero while hero alive), `alreadyMoved`, `alreadyAttacked`, `hexUnreachable`, `targetOutOfRange`, `noLineOfSight`, `matchCompleted`.
+- Battle: `notYourTurn`, `unknownUnit`, `notYourUnit`, `unitAlreadyActivated`, `noActivationsRemaining`, `heroActivationRequired` (4th non-hero while hero alive), `alreadyMoved`, `unitNotActive` (`endActivation` for a unit that is not the active one), `hexUnreachable`, `targetOutOfRange`, `noLineOfSight`, `matchCompleted`.
 - Start: `scenarioTooSmall`; `modeNotPlayable` when the host starts a Co-op or Battle Royale game.
 - Unchanged: `versionConflict` (409), seat-credential errors (403), `unsupportedCommand`, `illegalLifecycle`.
 
