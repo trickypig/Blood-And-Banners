@@ -1,0 +1,35 @@
+{
+  "heroes": [
+    {"name": "Test Captain", "image": "/images/heroes/captain.png", "move": 3, "range": 1, "power": 4, "defense": 3, "hp": 6, "abilities": []},
+    {"name": "Test Marshal", "image": "/images/heroes/marshal.png", "move": 4, "range": 2, "power": 3, "defense": 3, "hp": 5, "abilities": []},
+    {"name": "Test Warden", "image": "/images/heroes/warden.png", "move": 2, "range": 1, "power": 5, "defense": 4, "hp": 7, "abilities": []}
+  ],
+  "armies": [
+    {"name": "Red Company", "color": "Red", "units": [
+      {"name": "Red Spear", "image": "/images/units/red_spear.png", "move": 2, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Red Shield", "image": "/images/units/red_shield.png", "move": 2, "range": 1, "power": 2, "defense": 4, "hp": 4, "abilities": []},
+      {"name": "Red Bow", "image": "/images/units/red_bow.png", "move": 3, "range": 5, "power": 2, "defense": 1, "hp": 3, "abilities": []},
+      {"name": "Red Rider", "image": "/images/units/red_rider.png", "move": 4, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Red Brute", "image": "/images/units/red_brute.png", "move": 2, "range": 1, "power": 4, "defense": 2, "hp": 5, "abilities": []},
+      {"name": "Red Mage", "image": "/images/units/red_mage.png", "move": 3, "range": 4, "power": 3, "defense": 1, "hp": 3, "abilities": []}
+    ]},
+    {"name": "Blue Company", "color": "Blue", "units": [
+      {"name": "Blue Spear", "image": "/images/units/blue_spear.png", "move": 2, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Blue Shield", "image": "/images/units/blue_shield.png", "move": 2, "range": 1, "power": 2, "defense": 4, "hp": 4, "abilities": []},
+      {"name": "Blue Bow", "image": "/images/units/blue_bow.png", "move": 3, "range": 5, "power": 2, "defense": 1, "hp": 3, "abilities": []},
+      {"name": "Blue Rider", "image": "/images/units/blue_rider.png", "move": 4, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Blue Brute", "image": "/images/units/blue_brute.png", "move": 2, "range": 1, "power": 4, "defense": 2, "hp": 5, "abilities": []},
+      {"name": "Blue Mage", "image": "/images/units/blue_mage.png", "move": 3, "range": 4, "power": 3, "defense": 1, "hp": 3, "abilities": []}
+    ]},
+    {"name": "Green Company", "color": "Green", "units": [
+      {"name": "Green Spear", "image": "/images/units/green_spear.png", "move": 2, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Green Shield", "image": "/images/units/green_shield.png", "move": 2, "range": 1, "power": 2, "defense": 4, "hp": 4, "abilities": []},
+      {"name": "Green Bow", "image": "/images/units/green_bow.png", "move": 3, "range": 5, "power": 2, "defense": 1, "hp": 3, "abilities": []},
+      {"name": "Green Rider", "image": "/images/units/green_rider.png", "move": 4, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Green Brute", "image": "/images/units/green_brute.png", "move": 2, "range": 1, "power": 4, "defense": 2, "hp": 5, "abilities": []},
+      {"name": "Green Mage", "image": "/images/units/green_mage.png", "move": 3, "range": 4, "power": 3, "defense": 1, "hp": 3, "abilities": []}
+    ]}
+  ],
+  "monsters": [],
+  "terrainObjects": []
+}
