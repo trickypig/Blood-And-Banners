@@ -36,7 +36,13 @@ else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
 }
 else
 {
-    <GameTable Projection="_game" />
+    <GameTable Projection="_game"
+               Events="_events"
+               IsBusy="_isBusy"
+               ErrorMessage="@_error"
+               ImageBaseUrl="@ImageBaseUrl"
+               OnCommand="SubmitGameCommand"
+               OnReturnToWarRoom="ReturnToWarRoom" />
 }
 
 @code {

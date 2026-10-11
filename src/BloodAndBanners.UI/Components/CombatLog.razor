@@ -1,0 +1,36 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<section class="combat-log" aria-label="Battle log">
+    <h2>Battle log</h2>
+    @if (Lines.Count == 0)
+    {
+        <p>No blows struck yet.</p>
+    }
+    else
+    {
+        <ol aria-live="polite">
+            @foreach (var line in Lines)
+            {
+                <li data-event="@line.Kind">@line.Text</li>
+            }
+        </ol>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<GameEvent> Events { get; set; } = [];
+
+    private IReadOnlyList<(string Kind, string Text)> Lines => Events
+        .Reverse()
+        .Select(gameEvent => (gameEvent.Kind, Text: CombatLogFormatter.Describe(gameEvent, Projection)))
+        .Where(line => line.Text is not null)
+        .Take(40)
+        .Select(line => (line.Kind, line.Text!))
+        .ToList();
+}

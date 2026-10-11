@@ -2,9 +2,10 @@
 
 using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
+using BloodAndBanners.UI.Services;
 using Bunit;
 
-public sealed class GameTableTests : BunitContext
+public sealed partial class GameTableTests : BunitContext
 {
     [Fact]
     public void Quick_start_sends_the_selected_mode_and_disables_all_choices_while_connecting()
@@ -54,14 +55,20 @@ public sealed class GameTableTests : BunitContext
     [Fact]
     public void Player_projection_renders_board_status_and_legal_actions()
     {
-        var cut = Render<GameTable>(parameters => parameters.Add(
-            component => component.Projection,
-            Projection(canCommand: true)));
+        GameCommandRequest? sent = null;
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, Projection(canCommand: true))
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent = request));
 
         Assert.Equal("Battlefield, 3 columns by 2 rows", cut.Find("[role=grid]").GetAttribute("aria-label"));
         Assert.Contains("Round 2", cut.Find("[data-testid=turn-status]").TextContent);
-        Assert.Equal("Move", cut.Find("button[data-action=moveUnit]").TextContent.Trim());
         Assert.Equal("Plains grass, elevation 0, occupied by Thorgrim", cut.Find("[data-hex='0,0']").GetAttribute("aria-label"));
+
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-hex='1,0']").Click();
+
+        Assert.Equal("moveUnit", sent?.Kind);
+        Assert.Equal("1,0", System.Text.Json.JsonSerializer.SerializeToElement(sent!.Payload).GetProperty("to").GetString());
     }
 
     [Fact]

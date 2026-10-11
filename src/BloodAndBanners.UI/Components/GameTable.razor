@@ -1,5 +1,6 @@
 @namespace BloodAndBanners.UI.Components
 @using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
 
 <main class="game-table">
     <header class="turn-ribbon">
@@ -7,9 +8,7 @@
             <span class="mode-mark" aria-hidden="true">⚔</span>
             <strong>@ModeLabel(Projection.Mode)</strong>
         </div>
-        <p data-testid="turn-status">
-            Round @Projection.Turn.Round · @Projection.Turn.ActivationsRemaining activations remain
-        </p>
+        <p data-testid="turn-status">@TurnStatus</p>
         <p data-testid="viewer-role" class="viewer-role">
             @(Projection.Viewer.CanCommand ? "Commanding" : "Spectating")
         </p>
@@ -23,19 +22,31 @@
         </div>
         <div class="hex-board"
              role="grid"
+             style="--columns:@Projection.Board.Columns; --rows:@Projection.Board.Rows"
              aria-label="Battlefield, @Projection.Board.Columns columns by @Projection.Board.Rows rows">
             @foreach (var hex in Projection.Board.Hexes)
             {
+                var key = HexKey(hex);
+                var unit = UnitById(hex.OccupantId);
                 <button type="button"
                         role="gridcell"
-                        class="hex @TerrainClass(hex) @(hex.OccupantId is null ? null : "occupied")"
+                        class="hex @TerrainClass(hex) @HexState(key) @(hex.OccupantId is null ? null : "occupied")"
                         style="--q:@hex.Q; --r:@hex.R; --elevation:@hex.Elevation"
-                        data-hex="@HexKey(hex)"
-                        aria-label="@HexLabel(hex)">
+                        data-hex="@key"
+                        aria-label="@HexLabel(hex, unit)"
+                        @onclick="() => SelectHex(hex)">
                     <span class="hex-elevation" aria-hidden="true">@hex.Elevation</span>
                     @if (hex.OccupantId is not null)
                     {
-                        <span class="unit-token" aria-hidden="true">@Initials(hex.OccupantId)</span>
+                        <span class="unit-token @SeatClass(unit?.SeatId) @(unit?.IsHero == true ? "hero" : null)"
+                              style="@TokenStyle(unit)"
+                              aria-hidden="true">
+                            @(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))
+                            @if (unit is not null)
+                            {
+                                <span class="hp-bar" style="--health:@HealthPercent(unit)%"></span>
+                            }
+                        </span>
                     }
                 </button>
             }
@@ -43,6 +54,11 @@
     </section>
 
     <aside class="command-rail" aria-label="Game commands">
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <p class="rail-error" role="alert">@ErrorMessage</p>
+        }
+
         @if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
         {
             <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title">
@@ -58,14 +74,27 @@
         }
         else if (Projection.Viewer.CanCommand)
         {
-            <section class="action-tray" aria-label="Legal actions">
+            <section class="action-tray" aria-label="Your orders">
                 <h2>Your orders</h2>
-                @foreach (var action in Projection.LegalActions)
+                @if (SelectedUnit is { } selected)
+                {
+                    <article class="unit-card" data-testid="selected-unit">
+                        <h3>@selected.Name</h3>
+                        <p>Move @selected.Move · Range @selected.Range · Power @selected.Power · Defense @selected.Defense</p>
+                        <p>Wounds @selected.Wounds / @selected.Hp</p>
+                    </article>
+                }
+                else if (IsMyTurn)
+                {
+                    <p>Select one of your units on the board.</p>
+                }
+                @foreach (var action in Projection.LegalActions.Where(action => action.Kind is "endActivation" or "endTurn"))
                 {
                     <button type="button"
                             class="action-button"
                             data-action="@action.Kind"
-                            @onclick="() => OnAction.InvokeAsync(action)">
+                            disabled="@IsBusy"
+                            @onclick="() => Send(action.Kind, ActionPayload(action))">
                         @ActionLabel(action.Kind)
                     </button>
                 }
@@ -82,16 +111,37 @@
             </section>
         }
 
-        <section class="score-strip" aria-label="Scores">
-            <h2>Score</h2>
-            <dl>
-                @foreach (var score in Projection.Scores)
-                {
-                    <div><dt>@score.Key</dt><dd>@score.Value</dd></div>
-                }
-            </dl>
+        <section class="rosters" aria-label="Armies">
+            @foreach (var seat in Projection.Memberships)
+            {
+                <div class="roster @SeatClass(seat.SeatId)">
+                    <h2>@RosterTitle(seat)</h2>
+                    <ul>
+                        @foreach (var unit in Projection.Units.Where(unit => unit.SeatId == seat.SeatId))
+                        {
+                            <li class="@(unit.Hex is null ? "defeated" : null)" data-roster-unit="@unit.UnitId">
+                                @unit.Name <span>@(unit.Hp - unit.Wounds)/@unit.Hp</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
         </section>
+
+        <CombatLog Projection="Projection" Events="Events" />
     </aside>
+
+    @if (Projection.Result is { } result)
+    {
+        <section class="match-end" role="dialog" aria-modal="true" aria-labelledby="match-end-title" data-testid="match-end">
+            <h2 id="match-end-title">@ResultTitle(result)</h2>
+            <p>Every enemy unit has fallen.</p>
+            @if (Projection.Viewer.CanCommand)
+            {
+                <button type="button" data-action="returnToWarRoom" @onclick="() => OnReturnToWarRoom.InvokeAsync()">Return to war room</button>
+            }
+        </section>
+    }
 </main>
 
 @code {
@@ -99,7 +149,22 @@
     public GameProjection Projection { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<LegalAction> OnAction { get; set; }
+    public IReadOnlyList<GameEvent> Events { get; set; } = [];
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public string? ImageBaseUrl { get; set; }
+
+    [Parameter]
+    public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
+    [Parameter]
+    public EventCallback OnReturnToWarRoom { get; set; }
 
     [Parameter]
     public EventCallback<string> OnChoice { get; set; }
@@ -107,14 +172,155 @@
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }
 
+    private string? _selectedUnitId;
+
+    protected override void OnParametersSet()
+    {
+        if (_selectedUnitId is not null && !Selectable(_selectedUnitId))
+        {
+            _selectedUnitId = null;
+        }
+        if (_selectedUnitId is null && Projection.Turn.ActiveUnitId is { } active && Selectable(active))
+        {
+            _selectedUnitId = active;
+        }
+    }
+
+    private bool IsMyTurn => Projection.Viewer.SeatId is not null && Projection.Turn.ActiveSeatId == Projection.Viewer.SeatId;
+
+    private UnitProjection? SelectedUnit => UnitById(_selectedUnitId);
+
+    private string? SelectedHex => Projection.Board.Hexes
+        .Where(hex => _selectedUnitId is not null && hex.OccupantId == _selectedUnitId)
+        .Select(HexKey)
+        .FirstOrDefault();
+
+    private IReadOnlyList<string> FocusHexes => Events.Count == 0 ? [] : Events[^1].FocusHexes;
+
+    private string TurnStatus
+    {
+        get
+        {
+            var round = $"Round {Projection.Turn.Round}";
+            if (Projection.Result is not null)
+            {
+                return $"{round} · The battle is decided";
+            }
+            if (Projection.Turn.ActiveSeatId is null)
+            {
+                return round;
+            }
+            if (IsMyTurn)
+            {
+                return $"{round} · Your turn · {Projection.Turn.ActivationsRemaining} activations";
+            }
+            return Projection.Viewer.CanCommand ? $"{round} · Opponent's turn" : $"{round} · {SeatName(Projection.Turn.ActiveSeatId)}'s turn";
+        }
+    }
+
+    private bool Selectable(string unitId) =>
+        Projection.Viewer.CanCommand &&
+        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "attackUnit"));
+
+    private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
+        ? []
+        : Projection.LegalActions
+            .Where(action => action.Kind == kind && action.UnitId == _selectedUnitId)
+            .SelectMany(action => action.TargetHexes)
+            .ToList();
+
+    private async Task SelectHex(HexProjection hex)
+    {
+        if (!Projection.Viewer.CanCommand || IsBusy)
+        {
+            return;
+        }
+        var key = HexKey(hex);
+        if (_selectedUnitId is { } unitId)
+        {
+            if (Targets("moveUnit").Contains(key))
+            {
+                await Send("moveUnit", new { unitId, to = key });
+                return;
+            }
+            if (Targets("attackUnit").Contains(key) && hex.OccupantId is { } targetUnitId)
+            {
+                await Send("attackUnit", new { unitId, targetUnitId });
+                return;
+            }
+        }
+        _selectedUnitId = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
+    }
+
+    private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
+
+    private static object ActionPayload(LegalAction action) =>
+        action.Kind == "endTurn" ? new { } : new { unitId = action.UnitId };
+
+    private string? HexState(string key)
+    {
+        if (key == SelectedHex)
+        {
+            return "selected";
+        }
+        if (Targets("attackUnit").Contains(key))
+        {
+            return "attackable";
+        }
+        if (Targets("moveUnit").Contains(key))
+        {
+            return "reachable";
+        }
+        return FocusHexes.Contains(key) ? "focus" : null;
+    }
+
+    private UnitProjection? UnitById(string? unitId) =>
+        unitId is null ? null : Projection.Units.FirstOrDefault(unit => unit.UnitId == unitId);
+
+    private string? SeatClass(string? seatId)
+    {
+        var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
+        return seat is null ? null : $"seat-{seat.SeatIndex}";
+    }
+
+    private string SeatName(string seatId)
+    {
+        if (seatId == Projection.Viewer.SeatId)
+        {
+            return "You";
+        }
+        if (Projection.Viewer.Role == "player")
+        {
+            return "Rival";
+        }
+        var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
+        return seat is null ? "Commander" : $"Commander {seat.SeatIndex}";
+    }
+
+    private string RosterTitle(MembershipProjection seat) =>
+        seat.SeatId == Projection.Viewer.SeatId
+            ? "Your army"
+            : Projection.Viewer.Role == "player" ? "Rival army" : $"Commander {seat.SeatIndex}";
+
+    private string ResultTitle(GameResult result) =>
+        result.WinningSeatId == Projection.Viewer.SeatId
+            ? "Victory"
+            : Projection.Viewer.Role == "player" ? "Defeat" : $"{SeatName(result.WinningSeatId ?? string.Empty)} wins";
+
+    private string? TokenStyle(UnitProjection? unit) =>
+        CatalogImages.Resolve(ImageBaseUrl, unit?.Image) is { } image ? $"background-image:url('{image}')" : null;
+
+    private static int HealthPercent(UnitProjection unit) =>
+        unit.Hp <= 0 ? 0 : (unit.Hp - unit.Wounds) * 100 / unit.Hp;
+
     private static string HexKey(HexProjection hex) => $"{hex.Q},{hex.R}";
 
     private static string TerrainClass(HexProjection hex) =>
         $"terrain-{hex.Biome.ToLowerInvariant()}-{hex.Terrain.ToLowerInvariant().Replace(' ', '-')}";
 
-    private static string HexLabel(HexProjection hex) =>
+    private static string HexLabel(HexProjection hex, UnitProjection? unit) =>
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
-        (hex.OccupantId is null ? string.Empty : $", occupied by {hex.OccupantId}");
+        (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}");
 
     private static string Initials(string value) => string.Concat(
         value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
@@ -130,9 +336,6 @@
 
     private static string ActionLabel(string kind) => kind switch
     {
-        "moveUnit" => "Move",
-        "attack" => "Attack",
-        "useAbility" => "Use ability",
         "endActivation" => "End activation",
         "endTurn" => "End turn",
         _ => Humanize(kind),
