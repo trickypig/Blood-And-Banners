@@ -1,2 +1,9 @@
 .vscode/sftp.json
 .worktrees/
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+api/var/*.sqlite
+api/var/*.sqlite-*
