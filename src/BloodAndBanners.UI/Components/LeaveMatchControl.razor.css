@@ -1,0 +1,5 @@
+.leave-match { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; width: min(72rem, 100%); margin-inline: auto; }
+.leave-match button { min-height: 2.5rem; padding: .4rem .85rem; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; }
+.leave-match button:hover { background: #3a3a33; }
+.leave-match .leave-confirm { color: #f8f0dc; background: #681e24; border-color: #b18b48; }
+button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }

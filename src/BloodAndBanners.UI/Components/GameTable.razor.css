@@ -64,12 +64,15 @@
     background: #87966a;
     border: 0;
     clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
-    filter: drop-shadow(0 calc(.22rem + var(--elevation) * .16rem) 0 #4b4637) drop-shadow(0 .45rem .3rem rgba(0, 0, 0, .35));
+    filter: brightness(calc(1 + var(--elevation) * .12)) drop-shadow(0 calc(.22rem + var(--elevation) * .16rem) 0 #4b4637) drop-shadow(0 .45rem .3rem rgba(0, 0, 0, .35));
     cursor: pointer;
 }
 
 .hex::before { content: ""; position: absolute; inset: .25rem; clip-path: inherit; border: .14rem solid rgba(36, 32, 22, .45); }
 .terrain-stone-crags { background: repeating-linear-gradient(135deg, #77766e 0 8px, #66645c 8px 12px); }
+.terrain-stone-stone { background: repeating-linear-gradient(60deg, #8d8a7e 0 10px, #787569 10px 14px), #8d8a7e; }
+.terrain-stone-stone-path { background: radial-gradient(circle at 35% 40%, #b7b2a1 0 9%, transparent 10%), radial-gradient(circle at 65% 62%, #b7b2a1 0 9%, transparent 10%), #7e7b6f; }
+.terrain-plains-roads { background: linear-gradient(100deg, transparent 0 38%, #c2a574 38% 62%, transparent 62%), #87966a; }
 .terrain-plains-grass { background: radial-gradient(circle at 30% 35%, #a9b77a 0 5%, transparent 6%), #87966a; }
 .terrain-water-open-water { background: repeating-linear-gradient(0deg, #5d8292 0 6px, #7598a3 6px 9px); }
 .terrain-lava-lava { background: repeating-linear-gradient(120deg, #9f3824 0 8px, #e0772d 8px 11px, #4c2924 11px 16px); }
