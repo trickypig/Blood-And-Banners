@@ -24,6 +24,24 @@
             <strong>Battle royale</strong>
             <span>A human dungeon master drives the battlefield against two to four rivals.</span>
         </button>
+
+        <form class="join-room" @onsubmit="Join" @onsubmit:preventDefault>
+            <label for="join-code">Have an invite?</label>
+            <div>
+                <input id="join-code"
+                       data-join-code
+                       autocomplete="off"
+                       placeholder="Paste a game code"
+                       disabled="@IsBusy"
+                       @bind="_joinCode"
+                       @bind:event="oninput" />
+                <button type="submit"
+                        data-action="join-game"
+                        disabled="@(IsBusy || string.IsNullOrWhiteSpace(_joinCode))">
+                    Join war room
+                </button>
+            </div>
+        </form>
     </div>
 
     @if (IsBusy)
@@ -46,5 +64,25 @@
     [Parameter]
     public EventCallback<GameMode> OnCreate { get; set; }
 
+    [Parameter]
+    public EventCallback<string> OnJoin { get; set; }
+
+    [Parameter]
+    public string? InitialJoinCode { get; set; }
+
+    private string _joinCode = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (_joinCode.Length == 0 && !string.IsNullOrWhiteSpace(InitialJoinCode))
+        {
+            _joinCode = InitialJoinCode.Trim();
+        }
+    }
+
     private Task Create(GameMode mode) => OnCreate.InvokeAsync(mode);
+
+    private Task Join() => string.IsNullOrWhiteSpace(_joinCode)
+        ? Task.CompletedTask
+        : OnJoin.InvokeAsync(_joinCode.Trim());
 }

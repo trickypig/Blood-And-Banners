@@ -1,0 +1,151 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+
+<main class="war-room">
+    <header class="war-room__banner">
+        <div>
+            <p>Blood &amp; Banners</p>
+            <h1>War room</h1>
+        </div>
+        <div class="war-room__scenario">
+            <span>@ModeLabel(Projection.Mode)</span>
+            <strong>@Projection.ScenarioName</strong>
+        </div>
+    </header>
+
+    <section class="war-room__briefing" aria-labelledby="invite-heading">
+        <div>
+            <h2 id="invite-heading">Call your rival</h2>
+            <p>Send this link to the second commander. This room admits two players.</p>
+        </div>
+        <div class="invite-card">
+            <span>Game code</span>
+            <strong data-testid="game-code">@Projection.GameId</strong>
+            <label for="invite-link">Invite link</label>
+            <input id="invite-link" data-testid="invite-link" readonly value="@InviteUrl" />
+            <button type="button" data-action="copy-invite" @onclick="OnCopyInvite" disabled="@IsBusy">
+                Copy invite link
+            </button>
+        </div>
+    </section>
+
+    <section class="war-room__muster" aria-labelledby="muster-heading">
+        <div class="muster-heading">
+            <div>
+                <h2 id="muster-heading">Commanders</h2>
+                <p>@ReadySummary</p>
+            </div>
+            <span class="muster-count">@Projection.Memberships.Count / @SeatLimit</span>
+        </div>
+
+        <ol class="seat-list">
+            @for (var seatIndex = 1; seatIndex <= SeatLimit; seatIndex++)
+            {
+                var seat = Projection.Memberships.FirstOrDefault(item => item.SeatIndex == seatIndex);
+                <li data-seat="@seatIndex" class="@(seat is null ? "seat seat--open" : "seat")">
+                    <span class="seat__sigil" aria-hidden="true">@seatIndex</span>
+                    @if (seat is null)
+                    {
+                        <div><strong>Open banner</strong><span>Waiting for a commander</span></div>
+                    }
+                    else
+                    {
+                        <div>
+                            <strong>Commander @seat.SeatIndex @ViewerLabel(seat)</strong>
+                            <span>@(seat.IsHost ? "Host" : "Player")</span>
+                        </div>
+                        <span class="seat__state @(seat.Ready ? "seat__state--ready" : null)">
+                            @(seat.Ready ? "Ready" : "Not ready")
+                        </span>
+                    }
+                </li>
+            }
+        </ol>
+    </section>
+
+    <footer class="war-room__orders">
+        <button type="button"
+                class="ready-order"
+                data-action="toggle-ready"
+                disabled="@IsBusy"
+                @onclick="ToggleReady">
+            @(ViewerReady ? "Stand down" : "Ready your banner")
+        </button>
+
+        @if (Projection.Viewer.IsHost)
+        {
+            <button type="button"
+                    class="start-order"
+                    data-action="start-game"
+                    disabled="@(!CanStart || IsBusy)"
+                    @onclick="OnStart">
+                Begin the draft
+            </button>
+        }
+        else
+        {
+            <p class="host-note">Waiting for the host to begin the draft.</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(StatusMessage))
+        {
+            <p class="war-room__status" role="status">@StatusMessage</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <p class="war-room__error" role="alert">@ErrorMessage</p>
+        }
+    </footer>
+</main>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public string InviteUrl { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? StatusMessage { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnReadyChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnCopyInvite { get; set; }
+
+    private int SeatLimit => Projection.Mode == GameMode.VanillaPvp ? 2 : 5;
+
+    private MembershipProjection? ViewerMembership =>
+        Projection.Memberships.FirstOrDefault(seat => seat.SeatId == Projection.Viewer.SeatId);
+
+    private bool ViewerReady => ViewerMembership?.Ready ?? false;
+
+    private bool CanStart =>
+        Projection.Memberships.Count >= 2 && Projection.Memberships.All(seat => seat.Ready);
+
+    private string ReadySummary =>
+        $"{Projection.Memberships.Count(seat => seat.Ready)} of {Projection.Memberships.Count} commanders ready";
+
+    private Task ToggleReady() => OnReadyChanged.InvokeAsync(!ViewerReady);
+
+    private string ViewerLabel(MembershipProjection seat) =>
+        seat.SeatId == Projection.Viewer.SeatId ? "(You)" : string.Empty;
+
+    private static string ModeLabel(GameMode mode) => mode switch
+    {
+        GameMode.VanillaPvp => "Vanilla duel",
+        GameMode.Coop => "Void incursion",
+        GameMode.BattleRoyale => "Battle royale",
+        _ => mode.ToString()
+    };
+}

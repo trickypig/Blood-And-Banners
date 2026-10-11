@@ -8,6 +8,23 @@ namespace BloodAndBanners.UI.Tests;
 public sealed class GameClientTests
 {
     [Theory]
+    [InlineData("http://localhost:5016/?join=game-123", "game-123")]
+    [InlineData("https://game.test/?mode=vanilla&join=game%20code", "game code")]
+    [InlineData("https://game.test/", null)]
+    public void Invite_links_extract_the_join_code(string uri, string? expected)
+    {
+        Assert.Equal(expected, InviteLinks.GameIdFromUri(uri));
+    }
+
+    [Fact]
+    public void Invite_links_preserve_the_base_path_and_escape_the_game_id()
+    {
+        Assert.Equal(
+            "https://game.test/play/?join=game%201",
+            InviteLinks.Create("https://game.test/play/", "game 1"));
+    }
+
+    [Theory]
     [InlineData(true, false, false, 0, 750)]
     [InlineData(false, true, false, 0, 750)]
     [InlineData(false, false, false, 0, 2000)]
@@ -92,6 +109,36 @@ public sealed class GameClientTests
         Assert.Equal(HttpMethod.Get, handler.Requests[0].Method);
         Assert.EndsWith("api/v1/games/game-1", handler.Requests[0].RequestUri?.ToString());
         Assert.Contains("\"commandId\":\"command-1\"", handler.Bodies[1]);
+    }
+
+    [Fact]
+    public async Task Join_and_start_use_the_two_player_lobby_routes()
+    {
+        const string projection = """
+            {
+              "gameId":"game-1","version":2,"lifecycle":"lobby","mode":"vanillaPvp",
+              "scenarioName":"Training Grounds",
+              "viewer":{"role":"player","seatId":"seat-2","canCommand":true,"isHost":false},
+              "board":{"columns":0,"rows":0,"hexes":[]},
+              "turn":{"round":0,"activeSeatId":null,"activationsRemaining":0},
+              "pendingChoice":null,"memberships":[],"legalActions":[],"scores":{},"result":null
+            }
+            """;
+        var handler = new QueueHandler(
+            $$"""{"game":{{projection}},"seatToken":"guest-seat-secret"}""",
+            projection);
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+        var identity = new AuthSession("guest-2", "guest", "access-2", "refresh-2");
+
+        var joined = await client.JoinGameAsync(identity, "game-1");
+        await client.StartGameAsync(identity, "game-1", "guest-seat-secret");
+
+        Assert.Equal("guest-seat-secret", joined.SeatToken);
+        Assert.Equal(HttpMethod.Post, handler.Requests[0].Method);
+        Assert.EndsWith("api/v1/games/game-1/join", handler.Requests[0].RequestUri?.ToString());
+        Assert.Equal("Bearer access-2", handler.Requests[0].Headers.Authorization?.ToString());
+        Assert.EndsWith("api/v1/games/game-1/start", handler.Requests[1].RequestUri?.ToString());
+        Assert.Equal("guest-seat-secret", handler.Requests[1].Headers.GetValues("X-Seat-Token").Single());
     }
 
     [Fact]

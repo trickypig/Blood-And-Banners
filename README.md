@@ -28,6 +28,18 @@ dotnet run --project src/BloodAndBanners.Web/BloodAndBanners.Web.csproj
 
 The development PWA reads `wwwroot/appsettings.Development.json` and calls the API at `http://localhost:8080/`. Production web hosting can omit `ApiBaseUrl` when the static client and `/api` share an origin.
 
+### Test a two-browser Vanilla lobby
+
+1. Open `http://localhost:5016/` in the first browser and choose **Vanilla duel**.
+2. Copy the invite link from the war room.
+3. Open that link in a different browser, private window, or browser profile. Two tabs in the same profile share the same saved seat.
+4. In the second browser, choose **Join war room**. Both browsers should show two commanders within about two seconds.
+5. Choose **Ready your banner** in both browsers. The host's **Begin the draft** button becomes available when both seats are ready.
+6. Start the match from the host browser. Both clients should leave the lobby and display the frozen Training Grounds board.
+7. Refresh either browser to verify that it reconnects to the same seat.
+
+This milestone ends at the draft boundary. Hero/army selection and battlefield commands are the next gameplay slice.
+
 ## Seat credentials and reconnect
 
 Game creation and joining return a `{ game, seatToken }` session envelope. Player state, event polling, commands, match start, spectator-link management, and seat reassignment require both the bearer identity and the matching `X-Seat-Token` header. The token is never included in `GameProjection` or spectator responses.

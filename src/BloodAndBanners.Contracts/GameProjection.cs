@@ -58,6 +58,12 @@ public sealed record GameResult(
     string? WinningSeatId,
     IReadOnlyDictionary<string, int> FinalScores);
 
+public sealed record MembershipProjection(
+    string SeatId,
+    int SeatIndex,
+    bool Ready,
+    bool IsHost);
+
 public sealed record GameProjection(
     string GameId,
     long Version,
@@ -69,4 +75,8 @@ public sealed record GameProjection(
     PendingChoiceProjection? PendingChoice,
     IReadOnlyList<LegalAction> LegalActions,
     IReadOnlyDictionary<string, int> Scores,
-    GameResult? Result);
+    GameResult? Result)
+{
+    public string ScenarioName { get; init; } = string.Empty;
+    public IReadOnlyList<MembershipProjection> Memberships { get; init; } = [];
+}

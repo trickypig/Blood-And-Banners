@@ -45,6 +45,17 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return await ReadAsync<GameSeatSession>(response, cancellationToken);
     }
 
+    public async Task<GameSeatSession> JoinGameAsync(
+        AuthSession session,
+        string gameId,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/v1/games/{Uri.EscapeDataString(gameId)}/join");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadAsync<GameSeatSession>(response, cancellationToken);
+    }
+
     public async Task<GameProjection> ReconnectAsync(
         AuthSession session,
         string gameId,
@@ -69,6 +80,21 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
             session,
             seatToken,
             JsonContent.Create(command, options: ContractJson.Options));
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadAsync<GameProjection>(response, cancellationToken);
+    }
+
+    public async Task<GameProjection> StartGameAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateSeatRequest(
+            HttpMethod.Post,
+            $"api/v1/games/{Uri.EscapeDataString(gameId)}/start",
+            session,
+            seatToken);
         using var response = await httpClient.SendAsync(request, cancellationToken);
         return await ReadAsync<GameProjection>(response, cancellationToken);
     }

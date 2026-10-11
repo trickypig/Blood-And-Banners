@@ -3,6 +3,7 @@
   "version": 7,
   "lifecycle": "active",
   "mode": "vanillaPvp",
+  "scenarioName": "Training Grounds",
   "viewer": {
     "role": "player",
     "seatId": "seat-red",
@@ -30,6 +31,20 @@
     "activationsRemaining": 3
   },
   "pendingChoice": null,
+  "memberships": [
+    {
+      "seatId": "seat-red",
+      "seatIndex": 1,
+      "ready": true,
+      "isHost": true
+    },
+    {
+      "seatId": "seat-blue",
+      "seatIndex": 2,
+      "ready": true,
+      "isHost": false
+    }
+  ],
   "legalActions": [
     {
       "kind": "moveUnit",

@@ -17,6 +17,11 @@ public interface IGameApiClient
         string scenarioName,
         CancellationToken cancellationToken = default);
 
+    Task<GameSeatSession> JoinGameAsync(
+        AuthSession session,
+        string gameId,
+        CancellationToken cancellationToken = default);
+
     Task<GameProjection> ReconnectAsync(
         AuthSession session,
         string gameId,
@@ -28,6 +33,12 @@ public interface IGameApiClient
         string gameId,
         string seatToken,
         CommandEnvelope command,
+        CancellationToken cancellationToken = default);
+
+    Task<GameProjection> StartGameAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
         CancellationToken cancellationToken = default);
 
     Task<SeatReassignmentResult> ReassignSeatAsync(

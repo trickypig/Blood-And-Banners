@@ -20,6 +20,6 @@ builder.Services.AddScoped<IKeyValueStore>(services =>
         key => js.InvokeVoidAsync("localStorage.removeItem", key));
 });
 builder.Services.AddScoped<IGameSessionStore, JsonGameSessionStore>();
-builder.Services.AddScoped<GameSessionCoordinator>();
+builder.Services.AddScoped<IGameSessionCoordinator, GameSessionCoordinator>();
 
 await builder.Build().RunAsync();

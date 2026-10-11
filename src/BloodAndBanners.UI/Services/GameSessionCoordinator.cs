@@ -5,7 +5,7 @@ namespace BloodAndBanners.UI.Services;
 
 public sealed class GameSessionCoordinator(
     IGameApiClient api,
-    IGameSessionStore store)
+    IGameSessionStore store) : IGameSessionCoordinator
 {
     public async Task<GameProjection> CreateGuestGameAsync(
         string deviceId,
@@ -21,6 +21,56 @@ public sealed class GameSessionCoordinator(
             gameSession.Game.GameId,
             gameSession.SeatToken));
         return gameSession.Game;
+    }
+
+    public async Task<GameProjection> JoinGuestGameAsync(
+        string deviceId,
+        string gameId,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedGameId = gameId.Trim();
+        if (normalizedGameId.Length == 0)
+        {
+            throw new ArgumentException("A game code is required.", nameof(gameId));
+        }
+
+        var identity = await api.CreateGuestAsync(deviceId, cancellationToken);
+        var gameSession = await api.JoinGameAsync(identity, normalizedGameId, cancellationToken);
+        await store.SaveAsync(new StoredGameSession(
+            deviceId,
+            identity,
+            gameSession.Game.GameId,
+            gameSession.SeatToken));
+        return gameSession.Game;
+    }
+
+    public async Task<GameProjection> SetReadyAsync(
+        long expectedVersion,
+        bool ready,
+        CancellationToken cancellationToken = default)
+    {
+        var session = await RequiredSessionAsync();
+        var command = new CommandEnvelope(
+            Guid.NewGuid().ToString("N"),
+            expectedVersion,
+            "setReady",
+            System.Text.Json.JsonSerializer.SerializeToElement(new { ready }, ContractJson.Options));
+        return await api.SubmitCommandAsync(
+            session.Identity,
+            session.GameId,
+            session.SeatToken,
+            command,
+            cancellationToken);
+    }
+
+    public async Task<GameProjection> StartGameAsync(CancellationToken cancellationToken = default)
+    {
+        var session = await RequiredSessionAsync();
+        return await api.StartGameAsync(
+            session.Identity,
+            session.GameId,
+            session.SeatToken,
+            cancellationToken);
     }
 
     public async Task<GameProjection?> ReconnectAsync(CancellationToken cancellationToken = default)
@@ -54,4 +104,8 @@ public sealed class GameSessionCoordinator(
                 cancellationToken);
         }
     }
+
+    private async ValueTask<StoredGameSession> RequiredSessionAsync() =>
+        await store.LoadAsync()
+        ?? throw new InvalidOperationException("No game session is saved on this device.");
 }

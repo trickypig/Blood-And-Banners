@@ -30,7 +30,7 @@ public static class MauiProgram
 					return ValueTask.CompletedTask;
 				}));
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IGameSessionStore, BloodAndBanners.UI.Services.JsonGameSessionStore>();
-		builder.Services.AddSingleton<BloodAndBanners.UI.Services.GameSessionCoordinator>();
+		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IGameSessionCoordinator, BloodAndBanners.UI.Services.GameSessionCoordinator>();
 
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();

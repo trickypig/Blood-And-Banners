@@ -21,6 +21,37 @@ public sealed class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Quick_start_prefills_and_submits_an_invite_code()
+    {
+        string? joined = null;
+        var cut = Render<QuickStart>(parameters => parameters
+            .Add(component => component.InitialJoinCode, " game-from-link ")
+            .Add(component => component.OnJoin, code => joined = code));
+
+        Assert.Equal("game-from-link", cut.Find("input[data-join-code]").GetAttribute("value"));
+        cut.Find("button[data-action=join-game]").Click();
+
+        Assert.Equal("game-from-link", joined);
+    }
+
+    [Fact]
+    public void Quick_start_enables_join_as_an_invite_code_is_pasted()
+    {
+        string? joined = null;
+        var cut = Render<QuickStart>(parameters => parameters
+            .Add(component => component.OnJoin, code => joined = code));
+        var join = cut.Find("button[data-action=join-game]");
+        Assert.True(join.HasAttribute("disabled"));
+
+        cut.Find("input[data-join-code]").Input(" pasted-game ");
+
+        join = cut.Find("button[data-action=join-game]");
+        Assert.False(join.HasAttribute("disabled"));
+        join.Click();
+        Assert.Equal("pasted-game", joined);
+    }
+
+    [Fact]
     public void Player_projection_renders_board_status_and_legal_actions()
     {
         var cut = Render<GameTable>(parameters => parameters.Add(
@@ -64,6 +95,71 @@ public sealed class GameTableTests : BunitContext
         Assert.NotNull(cut.Find("button[data-follow-events]"));
     }
 
+    [Fact]
+    public void Lobby_shows_invite_seats_and_requires_everyone_ready_before_starting()
+    {
+        var projection = LobbyProjection([
+            new MembershipProjection("seat-red", 1, true, true),
+            new MembershipProjection("seat-blue", 2, false, false),
+        ]);
+
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.InviteUrl, "http://localhost:5016/?join=game-fixture"));
+
+        Assert.Equal("game-fixture", cut.Find("[data-testid=game-code]").TextContent.Trim());
+        Assert.Equal("http://localhost:5016/?join=game-fixture", cut.Find("[data-testid=invite-link]").GetAttribute("value"));
+        Assert.Equal(2, cut.FindAll("[data-seat]").Count);
+        Assert.Contains("You", cut.Find("[data-seat='1']").TextContent);
+        Assert.Contains("Not ready", cut.Find("[data-seat='2']").TextContent);
+        Assert.True(cut.Find("button[data-action=start-game]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Lobby_emits_ready_copy_and_host_start_actions()
+    {
+        bool? ready = null;
+        var copied = false;
+        var started = false;
+        var projection = LobbyProjection([
+            new MembershipProjection("seat-red", 1, true, true),
+            new MembershipProjection("seat-blue", 2, true, false),
+        ]);
+
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.InviteUrl, "https://game.test/?join=game-fixture")
+            .Add(component => component.OnReadyChanged, value => ready = value)
+            .Add(component => component.OnCopyInvite, () => copied = true)
+            .Add(component => component.OnStart, () => started = true));
+
+        cut.Find("button[data-action=toggle-ready]").Click();
+        cut.Find("button[data-action=copy-invite]").Click();
+        cut.Find("button[data-action=start-game]").Click();
+
+        Assert.False(ready);
+        Assert.True(copied);
+        Assert.True(started);
+    }
+
+    [Fact]
+    public void Non_host_lobby_does_not_show_the_start_control()
+    {
+        var projection = LobbyProjection([
+            new MembershipProjection("seat-red", 1, true, true),
+            new MembershipProjection("seat-blue", 2, false, false),
+        ]) with
+        {
+            Viewer = new ViewerPermissions("player", "seat-blue", true, false)
+        };
+
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(component => component.Projection, projection));
+
+        Assert.Empty(cut.FindAll("button[data-action=start-game]"));
+        Assert.Contains("Waiting for the host", cut.Markup);
+    }
+
     private static GameProjection Projection(bool canCommand) => new(
         "game-fixture",
         7,
@@ -79,4 +175,22 @@ public sealed class GameTableTests : BunitContext
         [new LegalAction("moveUnit", "Thorgrim", ["1,0"])],
         new Dictionary<string, int> { ["seat-red"] = 3, ["seat-blue"] = 1 },
         null);
+
+    private static GameProjection LobbyProjection(IReadOnlyList<MembershipProjection> memberships) =>
+        new(
+            "game-fixture",
+            3,
+            GameLifecycle.Lobby,
+            GameMode.VanillaPvp,
+            new ViewerPermissions("player", "seat-red", true, true),
+            new BoardProjection(3, 2, []),
+            new TurnProjection(0, null, 0),
+            null,
+            [new LegalAction("setReady", null, [])],
+            memberships.ToDictionary(seat => seat.SeatId, _ => 0),
+            null)
+        {
+            ScenarioName = "Training Grounds",
+            Memberships = memberships
+        };
 }

@@ -1,0 +1,94 @@
+.war-room {
+    --ink: #181711;
+    --charcoal: #22231f;
+    --oxblood: #681e24;
+    --brass: #b08b42;
+    --parchment: #e4dcc7;
+    min-height: 100dvh;
+    padding: clamp(1rem, 4vw, 3rem);
+    color: var(--parchment);
+    background:
+        linear-gradient(110deg, rgba(21, 22, 19, .98), rgba(38, 37, 32, .94)),
+        repeating-linear-gradient(135deg, #24251f 0 3px, #1d1e1b 3px 11px);
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.war-room__banner,
+.war-room__briefing,
+.war-room__muster,
+.war-room__orders {
+    width: min(70rem, 100%);
+    margin-inline: auto;
+}
+
+.war-room__banner {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: .25rem solid var(--brass);
+}
+
+.war-room__banner p,
+.war-room__banner h1,
+.war-room__banner span,
+.war-room__banner strong { margin: 0; }
+.war-room__banner p { color: #c5a15b; font-family: Georgia, serif; }
+.war-room__banner h1 { font: 700 clamp(2.6rem, 7vw, 5.8rem)/.9 Georgia, serif; letter-spacing: -.035em; }
+.war-room__scenario { display: grid; gap: .3rem; text-align: right; }
+.war-room__scenario span { color: #aaa394; }
+.war-room__scenario strong { font: 700 1.15rem Georgia, serif; }
+
+.war-room__briefing {
+    display: grid;
+    grid-template-columns: minmax(15rem, 1fr) minmax(20rem, 1.35fr);
+    gap: clamp(1.5rem, 5vw, 4rem);
+    padding-block: clamp(2rem, 5vw, 4rem);
+}
+
+.war-room h2 { margin: 0 0 .6rem; color: #dec17f; font: 700 1.6rem Georgia, serif; }
+.war-room p { line-height: 1.55; color: #bbb3a2; }
+.invite-card { display: grid; grid-template-columns: 1fr auto; border: 1px solid #665f50; background: rgba(0, 0, 0, .16); }
+.invite-card > * { padding: .75rem .9rem; }
+.invite-card span,
+.invite-card label { color: #aaa394; }
+.invite-card strong { overflow-wrap: anywhere; text-align: right; font-family: ui-monospace, monospace; color: #f2e8d0; }
+.invite-card label { grid-column: 1 / -1; padding-bottom: .25rem; border-top: 1px solid #514c41; }
+.invite-card input { min-width: 0; color: #f2e8d0; background: #181916; border: 0; font: .9rem ui-monospace, monospace; }
+.invite-card button,
+.war-room__orders button { min-height: 3rem; color: #f8f0dc; border: 1px solid var(--brass); cursor: pointer; }
+.invite-card button { background: #373830; }
+
+.war-room__muster { border-top: 1px solid #5c5649; }
+.muster-heading { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 0; }
+.muster-heading p { margin: 0; }
+.muster-count { color: #d7b66c; font: 700 1.3rem Georgia, serif; }
+.seat-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; padding: 0; list-style: none; }
+.seat { display: grid; grid-template-columns: 3rem 1fr auto; align-items: center; gap: .85rem; min-height: 5rem; padding: .8rem; border: 1px solid #655f51; background: #2b2c27; }
+.seat--open { opacity: .68; border-style: dashed; }
+.seat__sigil { width: 2.7rem; aspect-ratio: 1; display: grid; place-items: center; color: #efe2c4; background: var(--oxblood); border: 2px double var(--brass); border-radius: 50%; font: 700 1rem Georgia, serif; }
+.seat div { display: grid; gap: .25rem; }
+.seat div span { color: #aaa394; }
+.seat__state { color: #c7aa9c; }
+.seat__state--ready { color: #cfbd78; font-weight: 700; }
+
+.war-room__orders { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; padding-block: 1.5rem; border-top: 1px solid #5c5649; }
+.ready-order { background: #3a3b34; }
+.start-order { background: var(--oxblood); box-shadow: inset .3rem 0 #d2ae66; }
+.war-room__orders button:disabled { opacity: .45; cursor: not-allowed; }
+.host-note { grid-column: 2; margin: 0; align-self: center; text-align: right; }
+.war-room__status,
+.war-room__error { grid-column: 1 / -1; margin: 0; padding: .75rem .9rem; }
+.war-room__status { border-left: .25rem solid var(--brass); background: #303129; }
+.war-room__error { color: #fff0e6 !important; border-left: .25rem solid #d0ad66; background: var(--oxblood); }
+.war-room button:focus-visible,
+.war-room input:focus-visible { outline: .2rem solid #fff3aa; outline-offset: .16rem; }
+
+@media (max-width: 700px) {
+    .war-room__banner { align-items: start; }
+    .war-room__briefing { grid-template-columns: 1fr; }
+    .seat-list { grid-template-columns: 1fr; }
+    .war-room__orders { grid-template-columns: 1fr; }
+    .host-note { grid-column: 1; text-align: left; }
+}

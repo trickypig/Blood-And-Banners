@@ -25,6 +25,13 @@
 .mode-list button:hover:not(:disabled), .mode-list button:focus-visible { background: #302e29; box-shadow: inset .3rem 0 #a6813a; }
 .mode-list button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
 .mode-list button:disabled { opacity: .5; cursor: wait; }
+.join-room { margin-top: 1.4rem; padding: .2rem .75rem 0; }
+.join-room label { display: block; margin-bottom: .55rem; color: #d0ad66; font: 700 1rem Georgia, serif; }
+.join-room div { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.join-room input { min-width: 0; padding: .8rem; color: #f2ead8; background: #191a17; border: 1px solid #5b5548; font: .9rem ui-monospace, monospace; }
+.join-room button { display: block; grid-template-columns: none; padding: .8rem 1rem; color: #f6edda; background: #681e24; border: 1px solid #a6813a; }
+.join-room button::before { content: none; }
+.join-room input:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
 .connection-note, .connection-error { grid-column: 2; margin: 0; padding: .85rem; }
 .connection-note { color: #d0ad66; }
 .connection-error { color: #fff0e6; background: #681e24; border-left: .25rem solid #d0ad66; }
@@ -33,4 +40,5 @@
     .quick-start { grid-template-columns: 1fr; align-content: start; gap: 2.5rem; }
     .intro-copy h1 { font-size: clamp(3rem, 18vw, 5.5rem); }
     .connection-note, .connection-error { grid-column: 1; }
+    .join-room div { grid-template-columns: 1fr; }
 }
