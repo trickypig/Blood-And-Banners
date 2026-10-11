@@ -192,6 +192,46 @@ public sealed class GameClientTests
         Assert.Contains("\"deviceId\":\"device-1\"", handler.Bodies[0]);
     }
 
+    [Fact]
+    public async Task Events_are_polled_after_a_sequence_with_the_seat_credential()
+    {
+        const string page = """
+            {"events":[{"sequence":5,"version":9,"kind":"attackResolved","actingSeat":"guest-1","focusHexes":["1,0","2,0"],
+              "payload":{"wounds":2},"timestamp":"2026-10-11T12:00:00Z"}],"lastSequence":5}
+            """;
+        var handler = new QueueHandler(page);
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+
+        var events = await client.GetEventsAsync(new AuthSession("guest-1", "guest", "access-1", "refresh-1"), "game-1", "seat-secret", 4);
+
+        Assert.EndsWith("api/v1/games/game-1/events?after=4", handler.Requests[0].RequestUri?.ToString());
+        Assert.Equal("seat-secret", handler.Requests[0].Headers.GetValues("X-Seat-Token").Single());
+        Assert.Equal(new[] { "1,0", "2,0" }, events.Events.Single().FocusHexes);
+        Assert.Equal(5, events.LastSequence);
+    }
+
+    [Fact]
+    public async Task Rejected_commands_surface_the_server_error_code_and_message()
+    {
+        const string error = """{"error":{"code":"heroTaken","message":"Another commander has already claimed that hero.","currentVersion":8}}""";
+        var handler = new StatusHandler(HttpStatusCode.UnprocessableEntity, error);
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+        var command = new CommandEnvelope("c-1", 8, "pickHero", System.Text.Json.JsonSerializer.SerializeToElement(new { hero = "X" }));
+
+        var failure = await Assert.ThrowsAsync<GameApiException>(() =>
+            client.SubmitCommandAsync(new AuthSession("guest-1", "guest", "access-1", "refresh-1"), "game-1", "seat-secret", command));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, failure.StatusCode);
+        Assert.Equal("heroTaken", failure.Code);
+        Assert.Equal("Another commander has already claimed that hero.", failure.Message);
+    }
+
+    private sealed class StatusHandler(HttpStatusCode status, string body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+    }
+
     private sealed class QueueHandler(params string[] responses) : HttpMessageHandler
     {
         private readonly Queue<string> _responses = new(responses);

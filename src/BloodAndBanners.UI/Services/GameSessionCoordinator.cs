@@ -44,17 +44,24 @@ public sealed class GameSessionCoordinator(
         return gameSession.Game;
     }
 
-    public async Task<GameProjection> SetReadyAsync(
+    public Task<GameProjection> SetReadyAsync(
         long expectedVersion,
         bool ready,
+        CancellationToken cancellationToken = default) =>
+        SubmitCommandAsync(expectedVersion, "setReady", new { ready }, cancellationToken);
+
+    public async Task<GameProjection> SubmitCommandAsync(
+        long expectedVersion,
+        string kind,
+        object payload,
         CancellationToken cancellationToken = default)
     {
         var session = await RequiredSessionAsync();
         var command = new CommandEnvelope(
             Guid.NewGuid().ToString("N"),
             expectedVersion,
-            "setReady",
-            System.Text.Json.JsonSerializer.SerializeToElement(new { ready }, ContractJson.Options));
+            kind,
+            System.Text.Json.JsonSerializer.SerializeToElement(payload, payload.GetType(), ContractJson.Options));
         return await api.SubmitCommandAsync(
             session.Identity,
             session.GameId,
@@ -62,6 +69,19 @@ public sealed class GameSessionCoordinator(
             command,
             cancellationToken);
     }
+
+    public async Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default)
+    {
+        var session = await RequiredSessionAsync();
+        return await api.GetEventsAsync(
+            session.Identity,
+            session.GameId,
+            session.SeatToken,
+            afterSequence,
+            cancellationToken);
+    }
+
+    public async Task LeaveAsync() => await store.ClearAsync();
 
     public async Task<GameProjection> StartGameAsync(CancellationToken cancellationToken = default)
     {

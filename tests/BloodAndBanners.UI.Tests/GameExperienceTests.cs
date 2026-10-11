@@ -92,6 +92,31 @@ public sealed class GameExperienceTests : BunitContext
         public (string ClientKind, string GameId)? JoinRequest { get; private set; }
         public (long Version, bool Ready)? ReadyRequest { get; private set; }
 
+        public GameProjection? Commanded { get; init; }
+        public Exception? CommandFailure { get; init; }
+        public (long Version, string Kind, object Payload)? CommandRequest { get; private set; }
+        public EventPage Events { get; set; } = new([], 0);
+        public bool Left { get; private set; }
+
+        public Task<GameProjection> SubmitCommandAsync(long expectedVersion, string kind, object payload, CancellationToken cancellationToken = default)
+        {
+            CommandRequest = (expectedVersion, kind, payload);
+            if (CommandFailure is not null)
+            {
+                return Task.FromException<GameProjection>(CommandFailure);
+            }
+            return Task.FromResult(Commanded ?? throw new InvalidOperationException());
+        }
+
+        public Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Events);
+
+        public Task LeaveAsync()
+        {
+            Left = true;
+            return Task.CompletedTask;
+        }
+
         public Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 

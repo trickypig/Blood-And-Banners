@@ -48,4 +48,11 @@ public interface IGameApiClient
         string seatId,
         string replacementIdentityId,
         CancellationToken cancellationToken = default);
+
+    Task<EventPage> GetEventsAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
+        long afterSequence,
+        CancellationToken cancellationToken = default);
 }

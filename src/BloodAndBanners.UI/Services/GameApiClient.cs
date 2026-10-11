@@ -99,6 +99,22 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return await ReadAsync<GameProjection>(response, cancellationToken);
     }
 
+    public async Task<EventPage> GetEventsAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
+        long afterSequence,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateSeatRequest(
+            HttpMethod.Get,
+            $"api/v1/games/{gameId}/events?after={afterSequence}",
+            session,
+            seatToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadAsync<EventPage>(response, cancellationToken);
+    }
+
     public async Task<SeatReassignmentResult> ReassignSeatAsync(
         AuthSession session,
         string gameId,
@@ -132,9 +148,28 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
 
     private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await ErrorAsync(response, cancellationToken);
+        }
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return await JsonSerializer.DeserializeAsync<T>(stream, ContractJson.Options, cancellationToken)
             ?? throw new JsonException("The API returned an empty JSON response.");
+    }
+
+    private static async Task<GameApiException> ErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        ApiError? error = null;
+        try
+        {
+            error = (await response.Content.ReadFromJsonAsync<ApiErrorResponse>(ContractJson.Options, cancellationToken))?.Error;
+        }
+        catch (JsonException)
+        {
+        }
+        return new GameApiException(
+            response.StatusCode,
+            error?.Code ?? "httpError",
+            error?.Message ?? $"The server returned HTTP {(int)response.StatusCode}.");
     }
 }

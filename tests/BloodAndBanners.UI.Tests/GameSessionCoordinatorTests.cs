@@ -176,6 +176,40 @@ public sealed class GameSessionCoordinatorTests
         Assert.Null(await store.GetAsync("session"));
     }
 
+    [Fact]
+    public async Task Battle_commands_build_an_envelope_from_the_kind_payload_and_version()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var moved = Projection("game-1") with { Version = 13 };
+        var api = new FakeGameApiClient { Commanded = moved };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var result = await coordinator.SubmitCommandAsync(12, "moveUnit", new { unitId = "s1-u2", to = "3,4" });
+
+        Assert.Same(moved, result);
+        Assert.Equal(12, api.CommandRequest?.Command.ExpectedVersion);
+        Assert.Equal("moveUnit", api.CommandRequest?.Command.Kind);
+        Assert.Equal("3,4", api.CommandRequest?.Command.Payload.GetProperty("to").GetString());
+        Assert.Equal(32, api.CommandRequest?.Command.CommandId.Length);
+    }
+
+    [Fact]
+    public async Task Events_use_the_saved_seat_and_leaving_clears_the_session()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var api = new FakeGameApiClient { Events = new EventPage([], 9) };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var page = await coordinator.GetEventsAsync(4);
+        await coordinator.LeaveAsync();
+
+        Assert.Equal(9, page.LastSequence);
+        Assert.Equal((identity, "game-1", "seat-secret", 4L), api.EventsRequest);
+        Assert.Null(store.Current);
+    }
+
     private static GameProjection Projection(string gameId) => new(
         gameId,
         1,
@@ -244,6 +278,20 @@ public sealed class GameSessionCoordinatorTests
         public (AuthSession Identity, string GameId)? JoinRequest { get; private set; }
         public ((AuthSession Identity, string GameId, string SeatToken) Session, CommandEnvelope Command)? CommandRequest { get; private set; }
         public (AuthSession Identity, string GameId, string SeatToken)? StartRequest { get; private set; }
+
+        public EventPage? Events { get; init; }
+        public (AuthSession Identity, string GameId, string SeatToken, long After)? EventsRequest { get; private set; }
+
+        public Task<EventPage> GetEventsAsync(
+            AuthSession session,
+            string gameId,
+            string seatToken,
+            long afterSequence,
+            CancellationToken cancellationToken = default)
+        {
+            EventsRequest = (session, gameId, seatToken, afterSequence);
+            return Task.FromResult(Events ?? throw new InvalidOperationException("Events response was not configured."));
+        }
 
         public Task<AuthSession> CreateGuestAsync(string deviceId, CancellationToken cancellationToken = default) =>
             Task.FromResult(Guest ?? throw new InvalidOperationException("Guest response was not configured."));
