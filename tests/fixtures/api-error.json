@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "versionConflict",
+    "message": "The game changed before this command arrived.",
+    "currentVersion": 8,
+    "recovery": "Refresh the game projection and retry a still-legal action with a new command ID."
+  }
+}

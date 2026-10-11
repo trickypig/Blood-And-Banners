@@ -1,3 +1,13 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body, #app {
+    min-height: 100%;
+    margin: 0;
+    background: #232529;
+}
+
 h1:focus {
     outline: none;
 }

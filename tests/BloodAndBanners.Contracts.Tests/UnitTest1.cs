@@ -42,6 +42,42 @@ public sealed class ContractFixtureTests
         Assert.Equal(2, command.Payload.GetProperty("path").GetArrayLength());
     }
 
+    [Fact]
+    public void Scenario_fixture_carries_versioned_map_modes_and_scoring()
+    {
+        var json = File.ReadAllText(FixturePath("scenario-definition.json"));
+
+        var scenario = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.ScenarioDefinition>(
+            json,
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+
+        Assert.NotNull(scenario);
+        Assert.Equal(1, scenario.SchemaVersion);
+        Assert.Contains(GameMode.BattleRoyale, scenario.ModeCompatibility);
+        Assert.Equal("plains", scenario.Map.Hexes.Single().Biome);
+        Assert.Equal(10, scenario.Scoring.Target);
+        Assert.Equal(2, scenario.Scoring.CompleteObjectSetBonus);
+    }
+
+    [Fact]
+    public void Event_and_error_fixtures_preserve_recovery_and_random_outcomes()
+    {
+        var gameEvent = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.GameEvent>(
+            File.ReadAllText(FixturePath("game-event.json")),
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+        var error = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.ApiErrorResponse>(
+            File.ReadAllText(FixturePath("api-error.json")),
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+
+        Assert.NotNull(gameEvent);
+        Assert.Equal(9, gameEvent.Sequence);
+        Assert.Equal(3, gameEvent.Payload.GetProperty("attackDice").GetArrayLength());
+        Assert.NotNull(error);
+        Assert.Equal("versionConflict", error.Error.Code);
+        Assert.Equal(8, error.Error.CurrentVersion);
+        Assert.Contains("Refresh", error.Error.Recovery);
+    }
+
     private static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "fixtures", name);
 }

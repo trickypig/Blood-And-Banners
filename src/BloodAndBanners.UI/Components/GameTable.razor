@@ -1,0 +1,148 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+
+<main class="game-table">
+    <header class="turn-ribbon">
+        <div>
+            <span class="mode-mark" aria-hidden="true">⚔</span>
+            <strong>@ModeLabel(Projection.Mode)</strong>
+        </div>
+        <p data-testid="turn-status">
+            Round @Projection.Turn.Round · @Projection.Turn.ActivationsRemaining activations remain
+        </p>
+        <p data-testid="viewer-role" class="viewer-role">
+            @(Projection.Viewer.CanCommand ? "Commanding" : "Spectating")
+        </p>
+    </header>
+
+    <section class="battlefield-panel" aria-label="Game board">
+        <div class="board-controls" aria-label="Board view controls">
+            <button type="button" aria-label="Zoom out">−</button>
+            <button type="button" aria-label="Reset board view">Reset</button>
+            <button type="button" aria-label="Zoom in">+</button>
+        </div>
+        <div class="hex-board"
+             role="grid"
+             aria-label="Battlefield, @Projection.Board.Columns columns by @Projection.Board.Rows rows">
+            @foreach (var hex in Projection.Board.Hexes)
+            {
+                <button type="button"
+                        role="gridcell"
+                        class="hex @TerrainClass(hex) @(hex.OccupantId is null ? null : "occupied")"
+                        style="--q:@hex.Q; --r:@hex.R; --elevation:@hex.Elevation"
+                        data-hex="@HexKey(hex)"
+                        aria-label="@HexLabel(hex)">
+                    <span class="hex-elevation" aria-hidden="true">@hex.Elevation</span>
+                    @if (hex.OccupantId is not null)
+                    {
+                        <span class="unit-token" aria-hidden="true">@Initials(hex.OccupantId)</span>
+                    }
+                </button>
+            }
+        </div>
+    </section>
+
+    <aside class="command-rail" aria-label="Game commands">
+        @if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
+        {
+            <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title">
+                <h2 id="choice-title">@Humanize(Projection.PendingChoice.Kind)</h2>
+                <p>The battle is waiting for your decision.</p>
+                <div class="choice-options">
+                    @foreach (var option in Projection.PendingChoice.Options)
+                    {
+                        <button type="button" data-choice="@option" @onclick="() => OnChoice.InvokeAsync(option)">@option</button>
+                    }
+                </div>
+            </section>
+        }
+        else if (Projection.Viewer.CanCommand)
+        {
+            <section class="action-tray" aria-label="Legal actions">
+                <h2>Your orders</h2>
+                @foreach (var action in Projection.LegalActions)
+                {
+                    <button type="button"
+                            class="action-button"
+                            data-action="@action.Kind"
+                            @onclick="() => OnAction.InvokeAsync(action)">
+                        @ActionLabel(action.Kind)
+                    </button>
+                }
+            </section>
+        }
+        else
+        {
+            <section class="spectator-controls">
+                <h2>Battle camera</h2>
+                <button type="button" data-follow-events @onclick="() => OnFollowEvents.InvokeAsync()">
+                    Follow the action
+                </button>
+                <p>Moving the board pauses automatic following.</p>
+            </section>
+        }
+
+        <section class="score-strip" aria-label="Scores">
+            <h2>Score</h2>
+            <dl>
+                @foreach (var score in Projection.Scores)
+                {
+                    <div><dt>@score.Key</dt><dd>@score.Value</dd></div>
+                }
+            </dl>
+        </section>
+    </aside>
+</main>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<LegalAction> OnAction { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnChoice { get; set; }
+
+    [Parameter]
+    public EventCallback OnFollowEvents { get; set; }
+
+    private static string HexKey(HexProjection hex) => $"{hex.Q},{hex.R}";
+
+    private static string TerrainClass(HexProjection hex) =>
+        $"terrain-{hex.Biome.ToLowerInvariant()}-{hex.Terrain.ToLowerInvariant().Replace(' ', '-')}";
+
+    private static string HexLabel(HexProjection hex) =>
+        $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
+        (hex.OccupantId is null ? string.Empty : $", occupied by {hex.OccupantId}");
+
+    private static string Initials(string value) => string.Concat(
+        value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
+
+    private static string Title(string value) =>
+        string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
+
+    private static string Humanize(string value)
+    {
+        var spaced = System.Text.RegularExpressions.Regex.Replace(value, "([a-z])([A-Z])", "$1 $2");
+        return Title(spaced.ToLowerInvariant());
+    }
+
+    private static string ActionLabel(string kind) => kind switch
+    {
+        "moveUnit" => "Move",
+        "attack" => "Attack",
+        "useAbility" => "Use ability",
+        "endActivation" => "End activation",
+        "endTurn" => "End turn",
+        _ => Humanize(kind),
+    };
+
+    private static string ModeLabel(GameMode mode) => mode switch
+    {
+        GameMode.VanillaPvp => "Vanilla duel",
+        GameMode.Coop => "Void incursion",
+        GameMode.BattleRoyale => "Battle royale",
+        _ => mode.ToString(),
+    };
+}

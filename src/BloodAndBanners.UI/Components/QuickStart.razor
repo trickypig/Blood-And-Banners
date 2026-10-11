@@ -1,0 +1,50 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+
+<section class="quick-start" aria-labelledby="quick-start-title">
+    <div class="intro-copy">
+        <p class="game-name">Blood &amp; Banners</p>
+        <h1 id="quick-start-title">Take the field.</h1>
+        <p>
+            Open a war room in seconds. Invite players from web or mobile,
+            then let the server keep every move, roll, and victory honest.
+        </p>
+    </div>
+
+    <div class="mode-list" aria-label="Choose a game mode">
+        <button type="button" data-mode="vanillaPvp" disabled="@IsBusy" @onclick="() => Create(GameMode.VanillaPvp)">
+            <strong>Vanilla duel</strong>
+            <span>Two commanders. One hero and army each. No second chances.</span>
+        </button>
+        <button type="button" data-mode="coop" disabled="@IsBusy" @onclick="() => Create(GameMode.Coop)">
+            <strong>Void incursion</strong>
+            <span>One Void Lord against one to four allied commanders.</span>
+        </button>
+        <button type="button" data-mode="battleRoyale" disabled="@IsBusy" @onclick="() => Create(GameMode.BattleRoyale)">
+            <strong>Battle royale</strong>
+            <span>A human dungeon master drives the battlefield against two to four rivals.</span>
+        </button>
+    </div>
+
+    @if (IsBusy)
+    {
+        <p class="connection-note" role="status">Raising your banner…</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <p class="connection-error" role="alert">@ErrorMessage</p>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string? ErrorMessage { get; set; }
+
+    [Parameter]
+    public EventCallback<GameMode> OnCreate { get; set; }
+
+    private Task Create(GameMode mode) => OnCreate.InvokeAsync(mode);
+}

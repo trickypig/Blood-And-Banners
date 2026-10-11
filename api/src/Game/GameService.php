@@ -260,6 +260,9 @@ final class GameService
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
             'viewer' => ['role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false],
+            'board' => ['columns' => 0, 'rows' => 0, 'hexes' => []],
+            'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
+            'pendingChoice' => null,
             'memberships' => array_map(static fn(array $seat): array => [
                 'seatId' => $seat['id'],
                 'seatIndex' => (int)$seat['seat_index'],
@@ -267,6 +270,8 @@ final class GameService
                 'isHost' => (bool)$seat['is_host'],
             ], $this->memberships($gameId)),
             'legalActions' => [],
+            'scores' => [],
+            'result' => null,
         ];
     }
 
@@ -286,6 +291,14 @@ final class GameService
     {
         $game = $this->gameRow($gameId);
         $memberships = $this->memberships($gameId);
+        $viewerSeat = null;
+        $scores = [];
+        foreach ($memberships as $membership) {
+            $scores[$membership['id']] = 0;
+            if ($membership['identity_id'] === $identityId) {
+                $viewerSeat = $membership;
+            }
+        }
         return [
             'gameId' => $gameId,
             'version' => (int)$game['version'],
@@ -293,10 +306,19 @@ final class GameService
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
             'viewer' => [
-                'identityId' => $identityId,
+                'role' => 'player',
+                'seatId' => $viewerSeat['id'] ?? null,
                 'isHost' => $game['host_identity_id'] === $identityId,
                 'canCommand' => true,
             ],
+            'board' => ['columns' => 0, 'rows' => 0, 'hexes' => []],
+            'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
+            'pendingChoice' => null,
+            'legalActions' => $game['lifecycle'] === 'lobby'
+                ? [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]]
+                : [],
+            'scores' => $scores,
+            'result' => null,
             'memberships' => array_map(static fn(array $seat): array => [
                 'seatId' => $seat['id'],
                 'seatIndex' => (int)$seat['seat_index'],

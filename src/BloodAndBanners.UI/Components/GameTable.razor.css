@@ -1,0 +1,101 @@
+.game-table {
+    --ink: #181711;
+    --paper: #d8d0b9;
+    --oxblood: #681e24;
+    --brass: #a6813a;
+    display: grid;
+    grid-template: auto minmax(28rem, 1fr) / minmax(0, 1fr) 18rem;
+    min-height: 100dvh;
+    color: var(--ink);
+    background: #232529;
+    font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.turn-ribbon {
+    grid-column: 1 / -1;
+    min-height: 4rem;
+    padding: .65rem 1.15rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    color: #f0ead9;
+    background: var(--oxblood);
+    border-bottom: 3px solid var(--brass);
+}
+
+.turn-ribbon strong,
+.command-rail h2 { font-family: Georgia, "Times New Roman", serif; letter-spacing: .015em; }
+.turn-ribbon p { margin: 0; }
+.mode-mark { margin-right: .55rem; color: #ddbf76; }
+.viewer-role { justify-self: end; }
+
+.battlefield-panel {
+    position: relative;
+    overflow: auto;
+    min-height: 34rem;
+    background-color: #8d897c;
+    background-image: linear-gradient(25deg, rgba(255,255,255,.035) 25%, transparent 25%), linear-gradient(205deg, rgba(0,0,0,.06) 25%, transparent 25%);
+    background-size: 22px 22px;
+}
+
+.board-controls { position: sticky; z-index: 3; top: .75rem; left: .75rem; display: inline-flex; margin: .75rem; border: 1px solid #4a463a; }
+.board-controls button,
+.spectator-controls button,
+.choice-options button { min-height: 2.65rem; padding: .45rem .7rem; color: #f6f0df; background: #373830; border: 0; border-right: 1px solid #6a6658; }
+
+.hex-board { position: relative; width: max(36rem, 100%); min-height: 31rem; transform-origin: center; }
+.hex {
+    --hex-width: 7rem;
+    position: absolute;
+    left: calc(4rem + var(--q) * 5.35rem + var(--r) * 2.675rem);
+    top: calc(3rem + var(--r) * 6.15rem - var(--elevation) * .42rem);
+    width: var(--hex-width);
+    aspect-ratio: 1.1547;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: #16150f;
+    background: #87966a;
+    border: 0;
+    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+    filter: drop-shadow(0 calc(.22rem + var(--elevation) * .16rem) 0 #4b4637) drop-shadow(0 .45rem .3rem rgba(0, 0, 0, .35));
+    cursor: pointer;
+}
+
+.hex::before { content: ""; position: absolute; inset: .25rem; clip-path: inherit; border: .14rem solid rgba(36, 32, 22, .45); }
+.terrain-stone-crags { background: repeating-linear-gradient(135deg, #77766e 0 8px, #66645c 8px 12px); }
+.terrain-plains-grass { background: radial-gradient(circle at 30% 35%, #a9b77a 0 5%, transparent 6%), #87966a; }
+.terrain-water-open-water { background: repeating-linear-gradient(0deg, #5d8292 0 6px, #7598a3 6px 9px); }
+.terrain-lava-lava { background: repeating-linear-gradient(120deg, #9f3824 0 8px, #e0772d 8px 11px, #4c2924 11px 16px); }
+.terrain-ice-ice { background: linear-gradient(145deg, #d9edf0 0 35%, #96bdc8 36% 42%, #cce1e6 43%); }
+.hex-elevation { position: absolute; right: 1.15rem; bottom: .8rem; font-size: .72rem; font-weight: 700; }
+.unit-token { width: 2.65rem; height: 2.65rem; display: grid; place-items: center; color: #f5ead2; background: var(--oxblood); border: 3px double #d6b76d; border-radius: 50%; font-family: Georgia, serif; font-weight: 700; box-shadow: 0 .2rem .35rem rgba(0,0,0,.45); }
+
+.command-rail { padding: 1.1rem; color: #ede8da; background: #292a28; border-left: 1px solid #66604f; }
+.command-rail section + section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #5a5548; }
+.command-rail h2 { margin: 0 0 .8rem; font-size: 1.2rem; color: #ddbf76; }
+.command-rail p { line-height: 1.45; color: #c9c2b2; }
+.action-tray { display: grid; gap: .65rem; }
+.action-button { min-height: 3.1rem; padding: .65rem .85rem; text-align: left; color: #f8f0dc; background: var(--oxblood); border: 1px solid #b18b48; box-shadow: inset .25rem 0 0 #d2ae66; }
+.choice-prompt { border-left: .3rem solid #d2ae66; padding-left: .9rem; }
+.choice-options { display: flex; flex-wrap: wrap; gap: .5rem; }
+.score-strip dl { margin: 0; }
+.score-strip dl div { display: flex; justify-content: space-between; padding: .35rem 0; }
+.score-strip dt { overflow: hidden; text-overflow: ellipsis; }
+.score-strip dd { margin: 0 0 0 1rem; font-weight: 800; color: #ddbf76; }
+button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
+
+@media (max-width: 760px) {
+    .game-table { grid-template: auto minmax(25rem, 1fr) auto / 1fr; }
+    .turn-ribbon { grid-template-columns: 1fr auto; }
+    .turn-ribbon [data-testid="turn-status"] { grid-column: 1 / -1; grid-row: 2; }
+    .command-rail { border-left: 0; border-top: 2px solid var(--brass); }
+    .action-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .action-tray h2 { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .unit-token { transition: transform 140ms ease-out; }
+    .hex:focus .unit-token { transform: translateY(-.18rem); }
+}

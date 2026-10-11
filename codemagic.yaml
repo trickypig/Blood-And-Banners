@@ -1,0 +1,44 @@
+workflows:
+  quality-and-android:
+    name: Quality and Android
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      vars:
+        DOTNET_NOLOGO: "true"
+    scripts:
+      - name: Restore workloads
+        script: dotnet workload restore BloodAndBanners.slnx
+      - name: PHP tests
+        script: php api/tests/run.php
+      - name: .NET tests
+        script: |
+          dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj
+          dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj
+      - name: Publish PWA
+        script: dotnet publish src/BloodAndBanners.Web/BloodAndBanners.Web.csproj -c Release --no-restore
+      - name: Build Android
+        script: dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -c Release -f net10.0-android --no-restore
+    artifacts:
+      - src/BloodAndBanners.Web/bin/Release/net10.0/publish/wwwroot/**
+      - src/BloodAndBanners.Maui/bin/Release/net10.0-android/**/*.apk
+
+  ios-check:
+    name: iOS compile check
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    scripts:
+      - name: Restore workloads
+        script: dotnet workload restore src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj
+      - name: Build iOS simulator
+        script: dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -c Release -f net10.0-ios -p:RuntimeIdentifier=iossimulator-arm64
+
+  windows-check:
+    name: Windows compile check
+    instance_type: windows_x2
+    max_build_duration: 60
+    scripts:
+      - name: Restore workloads
+        script: dotnet workload restore src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj
+      - name: Build Windows
+        script: dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -c Release -f net10.0-windows10.0.19041.0

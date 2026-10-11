@@ -4,9 +4,11 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/FoundationTest.php';
 require __DIR__ . '/ApiTest.php';
+require __DIR__ . '/CoreRulesTest.php';
+require __DIR__ . '/ScenarioTest.php';
 
 $failures = 0;
-$tests = array_merge(foundation_tests(), api_tests());
+$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

@@ -1,7 +1,50 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+@inject GameApiClient Api
 
-<h1>Hello, world!</h1>
+<PageTitle>Blood &amp; Banners</PageTitle>
 
-Welcome to your new app.
+@if (_game is null)
+{
+    <QuickStart IsBusy="_isBusy" ErrorMessage="@_error" OnCreate="CreateGame" />
+}
+else
+{
+    <GameTable Projection="_game" />
+}
+
+@code {
+    private GameProjection? _game;
+    private bool _isBusy;
+    private string? _error;
+
+    private async Task CreateGame(GameMode mode)
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var session = await Api.CreateGuestAsync($"web-{Guid.NewGuid():N}");
+            _game = await Api.CreateGameAsync(session, mode, DefaultScenario(mode));
+        }
+        catch (Exception)
+        {
+            _error = "The war room could not be reached. Check the server and try again.";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static string DefaultScenario(GameMode mode) => mode switch
+    {
+        GameMode.VanillaPvp => "Training Grounds",
+        GameMode.Coop => "Portal Watch",
+        GameMode.BattleRoyale => "Last Banner",
+        _ => "Training Grounds"
+    };
+}

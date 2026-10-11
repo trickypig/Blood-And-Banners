@@ -1,11 +1,11 @@
 {
-  "name": "BloodAndBanners.Web",
-  "short_name": "BloodAndBanners.Web",
+  "name": "Blood & Banners",
+  "short_name": "B&B",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#03173d",
+  "background_color": "#232529",
+  "theme_color": "#681e24",
   "prefer_related_applications": false,
   "icons": [
     {

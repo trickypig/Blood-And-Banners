@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "name": "Training Grounds",
+  "modeCompatibility": ["vanillaPvp"],
+  "map": {
+    "columns": 3,
+    "rows": 3,
+    "hexes": [
+      {"q":0,"r":0,"biome":"plains","terrain":"grass","elevation":0,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":"banner","fountain":false,"sightBlocker":false},
+      {"q":1,"r":0,"biome":"plains","terrain":"roads","elevation":0,"playerStart":1,"portal":false,"spawnZone":null,"piece":null,"object":null,"fountain":false,"sightBlocker":false},
+      {"q":-1,"r":0,"biome":"plains","terrain":"roads","elevation":0,"playerStart":2,"portal":false,"spawnZone":null,"piece":null,"object":null,"fountain":false,"sightBlocker":false},
+      {"q":0,"r":1,"biome":"stone","terrain":"crags","elevation":2,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":null,"fountain":false,"sightBlocker":true},
+      {"q":0,"r":-1,"biome":"stone","terrain":"stone-path","elevation":1,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":null,"fountain":false,"sightBlocker":false},
+      {"q":1,"r":-1,"biome":"plains","terrain":"grass","elevation":0,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":"chest","fountain":false,"sightBlocker":false},
+      {"q":-1,"r":1,"biome":"plains","terrain":"grass","elevation":0,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":"statue","fountain":false,"sightBlocker":true}
+    ]
+  },
+  "placements": [],
+  "objectives": [{"kind":"annihilation"}],
+  "scoring": {"target":10,"enemyHero":3,"boss":2,"terrainObject":1,"completeObjectSetBonus":2}
+}

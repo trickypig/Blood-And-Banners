@@ -140,6 +140,21 @@ function foundation_tests(): array
                 expect_same('spectatorLinkInvalid', $error->errorCode, 'revoked spectator links should be rejected');
             }
         },
+
+        'game projections expose the complete shared client contract' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $guest = $auth->createGuest('contract-device');
+            $projection = $games->createGame($guest['identityId'], 'vanillaPvp', 'Training Grounds');
+
+            foreach (['gameId', 'version', 'lifecycle', 'mode', 'viewer', 'board', 'turn', 'pendingChoice', 'legalActions', 'scores', 'result'] as $field) {
+                expect_true(array_key_exists($field, $projection), "projection missing {$field}");
+            }
+            foreach (['role', 'seatId', 'canCommand', 'isHost'] as $field) {
+                expect_true(array_key_exists($field, $projection['viewer']), "viewer missing {$field}");
+            }
+            expect_same('player', $projection['viewer']['role'], 'member projection should be a player view');
+            expect_same(0, $projection['board']['columns'], 'lobby board should be present but empty');
+        },
     ];
 }
 

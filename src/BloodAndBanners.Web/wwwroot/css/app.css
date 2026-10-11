@@ -2,6 +2,20 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body, #app {
+    min-height: 100%;
+    margin: 0;
+    background: #232529;
+}
+
+body {
+    overscroll-behavior: none;
+}
+
 h1:focus {
     outline: none;
 }

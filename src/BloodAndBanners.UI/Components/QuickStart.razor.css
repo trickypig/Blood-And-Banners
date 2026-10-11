@@ -1,0 +1,36 @@
+.quick-start {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(18rem, 30rem) minmax(22rem, 42rem);
+    justify-content: center;
+    align-content: center;
+    gap: clamp(2rem, 7vw, 7rem);
+    padding: clamp(2rem, 6vw, 6rem);
+    color: #e9e3d2;
+    background:
+        linear-gradient(90deg, rgba(18,18,17,.97), rgba(31,29,27,.9)),
+        repeating-linear-gradient(115deg, #272723 0 2px, #20201e 2px 8px);
+}
+
+.intro-copy { align-self: start; border-top: .35rem solid #a6813a; padding-top: 1.5rem; }
+.game-name { margin: 0 0 2.5rem; color: #d0ad66; font: 700 1.05rem Georgia, serif; }
+.intro-copy h1 { margin: 0; max-width: 8ch; color: #f2ead8; font: 700 clamp(3.2rem, 8vw, 7rem)/.88 Georgia, serif; letter-spacing: -.045em; }
+.intro-copy > p:last-child { max-width: 36rem; margin-top: 2rem; color: #bdb6a7; font-size: 1.08rem; line-height: 1.7; }
+.mode-list { display: grid; align-content: center; border-top: 1px solid #5b5548; }
+.mode-list button { display: grid; gap: .4rem; padding: 1.45rem .75rem; text-align: left; color: #e9e3d2; background: transparent; border: 0; border-bottom: 1px solid #5b5548; cursor: pointer; }
+.mode-list button::before { content: "◆"; grid-row: 1 / 3; align-self: center; margin-right: 1rem; color: #8b3236; font-size: 1.25rem; }
+.mode-list button { grid-template-columns: 2rem 1fr; }
+.mode-list strong { font: 700 1.45rem Georgia, serif; }
+.mode-list span { color: #aaa394; line-height: 1.45; }
+.mode-list button:hover:not(:disabled), .mode-list button:focus-visible { background: #302e29; box-shadow: inset .3rem 0 #a6813a; }
+.mode-list button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.mode-list button:disabled { opacity: .5; cursor: wait; }
+.connection-note, .connection-error { grid-column: 2; margin: 0; padding: .85rem; }
+.connection-note { color: #d0ad66; }
+.connection-error { color: #fff0e6; background: #681e24; border-left: .25rem solid #d0ad66; }
+
+@media (max-width: 760px) {
+    .quick-start { grid-template-columns: 1fr; align-content: start; gap: 2.5rem; }
+    .intro-copy h1 { font-size: clamp(3rem, 18vw, 5.5rem); }
+    .connection-note, .connection-error { grid-column: 1; }
+}
