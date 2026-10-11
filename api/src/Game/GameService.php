@@ -3,13 +3,18 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Game;
 
+use BloodAndBanners\Scenario\ScenarioService;
+use DomainException;
 use PDO;
 use Throwable;
 
 final class GameService
 {
-    public function __construct(private readonly PDO $connection)
+    private readonly ScenarioService $scenarios;
+
+    public function __construct(private readonly PDO $connection, ?ScenarioService $scenarios = null)
     {
+        $this->scenarios = $scenarios ?? new ScenarioService($connection);
     }
 
     public function createGame(string $hostIdentityId, string $mode, string $scenarioName): array
@@ -19,15 +24,23 @@ final class GameService
         }
         $this->connection->beginTransaction();
         try {
+            try {
+                $scenario = $this->scenarios->resolveBuiltInRevision($scenarioName, $mode);
+            } catch (DomainException $error) {
+                $message = $error->getMessage() === 'scenarioModeIncompatible'
+                    ? 'The selected scenario does not support this game mode.'
+                    : 'The selected scenario could not be found.';
+                throw new GameServiceException($error->getMessage(), $message);
+            }
             $gameId = self::id();
             $seatToken = self::token();
             $now = self::now();
             $this->connection->prepare(
-                'INSERT INTO games (id, mode, lifecycle, scenario_name, host_identity_id, version, created_at, updated_at)
-                 VALUES (:id, :mode, :lifecycle, :scenario, :host, 1, :created, :updated)'
+                'INSERT INTO games (id, mode, lifecycle, scenario_revision_id, scenario_name, host_identity_id, version, created_at, updated_at)
+                 VALUES (:id, :mode, :lifecycle, :revision, :scenario, :host, 1, :created, :updated)'
             )->execute([
                 'id' => $gameId, 'mode' => $mode, 'lifecycle' => 'lobby', 'scenario' => $scenarioName,
-                'host' => $hostIdentityId, 'created' => $now, 'updated' => $now,
+                'revision' => $scenario['revisionId'], 'host' => $hostIdentityId, 'created' => $now, 'updated' => $now,
             ]);
             $this->insertMembership($gameId, $hostIdentityId, 1, true, $seatToken);
             $projection = $this->projection($gameId, $hostIdentityId);
@@ -359,6 +372,7 @@ final class GameService
             throw new GameServiceException('spectatorLinkInvalid', 'This spectator link is invalid or has been revoked.');
         }
         $game = $this->gameRow($gameId);
+        $board = $this->boardProjection($game);
         return [
             'gameId' => $gameId,
             'version' => (int)$game['version'],
@@ -366,7 +380,7 @@ final class GameService
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
             'viewer' => ['role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false],
-            'board' => ['columns' => 0, 'rows' => 0, 'hexes' => []],
+            'board' => $board,
             'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
             'pendingChoice' => null,
             'memberships' => array_map(static fn(array $seat): array => [
@@ -397,6 +411,7 @@ final class GameService
     private function projection(string $gameId, string $identityId): array
     {
         $game = $this->gameRow($gameId);
+        $board = $this->boardProjection($game);
         $memberships = $this->memberships($gameId);
         $viewerSeat = null;
         $scores = [];
@@ -418,7 +433,7 @@ final class GameService
                 'isHost' => $game['host_identity_id'] === $identityId,
                 'canCommand' => true,
             ],
-            'board' => ['columns' => 0, 'rows' => 0, 'hexes' => []],
+            'board' => $board,
             'turn' => ['round' => 0, 'activeSeatId' => null, 'activationsRemaining' => 0],
             'pendingChoice' => null,
             'legalActions' => $game['lifecycle'] === 'lobby'
@@ -432,6 +447,34 @@ final class GameService
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
             ], $memberships),
+        ];
+    }
+
+    private function boardProjection(array $game): array
+    {
+        $revisionId = (string)($game['scenario_revision_id'] ?? '');
+        if ($revisionId === '') {
+            $scenario = $this->scenarios->resolveBuiltInRevision($game['scenario_name'], $game['mode']);
+            $revisionId = $scenario['revisionId'];
+            $this->connection->prepare('UPDATE games SET scenario_revision_id = :revision WHERE id = :game')
+                ->execute(['revision' => $revisionId, 'game' => $game['id']]);
+            $definition = $scenario['definition'];
+        } else {
+            $definition = $this->scenarios->getRevision($revisionId);
+        }
+
+        return [
+            'columns' => (int)$definition['map']['columns'],
+            'rows' => (int)$definition['map']['rows'],
+            'hexes' => array_map(static fn(array $hex): array => [
+                'q' => (int)$hex['q'],
+                'r' => (int)$hex['r'],
+                'biome' => (string)$hex['biome'],
+                'terrain' => (string)$hex['terrain'],
+                'elevation' => (int)$hex['elevation'],
+                'sightBlocker' => (bool)($hex['sightBlocker'] ?? false),
+                'occupantId' => isset($hex['piece']) ? (string)$hex['piece'] : null,
+            ], $definition['map']['hexes']),
         ];
     }
 

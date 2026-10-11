@@ -299,7 +299,45 @@ function foundation_tests(): array
                 expect_true(array_key_exists($field, $projection['viewer']), "viewer missing {$field}");
             }
             expect_same('player', $projection['viewer']['role'], 'member projection should be a player view');
-            expect_same(0, $projection['board']['columns'], 'lobby board should be present but empty');
+            expect_same(3, $projection['board']['columns'], 'lobby projection should include the selected scenario board');
+        },
+
+        'games freeze a compatible immutable scenario revision and project its board' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('scenario-freeze-host');
+            $rival = $auth->createGuest('scenario-freeze-rival');
+
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $revisionId = $db->query('SELECT scenario_revision_id FROM games LIMIT 1')->fetchColumn();
+            expect_true(is_string($revisionId) && $revisionId !== '', 'game should reference a concrete scenario revision');
+            expect_same(3, $created['board']['columns'], 'selected scenario columns should be projected in the lobby');
+            expect_same(7, count($created['board']['hexes']), 'selected scenario hexes should be projected in the lobby');
+
+            $joined = $games->joinGame($created['gameId'], $rival['identityId']);
+            $games->setReady($created['gameId'], $host['identityId'], $created['seatToken'], true);
+            $games->setReady($created['gameId'], $rival['identityId'], $joined['seatToken'], true);
+            $started = $games->startGame($created['gameId'], $host['identityId'], $created['seatToken']);
+            $startedRevisionId = $db->query('SELECT scenario_revision_id FROM games LIMIT 1')->fetchColumn();
+
+            expect_same($revisionId, $startedRevisionId, 'starting must retain the revision selected for the match');
+            expect_same(7, count($started['board']['hexes']), 'started match should use the frozen scenario board');
+        },
+
+        'game creation rejects unknown and mode incompatible scenarios' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('scenario-validation-host');
+
+            foreach ([
+                ['Missing Battlefield', 'scenarioNotFound'],
+                ['Portal Watch', 'scenarioModeIncompatible'],
+            ] as [$scenarioName, $expectedCode]) {
+                try {
+                    $games->createGame($host['identityId'], 'vanillaPvp', $scenarioName);
+                    throw new RuntimeException('invalid scenario selection was accepted');
+                } catch (GameServiceException $error) {
+                    expect_same($expectedCode, $error->errorCode, 'scenario selection failure should be explicit');
+                }
+            }
         },
     ];
 }
