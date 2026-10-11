@@ -60,7 +60,7 @@ function scenario_tests(): array
 
         'built in scenarios cover every game mode with valid maps' => static function (): void {
             $files = glob(dirname(__DIR__) . '/scenarios/*.json') ?: [];
-            expect_same(3, count($files), 'three curated scenarios should ship');
+            expect_same(4, count($files), 'four curated scenarios should ship');
             $coveredModes = [];
             foreach ($files as $file) {
                 $scenario = json_decode((string)file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
