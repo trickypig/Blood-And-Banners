@@ -8,9 +8,10 @@ require __DIR__ . '/CoreRulesTest.php';
 require __DIR__ . '/ScenarioTest.php';
 require __DIR__ . '/VanillaTestSupport.php';
 require __DIR__ . '/VanillaGeometryTest.php';
+require __DIR__ . '/VanillaDraftTest.php';
 
 $failures = 0;
-$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests());
+$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();
