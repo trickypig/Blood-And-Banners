@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/FoundationTest.php';
+require __DIR__ . '/ApiTest.php';
 
 $failures = 0;
-$tests = foundation_tests();
+$tests = array_merge(foundation_tests(), api_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

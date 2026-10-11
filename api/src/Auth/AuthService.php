@@ -34,6 +34,76 @@ final class AuthService
         return $this->tokens->decode($accessToken);
     }
 
+    public function login(string $email, string $password, string $deviceId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id, password_hash FROM users WHERE email = :email'
+        );
+        $statement->execute(['email' => strtolower(trim($email))]);
+        $user = $statement->fetch();
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            throw new DomainException('invalidCredentials');
+        }
+        return $this->issuePair('user', $user['id'], $deviceId);
+    }
+
+    public function convertGuest(
+        string $guestIdentityId,
+        string $email,
+        string $password,
+        string $displayName,
+        string $deviceId,
+    ): array {
+        $normalizedEmail = strtolower(trim($email));
+        if (!filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)) {
+            throw new DomainException('invalidEmail');
+        }
+        if (strlen($password) < 12) {
+            throw new DomainException('passwordTooShort');
+        }
+        if (trim($displayName) === '') {
+            throw new DomainException('displayNameRequired');
+        }
+
+        $this->connection->beginTransaction();
+        try {
+            $guestQuery = $this->connection->prepare(
+                'SELECT id, converted_user_id FROM guest_identities WHERE id = :id'
+            );
+            $guestQuery->execute(['id' => $guestIdentityId]);
+            $guest = $guestQuery->fetch();
+            if (!$guest || $guest['converted_user_id'] !== null) {
+                throw new DomainException('guestNotConvertible');
+            }
+
+            $userId = self::id();
+            $this->connection->prepare(
+                'INSERT INTO users (id, email, password_hash, display_name, converted_guest_id, created_at)
+                 VALUES (:id, :email, :password, :name, :guest, :created)'
+            )->execute([
+                'id' => $userId,
+                'email' => $normalizedEmail,
+                'password' => password_hash($password, PASSWORD_DEFAULT),
+                'name' => trim($displayName),
+                'guest' => $guestIdentityId,
+                'created' => self::now(),
+            ]);
+            $this->connection->prepare('UPDATE guest_identities SET converted_user_id = :user WHERE id = :guest')
+                ->execute(['user' => $userId, 'guest' => $guestIdentityId]);
+            $this->connection->prepare(
+                "UPDATE refresh_tokens SET revoked_at = :revoked WHERE identity_kind = 'guest' AND identity_id = :guest AND revoked_at IS NULL"
+            )->execute(['revoked' => self::now(), 'guest' => $guestIdentityId]);
+            $pair = $this->issuePair('user', $userId, $deviceId);
+            $this->connection->commit();
+            return $pair;
+        } catch (Throwable $error) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+            throw $error;
+        }
+    }
+
     public function refresh(string $refreshToken, string $deviceId): array
     {
         $this->connection->beginTransaction();

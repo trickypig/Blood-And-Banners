@@ -99,6 +99,47 @@ function foundation_tests(): array
 
             expect_same(2, $games->getGame($created['gameId'], $host['identityId'])['version'], 'stale command must not mutate state');
         },
+
+        'guest conversion preserves game membership and enables account login' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $guest = $auth->createGuest('convert-device');
+            $game = $games->createGame($guest['identityId'], 'coop', 'Portal Watch');
+
+            $account = $auth->convertGuest(
+                $guest['identityId'],
+                'captain@example.com',
+                'correct horse battery staple',
+                'Banner Captain',
+                'convert-device'
+            );
+            $games->transferIdentity($guest['identityId'], $account['identityId']);
+            $history = $games->matchHistory($account['identityId']);
+            $login = $auth->login('captain@example.com', 'correct horse battery staple', 'second-device');
+
+            expect_same('user', $account['kind'], 'conversion should return an account identity');
+            expect_same($game['gameId'], $history[0]['gameId'], 'converted account should retain game history');
+            expect_same($account['identityId'], $login['identityId'], 'account should work on another device');
+        },
+
+        'spectator links expose read-only public projections and can be revoked' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('spectator-host');
+            $game = $games->createGame($host['identityId'], 'battleRoyale', 'Last Banner');
+
+            $link = $games->createSpectatorLink($game['gameId'], $host['identityId']);
+            $projection = $games->getSpectatorGame($link['token']);
+            expect_same('spectator', $projection['viewer']['role'], 'spectator projection should identify the viewer role');
+            expect_same(false, $projection['viewer']['canCommand'], 'spectator projection must not expose mutation permission');
+            expect_true(!array_key_exists('seatToken', $projection), 'spectator projection must not expose seat credentials');
+
+            $games->revokeSpectatorLink($game['gameId'], $host['identityId'], $link['linkId']);
+            try {
+                $games->getSpectatorGame($link['token']);
+                throw new RuntimeException('revoked spectator token remained usable');
+            } catch (GameServiceException $error) {
+                expect_same('spectatorLinkInvalid', $error->errorCode, 'revoked spectator links should be rejected');
+            }
+        },
     ];
 }
 

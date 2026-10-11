@@ -158,6 +158,130 @@ final class GameService
         return $this->projection($gameId, $identityId);
     }
 
+    public function getEvents(string $gameId, string $identityId, int $afterSequence): array
+    {
+        $this->requireMembership($gameId, $identityId);
+        $statement = $this->connection->prepare(
+            'SELECT sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at
+             FROM game_events WHERE game_id = :game AND sequence > :after ORDER BY sequence LIMIT 200'
+        );
+        $statement->execute(['game' => $gameId, 'after' => $afterSequence]);
+        $events = array_map(static fn(array $event): array => [
+            'sequence' => (int)$event['sequence'],
+            'version' => (int)$event['version'],
+            'kind' => $event['kind'],
+            'actingSeat' => $event['acting_identity_id'],
+            'focusHexes' => json_decode($event['focus_hexes_json'], true, flags: JSON_THROW_ON_ERROR),
+            'payload' => json_decode($event['payload_json'], true, flags: JSON_THROW_ON_ERROR),
+            'timestamp' => $event['created_at'],
+        ], $statement->fetchAll());
+        $lastSequence = $afterSequence;
+        if ($events !== []) {
+            $lastSequence = $events[array_key_last($events)]['sequence'];
+        }
+        return ['events' => $events, 'lastSequence' => $lastSequence];
+    }
+
+    public function transferIdentity(string $fromIdentityId, string $toIdentityId): void
+    {
+        $this->connection->beginTransaction();
+        try {
+            $this->connection->prepare('UPDATE game_memberships SET identity_id = :to WHERE identity_id = :from')
+                ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
+            $this->connection->prepare('UPDATE games SET host_identity_id = :to WHERE host_identity_id = :from')
+                ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
+            $this->connection->prepare('UPDATE game_events SET acting_identity_id = :to WHERE acting_identity_id = :from')
+                ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
+            $this->connection->prepare('UPDATE command_receipts SET identity_id = :to WHERE identity_id = :from')
+                ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
+        }
+    }
+
+    public function matchHistory(string $identityId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT g.id, g.mode, g.lifecycle, g.scenario_name, g.version, g.updated_at
+             FROM games g INNER JOIN game_memberships m ON m.game_id = g.id
+             WHERE m.identity_id = :identity ORDER BY g.updated_at DESC'
+        );
+        $statement->execute(['identity' => $identityId]);
+        return array_map(static fn(array $game): array => [
+            'gameId' => $game['id'],
+            'mode' => $game['mode'],
+            'lifecycle' => $game['lifecycle'],
+            'scenarioName' => $game['scenario_name'],
+            'version' => (int)$game['version'],
+            'updatedAt' => $game['updated_at'],
+        ], $statement->fetchAll());
+    }
+
+    public function createSpectatorLink(string $gameId, string $identityId): array
+    {
+        $game = $this->gameRow($gameId);
+        if ($game['host_identity_id'] !== $identityId) {
+            throw new GameServiceException('hostRequired', 'Only the host can manage spectator links.', (int)$game['version']);
+        }
+        $linkId = self::id();
+        $token = self::token();
+        $this->connection->prepare(
+            'INSERT INTO spectator_links
+             (id, game_id, token_hash, enabled, created_by_identity_id, created_at)
+             VALUES (:id, :game, :token, 1, :identity, :created)'
+        )->execute([
+            'id' => $linkId,
+            'game' => $gameId,
+            'token' => hash('sha256', $token),
+            'identity' => $identityId,
+            'created' => self::now(),
+        ]);
+        return ['linkId' => $linkId, 'token' => $token];
+    }
+
+    public function getSpectatorGame(string $token): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT game_id FROM spectator_links
+             WHERE token_hash = :token AND enabled = 1 AND revoked_at IS NULL'
+        );
+        $statement->execute(['token' => hash('sha256', $token)]);
+        $gameId = $statement->fetchColumn();
+        if ($gameId === false) {
+            throw new GameServiceException('spectatorLinkInvalid', 'This spectator link is invalid or has been revoked.');
+        }
+        $game = $this->gameRow($gameId);
+        return [
+            'gameId' => $gameId,
+            'version' => (int)$game['version'],
+            'lifecycle' => $game['lifecycle'],
+            'mode' => $game['mode'],
+            'scenarioName' => $game['scenario_name'],
+            'viewer' => ['role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false],
+            'memberships' => array_map(static fn(array $seat): array => [
+                'seatId' => $seat['id'],
+                'seatIndex' => (int)$seat['seat_index'],
+                'ready' => (bool)$seat['ready'],
+                'isHost' => (bool)$seat['is_host'],
+            ], $this->memberships($gameId)),
+            'legalActions' => [],
+        ];
+    }
+
+    public function revokeSpectatorLink(string $gameId, string $identityId, string $linkId): void
+    {
+        $game = $this->gameRow($gameId);
+        if ($game['host_identity_id'] !== $identityId) {
+            throw new GameServiceException('hostRequired', 'Only the host can manage spectator links.', (int)$game['version']);
+        }
+        $statement = $this->connection->prepare(
+            'UPDATE spectator_links SET enabled = 0, revoked_at = :revoked WHERE id = :id AND game_id = :game'
+        );
+        $statement->execute(['revoked' => self::now(), 'id' => $linkId, 'game' => $gameId]);
+    }
+
     private function projection(string $gameId, string $identityId): array
     {
         $game = $this->gameRow($gameId);
