@@ -22,6 +22,10 @@ public sealed class ContractFixtureTests
         Assert.True(projection.Memberships[1].Ready);
         Assert.Equal("unit-thorgrim", projection.Board.Hexes.Single().OccupantId);
         Assert.Equal("moveUnit", projection.LegalActions.Single().Kind);
+        Assert.Equal("unit-thorgrim", projection.Turn.ActiveUnitId);
+        Assert.Null(projection.Draft);
+        Assert.True(projection.Units.Single().IsHero);
+        Assert.Equal(2, projection.Units.Single().Wounds);
 
         using var serialized = System.Text.Json.JsonDocument.Parse(
             System.Text.Json.JsonSerializer.Serialize(projection, global::BloodAndBanners.Contracts.ContractJson.Options));
@@ -98,6 +102,37 @@ public sealed class ContractFixtureTests
         Assert.Equal("versionConflict", error.Error.Code);
         Assert.Equal(8, error.Error.CurrentVersion);
         Assert.Contains("Refresh", error.Error.Recovery);
+    }
+
+    [Fact]
+    public void Draft_fixture_carries_rolls_open_claims_and_catalog_cards()
+    {
+        var draft = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.DraftProjection>(
+            File.ReadAllText(FixturePath("draft-projection.json")),
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+
+        Assert.NotNull(draft);
+        Assert.Equal(new[] { 12, 18 }, draft.InitiativeRolls["seat-red"]);
+        Assert.Equal("seat-blue", draft.PickingSeatId);
+        Assert.Null(draft.FirstSeatId);
+        Assert.Equal(2, draft.StartBySeat["seat-blue"]);
+        Assert.Null(draft.HeroBySeat["seat-blue"]);
+        Assert.Equal("seat-red", draft.AvailableHeroes.Single().TakenBySeatId);
+        Assert.Equal("Grunt", draft.AvailableArmies.Single().Units.Single().Name);
+    }
+
+    [Fact]
+    public void Unit_fixture_carries_live_battle_state()
+    {
+        var unit = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.UnitProjection>(
+            File.ReadAllText(FixturePath("unit-projection.json")),
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+
+        Assert.NotNull(unit);
+        Assert.Equal("s1-u3", unit.UnitId);
+        Assert.Equal(6, unit.Range);
+        Assert.Equal("2,4", unit.Hex);
+        Assert.True(unit.ActivatedThisTurn);
     }
 
     private static string FixturePath(string name) =>

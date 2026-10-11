@@ -1,0 +1,15 @@
+{
+  "unitId": "s1-u3",
+  "seatId": "seat-red",
+  "isHero": false,
+  "name": "Ranger",
+  "image": "/images/units/gold_ranger_card.png",
+  "move": 3,
+  "range": 6,
+  "power": 3,
+  "defense": 2,
+  "hp": 4,
+  "wounds": 1,
+  "hex": "2,4",
+  "activatedThisTurn": true
+}

@@ -28,7 +28,8 @@
   "turn": {
     "round": 2,
     "activeSeatId": "seat-red",
-    "activationsRemaining": 3
+    "activationsRemaining": 3,
+    "activeUnitId": "unit-thorgrim"
   },
   "pendingChoice": null,
   "memberships": [
@@ -43,6 +44,13 @@
       "seatIndex": 2,
       "ready": true,
       "isHost": false
+    }
+  ],
+  "units": [
+    {
+      "unitId": "unit-thorgrim", "seatId": "seat-red", "isHero": true, "name": "Thorgrim Shattershield",
+      "image": "/images/heroes/Thorgrim Shattershield_card.png", "move": 3, "range": 1, "power": 5,
+      "defense": 5, "hp": 7, "wounds": 2, "hex": "0,0", "activatedThisTurn": true
     }
   ],
   "legalActions": [

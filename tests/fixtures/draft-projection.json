@@ -1,0 +1,17 @@
+{
+  "initiativeRolls": { "seat-red": [12, 18], "seat-blue": [12, 4] },
+  "pickingSeatId": "seat-blue",
+  "firstSeatId": null,
+  "startBySeat": { "seat-red": 1, "seat-blue": 2 },
+  "heroBySeat": { "seat-red": "Thorgrim Shattershield", "seat-blue": null },
+  "armyBySeat": { "seat-red": null, "seat-blue": null },
+  "availableHeroes": [
+    { "name": "Thorgrim Shattershield", "image": "/images/heroes/Thorgrim Shattershield_card.png", "move": 3, "range": 1, "power": 5, "defense": 5, "hp": 7, "takenBySeatId": "seat-red" }
+  ],
+  "availableArmies": [
+    {
+      "name": "Blackmaw", "color": "Black", "takenBySeatId": null,
+      "units": [ { "name": "Grunt", "image": "/images/units/black_grunt_card.png", "move": 2, "range": 1, "power": 4, "defense": 3, "hp": 5 } ]
+    }
+  ]
+}

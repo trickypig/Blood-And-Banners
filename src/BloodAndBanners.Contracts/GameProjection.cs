@@ -40,7 +40,10 @@ public sealed record HexProjection(
 public sealed record TurnProjection(
     int Round,
     string? ActiveSeatId,
-    int ActivationsRemaining);
+    int ActivationsRemaining)
+{
+    public string? ActiveUnitId { get; init; }
+}
 
 public sealed record PendingChoiceProjection(
     string ChoiceId,
@@ -79,4 +82,6 @@ public sealed record GameProjection(
 {
     public string ScenarioName { get; init; } = string.Empty;
     public IReadOnlyList<MembershipProjection> Memberships { get; init; } = [];
+    public DraftProjection? Draft { get; init; }
+    public IReadOnlyList<UnitProjection> Units { get; init; } = [];
 }
