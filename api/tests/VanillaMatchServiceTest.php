@@ -126,6 +126,9 @@ function vanilla_match_service_tests(): array
             expect_same('active', $projection['lifecycle'], 'the finished draft starts the battle');
             expect_same(null, $projection['draft'], 'the draft block disappears after the draft');
             expect_same(14, count($projection['units']), 'both armies are projected');
+            expect_same('s1-hero', $projection['units'][0]['unitId'], 'the first seat hero leads the unit list');
+            expect_same('s1-u1', $projection['units'][1]['unitId'], 'units follow their hero in numeric order');
+            expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
                 ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn'],
                 array_keys($projection['units'][0]),

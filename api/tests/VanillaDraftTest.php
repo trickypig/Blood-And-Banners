@@ -6,6 +6,24 @@ use BloodAndBanners\Rules\Vanilla\MatchEngine;
 function vanilla_draft_tests(): array
 {
     return [
+        'array payload values are refused with a clean error code' => static function (): void {
+            $engine = new MatchEngine(test_catalog());
+            $state = $engine->start(['seat-a', 'seat-b'], proving_field_board(), new SequenceRandom([5, 17]))['state'];
+            $warnings = [];
+            set_error_handler(static function (int $no, string $message) use (&$warnings): bool {
+                $warnings[] = $message;
+                return true;
+            });
+            try {
+                expect_game_error('unknownHero', static fn() => $engine->apply($state, 'seat-b', 'pickHero', ['hero' => ['x']], new SequenceRandom([])));
+                $battle = vanilla_battle(vanilla_board([0, 0, 0]), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '2,0')]);
+                expect_game_error('unitNotActive', static fn() => $engine->apply($battle, 'seat-a', 'endActivation', ['unitId' => ['x']], new SequenceRandom([])));
+            } finally {
+                restore_error_handler();
+            }
+            expect_same([], $warnings, 'array payload values raise no PHP warnings');
+        },
+
         'initiative winner picks first and picks then alternate' => static function (): void {
             $engine = new MatchEngine(test_catalog());
             $started = $engine->start(['seat-a', 'seat-b'], proving_field_board(), new SequenceRandom([5, 17]));

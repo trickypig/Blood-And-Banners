@@ -68,7 +68,7 @@ final class DraftRules
         $other = MatchEngine::otherSeat($state, $seatId);
         $draft = $state['draft'];
         if ($kind === 'chooseFirstPlayer') {
-            $value = (string)($payload['seatId'] ?? '');
+            $value = self::text($payload, 'seatId');
             if (!in_array($value, $state['seats'], true)) {
                 self::fail('invalidSeat');
             }
@@ -81,7 +81,7 @@ final class DraftRules
             $draft['startBySeat'][$seatId] = $value;
             $draft['startBySeat'][$other] = 3 - $value;
         } elseif ($kind === 'pickHero') {
-            $value = (string)($payload['hero'] ?? '');
+            $value = self::text($payload, 'hero');
             if ($this->catalog->hero($value) === null) {
                 self::fail('unknownHero');
             }
@@ -90,7 +90,7 @@ final class DraftRules
             }
             $draft['heroBySeat'][$seatId] = $value;
         } else {
-            $value = (string)($payload['army'] ?? '');
+            $value = self::text($payload, 'army');
             if ($this->catalog->army($value) === null) {
                 self::fail('unknownArmy');
             }
@@ -144,6 +144,12 @@ final class DraftRules
         $state['phase'] = 'active';
         $state['turn'] = Turn::fresh($state, $state['draft']['firstSeatId'], 1);
         return [$state, $placed];
+    }
+
+    private static function text(array $payload, string $key): string
+    {
+        $value = $payload[$key] ?? '';
+        return is_string($value) ? $value : '';
     }
 
     private static function fail(string $code): never

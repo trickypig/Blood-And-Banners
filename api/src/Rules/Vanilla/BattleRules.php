@@ -43,7 +43,7 @@ final class BattleRules
         } elseif ($kind === 'attackUnit') {
             $state = $this->attack($state, $seatId, $payload, $random, $events);
         } else {
-            $unitId = (string)($payload['unitId'] ?? '');
+            $unitId = self::text($payload, 'unitId');
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
                 self::fail('unitNotActive');
             }
@@ -96,8 +96,8 @@ final class BattleRules
 
     private function move(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
-        $unitId = (string)($payload['unitId'] ?? '');
-        $to = (string)($payload['to'] ?? '');
+        $unitId = self::text($payload, 'unitId');
+        $to = self::text($payload, 'to');
         $state = $this->activate($state, $seatId, $unitId);
         if ($state['turn']['moved']) {
             self::fail('alreadyMoved');
@@ -123,8 +123,8 @@ final class BattleRules
 
     private function attack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
-        $unitId = (string)($payload['unitId'] ?? '');
-        $targetId = (string)($payload['targetUnitId'] ?? '');
+        $unitId = self::text($payload, 'unitId');
+        $targetId = self::text($payload, 'targetUnitId');
         $state = $this->activate($state, $seatId, $unitId);
         $target = $state['units'][$targetId] ?? null;
         if ($target === null || $target['hex'] === null || $target['seatId'] === $seatId) {
@@ -250,6 +250,12 @@ final class BattleRules
             }
         }
         return false;
+    }
+
+    private static function text(array $payload, string $key): string
+    {
+        $value = $payload[$key] ?? '';
+        return is_string($value) ? $value : '';
     }
 
     private static function fail(string $code): never

@@ -164,7 +164,7 @@ final class GameService
         $this->connection->beginTransaction();
         try {
             $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
-            $receipt =$this->connection->prepare(
+            $receipt = $this->connection->prepare(
                 'SELECT response_json FROM command_receipts
                  WHERE game_id = :game AND command_id = :command AND identity_id = :identity'
             );
@@ -178,12 +178,7 @@ final class GameService
             $game = $this->gameRow($gameId);
             $currentVersion = (int)$game['version'];
             if ((int)$command['expectedVersion'] !== $currentVersion) {
-                throw new GameServiceException(
-                    'versionConflict',
-                    'The game changed before this command arrived.',
-                    $currentVersion,
-                    'Refresh the game projection and retry a still-legal action with a new command ID.'
-                );
+                throw self::versionConflict($currentVersion);
             }
             $newVersion = $currentVersion + 1;
             if ($command['kind'] === 'setReady') {
@@ -196,8 +191,13 @@ final class GameService
                 $this->connection->prepare(
                     'UPDATE game_memberships SET ready = :ready WHERE game_id = :game AND identity_id = :identity'
                 )->execute(['ready' => $command['payload']['ready'] ? 1 : 0, 'game' => $gameId, 'identity' => $identityId]);
-                $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
-                    ->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId]);
+                $bump = $this->connection->prepare(
+                    'UPDATE games SET version = :version, updated_at = :updated WHERE id = :id AND version = :expected'
+                );
+                $bump->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId, 'expected' => $currentVersion]);
+                if ($bump->rowCount() === 0) {
+                    throw self::versionConflict($currentVersion);
+                }
                 $this->appendEvent($gameId, $newVersion, 'readinessChanged', $identityId, ['ready' => $command['payload']['ready']]);
             } else {
                 $this->applyMatchCommand($game, (string)$membership['id'], $identityId, $command, $newVersion);
@@ -219,6 +219,16 @@ final class GameService
         }
     }
 
+    private static function versionConflict(int $currentVersion): GameServiceException
+    {
+        return new GameServiceException(
+            'versionConflict',
+            'The game changed before this command arrived.',
+            $currentVersion,
+            'Refresh the game projection and retry a still-legal action with a new command ID.'
+        );
+    }
+
     private function applyMatchCommand(array $game, string $seatId, string $identityId, array $command, int $newVersion): void
     {
         $currentVersion = (int)$game['version'];
@@ -237,9 +247,16 @@ final class GameService
         } catch (GameServiceException $error) {
             throw new GameServiceException($error->errorCode, $error->getMessage(), $currentVersion);
         }
-        $this->connection->prepare(
-            'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
-        )->execute(['lifecycle' => $result['state']['phase'], 'version' => $newVersion, 'updated' => self::now(), 'id' => $game['id']]);
+        $bump = $this->connection->prepare(
+            'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id AND version = :expected'
+        );
+        $bump->execute([
+            'lifecycle' => $result['state']['phase'], 'version' => $newVersion, 'updated' => self::now(),
+            'id' => $game['id'], 'expected' => $currentVersion,
+        ]);
+        if ($bump->rowCount() === 0) {
+            throw self::versionConflict($currentVersion);
+        }
         $this->saveState($game['id'], $newVersion, $result['state']);
         foreach ($result['events'] as $event) {
             $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
@@ -520,8 +537,19 @@ final class GameService
                 'wounds' => $unit['wounds'],
                 'hex' => $unit['hex'],
                 'activatedThisTurn' => in_array($unit['unitId'], $state['turn']['activated'], true),
-            ], $state['units'])),
+            ], self::orderedUnits($state))),
         ];
+    }
+
+    /** MySQL JSON columns reorder object keys, so units are ordered by seat, hero first, then unit number. */
+    private static function orderedUnits(array $state): array
+    {
+        $units = array_values($state['units']);
+        usort($units, static function (array $a, array $b) use ($state): int {
+            return [array_search($a['seatId'], $state['seats'], true), $a['isHero'] ? 0 : 1, (int)substr((string)strrchr($a['unitId'], 'u'), 1)]
+                <=> [array_search($b['seatId'], $state['seats'], true), $b['isHero'] ? 0 : 1, (int)substr((string)strrchr($b['unitId'], 'u'), 1)];
+        });
+        return $units;
     }
 
     private function draftProjection(array $state): array
