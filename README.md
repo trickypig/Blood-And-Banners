@@ -15,8 +15,10 @@ Start the PHP API with a development SQLite database:
 
 ```powershell
 $env:BLOOD_BANNERS_SIGNING_KEY = 'local-development-signing-key-32-bytes'
-php -S localhost:8080 api/router.php
+.\scripts\start-api.ps1
 ```
+
+The launcher resolves the API paths from its own location, so an absolute path to the script also works from another directory. To use a different port, pass `-Port 8081`.
 
 In another terminal, start the PWA:
 
@@ -29,6 +31,7 @@ The development PWA reads `wwwroot/appsettings.Development.json` and calls the A
 ## Verify
 
 ```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/local-api-launch.ps1
 php api/tests/run.php
 dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj
 dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj
