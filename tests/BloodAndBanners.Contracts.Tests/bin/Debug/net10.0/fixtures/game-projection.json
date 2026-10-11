@@ -1,0 +1,45 @@
+{
+  "gameId": "game-fixture",
+  "version": 7,
+  "lifecycle": "active",
+  "mode": "vanillaPvp",
+  "viewer": {
+    "role": "player",
+    "seatId": "seat-red",
+    "canCommand": true,
+    "isHost": true
+  },
+  "board": {
+    "columns": 3,
+    "rows": 2,
+    "hexes": [
+      {
+        "q": 0,
+        "r": 0,
+        "biome": "plains",
+        "terrain": "grass",
+        "elevation": 0,
+        "sightBlocker": false,
+        "occupantId": "unit-thorgrim"
+      }
+    ]
+  },
+  "turn": {
+    "round": 2,
+    "activeSeatId": "seat-red",
+    "activationsRemaining": 3
+  },
+  "pendingChoice": null,
+  "legalActions": [
+    {
+      "kind": "moveUnit",
+      "unitId": "unit-thorgrim",
+      "targetHexes": ["1,0"]
+    }
+  ],
+  "scores": {
+    "seat-red": 3,
+    "seat-blue": 1
+  },
+  "result": null
+}

@@ -1,0 +1,9 @@
+{
+  "commandId": "018f2ec5-bf4c-7000-8000-000000000001",
+  "expectedVersion": 7,
+  "kind": "moveUnit",
+  "payload": {
+    "unitId": "unit-thorgrim",
+    "path": ["0,0", "1,0"]
+  }
+}

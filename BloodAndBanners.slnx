@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BloodAndBanners.Contracts/BloodAndBanners.Contracts.csproj" />
+    <Project Path="src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj" />
+    <Project Path="src/BloodAndBanners.UI/BloodAndBanners.UI.csproj" />
+    <Project Path="src/BloodAndBanners.Web/BloodAndBanners.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj" />
+  </Folder>
+</Solution>

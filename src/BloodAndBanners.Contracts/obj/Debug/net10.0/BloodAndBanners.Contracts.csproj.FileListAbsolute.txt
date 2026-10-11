@@ -1,0 +1,12 @@
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\bin\Debug\net10.0\BloodAndBanners.Contracts.deps.json
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\bin\Debug\net10.0\BloodAndBanners.Contracts.dll
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\bin\Debug\net10.0\BloodAndBanners.Contracts.pdb
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.GeneratedMSBuildEditorConfig.editorconfig
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.AssemblyInfoInputs.cache
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.AssemblyInfo.cs
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.csproj.CoreCompileInputs.cache
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.sourcelink.json
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.dll
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\refint\BloodAndBanners.Contracts.dll
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\BloodAndBanners.Contracts.pdb
+C:\Code\Blood and Banners\.worktrees\digital-game-foundation\src\BloodAndBanners.Contracts\obj\Debug\net10.0\ref\BloodAndBanners.Contracts.dll
