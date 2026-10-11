@@ -20,10 +20,19 @@ function foundation_tests(): array
             foreach ([
                 'users', 'guest_identities', 'refresh_tokens', 'scenarios', 'scenario_revisions',
                 'games', 'game_memberships', 'spectator_links', 'game_snapshots', 'game_events',
-                'command_receipts',
+                'command_receipts', 'game_states',
             ] as $table) {
                 expect_true(in_array($table, $tables, true), "missing table {$table}");
             }
+        },
+
+        'migrations can run repeatedly without failing' => static function (): void {
+            $db = ConnectionFactory::sqliteMemory();
+            (new Migrator($db))->migrate();
+            (new Migrator($db))->migrate();
+
+            $count = (int)$db->query("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'game_states'")->fetchColumn();
+            expect_same(1, $count, 'game_states should exist exactly once');
         },
 
         'guest refresh tokens rotate and cannot be replayed' => static function (): void {

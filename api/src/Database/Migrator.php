@@ -16,11 +16,17 @@ final class Migrator
     {
         $driver = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME);
         $dialect = $driver === 'mysql' ? 'mysql' : 'sqlite';
-        $path = dirname(__DIR__, 2) . "/migrations/001_initial.{$dialect}.sql";
-        $sql = file_get_contents($path);
-        if ($sql === false) {
-            throw new RuntimeException("Unable to read migration {$path}");
+        $paths = glob(dirname(__DIR__, 2) . "/migrations/*.{$dialect}.sql") ?: [];
+        sort($paths, SORT_STRING);
+        if ($paths === []) {
+            throw new RuntimeException("No {$dialect} migrations were found.");
         }
-        $this->connection->exec($sql);
+        foreach ($paths as $path) {
+            $sql = file_get_contents($path);
+            if ($sql === false) {
+                throw new RuntimeException("Unable to read migration {$path}");
+            }
+            $this->connection->exec($sql);
+        }
     }
 }
