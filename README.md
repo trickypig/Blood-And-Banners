@@ -28,17 +28,23 @@ dotnet run --project src/BloodAndBanners.Web/BloodAndBanners.Web.csproj
 
 The development PWA reads `wwwroot/appsettings.Development.json` and calls the API at `http://localhost:8080/`. Production web hosting can omit `ApiBaseUrl` when the static client and `/api` share an origin.
 
-### Test a two-browser Vanilla lobby
+### Play a two-browser Vanilla duel
 
 1. Open `http://localhost:5016/` in the first browser and choose **Vanilla duel**.
 2. Copy the invite link from the war room.
 3. Open that link in a different browser, private window, or browser profile. Two tabs in the same profile share the same saved seat.
 4. In the second browser, choose **Join war room**. Both browsers should show two commanders within about two seconds.
 5. Choose **Ready your banner** in both browsers. The host's **Begin the draft** button becomes available when both seats are ready.
-6. Start the match from the host browser. Both clients should leave the lobby and display the frozen Training Grounds board.
-7. Refresh either browser to verify that it reconnects to the same seat.
+6. Start the match from the host browser. Both clients show the draft table with both initiative rolls.
+7. Take turns picking. On your pick, choose any open decision: who moves first, your start position, your hero, or your army. Heroes and armies can each be claimed once.
+8. When the last pick lands, both armies are placed beside their portals on Proving Field and the first player's turn begins.
+9. On your turn, click one of your units. Gold hexes are reachable, red hexes are attackable enemies. Click a hex to move, then click an enemy to attack. Each turn allows your hero plus three other units, or any four units if your hero has fallen.
+10. The battle log in the side rail shows each roll. The match ends when one side has no units left. Choose **Return to war room** to leave.
+11. Refresh either browser at any point to verify that it reconnects to the same seat and state.
 
-This milestone ends at the draft boundary. Hero/army selection and battlefield commands are the next gameplay slice.
+This slice implements the core Vanilla rules only. Abilities, water, ice, poison, stun, flying, terrain objects, and the Co-op and Battle Royale modes are not yet playable.
+
+Hero and unit artwork loads from `ImageBaseUrl` in `wwwroot/appsettings.Development.json`. Without it, tokens fall back to initials.
 
 ## Seat credentials and reconnect
 
