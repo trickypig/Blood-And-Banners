@@ -79,33 +79,60 @@ final class Application
                 return new Response(200, ['matches' => $this->games->matchHistory($principal['identityId'])]);
             }
             if ($request->method === 'POST' && $request->path === '/api/v1/games') {
-                return new Response(201, $this->games->createGame(
+                return new Response(201, $this->seatSession($this->games->createGame(
                     $principal['identityId'],
                     (string)($request->body['mode'] ?? ''),
                     (string)($request->body['scenarioName'] ?? '')
-                ));
+                )));
             }
             if (preg_match('#^/api/v1/games/([^/]+)$#', $request->path, $matches) === 1) {
                 if ($request->method === 'GET') {
-                    return new Response(200, $this->games->getGame($matches[1], $principal['identityId']));
+                    return new Response(200, $this->games->reconnect(
+                        $matches[1],
+                        $principal['identityId'],
+                        $request->seatToken()
+                    ));
                 }
             }
             if (preg_match('#^/api/v1/games/([^/]+)/join$#', $request->path, $matches) === 1 && $request->method === 'POST') {
-                return new Response(200, $this->games->joinGame($matches[1], $principal['identityId']));
+                return new Response(200, $this->seatSession($this->games->joinGame($matches[1], $principal['identityId'])));
             }
             if (preg_match('#^/api/v1/games/([^/]+)/start$#', $request->path, $matches) === 1 && $request->method === 'POST') {
-                return new Response(200, $this->games->startGame($matches[1], $principal['identityId']));
+                return new Response(200, $this->games->startGame(
+                    $matches[1],
+                    $principal['identityId'],
+                    $request->seatToken()
+                ));
             }
             if (preg_match('#^/api/v1/games/([^/]+)/commands$#', $request->path, $matches) === 1 && $request->method === 'POST') {
-                return new Response(200, $this->games->submitCommand($matches[1], $principal['identityId'], $request->body));
+                return new Response(200, $this->games->submitCommand(
+                    $matches[1],
+                    $principal['identityId'],
+                    $request->seatToken(),
+                    $request->body
+                ));
+            }
+            if (preg_match('#^/api/v1/games/([^/]+)/seats/([^/]+)/reassign$#', $request->path, $matches) === 1 && $request->method === 'POST') {
+                return new Response(200, $this->games->reassignSeat(
+                    $matches[1],
+                    $principal['identityId'],
+                    $request->seatToken(),
+                    $matches[2],
+                    (string)($request->body['identityId'] ?? '')
+                ));
             }
             if (preg_match('#^/api/v1/games/([^/]+)/spectator-links$#', $request->path, $matches) === 1 && $request->method === 'POST') {
-                return new Response(201, $this->games->createSpectatorLink($matches[1], $principal['identityId']));
+                return new Response(201, $this->games->createSpectatorLink(
+                    $matches[1],
+                    $principal['identityId'],
+                    $request->seatToken()
+                ));
             }
             if (preg_match('#^/api/v1/games/([^/]+)/events$#', $request->path, $matches) === 1 && $request->method === 'GET') {
                 return new Response(200, $this->games->getEvents(
                     $matches[1],
                     $principal['identityId'],
+                    $request->seatToken(),
                     max(0, (int)($request->query['after'] ?? 0))
                 ));
             }
@@ -115,7 +142,7 @@ final class Application
             $status = match ($error->errorCode) {
                 'versionConflict' => 409,
                 'gameNotFound' => 404,
-                'membershipRequired', 'hostRequired' => 403,
+                'membershipRequired', 'hostRequired', 'seatCredentialRequired', 'seatCredentialInvalid' => 403,
                 default => 422,
             };
             return $this->error($status, $error->errorCode, $error->getMessage(), $error->currentVersion, $error->recovery);
@@ -164,5 +191,12 @@ final class Application
             'currentVersion' => $currentVersion,
             'recovery' => $recovery,
         ], static fn(mixed $value): bool => $value !== null)]);
+    }
+
+    private function seatSession(array $result): array
+    {
+        $seatToken = (string)$result['seatToken'];
+        unset($result['seatToken']);
+        return ['game' => $result, 'seatToken' => $seatToken];
     }
 }

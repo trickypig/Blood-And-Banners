@@ -3,7 +3,7 @@
 @using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Components
 @using BloodAndBanners.UI.Services
-@inject GameApiClient Api
+@inject GameSessionCoordinator Sessions
 
 @if (_game is null)
 {
@@ -19,14 +19,30 @@ else
     private bool _isBusy;
     private string? _error;
 
+    protected override async Task OnInitializedAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            _game = await Sessions.ReconnectAsync();
+        }
+        catch (Exception)
+        {
+            _error = "Your saved war room could not be restored. Check your connection and try again.";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
     private async Task CreateGame(GameMode mode)
     {
         _isBusy = true;
         _error = null;
         try
         {
-            var session = await Api.CreateGuestAsync($"maui-{Guid.NewGuid():N}");
-            _game = await Api.CreateGameAsync(session, mode, mode switch
+            _game = await Sessions.CreateGuestGameAsync($"maui-{Guid.NewGuid():N}", mode, mode switch
             {
                 GameMode.VanillaPvp => "Training Grounds",
                 GameMode.Coop => "Portal Watch",

@@ -61,17 +61,17 @@ function foundation_tests(): array
             $rival = $auth->createGuest('rival-device');
             $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
             $joined = $games->joinGame($created['gameId'], $rival['identityId']);
-            $games->setReady($created['gameId'], $host['identityId'], true);
-            $games->setReady($created['gameId'], $rival['identityId'], true);
+            $games->setReady($created['gameId'], $host['identityId'], $created['seatToken'], true);
+            $games->setReady($created['gameId'], $rival['identityId'], $joined['seatToken'], true);
 
             try {
-                $games->startGame($created['gameId'], $rival['identityId']);
+                $games->startGame($created['gameId'], $rival['identityId'], $joined['seatToken']);
                 throw new RuntimeException('non-host started the game');
             } catch (GameServiceException $error) {
                 expect_same('hostRequired', $error->errorCode, 'non-host start should be rejected');
             }
 
-            $started = $games->startGame($created['gameId'], $host['identityId']);
+            $started = $games->startGame($created['gameId'], $host['identityId'], $created['seatToken']);
             expect_same('draft', $started['lifecycle'], 'starting should enter draft');
             expect_same(2, count($started['memberships']), 'vanilla game should retain two seats');
             expect_true($created['seatToken'] !== $joined['seatToken'], 'seat credentials must be isolated');
@@ -84,7 +84,7 @@ function foundation_tests(): array
             $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
 
             $joined = $games->joinGame($created['gameId'], $rival['identityId']);
-            $events = $games->getEvents($created['gameId'], $host['identityId'], 0);
+            $events = $games->getEvents($created['gameId'], $host['identityId'], $created['seatToken'], 0);
 
             expect_same(2, $joined['version'], 'joining should advance optimistic concurrency version');
             expect_same('playerJoined', $events['events'][0]['kind'], 'joining should emit a durable event');
@@ -95,14 +95,14 @@ function foundation_tests(): array
             $host = $auth->createGuest('rollback-host');
             $rival = $auth->createGuest('rollback-rival');
             $game = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
-            $games->joinGame($game['gameId'], $rival['identityId']);
-            $games->setReady($game['gameId'], $host['identityId'], true);
-            $games->setReady($game['gameId'], $rival['identityId'], true);
+            $joined = $games->joinGame($game['gameId'], $rival['identityId']);
+            $games->setReady($game['gameId'], $host['identityId'], $game['seatToken'], true);
+            $games->setReady($game['gameId'], $rival['identityId'], $joined['seatToken'], true);
             $before = $games->getGame($game['gameId'], $host['identityId']);
             $db->exec("CREATE TRIGGER reject_start_event BEFORE INSERT ON game_events WHEN NEW.kind = 'gameStarted' BEGIN SELECT RAISE(ABORT, 'forced failure'); END");
 
             try {
-                $games->startGame($game['gameId'], $host['identityId']);
+                $games->startGame($game['gameId'], $host['identityId'], $game['seatToken']);
                 throw new RuntimeException('forced event failure did not abort start');
             } catch (PDOException) {
             }
@@ -123,14 +123,14 @@ function foundation_tests(): array
                 'kind' => 'setReady',
                 'payload' => ['ready' => true],
             ];
-            $first = $games->submitCommand($created['gameId'], $host['identityId'], $command);
-            $retry = $games->submitCommand($created['gameId'], $host['identityId'], $command);
+            $first = $games->submitCommand($created['gameId'], $host['identityId'], $created['seatToken'], $command);
+            $retry = $games->submitCommand($created['gameId'], $host['identityId'], $created['seatToken'], $command);
 
             expect_same($first, $retry, 'retry must return the cached response');
             expect_same(2, $first['version'], 'accepted command should increment the version once');
 
             try {
-                $games->submitCommand($created['gameId'], $host['identityId'], [
+                $games->submitCommand($created['gameId'], $host['identityId'], $created['seatToken'], [
                     'commandId' => '018f2ec5-bf4c-7000-8000-000000000022',
                     'expectedVersion' => 1,
                     'kind' => 'setReady',
@@ -143,6 +143,107 @@ function foundation_tests(): array
             }
 
             expect_same(2, $games->getGame($created['gameId'], $host['identityId'])['version'], 'stale command must not mutate state');
+        },
+
+        'commands require the credential for the authenticated seat' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('credential-host');
+            $rival = $auth->createGuest('credential-rival');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $joined = $games->joinGame($created['gameId'], $rival['identityId']);
+            $command = [
+                'commandId' => '018f2ec5-bf4c-7000-8000-000000000023',
+                'expectedVersion' => 2,
+                'kind' => 'setReady',
+                'payload' => ['ready' => true],
+            ];
+
+            foreach ([
+                ['', 'seatCredentialRequired'],
+                [$joined['seatToken'], 'seatCredentialInvalid'],
+            ] as [$credential, $expectedCode]) {
+                try {
+                    $games->submitCommand($created['gameId'], $host['identityId'], $credential, $command);
+                    throw new RuntimeException('command without the authenticated seat credential was accepted');
+                } catch (GameServiceException $error) {
+                    expect_same($expectedCode, $error->errorCode, 'seat credential failure should be explicit');
+                }
+            }
+
+            $accepted = $games->submitCommand(
+                $created['gameId'],
+                $host['identityId'],
+                $created['seatToken'],
+                $command
+            );
+            expect_same(3, $accepted['version'], 'matching identity and credential should authorize the command');
+        },
+
+        'host reassignment rotates the seat credential and supports reconnect' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('reassign-host');
+            $departing = $auth->createGuest('reassign-departing');
+            $replacement = $auth->createGuest('reassign-replacement');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $joined = $games->joinGame($created['gameId'], $departing['identityId']);
+
+            $reassigned = $games->reassignSeat(
+                $created['gameId'],
+                $host['identityId'],
+                $created['seatToken'],
+                $joined['viewer']['seatId'],
+                $replacement['identityId']
+            );
+
+            expect_true($reassigned['seatToken'] !== $joined['seatToken'], 'reassignment must rotate the seat credential');
+            try {
+                $games->reconnect($created['gameId'], $replacement['identityId'], $joined['seatToken']);
+                throw new RuntimeException('the previous seat credential remained valid after reassignment');
+            } catch (GameServiceException $error) {
+                expect_same('seatCredentialInvalid', $error->errorCode, 'old seat credential should be invalidated');
+            }
+
+            $projection = $games->reconnect(
+                $created['gameId'],
+                $replacement['identityId'],
+                $reassigned['seatToken']
+            );
+            expect_same($joined['viewer']['seatId'], $projection['viewer']['seatId'], 'replacement should reconnect to the same seat');
+
+            try {
+                $games->reconnect($created['gameId'], $departing['identityId'], $joined['seatToken']);
+                throw new RuntimeException('departing identity retained seat access');
+            } catch (GameServiceException $error) {
+                expect_same('membershipRequired', $error->errorCode, 'departing identity should lose membership');
+            }
+        },
+
+        'host cannot reassign a seat to an identity that does not exist' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('invalid-reassign-host');
+            $departing = $auth->createGuest('invalid-reassign-seat');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $joined = $games->joinGame($created['gameId'], $departing['identityId']);
+
+            try {
+                $games->reassignSeat(
+                    $created['gameId'],
+                    $host['identityId'],
+                    $created['seatToken'],
+                    $joined['viewer']['seatId'],
+                    'identity-that-does-not-exist'
+                );
+                throw new RuntimeException('seat was reassigned to a nonexistent identity');
+            } catch (GameServiceException $error) {
+                expect_same('identityNotFound', $error->errorCode, 'invalid replacement identity should be explicit');
+            }
+
+            $projection = $games->reconnect(
+                $created['gameId'],
+                $departing['identityId'],
+                $joined['seatToken']
+            );
+            expect_same($joined['viewer']['seatId'], $projection['viewer']['seatId'], 'failed reassignment must preserve the old seat owner');
         },
 
         'guest conversion preserves game membership and enables account login' => static function (): void {
@@ -171,13 +272,13 @@ function foundation_tests(): array
             $host = $auth->createGuest('spectator-host');
             $game = $games->createGame($host['identityId'], 'battleRoyale', 'Last Banner');
 
-            $link = $games->createSpectatorLink($game['gameId'], $host['identityId']);
+            $link = $games->createSpectatorLink($game['gameId'], $host['identityId'], $game['seatToken']);
             $projection = $games->getSpectatorGame($link['token']);
             expect_same('spectator', $projection['viewer']['role'], 'spectator projection should identify the viewer role');
             expect_same(false, $projection['viewer']['canCommand'], 'spectator projection must not expose mutation permission');
             expect_true(!array_key_exists('seatToken', $projection), 'spectator projection must not expose seat credentials');
 
-            $games->revokeSpectatorLink($game['gameId'], $host['identityId'], $link['linkId']);
+            $games->revokeSpectatorLink($game['gameId'], $host['identityId'], $game['seatToken'], $link['linkId']);
             try {
                 $games->getSpectatorGame($link['token']);
                 throw new RuntimeException('revoked spectator token remained usable');

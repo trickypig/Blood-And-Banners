@@ -22,4 +22,9 @@ final class Request
         $authorization = $this->headers['authorization'] ?? '';
         return preg_match('/^Bearer\s+(.+)$/i', $authorization, $matches) === 1 ? $matches[1] : null;
     }
+
+    public function seatToken(): string
+    {
+        return trim((string)($this->headers['x-seat-token'] ?? ''));
+    }
 }

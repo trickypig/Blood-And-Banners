@@ -69,10 +69,10 @@ final class GameService
         }
     }
 
-    public function setReady(string $gameId, string $identityId, bool $ready): array
+    public function setReady(string $gameId, string $identityId, string $seatToken, bool $ready): array
     {
         $game = $this->gameRow($gameId);
-        return $this->submitCommand($gameId, $identityId, [
+        return $this->submitCommand($gameId, $identityId, $seatToken, [
             'commandId' => self::id(),
             'expectedVersion' => (int)$game['version'],
             'kind' => 'setReady',
@@ -80,11 +80,12 @@ final class GameService
         ]);
     }
 
-    public function startGame(string $gameId, string $identityId): array
+    public function startGame(string $gameId, string $identityId, string $seatToken): array
     {
         $this->connection->beginTransaction();
         try {
             $game = $this->gameRow($gameId);
+            $this->requireSeatCredential($gameId, $identityId, $seatToken);
             if ($game['host_identity_id'] !== $identityId) {
                 throw new GameServiceException('hostRequired', 'Only the host can start the match.', (int)$game['version']);
             }
@@ -109,7 +110,7 @@ final class GameService
         }
     }
 
-    public function submitCommand(string $gameId, string $identityId, array $command): array
+    public function submitCommand(string $gameId, string $identityId, string $seatToken, array $command): array
     {
         foreach (['commandId', 'expectedVersion', 'kind', 'payload'] as $required) {
             if (!array_key_exists($required, $command)) {
@@ -119,6 +120,7 @@ final class GameService
 
         $this->connection->beginTransaction();
         try {
+            $this->requireSeatCredential($gameId, $identityId, $seatToken);
             $receipt = $this->connection->prepare(
                 'SELECT response_json FROM command_receipts
                  WHERE game_id = :game AND command_id = :command AND identity_id = :identity'
@@ -140,7 +142,6 @@ final class GameService
                     'Refresh the game projection and retry a still-legal action with a new command ID.'
                 );
             }
-            $this->requireMembership($gameId, $identityId);
             if ($command['kind'] !== 'setReady' || !is_bool($command['payload']['ready'] ?? null)) {
                 throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
             }
@@ -178,9 +179,86 @@ final class GameService
         return $this->projection($gameId, $identityId);
     }
 
-    public function getEvents(string $gameId, string $identityId, int $afterSequence): array
+    public function reconnect(string $gameId, string $identityId, string $seatToken): array
     {
-        $this->requireMembership($gameId, $identityId);
+        $this->requireSeatCredential($gameId, $identityId, $seatToken);
+        return $this->projection($gameId, $identityId);
+    }
+
+    public function reassignSeat(
+        string $gameId,
+        string $hostIdentityId,
+        string $hostSeatToken,
+        string $seatId,
+        string $newIdentityId,
+    ): array {
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            $this->requireSeatCredential($gameId, $hostIdentityId, $hostSeatToken);
+            if ($game['host_identity_id'] !== $hostIdentityId) {
+                throw new GameServiceException('hostRequired', 'Only the host can reassign a seat.', (int)$game['version']);
+            }
+            if ($newIdentityId === '') {
+                throw new GameServiceException('invalidIdentity', 'A replacement identity is required.', (int)$game['version']);
+            }
+            $identityExists = (int)$this->scalar(
+                'SELECT
+                    (SELECT COUNT(*) FROM users WHERE id = :user) +
+                    (SELECT COUNT(*) FROM guest_identities WHERE id = :guest AND converted_user_id IS NULL)',
+                ['user' => $newIdentityId, 'guest' => $newIdentityId]
+            );
+            if ($identityExists === 0) {
+                throw new GameServiceException('identityNotFound', 'The replacement identity does not exist.', (int)$game['version']);
+            }
+            $existing = (int)$this->scalar(
+                'SELECT COUNT(*) FROM game_memberships WHERE game_id = :game AND identity_id = :identity',
+                ['game' => $gameId, 'identity' => $newIdentityId]
+            );
+            if ($existing > 0) {
+                throw new GameServiceException('identityAlreadySeated', 'The replacement identity already controls a seat.', (int)$game['version']);
+            }
+            $statement = $this->connection->prepare(
+                'SELECT id, is_host FROM game_memberships WHERE game_id = :game AND id = :seat'
+            );
+            $statement->execute(['game' => $gameId, 'seat' => $seatId]);
+            $seat = $statement->fetch();
+            if (!$seat) {
+                throw new GameServiceException('seatNotFound', 'The requested seat does not exist.', (int)$game['version']);
+            }
+
+            $newSeatToken = self::token();
+            $this->connection->prepare(
+                'UPDATE game_memberships
+                 SET identity_id = :identity, seat_token_hash = :token, ready = 0
+                 WHERE game_id = :game AND id = :seat'
+            )->execute([
+                'identity' => $newIdentityId,
+                'token' => hash('sha256', $newSeatToken),
+                'game' => $gameId,
+                'seat' => $seatId,
+            ]);
+            if ((bool)$seat['is_host']) {
+                $this->connection->prepare('UPDATE games SET host_identity_id = :identity WHERE id = :game')
+                    ->execute(['identity' => $newIdentityId, 'game' => $gameId]);
+            }
+            $version = (int)$game['version'] + 1;
+            $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :game')
+                ->execute(['version' => $version, 'updated' => self::now(), 'game' => $gameId]);
+            $this->appendEvent($gameId, $version, 'seatReassigned', $hostIdentityId, ['seatId' => $seatId]);
+            $projection = $this->projection($gameId, $newIdentityId);
+            $this->writeSnapshot($gameId, $version, $projection);
+            $this->connection->commit();
+            return ['seatId' => $seatId, 'seatToken' => $newSeatToken, 'game' => $projection];
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
+        }
+    }
+
+    public function getEvents(string $gameId, string $identityId, string $seatToken, int $afterSequence): array
+    {
+        $this->requireSeatCredential($gameId, $identityId, $seatToken);
         $statement = $this->connection->prepare(
             'SELECT sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at
              FROM game_events WHERE game_id = :game AND sequence > :after ORDER BY sequence LIMIT 200'
@@ -246,9 +324,10 @@ final class GameService
         ], $statement->fetchAll());
     }
 
-    public function createSpectatorLink(string $gameId, string $identityId): array
+    public function createSpectatorLink(string $gameId, string $identityId, string $seatToken): array
     {
         $game = $this->gameRow($gameId);
+        $this->requireSeatCredential($gameId, $identityId, $seatToken);
         if ($game['host_identity_id'] !== $identityId) {
             throw new GameServiceException('hostRequired', 'Only the host can manage spectator links.', (int)$game['version']);
         }
@@ -302,9 +381,10 @@ final class GameService
         ];
     }
 
-    public function revokeSpectatorLink(string $gameId, string $identityId, string $linkId): void
+    public function revokeSpectatorLink(string $gameId, string $identityId, string $seatToken, string $linkId): void
     {
         $game = $this->gameRow($gameId);
+        $this->requireSeatCredential($gameId, $identityId, $seatToken);
         if ($game['host_identity_id'] !== $identityId) {
             throw new GameServiceException('hostRequired', 'Only the host can manage spectator links.', (int)$game['version']);
         }
@@ -385,6 +465,18 @@ final class GameService
         $membership = $statement->fetch();
         if (!$membership) {
             throw new GameServiceException('membershipRequired', 'This identity does not control a seat in the game.');
+        }
+        return $membership;
+    }
+
+    private function requireSeatCredential(string $gameId, string $identityId, string $seatToken): array
+    {
+        $membership = $this->requireMembership($gameId, $identityId);
+        if ($seatToken === '') {
+            throw new GameServiceException('seatCredentialRequired', 'A seat credential is required to control this seat.');
+        }
+        if (!hash_equals($membership['seat_token_hash'], hash('sha256', $seatToken))) {
+            throw new GameServiceException('seatCredentialInvalid', 'The seat credential is invalid or has been replaced.');
         }
         return $membership;
     }

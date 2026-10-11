@@ -43,6 +43,24 @@ public sealed class ContractFixtureTests
     }
 
     [Fact]
+    public void GameSeatSession_keeps_the_credential_outside_the_public_projection()
+    {
+        var json = File.ReadAllText(FixturePath("game-seat-session.json"));
+
+        var session = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.GameSeatSession>(
+            json,
+            global::BloodAndBanners.Contracts.ContractJson.Options);
+
+        Assert.NotNull(session);
+        Assert.Equal("game-fixture", session.Game.GameId);
+        Assert.Equal("seat-one", session.Game.Viewer.SeatId);
+        Assert.Equal("seat-secret", session.SeatToken);
+        Assert.DoesNotContain("seatToken", System.Text.Json.JsonSerializer.Serialize(
+            session.Game,
+            global::BloodAndBanners.Contracts.ContractJson.Options));
+    }
+
+    [Fact]
     public void Scenario_fixture_carries_versioned_map_modes_and_scoring()
     {
         var json = File.ReadAllText(FixturePath("scenario-definition.json"));

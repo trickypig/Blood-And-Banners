@@ -1,0 +1,21 @@
+{
+  "game": {
+    "gameId": "game-fixture",
+    "version": 1,
+    "lifecycle": "lobby",
+    "mode": "vanillaPvp",
+    "viewer": {
+      "role": "player",
+      "seatId": "seat-one",
+      "canCommand": true,
+      "isHost": true
+    },
+    "board": { "columns": 0, "rows": 0, "hexes": [] },
+    "turn": { "round": 0, "activeSeatId": null, "activationsRemaining": 0 },
+    "pendingChoice": null,
+    "legalActions": [],
+    "scores": { "seat-one": 0 },
+    "result": null
+  },
+  "seatToken": "seat-secret"
+}

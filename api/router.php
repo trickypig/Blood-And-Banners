@@ -11,7 +11,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (preg_match('#^https?://localhost(?::\d+)?$#', $origin) === 1) {
     header("Access-Control-Allow-Origin: {$origin}");
     header('Vary: Origin');
-    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Client-Platform, X-Client-Version');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Client-Platform, X-Client-Version, X-Seat-Token');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 }
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
