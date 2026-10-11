@@ -45,6 +45,16 @@ function foundation_tests(): array
             }
         },
 
+        'database timestamps use a MySQL compatible UTC format' => static function (): void {
+            [$db, $auth] = test_services();
+            $auth->createGuest('timestamp-device');
+            $created = (string)$db->query('SELECT created_at FROM guest_identities LIMIT 1')->fetchColumn();
+            $expires = (string)$db->query('SELECT expires_at FROM refresh_tokens LIMIT 1')->fetchColumn();
+
+            expect_true(preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $created) === 1, 'created_at must fit MySQL DATETIME');
+            expect_true(preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $expires) === 1, 'expires_at must fit MySQL DATETIME');
+        },
+
         'only the host can start a ready vanilla lobby' => static function (): void {
             [$db, $auth, $games] = test_services_with_games();
             $host = $auth->createGuest('host-device');
@@ -65,6 +75,41 @@ function foundation_tests(): array
             expect_same('draft', $started['lifecycle'], 'starting should enter draft');
             expect_same(2, count($started['memberships']), 'vanilla game should retain two seats');
             expect_true($created['seatToken'] !== $joined['seatToken'], 'seat credentials must be isolated');
+        },
+
+        'joining advances the version and appends a durable event' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('join-host');
+            $rival = $auth->createGuest('join-rival');
+            $created = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+
+            $joined = $games->joinGame($created['gameId'], $rival['identityId']);
+            $events = $games->getEvents($created['gameId'], $host['identityId'], 0);
+
+            expect_same(2, $joined['version'], 'joining should advance optimistic concurrency version');
+            expect_same('playerJoined', $events['events'][0]['kind'], 'joining should emit a durable event');
+        },
+
+        'failed start rolls back lifecycle version and snapshot together' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $host = $auth->createGuest('rollback-host');
+            $rival = $auth->createGuest('rollback-rival');
+            $game = $games->createGame($host['identityId'], 'vanillaPvp', 'Training Grounds');
+            $games->joinGame($game['gameId'], $rival['identityId']);
+            $games->setReady($game['gameId'], $host['identityId'], true);
+            $games->setReady($game['gameId'], $rival['identityId'], true);
+            $before = $games->getGame($game['gameId'], $host['identityId']);
+            $db->exec("CREATE TRIGGER reject_start_event BEFORE INSERT ON game_events WHEN NEW.kind = 'gameStarted' BEGIN SELECT RAISE(ABORT, 'forced failure'); END");
+
+            try {
+                $games->startGame($game['gameId'], $host['identityId']);
+                throw new RuntimeException('forced event failure did not abort start');
+            } catch (PDOException) {
+            }
+
+            $after = $games->getGame($game['gameId'], $host['identityId']);
+            expect_same($before['lifecycle'], $after['lifecycle'], 'failed start must restore lifecycle');
+            expect_same($before['version'], $after['version'], 'failed start must restore version');
         },
 
         'commands are idempotent and stale versions do not mutate the game' => static function (): void {

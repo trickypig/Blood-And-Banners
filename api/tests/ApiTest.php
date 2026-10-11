@@ -139,13 +139,40 @@ function api_tests(): array
             expect_same($game->body['gameId'], $history->body['matches'][0]['gameId'], 'account history should include guest match');
             expect_same(200, $login->status, 'converted account should support login');
         },
+
+        'failed guest conversion rolls back account and membership together' => static function (): void {
+            [$app, $db] = test_application_with_db();
+            $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'atomic-conversion']));
+            $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
+            $app->handle(new Request('POST', '/api/v1/games', $authorization, [
+                'mode' => 'coop',
+                'scenarioName' => 'Portal Watch',
+            ]));
+            $db->exec("CREATE TRIGGER reject_identity_transfer BEFORE UPDATE ON game_memberships BEGIN SELECT RAISE(ABORT, 'forced failure'); END");
+
+            $response = $app->handle(new Request('POST', '/api/v1/auth/convert', $authorization, [
+                'email' => 'rollback@example.com',
+                'password' => 'correct horse battery staple',
+                'displayName' => 'Rollback Captain',
+                'deviceId' => 'atomic-conversion',
+            ]));
+
+            expect_same(500, $response->status, 'forced transfer failure should fail conversion');
+            expect_same(0, (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn(), 'account insert must roll back');
+            expect_same(null, $db->query('SELECT converted_user_id FROM guest_identities LIMIT 1')->fetchColumn(), 'guest must remain convertible');
+        },
     ];
 }
 
 function test_application(): Application
 {
+    return test_application_with_db()[0];
+}
+
+function test_application_with_db(): array
+{
     $db = ConnectionFactory::sqliteMemory();
     (new Migrator($db))->migrate();
     $auth = new AuthService($db, 'test-signing-key-with-at-least-32-bytes');
-    return new Application($auth, new GameService($db));
+    return [new Application($auth, new GameService($db)), $db];
 }

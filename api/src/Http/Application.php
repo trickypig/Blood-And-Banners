@@ -67,9 +67,9 @@ final class Application
                     (string)($request->body['email'] ?? ''),
                     (string)($request->body['password'] ?? ''),
                     (string)($request->body['displayName'] ?? ''),
-                    (string)($request->body['deviceId'] ?? '')
+                    (string)($request->body['deviceId'] ?? ''),
+                    fn(string $from, string $to) => $this->games->transferIdentity($from, $to)
                 );
-                $this->games->transferIdentity($principal['identityId'], $account['identityId']);
                 return new Response(200, $account);
             }
             if ($request->method === 'GET' && $request->path === '/api/v1/account/matches') {

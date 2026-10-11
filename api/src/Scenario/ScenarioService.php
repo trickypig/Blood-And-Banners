@@ -129,6 +129,6 @@ final class ScenarioService
 
     private static function now(): string
     {
-        return gmdate('Y-m-d\TH:i:s\Z');
+        return gmdate('Y-m-d H:i:s');
     }
 }

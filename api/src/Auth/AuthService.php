@@ -53,6 +53,7 @@ final class AuthService
         string $password,
         string $displayName,
         string $deviceId,
+        ?callable $transferIdentity = null,
     ): array {
         $normalizedEmail = strtolower(trim($email));
         if (!filter_var($normalizedEmail, FILTER_VALIDATE_EMAIL)) {
@@ -93,6 +94,9 @@ final class AuthService
             $this->connection->prepare(
                 "UPDATE refresh_tokens SET revoked_at = :revoked WHERE identity_kind = 'guest' AND identity_id = :guest AND revoked_at IS NULL"
             )->execute(['revoked' => self::now(), 'guest' => $guestIdentityId]);
+            if ($transferIdentity !== null) {
+                $transferIdentity($guestIdentityId, $userId);
+            }
             $pair = $this->issuePair('user', $userId, $deviceId);
             $this->connection->commit();
             return $pair;
@@ -118,8 +122,13 @@ final class AuthService
                 throw new DomainException('invalidRefreshToken');
             }
 
-            $revoke = $this->connection->prepare('UPDATE refresh_tokens SET revoked_at = :revoked WHERE id = :id');
+            $revoke = $this->connection->prepare(
+                'UPDATE refresh_tokens SET revoked_at = :revoked WHERE id = :id AND revoked_at IS NULL'
+            );
             $revoke->execute(['revoked' => self::now(), 'id' => $record['id']]);
+            if ($revoke->rowCount() !== 1) {
+                throw new DomainException('invalidRefreshToken');
+            }
             $pair = $this->issuePair($record['identity_kind'], $record['identity_id'], $deviceId);
             $this->connection->commit();
             return $pair;
@@ -145,7 +154,7 @@ final class AuthService
             'identity' => $identityId,
             'device' => $deviceId,
             'hash' => hash('sha256', $refreshToken),
-            'expires' => gmdate('Y-m-d\TH:i:s\Z', time() + 60 * 60 * 24 * 30),
+            'expires' => gmdate('Y-m-d H:i:s', time() + 60 * 60 * 24 * 30),
             'created' => self::now(),
         ]);
         return [
@@ -163,6 +172,6 @@ final class AuthService
 
     private static function now(): string
     {
-        return gmdate('Y-m-d\TH:i:s\Z');
+        return gmdate('Y-m-d H:i:s');
     }
 }

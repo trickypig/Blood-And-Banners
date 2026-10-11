@@ -42,18 +42,31 @@ final class GameService
 
     public function joinGame(string $gameId, string $identityId): array
     {
-        $game = $this->gameRow($gameId);
-        if ($game['lifecycle'] !== 'lobby') {
-            throw new GameServiceException('gameAlreadyStarted', 'Only lobby games can be joined.', (int)$game['version']);
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            if ($game['lifecycle'] !== 'lobby') {
+                throw new GameServiceException('gameAlreadyStarted', 'Only lobby games can be joined.', (int)$game['version']);
+            }
+            $count = (int)$this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game', ['game' => $gameId]);
+            $maximum = $game['mode'] === 'vanillaPvp' ? 2 : 5;
+            if ($count >= $maximum) {
+                throw new GameServiceException('gameFull', 'This game has no open player seats.', (int)$game['version']);
+            }
+            $seatToken = self::token();
+            $this->insertMembership($gameId, $identityId, $count + 1, false, $seatToken);
+            $version = (int)$game['version'] + 1;
+            $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
+                ->execute(['version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+            $this->appendEvent($gameId, $version, 'playerJoined', $identityId, ['seatIndex' => $count + 1]);
+            $projection = $this->projection($gameId, $identityId);
+            $this->writeSnapshot($gameId, $version, $projection);
+            $this->connection->commit();
+            return $projection + ['seatToken' => $seatToken];
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
         }
-        $count = (int)$this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game', ['game' => $gameId]);
-        $maximum = $game['mode'] === 'vanillaPvp' ? 2 : 5;
-        if ($count >= $maximum) {
-            throw new GameServiceException('gameFull', 'This game has no open player seats.', (int)$game['version']);
-        }
-        $seatToken = self::token();
-        $this->insertMembership($gameId, $identityId, $count + 1, false, $seatToken);
-        return $this->projection($gameId, $identityId) + ['seatToken' => $seatToken];
     }
 
     public function setReady(string $gameId, string $identityId, bool $ready): array
@@ -69,24 +82,31 @@ final class GameService
 
     public function startGame(string $gameId, string $identityId): array
     {
-        $game = $this->gameRow($gameId);
-        if ($game['host_identity_id'] !== $identityId) {
-            throw new GameServiceException('hostRequired', 'Only the host can start the match.', (int)$game['version']);
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            if ($game['host_identity_id'] !== $identityId) {
+                throw new GameServiceException('hostRequired', 'Only the host can start the match.', (int)$game['version']);
+            }
+            $memberships = $this->memberships($gameId);
+            $minimum = 2;
+            $readyCount = count(array_filter($memberships, static fn(array $seat): bool => (bool)$seat['ready']));
+            if (count($memberships) < $minimum || $readyCount !== count($memberships)) {
+                throw new GameServiceException('playersNotReady', 'All required players must be ready.', (int)$game['version']);
+            }
+            $version = (int)$game['version'] + 1;
+            $this->connection->prepare(
+                'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
+            )->execute(['lifecycle' => 'draft', 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+            $projection = $this->projection($gameId, $identityId);
+            $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => 'draft']);
+            $this->writeSnapshot($gameId, $version, $projection);
+            $this->connection->commit();
+            return $projection;
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
         }
-        $memberships = $this->memberships($gameId);
-        $minimum = $game['mode'] === 'vanillaPvp' ? 2 : 2;
-        $readyCount = count(array_filter($memberships, static fn(array $seat): bool => (bool)$seat['ready']));
-        if (count($memberships) < $minimum || $readyCount !== count($memberships)) {
-            throw new GameServiceException('playersNotReady', 'All required players must be ready.', (int)$game['version']);
-        }
-        $version = (int)$game['version'] + 1;
-        $this->connection->prepare(
-            'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
-        )->execute(['lifecycle' => 'draft', 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
-        $projection = $this->projection($gameId, $identityId);
-        $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => 'draft']);
-        $this->writeSnapshot($gameId, $version, $projection);
-        return $projection;
     }
 
     public function submitCommand(string $gameId, string $identityId, array $command): array
@@ -173,7 +193,7 @@ final class GameService
             'actingSeat' => $event['acting_identity_id'],
             'focusHexes' => json_decode($event['focus_hexes_json'], true, flags: JSON_THROW_ON_ERROR),
             'payload' => json_decode($event['payload_json'], true, flags: JSON_THROW_ON_ERROR),
-            'timestamp' => $event['created_at'],
+            'timestamp' => gmdate('Y-m-d\TH:i:s\Z', strtotime($event['created_at'])),
         ], $statement->fetchAll());
         $lastSequence = $afterSequence;
         if ($events !== []) {
@@ -184,7 +204,10 @@ final class GameService
 
     public function transferIdentity(string $fromIdentityId, string $toIdentityId): void
     {
-        $this->connection->beginTransaction();
+        $ownsTransaction = !$this->connection->inTransaction();
+        if ($ownsTransaction) {
+            $this->connection->beginTransaction();
+        }
         try {
             $this->connection->prepare('UPDATE game_memberships SET identity_id = :to WHERE identity_id = :from')
                 ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
@@ -194,9 +217,13 @@ final class GameService
                 ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
             $this->connection->prepare('UPDATE command_receipts SET identity_id = :to WHERE identity_id = :from')
                 ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
-            $this->connection->commit();
+            if ($ownsTransaction) {
+                $this->connection->commit();
+            }
         } catch (Throwable $error) {
-            $this->rollback();
+            if ($ownsTransaction) {
+                $this->rollback();
+            }
             throw $error;
         }
     }
@@ -428,6 +455,6 @@ final class GameService
 
     private static function now(): string
     {
-        return gmdate('Y-m-d\TH:i:s\Z');
+        return gmdate('Y-m-d H:i:s');
     }
 }
