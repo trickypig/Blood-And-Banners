@@ -39,6 +39,7 @@ final class Wounds
         }
         $events[] = MatchEngine::event('unitDefeated', [$unit['hex']], ['unitId' => $unitId]);
         $state['units'][$unitId]['hex'] = null;
+        $state = UnitConditions::clearUnit($state, $unitId);
         if ($state['turn']['activeUnitId'] === $unitId) {
             $state['turn']['activeUnitId'] = null;
         }

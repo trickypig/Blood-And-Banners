@@ -9,6 +9,7 @@ use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 use BloodAndBanners\Rules\Vanilla\Abilities\TargetedAbility;
+use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
 
 final class BattleRules
 {
@@ -16,6 +17,7 @@ final class BattleRules
 
     private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
+        'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
         'unknownUnit' => 'That unit is not on the battlefield.',
@@ -172,6 +174,9 @@ final class BattleRules
         $unitId = self::text($payload, 'unitId');
         $to = self::text($payload, 'to');
         $state = $this->activate($state, $seatId, $unitId);
+        if (self::rooted($state, $unitId)) {
+            self::fail('unitStunned');
+        }
         if (!self::canMove($state, $unitId)) {
             self::fail('alreadyMoved');
         }
@@ -256,8 +261,16 @@ final class BattleRules
         return AbilityRegistry::any($unit, static fn(Ability $ability): bool => $ability->movesAfterAttack());
     }
 
+    private static function rooted(array $state, string $unitId): bool
+    {
+        return UnitConditions::any($state, $unitId, static fn(Condition $condition): bool => $condition->blocksMovement());
+    }
+
     private static function canMove(array $state, string $unitId): bool
     {
+        if (self::rooted($state, $unitId)) {
+            return false;
+        }
         $turn = $state['turn'];
         if ($turn['activeUnitId'] !== $unitId) {
             return true;
@@ -444,10 +457,12 @@ final class BattleRules
         $next = MatchEngine::otherSeat($state, $current);
         $events = [];
         $state = Effects::expire($state, $current, Effects::UNTIL_END_OF_TURN, $events);
+        $state = UnitConditions::atTurnEnd($state, $events);
         $round = $state['turn']['round'] + ($next === $state['draft']['firstSeatId'] ? 1 : 0);
         $state['turn'] = Turn::fresh($state, $next, $round);
         $events[] = MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round]);
         $state = Effects::expire($state, $next, Effects::UNTIL_NEXT_TURN, $events);
+        $state = UnitConditions::atTurnStart($state, $events);
         return [$state, $events];
     }
 

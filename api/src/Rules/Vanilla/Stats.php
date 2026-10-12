@@ -19,6 +19,7 @@ final class Stats
                 $value += $ability->statDelta($state, (string)$ownerId, $unitId, $stat, $context);
             }
         }
+        $value += UnitConditions::statDelta($state, $unitId, $stat, $context);
         return max(0, $value);
     }
 }

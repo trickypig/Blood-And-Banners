@@ -11,10 +11,11 @@ require __DIR__ . '/VanillaGeometryTest.php';
 require __DIR__ . '/VanillaDraftTest.php';
 require __DIR__ . '/VanillaBattleTest.php';
 require __DIR__ . '/VanillaAbilityTest.php';
+require __DIR__ . '/VanillaForcedTest.php';
 require __DIR__ . '/VanillaMatchServiceTest.php';
 
 $failures = 0;
-$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_match_service_tests());
+$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_match_service_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

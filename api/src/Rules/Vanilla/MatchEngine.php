@@ -44,6 +44,7 @@ final class MatchEngine
             ],
             'units' => [],
             'effects' => [],
+            'conditions' => [],
             'pending' => null,
             'turn' => Turn::idle(),
             'result' => null,
@@ -84,6 +85,7 @@ final class MatchEngine
     public static function normalize(array $state): array
     {
         $state['effects'] ??= [];
+        $state['conditions'] ??= [];
         $state['pending'] ??= null;
         $state['turn'] = Turn::normalize($state['turn'] ?? Turn::idle());
         foreach ($state['units'] ?? [] as $unitId => $unit) {

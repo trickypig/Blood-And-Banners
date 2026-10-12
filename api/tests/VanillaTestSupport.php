@@ -79,6 +79,7 @@ function vanilla_battle(array $board, array $units, string $activeSeat = 'seat-a
         ],
         'units' => [],
         'effects' => [],
+        'conditions' => [],
         'pending' => null,
         'turn' => Turn::idle(),
         'result' => null,

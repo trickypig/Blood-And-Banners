@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla;
 
+use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
+
 final class Movement
 {
     /** Hexes the unit can end on, mapped to the steps it takes to get there. */
@@ -54,6 +56,9 @@ final class Movement
         $enemies = [];
         foreach ($state['units'] as $other) {
             if ($other['hex'] === null || $other['seatId'] === $unit['seatId']) {
+                continue;
+            }
+            if (UnitConditions::any($state, $other['unitId'], static fn(Condition $condition): bool => $condition->blocksDisengagementStrike())) {
                 continue;
             }
             $engaged = Hex::distance($unit['hex'], $other['hex']) === 1
