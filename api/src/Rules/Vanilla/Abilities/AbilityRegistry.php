@@ -63,6 +63,10 @@ final class AbilityRegistry
                 new Evasion('Evasion'),
                 new OneLastHorn('One Last Horn'),
                 new FragileFocus('Fragile Focus'),
+                new MultiStrike('Dual Strike'),
+                new MultiStrike('Twin Strikes'),
+                new MultiStrike('Dual Strikes'),
+                new SilentSting('Silent Sting'),
             ];
             self::$handlers = [];
             foreach ($list as $handler) {

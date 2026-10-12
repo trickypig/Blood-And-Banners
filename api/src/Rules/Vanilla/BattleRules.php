@@ -24,6 +24,7 @@ final class BattleRules
         'hexUnreachable' => 'That unit cannot reach that hex.',
         'targetOutOfRange' => 'That target is out of range.',
         'noLineOfSight' => 'That target is not in line of sight.',
+        'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
     ];
 
     public function __construct(private readonly int $now)
@@ -78,13 +79,14 @@ final class BattleRules
             if (!$active && $this->activationError($state, $unitId) !== null) {
                 continue;
             }
-            if (!$active || !$state['turn']['moved']) {
-                $hexes = Movement::reachable($state, $unitId);
+            if (self::canMove($state, $unitId)) {
+                $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
+                $hexes = Movement::reachable($state, $unitId, $budget);
                 if ($hexes !== []) {
                     $actions[] = ['kind' => 'moveUnit', 'unitId' => $unitId, 'targetHexes' => $hexes];
                 }
             }
-            $targets = Combat::targets($state, $unitId);
+            $targets = self::attacksLeft($state, $unitId) ? Combat::targets($state, $unitId) : [];
             if ($targets !== []) {
                 $actions[] = [
                     'kind' => 'attackUnit',
@@ -105,10 +107,12 @@ final class BattleRules
         $unitId = self::text($payload, 'unitId');
         $to = self::text($payload, 'to');
         $state = $this->activate($state, $seatId, $unitId);
-        if ($state['turn']['moved']) {
+        if (!self::canMove($state, $unitId)) {
             self::fail('alreadyMoved');
         }
-        if (!in_array($to, Movement::reachable($state, $unitId), true)) {
+        $budget = Stats::effective($state, $unitId, 'move') - $state['turn']['moveSpent'];
+        $costs = Movement::costs($state, $unitId, $budget);
+        if (!isset($costs[$to])) {
             self::fail('hexUnreachable');
         }
         $from = $state['units'][$unitId]['hex'];
@@ -127,14 +131,20 @@ final class BattleRules
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
         $state['units'][$unitId]['hex'] = $to;
-        $state['turn']['moved'] = true;
+        $state['turn']['moveSpent'] += $costs[$to];
+        if ($state['turn']['attacks'] > 0) {
+            $state['turn']['movedAfterAttack'] = true;
+        } else {
+            $state['turn']['moved'] = true;
+        }
         $events[] = MatchEngine::event('unitMoved', [$from, $to], [
             'unitId' => $unitId,
             'from' => $from,
             'to' => $to,
             'disengagement' => $hits,
         ]);
-        return Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
+        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
+        return self::closeIfSpent($state, $unitId);
     }
 
     private function attack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
@@ -142,6 +152,9 @@ final class BattleRules
         $unitId = self::text($payload, 'unitId');
         $targetId = self::text($payload, 'targetUnitId');
         $state = $this->activate($state, $seatId, $unitId);
+        if (!self::attacksLeft($state, $unitId)) {
+            self::fail('noAttacksLeft');
+        }
         $target = $state['units'][$targetId] ?? null;
         if ($target === null || $target['hex'] === null || $target['seatId'] === $seatId) {
             self::fail('unknownUnit');
@@ -151,8 +164,57 @@ final class BattleRules
             self::fail($blocked);
         }
         $state['turn']['attacks']++;
-        $state['turn']['activeUnitId'] = null;
+        $state = self::closeIfSpent($state, $unitId);
         return (new StepRunner($random, $this->now))->run($state, [StepRunner::strike($unitId, $targetId)], $events);
+    }
+
+    private static function attackAllowance(array $unit): int
+    {
+        $allowance = 1;
+        foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+            $allowance = max($allowance, $ability->attacksPerActivation());
+        }
+        return $allowance;
+    }
+
+    /** Whether $unitId may still attack, as the active unit or as a fresh activation. */
+    private static function attacksLeft(array $state, string $unitId): bool
+    {
+        if ($state['turn']['activeUnitId'] !== $unitId) {
+            return true;
+        }
+        return $state['turn']['attacks'] < self::attackAllowance($state['units'][$unitId]);
+    }
+
+    private static function stings(array $unit): bool
+    {
+        return AbilityRegistry::any($unit, static fn(Ability $ability): bool => $ability->movesAfterAttack());
+    }
+
+    private static function canMove(array $state, string $unitId): bool
+    {
+        $turn = $state['turn'];
+        if ($turn['activeUnitId'] !== $unitId) {
+            return true;
+        }
+        if ($turn['attacks'] === 0) {
+            return !$turn['moved'];
+        }
+        return self::stings($state['units'][$unitId])
+            && !$turn['movedAfterAttack']
+            && $turn['moveSpent'] < Stats::effective($state, $unitId, 'move');
+    }
+
+    /** End the activation once the unit has nothing left to do with it. */
+    private static function closeIfSpent(array $state, string $unitId): array
+    {
+        if ($state['turn']['activeUnitId'] !== $unitId) {
+            return $state;
+        }
+        if (!self::attacksLeft($state, $unitId) && !($state['turn']['attacks'] > 0 && self::canMove($state, $unitId))) {
+            $state['turn']['activeUnitId'] = null;
+        }
+        return $state;
     }
 
     private function activate(array $state, string $seatId, string $unitId): array
@@ -174,6 +236,9 @@ final class BattleRules
         $state['turn']['activeUnitId'] = $unitId;
         $state['turn']['activated'][] = $unitId;
         $state['turn']['moved'] = false;
+        $state['turn']['attacks'] = 0;
+        $state['turn']['moveSpent'] = 0;
+        $state['turn']['movedAfterAttack'] = false;
         return $state;
     }
 

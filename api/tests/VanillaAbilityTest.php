@@ -198,5 +198,34 @@ function vanilla_ability_tests(): array
             $hit = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b-hero'], [1]);
             expect_same(2, $hit['state']['units']['b-hero']['flags']['spellsLockedOnTurn'], 'seat-b\'s next turn is number two');
         },
+
+        'Dual Strike keeps the activation open for a second attack' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                ability_unit('a1', 'seat-a', '1,0', ['Dual Strike'], ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '0,0', ['defense' => 0, 'hp' => 5]),
+                vanilla_unit('b2', 'seat-b', '2,0', ['defense' => 0, 'hp' => 5]),
+            ]);
+            $first = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1]);
+            expect_same('a1', $first['state']['turn']['activeUnitId'], 'the activation stays open');
+            expect_game_error('alreadyMoved', static fn() => vanilla_command($first['state'], 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0']));
+            $second = vanilla_command($first['state'], 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b2'], [1]);
+            expect_same(1, $second['state']['units']['b2']['wounds'], 'the second strike lands');
+            expect_same(null, $second['state']['turn']['activeUnitId'], 'two attacks spend the activation');
+        },
+
+        'Silent Sting splits its move around the attack' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Silent Sting'], ['move' => 3, 'range' => 4, 'power' => 1]),
+                vanilla_unit('b1', 'seat-b', '5,0', ['defense' => 0, 'hp' => 5]),
+            ]);
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0'])['state'];
+            $struck = vanilla_command($moved, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1])['state'];
+            expect_same('a1', $struck['turn']['activeUnitId'], 'the Thornshaft may still move');
+            expect_game_error('noAttacksLeft', static fn() => vanilla_command($struck, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1]));
+            expect_game_error('hexUnreachable', static fn() => vanilla_command($struck, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '4,0']));
+            $after = vanilla_command($struck, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '3,0'])['state'];
+            expect_same('3,0', $after['units']['a1']['hex'], 'two remaining steps carry it on');
+            expect_same(null, $after['turn']['activeUnitId'], 'the move after the attack ends the activation');
+        },
     ];
 }
