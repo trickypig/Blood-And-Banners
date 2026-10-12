@@ -5,9 +5,13 @@ namespace BloodAndBanners\Game;
 
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\SecureRandomSource;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\Vanilla\BattleRules;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
+use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
 use BloodAndBanners\Scenario\ScenarioService;
 use DomainException;
@@ -488,6 +492,7 @@ final class GameService
     private function buildProjection(array $game, array $memberships, array $viewer): array
     {
         $state = $this->loadState($game['id']);
+        $state = $state === null ? null : MatchEngine::normalize($state);
         $scores = [];
         foreach ($memberships as $membership) {
             $scores[$membership['id']] = 0;
@@ -498,6 +503,10 @@ final class GameService
             $state !== null => $this->engine->legalActions($state, $viewer['seatId']),
             default => [],
         };
+        $legalActions = array_map(
+            static fn(array $action): array => $action + ['ability' => null],
+            $legalActions
+        );
         return [
             'gameId' => $game['id'],
             'version' => (int)$game['version'],
@@ -512,7 +521,8 @@ final class GameService
                 'activationsRemaining' => $state === null ? 0 : Turn::activationsRemaining($state),
                 'activeUnitId' => $state['turn']['activeUnitId'] ?? null,
             ],
-            'pendingChoice' => null,
+            'pendingChoice' => $this->pendingChoiceProjection($state, $viewer['seatId']),
+            'pendingChoiceSummary' => $this->pendingChoiceSummary($state),
             'legalActions' => $legalActions,
             'scores' => $scores,
             'result' => ($state['result'] ?? null) === null ? null : $state['result'] + ['finalScores' => $scores],
@@ -523,21 +533,80 @@ final class GameService
                 'isHost' => (bool)$seat['is_host'],
             ], $memberships),
             'draft' => $state !== null && $state['phase'] === 'draft' ? $this->draftProjection($state) : null,
-            'units' => $state === null ? [] : array_values(array_map(static fn(array $unit): array => [
-                'unitId' => $unit['unitId'],
-                'seatId' => $unit['seatId'],
-                'isHero' => $unit['isHero'],
-                'name' => $unit['name'],
-                'image' => $unit['image'],
-                'move' => $unit['move'],
-                'range' => $unit['range'],
-                'power' => $unit['power'],
-                'defense' => $unit['defense'],
-                'hp' => $unit['hp'],
-                'wounds' => $unit['wounds'],
-                'hex' => $unit['hex'],
-                'activatedThisTurn' => in_array($unit['unitId'], $state['turn']['activated'], true),
-            ], self::orderedUnits($state))),
+            'units' => $state === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($state, $unit), self::orderedUnits($state))),
+        ];
+    }
+
+    private function unitProjection(array $state, array $unit): array
+    {
+        $id = $unit['unitId'];
+        $alive = $unit['hex'] !== null && $state['phase'] === 'active';
+        $effective = static fn(string $stat): int => $alive ? Stats::effective($state, $id, $stat) : (int)$unit[$stat];
+        return [
+            'unitId' => $id,
+            'seatId' => $unit['seatId'],
+            'isHero' => $unit['isHero'],
+            'name' => $unit['name'],
+            'image' => $unit['image'],
+            'move' => $unit['move'],
+            'range' => $unit['range'],
+            'power' => $unit['power'],
+            'defense' => $unit['defense'],
+            'hp' => $unit['hp'],
+            'wounds' => $unit['wounds'],
+            'hex' => $unit['hex'],
+            'activatedThisTurn' => in_array($id, $state['turn']['activated'], true),
+            'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? []),
+            'effects' => array_map(static fn(array $effect): array => [
+                'name' => $effect['name'],
+                'stat' => $effect['stat'],
+                'amount' => $effect['amount'],
+                'expires' => $effect['expires']['at'] === Effects::UNTIL_END_OF_TURN ? 'endOfTurn' : 'nextTurn',
+            ], Effects::forUnit($state, $id)),
+            'effectiveMove' => $effective('move'),
+            'effectiveRange' => $effective('range'),
+            'effectivePower' => $effective('power'),
+            'effectiveDefense' => $effective('defense'),
+        ];
+    }
+
+    private static function abilityCards(array $abilities, array $used = []): array
+    {
+        return array_map(static fn(array $ability): array => [
+            'name' => $ability['name'],
+            'type' => $ability['type'],
+            'description' => $ability['description'],
+            'playable' => AbilityRegistry::isPlayable($ability['name']),
+            'usedThisTurn' => in_array($ability['name'], $used, true),
+        ], $abilities);
+    }
+
+    private function pendingChoiceProjection(?array $state, ?string $seatId): ?array
+    {
+        $choice = $state['pending']['choice'] ?? null;
+        if ($choice === null || $choice['seatId'] !== $seatId) {
+            return null;
+        }
+        return [
+            'choiceId' => $choice['choiceId'],
+            'seatId' => $choice['seatId'],
+            'kind' => $choice['kind'],
+            'options' => $choice['options'],
+            'unitId' => $choice['unitId'],
+            'side' => $choice['side'],
+            'faces' => $choice['faces'],
+            'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS),
+        ];
+    }
+
+    private function pendingChoiceSummary(?array $state): ?array
+    {
+        $choice = $state['pending']['choice'] ?? null;
+        return $choice === null ? null : [
+            'choiceId' => $choice['choiceId'],
+            'seatId' => $choice['seatId'],
+            'unitId' => $choice['unitId'],
+            'keepableAt' => gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS),
         ];
     }
 
@@ -568,11 +637,14 @@ final class GameService
             'heroBySeat' => $draft['heroBySeat'],
             'armyBySeat' => $draft['armyBySeat'],
             'availableHeroes' => array_map(
-                static fn(array $hero): array => $hero + ['takenBySeatId' => $takenBy($draft['heroBySeat'], $hero['name'])],
+                static fn(array $hero): array => ['abilities' => self::abilityCards($hero['abilities'])] + $hero + ['takenBySeatId' => $takenBy($draft['heroBySeat'], $hero['name'])],
                 $catalog->heroes()
             ),
             'availableArmies' => array_map(
-                static fn(array $army): array => $army + ['takenBySeatId' => $takenBy($draft['armyBySeat'], $army['name'])],
+                static fn(array $army): array => ['units' => array_map(
+                    static fn(array $unit): array => ['abilities' => self::abilityCards($unit['abilities'])] + $unit,
+                    $army['units']
+                )] + $army + ['takenBySeatId' => $takenBy($draft['armyBySeat'], $army['name'])],
                 $catalog->armies()
             ),
         ];

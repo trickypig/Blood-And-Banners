@@ -131,11 +131,24 @@ function vanilla_match_service_tests(): array
             expect_same('s1-u1', $projection['units'][1]['unitId'], 'units follow their hero in numeric order');
             expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
-                ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn'],
+                ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn',
+                    'abilities', 'effects', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
                 array_keys($projection['units'][0]),
                 'unit projections match the shared contract'
             );
             expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null], $projection['turn'], 'the host opens round one');
+            $captain = array_values(array_filter($projection['units'], static fn(array $unit): bool => $unit['name'] === 'Test Captain'))[0];
+            expect_same(
+                [['name' => 'Shield Wall', 'type' => 'Ability', 'description' => 'Grant one adjacent unit +1 Defense until the start of your next turn', 'playable' => true, 'usedThisTurn' => false]],
+                $captain['abilities'],
+                'units project their abilities'
+            );
+            expect_same([], $captain['effects'], 'no effects yet');
+            expect_same($captain['defense'], $captain['effectiveDefense'], 'effective stats match base with no modifiers');
+            foreach ($projection['legalActions'] as $action) {
+                expect_true(array_key_exists('ability', $action), 'every legal action carries an ability key');
+            }
+            expect_same(null, $projection['pendingChoiceSummary'], 'nothing is pending');
             expect_true(in_array('moveUnit', array_column($projection['legalActions'], 'kind'), true), 'the host may move');
             $occupied = array_values(array_filter($projection['board']['hexes'], static fn(array $hex): bool => $hex['q'] === 0 && $hex['r'] === 4));
             expect_same('s1-hero', $occupied[0]['occupantId'], 'the board shows live occupants');

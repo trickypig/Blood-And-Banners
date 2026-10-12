@@ -467,5 +467,38 @@ function vanilla_ability_tests(): array
             $again = vanilla_command($spent, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6], 1000);
             expect_same(['attackResolved'], array_column($again['events'], 'kind'), 'the glare was already used this turn');
         },
+
+        'a match saved before abilities existed still plays' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 3]),
+                vanilla_unit('b2', 'seat-b', '2,0'),
+            ]);
+            unset($state['effects'], $state['pending']);
+            foreach (['number', 'attacks', 'moveSpent', 'movedAfterAttack', 'abilitiesUsed', 'glareUsed'] as $key) {
+                unset($state['turn'][$key]);
+            }
+            $actions = (new MatchEngine(test_catalog()))->legalActions($state, 'seat-a');
+            expect_true(in_array('attackUnit', array_column($actions, 'kind'), true), 'legal actions still list the attack');
+            $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1]);
+            expect_same(1, $result['state']['units']['b1']['wounds'], 'the attack resolves on plain stats');
+        },
+
+        'every ability in gameData.json is either implemented or explicitly deferred' => static function (): void {
+            $deferred = ['Teleport', 'Gust of Wind', 'Knockback', 'Stunning Blow', 'Flying', 'Lava Walker'];
+            $catalog = new \BloodAndBanners\Rules\Vanilla\Catalog();
+            $names = [];
+            foreach ($catalog->heroes() as $hero) {
+                $names = array_merge($names, array_column($hero['abilities'], 'name'));
+            }
+            foreach ($catalog->armies() as $army) {
+                foreach ($army['units'] as $unit) {
+                    $names = array_merge($names, array_column($unit['abilities'], 'name'));
+                }
+            }
+            foreach (array_unique($names) as $name) {
+                expect_same(!in_array($name, $deferred, true), AbilityRegistry::isPlayable($name), "{$name} playability");
+            }
+        },
     ];
 }
