@@ -1058,6 +1058,15 @@
             ctx.stroke();
         }
 
+        // A muted shade of a biome color: darker for light biomes, lighter for dark ones
+        function heightLabelColor(color) {
+            const [r, g, b] = [1, 3, 5].map(i => parseInt(color.slice(i, i + 2), 16));
+            const lightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            const [target, amount] = lightness < 0.4 ? [255, 0.55] : [0, 0.45];
+            const mix = c => Math.round(c + (target - c) * amount).toString(16).padStart(2, '0');
+            return `#${mix(r)}${mix(g)}${mix(b)}`;
+        }
+
         // Draw a hexagon (flat-top)
         function drawHexagon(x, y, hex, isSelected = false) {
             const size = getHexSize();
@@ -1099,13 +1108,13 @@
             ctx.lineWidth = isSelected ? 3 : 1;
             ctx.stroke();
 
-            // Height indicator
+            // Height indicator: tucked into the upper-left corner in a shade of the biome color
             if (hex.height !== 0) {
-                ctx.fillStyle = hex.height > 0 ? '#ffffff' : '#000000';
-                ctx.font = `bold ${Math.max(10, 14 * zoomLevel)}px Arial`;
+                ctx.fillStyle = heightLabelColor(biomes[hex.biome].color);
+                ctx.font = `bold ${Math.max(9, 12 * zoomLevel)}px Arial`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(hex.height > 0 ? `+${hex.height}` : hex.height, x, y - 10 * zoomLevel);
+                ctx.fillText(hex.height > 0 ? `+${hex.height}` : hex.height, x - size * 0.42, y - size * 0.5);
             }
 
             // Player start marker

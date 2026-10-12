@@ -86,6 +86,76 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void The_board_paints_editor_terrain_raises_high_ground_and_zooms()
+    {
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection())
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        var stone = cut.Find("[data-hex='4,4'] .hex-top").GetAttribute("fill");
+        Assert.Equal("url(#bb-terrain-stone-stone-path)", stone);
+        Assert.Equal(
+            "https://example.test/blood/images/terrain/stone-stone-path.svg",
+            cut.Find("#bb-terrain-stone-stone-path image").GetAttribute("href"));
+        Assert.Equal("+1", cut.Find("[data-hex='4,4'] .hex-elevation").TextContent);
+        Assert.Equal("#3b3b3b", cut.Find("[data-hex='4,4'] .hex-elevation").GetAttribute("fill"));
+        Assert.Single(cut.FindAll("[data-hex='4,4'] .hex-side"));
+        Assert.Empty(cut.FindAll("[data-hex='2,4'] .hex-side"));
+
+        var width = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
+        cut.Find("[aria-label='Zoom in']").Click();
+        var zoomed = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(width * 1.2, zoomed, 1);
+    }
+
+    [Fact]
+    public void Selecting_or_hovering_a_unit_on_the_board_highlights_it_in_the_army_list()
+    {
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection() with { Turn = new TurnProjection(2, null, 3) }));
+
+        cut.Find("[data-hex='1,4']").Click();
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+        Assert.Equal("true", cut.Find("[data-roster-unit=s1-u3]").GetAttribute("aria-current"));
+
+        cut.Find("[data-hex='3,4']").MouseEnter();
+        Assert.Contains("highlighted", cut.Find("[data-roster-unit=s2-u1]").ClassList);
+        Assert.DoesNotContain("highlighted", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+
+        cut.Find("[data-hex='3,4']").MouseLeave();
+        Assert.DoesNotContain("highlighted", cut.Find("[data-roster-unit=s2-u1]").ClassList);
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+    }
+
+    [Fact]
+    public void Units_that_have_acted_this_turn_are_marked_on_the_board_and_in_the_army_list()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Turn = new TurnProjection(2, "seat-blue", 1) { ActiveUnitId = "s2-u1" },
+            Units = [
+                projection.Units[0] with { ActivatedThisTurn = true },
+                projection.Units[1] with { ActivatedThisTurn = true },
+                projection.Units[2],
+            ],
+        };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("spent", cut.Find("[data-hex='1,4'] .unit-token").ClassList);
+        Assert.Single(cut.FindAll("[data-hex='1,4'] .token-spent-badge"));
+        Assert.EndsWith("already activated this turn", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
+        Assert.Equal("Activated", cut.Find("[data-roster-unit=s1-u3] .activation-tag").TextContent);
+
+        Assert.Contains("activating", cut.Find("[data-hex='3,4'] .unit-token").ClassList);
+        Assert.Empty(cut.FindAll("[data-hex='3,4'] .token-spent-badge"));
+        Assert.Equal("Acting", cut.Find("[data-roster-unit=s2-u1] .activation-tag").TextContent);
+
+        Assert.Empty(cut.FindAll("[data-roster-unit=s2-u2] .activation-tag"));
+    }
+
+    [Fact]
     public void Leaving_a_match_takes_two_clicks_and_is_only_offered_to_players()
     {
         var left = false;

@@ -60,7 +60,7 @@ public sealed partial class GameTableTests : BunitContext
             .Add(component => component.Projection, Projection(canCommand: true))
             .Add(component => component.OnCommand, (GameCommandRequest request) => sent = request));
 
-        Assert.Equal("Battlefield, 3 columns by 2 rows", cut.Find("[role=grid]").GetAttribute("aria-label"));
+        Assert.Equal("Battlefield, 2 columns by 3 rows", cut.Find("svg.hex-board").GetAttribute("aria-label"));
         Assert.Contains("Round 2", cut.Find("[data-testid=turn-status]").TextContent);
         Assert.Equal("Plains grass, elevation 0, occupied by Thorgrim", cut.Find("[data-hex='0,0']").GetAttribute("aria-label"));
 

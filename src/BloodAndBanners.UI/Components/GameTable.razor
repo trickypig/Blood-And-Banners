@@ -16,41 +16,116 @@
 
     <section class="battlefield-panel" aria-label="Game board">
         <div class="board-controls" aria-label="Board view controls">
-            <button type="button" aria-label="Zoom out">−</button>
-            <button type="button" aria-label="Reset board view">Reset</button>
-            <button type="button" aria-label="Zoom in">+</button>
+            <button type="button" aria-label="Zoom out" disabled="@(_zoom <= MinZoom)" @onclick="() => Zoom(-ZoomStep)">−</button>
+            <button type="button" aria-label="Reset board view" @onclick="() => _zoom = 1">Reset</button>
+            <button type="button" aria-label="Zoom in" disabled="@(_zoom >= MaxZoom)" @onclick="() => Zoom(ZoomStep)">+</button>
         </div>
-        <div class="hex-board"
-             role="grid"
-             style="--columns:@Projection.Board.Columns; --rows:@Projection.Board.Rows"
-             aria-label="Battlefield, @Projection.Board.Columns columns by @Projection.Board.Rows rows">
-            @foreach (var hex in Projection.Board.Hexes)
+        @{ var board = BoardLayout.For(Projection.Board.Hexes); }
+        <svg class="hex-board"
+             role="group"
+             viewBox="0 0 @Num(board.Width) @Num(board.Height)"
+             width="@Num(board.Width * _zoom)"
+             height="@Num(board.Height * _zoom)"
+             aria-label="Battlefield, @Projection.Board.Rows columns by @Projection.Board.Columns rows">
+            <defs>
+                @foreach (var terrain in board.Tiles.Select(tile => tile.Hex).DistinctBy(TerrainPatternId))
+                {
+                    <pattern id="@TerrainPatternId(terrain)" patternContentUnits="objectBoundingBox" width="1" height="1">
+                        <rect width="1" height="1" fill="@TerrainArt.Color(terrain.Biome)" />
+                        @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(terrain.Biome, terrain.Terrain)) is { } terrainImage)
+                        {
+                            <image href="@terrainImage" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
+                        }
+                    </pattern>
+                }
+                @foreach (var unit in Projection.Units)
+                {
+                    @if (CatalogImages.Resolve(ImageBaseUrl, unit.Image) is { } portrait)
+                    {
+                        <pattern id="@UnitPatternId(unit)" patternContentUnits="objectBoundingBox" width="1" height="1">
+                            <image href="@portrait" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
+                        </pattern>
+                    }
+                }
+            </defs>
+            @foreach (var tile in board.Tiles)
             {
+                var hex = tile.Hex;
                 var key = HexKey(hex);
                 var unit = UnitById(hex.OccupantId);
-                <button type="button"
-                        role="gridcell"
-                        class="hex @TerrainClass(hex) @HexState(key) @(hex.OccupantId is null ? null : "occupied")"
-                        style="--q:@hex.Q; --r:@hex.R; --elevation:@hex.Elevation"
-                        data-hex="@key"
-                        aria-label="@HexLabel(hex, unit)"
-                        @onclick="() => SelectHex(hex)">
-                    <span class="hex-elevation" aria-hidden="true">@hex.Elevation</span>
+                <g role="button"
+                   tabindex="0"
+                   class="hex @TerrainClass(hex) @HexState(key) @(hex.OccupantId is null ? null : "occupied")"
+                   data-hex="@key"
+                   aria-label="@HexLabel(hex, unit)"
+                   @onclick="() => SelectHex(hex)"
+                   @onkeydown="args => OnHexKey(args, hex)"
+                   @onmouseenter="() => _hoveredUnitId = hex.OccupantId"
+                   @onmouseleave="() => _hoveredUnitId = null"
+                   @onfocus="() => _hoveredUnitId = hex.OccupantId"
+                   @onblur="() => _hoveredUnitId = null">
+                    @if (tile.Lift > 0)
+                    {
+                        <path class="hex-side" d="@tile.SidePath" />
+                        <path class="hex-side-edges" d="@tile.SideEdges" />
+                    }
+                    <polygon class="hex-top" points="@tile.TopPoints" fill="url(#@TerrainPatternId(hex))" />
+                    @if (hex.Elevation != 0)
+                    {
+                        <polygon class="hex-shade" points="@tile.TopPoints"
+                                 fill="@(hex.Elevation > 0 ? "#fff" : "#000")"
+                                 fill-opacity="@Num(Math.Min(.6, Math.Abs(hex.Elevation) * .08))" />
+                    }
+                    <polygon class="hex-outline" points="@tile.TopPoints" />
+                    @if (hex.Elevation != 0)
+                    {
+                        <!text class="hex-elevation"
+                              x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)"
+                              fill="@TerrainArt.LabelColor(hex.Biome)"
+                              aria-hidden="true">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
+                    }
                     @if (hex.OccupantId is not null)
                     {
-                        <span class="unit-token @SeatClass(unit?.SeatId) @(unit?.IsHero == true ? "hero" : null)"
-                              style="@TokenStyle(unit)"
-                              aria-hidden="true">
-                            @(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))
+                        var tokenY = tile.Y + BoardLayout.Size * .1;
+                        var radius = BoardLayout.Size * .42;
+                        var portrait = unit is not null && CatalogImages.Resolve(ImageBaseUrl, unit.Image) is not null;
+                        <g class="unit-token @SeatClass(unit?.SeatId) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
+                            <g class="token-face">
+                            <circle class="token-base" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
+                            @if (portrait)
+                            {
+                                <circle cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" fill="url(#@UnitPatternId(unit!))" />
+                            }
+                            else
+                            {
+                                <!text class="token-initials" x="@Num(tile.X)" y="@Num(tokenY)">@(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))</!text>
+                            }
+                            </g>
+                            <circle class="token-ring" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
+                            @if (ActivationState(unit) == "spent")
+                            {
+                                var badgeX = tile.X - radius * .75;
+                                var badgeY = tokenY - radius * .75;
+                                <circle class="token-spent-badge" cx="@Num(badgeX)" cy="@Num(badgeY)" r="7" />
+                                <!text class="token-spent-mark" x="@Num(badgeX)" y="@Num(badgeY)">✓</!text>
+                            }
+                            @if (unit?.IsHero == true)
+                            {
+                                <!text class="token-hero" x="@Num(tile.X + radius * .85)" y="@Num(tokenY - radius * .75)">⚑</!text>
+                            }
                             @if (unit is not null)
                             {
-                                <span class="hp-bar" style="--health:@HealthPercent(unit)%"></span>
+                                var barWidth = radius * 1.7;
+                                var barX = tile.X - barWidth / 2;
+                                var barY = tokenY + radius + 2;
+                                <rect class="hp-bar" x="@Num(barX)" y="@Num(barY)" width="@Num(barWidth)" height="4" />
+                                <rect class="hp-fill" x="@Num(barX)" y="@Num(barY)" width="@Num(barWidth * HealthPercent(unit) / 100)" height="4" />
                             }
-                        </span>
+                        </g>
                     }
-                </button>
+                </g>
             }
-        </div>
+        </svg>
     </section>
 
     <aside class="command-rail" aria-label="Game commands">
@@ -124,8 +199,20 @@
                     <ul>
                         @foreach (var unit in Projection.Units.Where(unit => unit.SeatId == seat.SeatId))
                         {
-                            <li class="@(unit.Hex is null ? "defeated" : null)" data-roster-unit="@unit.UnitId">
-                                @unit.Name <span>@(unit.Hp - unit.Wounds)/@unit.Hp</span>
+                            <li class="@RosterClass(unit)" data-roster-unit="@unit.UnitId" aria-current="@(unit.UnitId == _selectedUnitId ? "true" : null)">
+                                <span>
+                                    @unit.Name
+                                    @switch (ActivationState(unit))
+                                    {
+                                        case "activating":
+                                            <span class="activation-tag activating">Acting</span>
+                                            break;
+                                        case "spent":
+                                            <span class="activation-tag spent">Activated</span>
+                                            break;
+                                    }
+                                </span>
+                                <span>@(unit.Hp - unit.Wounds)/@unit.Hp</span>
                             </li>
                         }
                     </ul>
@@ -177,7 +264,13 @@
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }
 
+    private const double MinZoom = .6;
+    private const double MaxZoom = 2;
+    private const double ZoomStep = .2;
+
     private string? _selectedUnitId;
+    private string? _hoveredUnitId;
+    private double _zoom = 1;
 
     protected override void OnParametersSet()
     {
@@ -318,8 +411,37 @@
             ? "The losing army has fallen."
             : result.WinningSeatId == Projection.Viewer.SeatId ? "Every enemy unit has fallen." : "Your army has fallen.";
 
-    private string? TokenStyle(UnitProjection? unit) =>
-        CatalogImages.Resolve(ImageBaseUrl, unit?.Image) is { } image ? $"background-image:url('{image}')" : null;
+    /// <summary>"activating" for the unit mid-activation, "spent" once it has finished acting this turn.</summary>
+    private string? ActivationState(UnitProjection? unit) =>
+        unit is null || unit.Hex is null || !unit.ActivatedThisTurn ? null
+        : unit.UnitId == Projection.Turn.ActiveUnitId ? "activating"
+        : "spent";
+
+    private string? RosterClass(UnitProjection unit)
+    {
+        var classes = new[]
+        {
+            unit.Hex is null ? "defeated" : null,
+            unit.UnitId == _selectedUnitId ? "selected" : null,
+            unit.UnitId == _hoveredUnitId ? "highlighted" : null,
+            ActivationState(unit),
+        }.OfType<string>().ToList();
+        return classes.Count == 0 ? null : string.Join(' ', classes);
+    }
+
+    private void Zoom(double delta) => _zoom = Math.Clamp(Math.Round(_zoom + delta, 1), MinZoom, MaxZoom);
+
+    private Task OnHexKey(KeyboardEventArgs args, HexProjection hex) =>
+        args.Key is "Enter" or " " ? SelectHex(hex) : Task.CompletedTask;
+
+    private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string TerrainPatternId(HexProjection hex) => "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}");
+
+    private static string UnitPatternId(UnitProjection unit) => "bb-unit-" + SafeId(unit.UnitId);
+
+    private static string SafeId(string value) =>
+        System.Text.RegularExpressions.Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9-]", "-");
 
     private static int HealthPercent(UnitProjection unit) =>
         unit.Hp <= 0 ? 0 : (unit.Hp - unit.Wounds) * 100 / unit.Hp;
@@ -329,9 +451,15 @@
     private static string TerrainClass(HexProjection hex) =>
         $"terrain-{hex.Biome.ToLowerInvariant()}-{hex.Terrain.ToLowerInvariant().Replace(' ', '-')}";
 
-    private static string HexLabel(HexProjection hex, UnitProjection? unit) =>
+    private string HexLabel(HexProjection hex, UnitProjection? unit) =>
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
-        (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}");
+        (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
+        ActivationState(unit) switch
+        {
+            "activating" => ", activating",
+            "spent" => ", already activated this turn",
+            _ => string.Empty,
+        };
 
     private static string Initials(string value) => string.Concat(
         value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));
