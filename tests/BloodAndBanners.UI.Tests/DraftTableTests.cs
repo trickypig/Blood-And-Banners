@@ -86,6 +86,20 @@ public sealed class DraftTableTests : BunitContext
             CatalogImages.Resolve("https://site.test/blood/public/", "/images/heroes/Thorgrim Shattershield_card.png"));
         Assert.Null(CatalogImages.Resolve(null, "/images/heroes/x.png"));
     }
+
+    [Fact]
+    public void Draft_cards_list_hero_and_unit_abilities()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var draft = projection.Draft! with
+        {
+            AvailableHeroes = [projection.Draft!.AvailableHeroes[0] with { Abilities = [new AbilityProjection("Shield Wall", "Ability", "+1 Defense") { Playable = true }] }],
+        };
+
+        var cut = Render<DraftTable>(parameters => parameters.Add(component => component.Projection, projection with { Draft = draft }));
+
+        Assert.Contains("Shield Wall", cut.Find("button[data-hero='Thorgrim Shattershield'] li[data-ability='Shield Wall']").TextContent);
+    }
 }
 
 internal static class DraftFixtures

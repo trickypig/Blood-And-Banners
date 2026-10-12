@@ -1,0 +1,56 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+
+@if (Abilities.Count > 0)
+{
+    <ul class="ability-list">
+        @foreach (var ability in Abilities)
+        {
+            var action = Actions.FirstOrDefault(candidate => candidate.Ability == ability.Name);
+            <li data-ability="@ability.Name" class="@(ability.Playable ? null : "deferred")">
+                <span class="ability-heading">
+                    <span class="ability-type type-@ability.Type.ToLowerInvariant()">@ability.Type</span>
+                    @if (action is not null)
+                    {
+                        <button type="button"
+                                class="ability-button"
+                                data-use-ability="@ability.Name"
+                                aria-pressed="@(ActiveAbility == ability.Name ? "true" : "false")"
+                                disabled="@IsBusy"
+                                @onclick="() => OnChoose.InvokeAsync(action)">@ability.Name</button>
+                    }
+                    else
+                    {
+                        <strong>@ability.Name</strong>
+                    }
+                    @if (ability.UsedThisTurn)
+                    {
+                        <span class="ability-used">Used</span>
+                    }
+                    @if (!ability.Playable)
+                    {
+                        <span class="ability-deferred">Not yet in the digital game</span>
+                    }
+                </span>
+                <span class="ability-text">@ability.Description</span>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<AbilityProjection> Abilities { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<LegalAction> Actions { get; set; } = [];
+
+    [Parameter]
+    public string? ActiveAbility { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<LegalAction> OnChoose { get; set; }
+}

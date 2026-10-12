@@ -54,3 +54,5 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     .card-grid,
     .army-grid { grid-template-columns: 1fr; }
 }
+
+.draft-card ::deep .ability-list { text-align: left; }

@@ -214,6 +214,33 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("1 activation", cut.Find("[data-testid=turn-status]").TextContent);
         Assert.DoesNotContain("1 activations", cut.Find("[data-testid=turn-status]").TextContent);
     }
+
+    [Fact]
+    public void The_unit_card_shows_effective_stats_and_abilities()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [
+                projection.Units[0] with
+                {
+                    EffectiveDefense = 4,
+                    Effects = [new EffectProjection("Shield Wall", "defense", 1, "nextTurn")],
+                    Abilities = [new AbilityProjection("Evasion", "Essence", "Roll d20") { Playable = true }],
+                },
+                projection.Units[1],
+                projection.Units[2],
+            ],
+        };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        cut.Find("[data-hex='1,4']").Click();
+
+        var defense = cut.Find("[data-testid=selected-unit] [data-stat='defense']");
+        Assert.Equal("Defense 2 → 4", defense.TextContent.Trim());
+        Assert.Contains("Shield Wall +1 until your next turn", defense.GetAttribute("title"));
+        Assert.NotNull(cut.Find("[data-testid=selected-unit] li[data-ability='Evasion']"));
+    }
 }
 
 internal static class BattleFixtures

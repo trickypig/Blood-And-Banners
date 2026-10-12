@@ -118,3 +118,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 @media (prefers-reduced-motion: reduce) {
     .hex.focus .hex-outline { animation: none; fill: rgba(255, 243, 170, .3); }
 }
+
+.unit-stats { display: flex; flex-wrap: wrap; gap: .2rem .7rem; }
+.unit-stats .raised { color: #a6d98f; }
+.unit-stats .lowered { color: #e2a29a; }

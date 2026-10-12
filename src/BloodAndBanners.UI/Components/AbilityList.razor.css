@@ -1,0 +1,12 @@
+.ability-list { margin: .5rem 0 0; padding: 0; list-style: none; display: grid; gap: .45rem; }
+.ability-list li { display: grid; gap: .15rem; }
+.ability-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.ability-type { padding: 0 .3rem; font-size: .66rem; letter-spacing: .05em; text-transform: uppercase; border-radius: .2rem; color: #1f201d; background: #c9c2b2; }
+.ability-type.type-attack { background: #e2a29a; }
+.ability-type.type-ability { background: #f0cf7a; }
+.ability-type.type-essence { background: #9cc3df; }
+.ability-text { font-size: .82rem; line-height: 1.35; color: #b9b2a2; }
+.ability-button { padding: .2rem .55rem; color: #f8f0dc; background: var(--oxblood, #681e24); border: 1px solid #b18b48; border-radius: .2rem; font-weight: 600; }
+.ability-button[aria-pressed="true"] { color: #1f201d; background: #ffd700; border-color: #ffd700; }
+.ability-used, .ability-deferred { font-size: .7rem; color: #8b8578; }
+.deferred .ability-text { color: #8b8578; }

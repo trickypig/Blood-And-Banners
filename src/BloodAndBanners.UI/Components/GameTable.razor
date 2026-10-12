@@ -155,8 +155,20 @@
                 {
                     <article class="unit-card" data-testid="selected-unit">
                         <h3>@selected.Name</h3>
-                        <p>Move @selected.Move · Range @selected.Range · Power @selected.Power · Defense @selected.Defense</p>
+                        <p class="unit-stats">
+                            @foreach (var (stat, label, baseValue, effective) in StatRows(selected))
+                            {
+                                <span data-stat="@stat" title="@EffectSources(selected, stat)" class="@(effective > baseValue ? "raised" : effective < baseValue ? "lowered" : null)">
+                                    @label @baseValue@(effective != baseValue ? $" → {effective}" : null)
+                                </span>
+                            }
+                        </p>
                         <p>Wounds @selected.Wounds / @selected.Hp</p>
+                        <AbilityList Abilities="selected.Abilities"
+                                     Actions="AbilityActions(selected.UnitId)"
+                                     ActiveAbility="@_targeting?.Ability"
+                                     IsBusy="IsBusy"
+                                     OnChoose="StartTargeting" />
                     </article>
                 }
                 else if (IsMyTurn)
@@ -269,6 +281,35 @@
     private const double ZoomStep = .2;
 
     private string? _selectedUnitId;
+    private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes);
+
+    private Targeting? _targeting;
+
+    private static IEnumerable<(string Stat, string Label, int Base, int Effective)> StatRows(UnitProjection unit) =>
+    [
+        ("move", "Move", unit.Move, unit.EffectiveMove ?? unit.Move),
+        ("range", "Range", unit.Range, unit.EffectiveRange ?? unit.Range),
+        ("power", "Power", unit.Power, unit.EffectivePower ?? unit.Power),
+        ("defense", "Defense", unit.Defense, unit.EffectiveDefense ?? unit.Defense),
+    ];
+
+    private static string? EffectSources(UnitProjection unit, string stat)
+    {
+        var sources = unit.Effects
+            .Where(effect => effect.Stat == stat)
+            .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {(effect.Expires == "endOfTurn" ? "until end of turn" : "until your next turn")}")
+            .ToList();
+        return sources.Count == 0 ? null : string.Join("; ", sources);
+    }
+
+    private IReadOnlyList<LegalAction> AbilityActions(string unitId) => Projection.LegalActions
+        .Where(action => action.UnitId == unitId && (action.Kind is "specialAttack" or "useAbility"))
+        .ToList();
+
+    private void StartTargeting(LegalAction action)
+    {
+        _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
+    }
     private string? _hoveredUnitId;
     private double _zoom = 1;
 
@@ -319,7 +360,7 @@
 
     private bool Selectable(string unitId) =>
         Projection.Viewer.CanCommand &&
-        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "attackUnit"));
+        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "attackUnit" or "specialAttack" or "useAbility"));
 
     private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
         ? []

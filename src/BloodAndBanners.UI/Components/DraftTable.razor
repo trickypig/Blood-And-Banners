@@ -85,6 +85,7 @@
                     }
                     <strong>@hero.Name</strong>
                     <span class="stat-line">Move @hero.Move · Range @hero.Range · Power @hero.Power · Defense @hero.Defense · HP @hero.Hp</span>
+                    <AbilityList Abilities="hero.Abilities" />
                     @if (taken)
                     {
                         <span class="taken-by">@ClaimText(hero.TakenBySeatId!)</span>
@@ -111,7 +112,7 @@
                     <ul>
                         @foreach (var unit in army.Units)
                         {
-                            <li>@unit.Name <small>M@(unit.Move) R@(unit.Range) P@(unit.Power) D@(unit.Defense) HP@(unit.Hp)</small></li>
+                            <li>@unit.Name <small>M@(unit.Move) R@(unit.Range) P@(unit.Power) D@(unit.Defense) HP@(unit.Hp)</small><AbilityList Abilities="unit.Abilities" /></li>
                         }
                     </ul>
                     @if (taken)
