@@ -19,7 +19,7 @@ final class ChainLightning extends SpecialAttack
         return Targeting::enemiesInSight($state, $unitId, self::REACH);
     }
 
-    public function validate(array $state, string $unitId, array $targetIds): ?string
+    public function validate(array $state, string $unitId, array $targetIds, array $options = []): ?string
     {
         $count = count($targetIds);
         if ($count < 1 || $count > self::MAX_TARGETS || count(array_unique($targetIds)) !== $count) {
@@ -42,7 +42,7 @@ final class ChainLightning extends SpecialAttack
         return $total > self::REACH ? 'chainTooLong' : null;
     }
 
-    public function steps(array $state, string $unitId, array $targetIds): array
+    public function steps(array $state, string $unitId, array $targetIds, array $options = []): array
     {
         return array_map(fn(string $targetId): array => StepRunner::strike($unitId, $targetId, self::POWER, $this->name), $targetIds);
     }

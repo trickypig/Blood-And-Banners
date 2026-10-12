@@ -14,7 +14,7 @@ final class ChaosStrike extends SpecialAttack
         return Targeting::enemiesInSight($state, $unitId, Stats::effective($state, $unitId, 'range'));
     }
 
-    public function steps(array $state, string $unitId, array $targetIds): array
+    public function steps(array $state, string $unitId, array $targetIds, array $options = []): array
     {
         return [StepRunner::chaos($unitId, $targetIds[0], $this->name)];
     }

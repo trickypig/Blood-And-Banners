@@ -113,8 +113,8 @@ function vanilla_ability_tests(): array
         },
 
         'the registry only knows implemented abilities' => static function (): void {
-            expect_same(false, AbilityRegistry::isPlayable('Teleport'), 'Teleport is deferred');
-            expect_same(null, AbilityRegistry::find(ability_unit('x', 'seat-a', '0,0', ['Teleport']), 'Teleport'), 'deferred abilities have no handler');
+            expect_same(false, AbilityRegistry::isPlayable('Flying'), 'Flying is deferred');
+            expect_same(null, AbilityRegistry::find(ability_unit('x', 'seat-a', '0,0', ['Flying']), 'Flying'), 'deferred abilities have no handler');
         },
 
         'Trembling Fear weakens non-hero attackers only' => static function (): void {
@@ -247,12 +247,12 @@ function vanilla_ability_tests(): array
 
         'special attacks reject unknown, deferred and locked abilities' => static function (): void {
             $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
-                ability_unit('a-hero', 'seat-a', '0,0', ['Bolt of Annihilation', 'Teleport'], ['isHero' => true]),
+                ability_unit('a-hero', 'seat-a', '0,0', ['Bolt of Annihilation', 'Flying'], ['isHero' => true]),
                 vanilla_unit('b1', 'seat-b', '2,0'),
             ]);
             $payload = static fn(string $name): array => ['unitId' => 'a-hero', 'ability' => $name, 'targetUnitIds' => ['b1']];
             expect_game_error('unknownAbility', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Fireball')));
-            expect_game_error('abilityNotPlayable', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Teleport')));
+            expect_game_error('abilityNotPlayable', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Flying')));
             $locked = $state;
             $locked['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
             expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('Bolt of Annihilation')));
@@ -485,7 +485,7 @@ function vanilla_ability_tests(): array
         },
 
         'every ability in gameData.json is either implemented or explicitly deferred' => static function (): void {
-            $deferred = ['Teleport', 'Flying', 'Lava Walker'];
+            $deferred = ['Flying', 'Lava Walker'];
             $catalog = new \BloodAndBanners\Rules\Vanilla\Catalog();
             $names = [];
             foreach ($catalog->heroes() as $hero) {

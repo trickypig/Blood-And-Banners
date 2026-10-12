@@ -249,5 +249,28 @@ function vanilla_forced_tests(): array
             expect_same(1, $edge['state']['units']['b1']['wounds'], 'and takes a die for it');
             expect_same(true, $edge['state']['turn']['moved'], 'Thalion\'s move is spent');
         },
+
+        'Teleport moves a friendly unit (or Malachar) to a valid hex and uses his attack' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 0, '3,0' => 2, '4,0' => 0, '5,0' => 0, '6,0' => 0]), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Teleport'], ['isHero' => true]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', '6,0'),
+            ]);
+            $actions = array_values(array_filter((new MatchEngine(test_catalog()))->legalActions($state, 'seat-a'), static fn(array $a): bool => $a['kind'] === 'specialAttack'));
+            expect_same([['kind' => 'specialAttack', 'unitId' => 'a-hero', 'ability' => 'Teleport', 'targetHexes' => ['0,0', '1,0']]], $actions, 'Malachar and his ally can be moved');
+            $payload = static fn(string $who, string $to): array => ['unitId' => 'a-hero', 'ability' => 'Teleport', 'targetUnitIds' => [$who], 'toHex' => $to];
+            $blink = vanilla_command($state, 'seat-a', 'specialAttack', $payload('a2', '3,0'));
+            expect_same(['unitId' => 'a2', 'casterId' => 'a-hero', 'from' => '1,0', 'to' => '3,0'], $blink['events'][0]['payload'], 'the blink is reported');
+            expect_same('3,0', $blink['state']['units']['a2']['hex'], 'two hexes and two levels cost three');
+            expect_same(null, $blink['state']['turn']['activeUnitId'], 'the spell was Malachar\'s attack');
+            expect_game_error('invalidDestination', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('a2', '5,0')));
+            expect_game_error('invalidDestination', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('a2', '6,0')));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('b1', '2,0')));
+            $self = vanilla_command($state, 'seat-a', 'specialAttack', $payload('a-hero', '2,0'));
+            expect_same('2,0', $self['state']['units']['a-hero']['hex'], 'Malachar may teleport himself');
+            $locked = $state;
+            $locked['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
+            expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('a2', '2,0')));
+        },
     ];
 }

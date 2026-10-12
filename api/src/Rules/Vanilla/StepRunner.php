@@ -28,6 +28,11 @@ final class StepRunner
         return ['op' => 'save', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'ability' => $ability];
     }
 
+    public static function teleport(string $casterId, string $unitId, string $toHex): array
+    {
+        return ['op' => 'teleport', 'casterId' => $casterId, 'unitId' => $unitId, 'toHex' => $toHex];
+    }
+
     public static function splash(string $hex, string $excludeUnitId, string $ability): array
     {
         return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability];
@@ -69,6 +74,7 @@ final class StepRunner
         return match ($step['op']) {
             'strike' => $this->strikeStep($state, $step, $events),
             'land' => [...$this->land($state, $step, $events), null],
+            'teleport' => [$this->teleportStep($state, $step, $events), [], null],
             'save' => [$this->saveStep($state, $step, $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
@@ -146,6 +152,19 @@ final class StepRunner
             $more = array_merge($more, $ability->afterHit($state, $step['attackerId'], $step['targetId']));
         }
         return [$state, $more];
+    }
+
+    private function teleportStep(array $state, array $step, array &$events): array
+    {
+        $from = $state['units'][$step['unitId']]['hex'];
+        if ($from === null) {
+            return $state;
+        }
+        $state['units'][$step['unitId']]['hex'] = $step['toHex'];
+        $events[] = MatchEngine::event('unitTeleported', [$from, $step['toHex']], [
+            'unitId' => $step['unitId'], 'casterId' => $step['casterId'], 'from' => $from, 'to' => $step['toHex'],
+        ]);
+        return $state;
     }
 
     private function saveStep(array $state, array $step, array &$events): array

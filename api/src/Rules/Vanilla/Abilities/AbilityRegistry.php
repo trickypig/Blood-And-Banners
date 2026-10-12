@@ -60,6 +60,7 @@ final class AbilityRegistry
         if (self::$handlers === null) {
             $list = [
                 new Knockback('Knockback'),
+                new Teleport('Teleport'),
                 new GustOfWind('Gust of Wind'),
                 new StunningBlow('Stunning Blow'),
                 new TremblingFear('Trembling Fear'),

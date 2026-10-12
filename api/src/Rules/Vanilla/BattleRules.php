@@ -36,6 +36,7 @@ final class BattleRules
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
         'gustNeedsStillness' => 'Gust of Wind must be used instead of moving.',
+        'invalidDestination' => 'That unit cannot be teleported there.',
         'abilityAlreadyUsed' => 'That ability has already been used this turn.',
         'choicePending' => 'Waiting for a decision before the battle can continue.',
         'notYourChoice' => 'That decision belongs to the other commander.',
@@ -309,13 +310,14 @@ final class BattleRules
         if (!self::attacksLeft($state, $unitId)) {
             self::fail('noAttacksLeft');
         }
-        $error = $ability->validate($state, $unitId, $targets);
+        $options = ['toHex' => self::text($payload, 'toHex')];
+        $error = $ability->validate($state, $unitId, $targets, $options);
         if ($error !== null) {
             self::fail($error);
         }
         $state['turn']['attacks']++;
         $state = self::closeIfSpent($state, $unitId);
-        return (new StepRunner($random, $this->now))->run($state, $ability->steps($state, $unitId, $targets), $events);
+        return (new StepRunner($random, $this->now))->run($state, $ability->steps($state, $unitId, $targets, $options), $events);
     }
 
     /** The unit's handler for $name, which must be an instance of $class. */

@@ -13,7 +13,7 @@ final class Fireball extends SpecialAttack
         return Targeting::enemiesInSight($state, $unitId, 4);
     }
 
-    public function steps(array $state, string $unitId, array $targetIds): array
+    public function steps(array $state, string $unitId, array $targetIds, array $options = []): array
     {
         $target = $targetIds[0];
         return [

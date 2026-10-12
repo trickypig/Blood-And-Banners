@@ -19,7 +19,7 @@ final class FixedStrike extends SpecialAttack
         return Targeting::enemiesInSight($state, $unitId, $this->range);
     }
 
-    public function steps(array $state, string $unitId, array $targetIds): array
+    public function steps(array $state, string $unitId, array $targetIds, array $options = []): array
     {
         return [StepRunner::strike($unitId, $targetIds[0], $this->power, $this->name)];
     }
