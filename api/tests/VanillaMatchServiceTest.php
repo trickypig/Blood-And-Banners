@@ -132,7 +132,7 @@ function vanilla_match_service_tests(): array
             expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
                 ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn',
-                    'abilities', 'effects', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
+                    'abilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
                 array_keys($projection['units'][0]),
                 'unit projections match the shared contract'
             );
@@ -196,6 +196,29 @@ function vanilla_match_service_tests(): array
             $resolved = vanilla_submit($match, 'rival', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'keep']);
             expect_same(null, $resolved['pendingChoiceSummary'], 'the choice is closed');
             expect_same($match['host']['seat'], $resolved['turn']['activeSeatId'], 'the turn stays with the attacker');
+        },
+
+        'a stunned unit projects its condition and its weakened Power' => static function (): void {
+            $match = vanilla_service_match();
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            foreach (vanilla_draft_picks($match) as [$who, $kind, $payload]) {
+                vanilla_submit($match, $who, $kind, $payload);
+            }
+            $statement = $match['db']->prepare('SELECT state_json FROM game_states WHERE game_id = :game');
+            $statement->execute(['game' => $match['gameId']]);
+            $state = json_decode((string)$statement->fetchColumn(), true, flags: JSON_THROW_ON_ERROR);
+            $victim = array_values(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match['rival']['seat']))[0];
+            $state['conditions'] = [[
+                'name' => 'Stunned', 'unitId' => $victim['unitId'], 'sourceUnitId' => null,
+                'expires' => ['kind' => 'afterTurn', 'turnNumber' => $state['turn']['number'] + 1], 'data' => [],
+            ]];
+            $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+
+            $view = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            $unit = array_values(array_filter($view['units'], static fn(array $unit): bool => $unit['unitId'] === $victim['unitId']))[0];
+            expect_same([['name' => 'Stunned', 'expires' => 'endOfNextTurn']], $unit['conditions'], 'the stun is visible to everyone');
+            expect_same(max(0, $victim['power'] - 2), $unit['effectivePower'], 'its Power is shown reduced');
         },
     ];
 }

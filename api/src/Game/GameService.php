@@ -13,6 +13,7 @@ use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 use BloodAndBanners\Scenario\ScenarioService;
 use DomainException;
 use PDO;
@@ -563,11 +564,23 @@ final class GameService
                 'amount' => $effect['amount'],
                 'expires' => $effect['expires']['at'] === Effects::UNTIL_END_OF_TURN ? 'endOfTurn' : 'nextTurn',
             ], Effects::forUnit($state, $id)),
+            'conditions' => array_map(static fn(array $condition): array => [
+                'name' => $condition['name'],
+                'expires' => self::conditionExpiry($state, $condition['expires']),
+            ], UnitConditions::forUnit($state, $id)),
             'effectiveMove' => $effective('move'),
             'effectiveRange' => $effective('range'),
             'effectivePower' => $effective('power'),
             'effectiveDefense' => $effective('defense'),
         ];
+    }
+
+    private static function conditionExpiry(array $state, array $expires): string
+    {
+        if ($expires['kind'] === 'afterTurn') {
+            return $expires['turnNumber'] === $state['turn']['number'] ? 'endOfThisTurn' : 'endOfNextTurn';
+        }
+        return (string)$expires['kind'];
     }
 
     private static function abilityCards(array $abilities, array $used = []): array
