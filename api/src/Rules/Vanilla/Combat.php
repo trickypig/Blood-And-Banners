@@ -13,10 +13,10 @@ final class Combat
     {
         $attacker = $state['units'][$attackerId];
         $target = $state['units'][$targetId];
-        if (Hex::distance($attacker['hex'], $target['hex']) > $attacker['range']) {
+        if (Hex::distance($attacker['hex'], $target['hex']) > Stats::effective($state, $attackerId, 'range')) {
             return 'targetOutOfRange';
         }
-        if (!(new HexLineOfSight())->isVisible($attacker['hex'], $target['hex'], self::sightBoard($state))) {
+        if (!self::visible($state, $attacker['hex'], $target['hex'])) {
             return 'noLineOfSight';
         }
         return null;
@@ -24,17 +24,12 @@ final class Combat
 
     public static function targets(array $state, string $attackerId): array
     {
-        $attacker = $state['units'][$attackerId];
-        $targets = [];
-        foreach ($state['units'] as $unitId => $unit) {
-            if ($unit['hex'] === null || $unit['seatId'] === $attacker['seatId']) {
-                continue;
-            }
-            if (self::targetError($state, $attackerId, (string)$unitId) === null) {
-                $targets[] = (string)$unitId;
-            }
-        }
-        return $targets;
+        return Targeting::enemiesInSight($state, $attackerId, Stats::effective($state, $attackerId, 'range'));
+    }
+
+    public static function visible(array $state, string $fromHex, string $toHex): bool
+    {
+        return (new HexLineOfSight())->isVisible($fromHex, $toHex, self::sightBoard($state));
     }
 
     public static function attack(array $state, string $attackerId, string $targetId, RandomSource $random): array

@@ -5,15 +5,17 @@ namespace BloodAndBanners\Rules\Vanilla;
 
 final class Movement
 {
-    public static function reachable(array $state, string $unitId): array
+    /** Hexes the unit can end on, mapped to the steps it takes to get there. */
+    public static function costs(array $state, string $unitId, ?int $budget = null): array
     {
         $unit = $state['units'][$unitId];
+        $budget ??= Stats::effective($state, $unitId, 'move');
         $board = $state['board'];
         $occupants = self::occupants($state);
         $frontier = [$unit['hex']];
         $seen = [$unit['hex'] => true];
-        $reachable = [];
-        for ($step = 0; $step < $unit['move']; $step++) {
+        $costs = [];
+        for ($step = 1; $step <= $budget; $step++) {
             $next = [];
             foreach ($frontier as $from) {
                 foreach (Hex::neighbors($from, $board) as $to) {
@@ -30,14 +32,19 @@ final class Movement
                     $seen[$to] = true;
                     $next[] = $to;
                     if ($occupant === null) {
-                        $reachable[] = $to;
+                        $costs[$to] = $step;
                     }
                 }
             }
             $frontier = $next;
         }
-        sort($reachable, SORT_STRING);
-        return $reachable;
+        ksort($costs, SORT_STRING);
+        return $costs;
+    }
+
+    public static function reachable(array $state, string $unitId, ?int $budget = null): array
+    {
+        return array_map('strval', array_keys(self::costs($state, $unitId, $budget)));
     }
 
     public static function disengagedFrom(array $state, string $unitId, string $to): array

@@ -33,8 +33,8 @@ final class BattleRules
             self::fail('notYourTurn');
         }
         if ($kind === 'endTurn') {
-            [$state, $event] = self::passTurn($state);
-            return ['state' => $state, 'events' => [$event]];
+            [$state, $events] = self::passTurn($state);
+            return ['state' => $state, 'events' => $events];
         }
 
         $events = [];
@@ -51,8 +51,8 @@ final class BattleRules
         }
 
         if ($state['phase'] === 'active' && !$this->canAct($state, $seatId)) {
-            [$state, $event] = self::passTurn($state);
-            $events[] = $event;
+            [$state, $passed] = self::passTurn($state);
+            $events = array_merge($events, $passed);
         }
         return ['state' => $state, 'events' => $events];
     }
@@ -227,9 +227,13 @@ final class BattleRules
     {
         $current = $state['turn']['activeSeatId'];
         $next = MatchEngine::otherSeat($state, $current);
+        $events = [];
+        $state = Effects::expire($state, $current, Effects::UNTIL_END_OF_TURN, $events);
         $round = $state['turn']['round'] + ($next === $state['draft']['firstSeatId'] ? 1 : 0);
         $state['turn'] = Turn::fresh($state, $next, $round);
-        return [$state, MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round])];
+        $events[] = MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round]);
+        $state = Effects::expire($state, $next, Effects::UNTIL_NEXT_TURN, $events);
+        return [$state, $events];
     }
 
     private static function heroAlive(array $state, string $seatId): bool
