@@ -46,6 +46,14 @@ This slice implements the core Vanilla rules only. Abilities, water, ice, poison
 
 Hero and unit artwork loads from `ImageBaseUrl` in `wwwroot/appsettings.Development.json`. Without it, tokens fall back to initials.
 
+### Try the abilities
+
+1. Draft **Malachar the Voidcaller** with **Sol Invictus** in one browser and **Thorgrim Shattershield** with **Amethyst Thornguard** in the other.
+2. Select the Wizard: its card lists **Fireball** as a button. Choose it, hover an enemy to see the splash hexes, then click the enemy. The log reports the strike and the scorched neighbours.
+3. Select Thorgrim and use **Shield Wall** on an adjacent ally; the ally's card shows `Defense 3 → 4` and its token gets a ▲.
+4. Attack the Elvish Duelist (or let it attack). If one of its dice is not a hit/block, its owner sees the **Moonlight Glare** prompt; the other browser shows "Waiting for your opponent's decision…" and, after 45 seconds, a **Keep the roll for them** button.
+5. Abilities not yet implemented (Teleport, Gust of Wind, Knockback, Stunning Blow, Flying, Lava Walker) appear on cards marked "Not yet in the digital game".
+
 ## Seat credentials and reconnect
 
 Game creation and joining return a `{ game, seatToken }` session envelope. Player state, event polling, commands, match start, spectator-link management, and seat reassignment require both the bearer identity and the matching `X-Seat-Token` header. The token is never included in `GameProjection` or spectator responses.
