@@ -196,7 +196,7 @@ function vanilla_ability_tests(): array
                 ability_unit('b-hero', 'seat-b', '1,0', ['Fragile Focus'], ['isHero' => true, 'defense' => 0, 'hp' => 6]),
             ]);
             $hit = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b-hero'], [1]);
-            expect_same(2, $hit['state']['units']['b-hero']['flags']['spellsLockedOnTurn'], 'seat-b\'s next turn is number two');
+            expect_same([2], $hit['state']['units']['b-hero']['flags']['spellsLockedOnTurns'], 'seat-b\'s next turn is number two');
         },
 
         'Dual Strike keeps the activation open for a second attack' => static function (): void {
@@ -254,7 +254,7 @@ function vanilla_ability_tests(): array
             expect_game_error('unknownAbility', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Fireball')));
             expect_game_error('abilityNotPlayable', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Teleport')));
             $locked = $state;
-            $locked['units']['a-hero']['flags']['spellsLockedOnTurn'] = $state['turn']['number'];
+            $locked['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
             expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('Bolt of Annihilation')));
             expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Bolt of Annihilation', 'targetUnitIds' => ['a-hero']]));
         },
@@ -499,6 +499,19 @@ function vanilla_ability_tests(): array
             foreach (array_unique($names) as $name) {
                 expect_same(!in_array($name, $deferred, true), AbilityRegistry::isPlayable($name), "{$name} playability");
             }
+        },
+
+        'a wound during Malachar\'s locked turn keeps that turn locked and also locks his next one' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a-hero', 'seat-a', '1,0', ['Fragile Focus', 'Bolt of Annihilation'], ['isHero' => true, 'hp' => 9]),
+                vanilla_unit('b1', 'seat-b', '0,0', ['hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '3,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $state['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a-hero', 'to' => '2,0'], [1]);
+            expect_same(1, $moved['state']['units']['a-hero']['wounds'], 'the parting strike lands');
+            expect_game_error('abilityLocked', static fn() => vanilla_command($moved['state'], 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Bolt of Annihilation', 'targetUnitIds' => ['b2']], [1, 1, 1, 1, 1, 1]));
+            expect_same([1, 3], $moved['state']['units']['a-hero']['flags']['spellsLockedOnTurns'], 'both the current and the next turn are locked');
         },
     ];
 }

@@ -15,7 +15,14 @@ final class Wounds
             return $state;
         }
         if (AbilityRegistry::any($unit, static fn(Ability $ability): bool => $ability->locksSpellsWhenWounded())) {
-            $state['units'][$unitId]['flags']['spellsLockedOnTurn'] = Turn::nextTurnNumberOf($state, $unit['seatId']);
+            // Keep locks that still lie ahead (a wound during a locked turn must not unlock it).
+            $current = $state['turn']['number'];
+            $locks = array_values(array_filter(
+                $unit['flags']['spellsLockedOnTurns'] ?? [],
+                static fn(int $turn): bool => $turn >= $current
+            ));
+            $locks[] = Turn::nextTurnNumberOf($state, $unit['seatId']);
+            $state['units'][$unitId]['flags']['spellsLockedOnTurns'] = array_values(array_unique($locks));
         }
         $total = min($unit['hp'], $unit['wounds'] + $wounds);
         if ($total >= $unit['hp']

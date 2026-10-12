@@ -323,7 +323,7 @@ final class BattleRules
 
     private static function spellsLocked(array $state, string $unitId): bool
     {
-        return ($state['units'][$unitId]['flags']['spellsLockedOnTurn'] ?? null) === $state['turn']['number'];
+        return in_array($state['turn']['number'], $state['units'][$unitId]['flags']['spellsLockedOnTurns'] ?? [], true);
     }
 
     private function useAbility(array $state, string $seatId, array $payload, array &$events): array
