@@ -29,6 +29,7 @@ final class BattleRules
         'abilityNotPlayable' => 'That ability is not yet in the digital game.',
         'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
+        'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
         'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
     ];
 

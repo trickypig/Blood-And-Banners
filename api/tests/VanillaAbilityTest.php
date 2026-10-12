@@ -313,5 +313,35 @@ function vanilla_ability_tests(): array
             expect_same(4, Stats::effective($result['state'], 'a2', 'defense'), 'the ward holds');
             expect_same(null, $result['state']['turn']['activeUnitId'], 'the spell was Malachar\'s attack');
         },
+
+        'Chain Lightning hops between up to three enemies within five hexes in total' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(8)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Chain Lightning']),
+                vanilla_unit('b1', 'seat-b', '2,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '4,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('b3', 'seat-b', '5,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('b4', 'seat-b', '7,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '6,0'),
+            ]);
+            $payload = static fn(array $targets): array => ['unitId' => 'a1', 'ability' => 'Chain Lightning', 'targetUnitIds' => $targets];
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', $payload(['b1', 'b2', 'b3']), [1, 1, 1, 1, 1, 1, 1, 1, 1]);
+            expect_same(['attackResolved', 'attackResolved', 'attackResolved'], array_column($result['events'], 'kind'), 'three links, each defended separately');
+            expect_same([3, 3, 3], [$result['state']['units']['b1']['wounds'], $result['state']['units']['b2']['wounds'], $result['state']['units']['b3']['wounds']], 'each takes Power 3');
+            expect_game_error('chainTooLong', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload(['b1', 'b2', 'b4'])));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload(['b1', 'b1'])));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload([])));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload(['b1', 'b2', 'b3', 'b4'])));
+        },
+
+        'a chain link that kills does not stop later links' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Chain Lightning']),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 1]),
+                vanilla_unit('b2', 'seat-b', '2,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a1', 'ability' => 'Chain Lightning', 'targetUnitIds' => ['b1', 'b2']], [1, 1, 1, 1, 1, 1]);
+            expect_same(['attackResolved', 'unitDefeated', 'attackResolved'], array_slice(array_column($result['events'], 'kind'), 0, 3), 'the bolt carries on (then the spent turn passes)');
+            expect_same(3, $result['state']['units']['b2']['wounds'], 'the second link lands');
+        },
     ];
 }

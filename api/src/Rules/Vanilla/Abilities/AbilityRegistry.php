@@ -72,6 +72,7 @@ final class AbilityRegistry
                 new ChaosStrike('Chaos Strike'),
                 new Fireball('Fireball'),
                 new MysticShield('Mystic Shield'),
+                new ChainLightning('Chain Lightning'),
             ];
             self::$handlers = [];
             foreach ($list as $handler) {
