@@ -58,8 +58,12 @@ final class Forced
                 break;
             }
             $drop = $state['board'][$here]['elevation'] - $hex['elevation'];
-            $state['units'][$unitId]['hex'] = $next;
+            $resolved = TerrainResolver::enter($state, $unitId, $here, $next, 'push', $direction, $random, $events);
+            $state = $resolved['state'];
             $path[] = $next;
+            if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+                break;
+            }
             if ($drop >= 2) {
                 $roll = $dice->roll($drop, $random);
                 $falls[] = ['levels' => $drop, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];

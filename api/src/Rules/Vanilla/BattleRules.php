@@ -208,7 +208,33 @@ final class BattleRules
             }
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
-        $state['units'][$unitId]['hex'] = $to;
+        $consequences = [];
+        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences);
+        if ($state['units'][$unitId]['hex'] === null || $state['phase'] !== 'active') {
+            $events[] = MatchEngine::event('unitMoved', [$from], [
+                'unitId' => $unitId, 'from' => $from, 'to' => $from, 'path' => [], 'disengagement' => $hits,
+            ]);
+            array_push($events, ...$consequences);
+            return $state;
+        }
+
+        $entered = [];
+        $previous = $from;
+        foreach ($path as $hex) {
+            [$fromQ, $fromR] = Hex::parse($previous);
+            [$toQ, $toR] = Hex::parse($hex);
+            $resolved = TerrainResolver::enter($state, $unitId, $previous, $hex, 'voluntary', [$toQ - $fromQ, $toR - $fromR], $random, $events);
+            $state = $resolved['state'];
+            $entered[] = $hex;
+            $previous = $hex;
+            if ($resolved['stop'] || $state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+                break;
+            }
+        }
+        if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        $to = $state['units'][$unitId]['hex'];
         $state['turn']['moveSpent'] += $option['cost'];
         if ($state['turn']['attacks'] > 0) {
             $state['turn']['movedAfterAttack'] = true;
@@ -219,10 +245,9 @@ final class BattleRules
             'unitId' => $unitId,
             'from' => $from,
             'to' => $to,
-            'path' => $path,
+            'path' => $entered,
             'disengagement' => $hits,
         ]);
-        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
         return self::closeIfSpent($state, $unitId);
     }
 

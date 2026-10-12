@@ -168,7 +168,8 @@ final class StepRunner
         if ($from === null) {
             return $state;
         }
-        $state['units'][$step['unitId']]['hex'] = $step['toHex'];
+        $resolved = TerrainResolver::enter($state, $step['unitId'], $from, $step['toHex'], 'teleport', null, $this->random, $events);
+        $state = $resolved['state'];
         $events[] = MatchEngine::event('unitTeleported', [$from, $step['toHex']], [
             'unitId' => $step['unitId'], 'casterId' => $step['casterId'], 'from' => $from, 'to' => $step['toHex'],
         ]);

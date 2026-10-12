@@ -12,7 +12,7 @@ final class ConditionRegistry
     {
         if (self::$handlers === null) {
             self::$handlers = [];
-            foreach ([new Stunned('Stunned')] as $handler) {
+            foreach ([new Stunned('Stunned'), new Poisoned('Poisoned')] as $handler) {
                 self::$handlers[$handler->name] = $handler;
             }
         }

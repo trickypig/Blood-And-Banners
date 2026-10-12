@@ -6,9 +6,12 @@ use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Movement;
+use BloodAndBanners\Rules\Vanilla\Forced;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
 use BloodAndBanners\Rules\Vanilla\Terrain;
+use BloodAndBanners\Rules\Vanilla\TerrainResolver;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
 function terrain_unit(string $unitId, string $seatId, string $hex, array $abilities = [], array $stats = []): array
 {
@@ -289,6 +292,85 @@ function vanilla_terrain_tests(): array
             $stale = $state;
             $stale['units']['b1']['hex'] = '1,0';
             expect_game_error('invalidMovementPath', static fn() => vanilla_command($stale, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '2,0']]));
+        },
+
+        'terrain entry resolves water lava and poison through one pipeline' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'water', 'terrain' => 'open-water'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '3,0' => ['biome' => 'darkness', 'terrain' => 'poison-pits'],
+                '4,0' => ['biome' => 'water', 'terrain' => 'shallow-water'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(5), [], $paint), [
+                terrain_unit('a1', 'seat-a', '0,0', ['Lava Walker'], ['hp' => 20]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $events = [];
+            $water = TerrainResolver::enter($state, 'a1', '0,0', '1,0', 'voluntary', [1, 0], new SequenceRandom([1]), $events);
+            expect_same(true, $water['stop'], 'open water stops voluntary movement');
+            expect_same(1, $water['state']['units']['a1']['wounds'], 'Lava Walker takes one open-water die');
+            expect_same(['terrainEntered', 'terrainDamage', 'movementStopped'], array_column($events, 'kind'), 'water entry has stable events');
+
+            $events = [];
+            $lava = TerrainResolver::enter($water['state'], 'a1', '1,0', '2,0', 'push', [1, 0], new SequenceRandom([1, 4, 4, 4, 4]), $events);
+            expect_same(1, $lava['state']['units']['a1']['wounds'], 'Lava Walker ignores lava damage and retains only its water wound');
+            expect_same(['terrainEntered', 'terrainIgnored'], array_column($events, 'kind'), 'lava immunity is explicit');
+
+            $events = [];
+            $poison = TerrainResolver::enter($lava['state'], 'a1', '2,0', '3,0', 'push', [1, 0], new SequenceRandom([]), $events);
+            expect_same(false, $poison['stop'], 'forced poison entry continues');
+            expect_true(UnitConditions::has($poison['state'], 'a1', 'Poisoned'), 'poison entry applies Poisoned');
+            expect_same(['terrainEntered', 'conditionApplied'], array_column($events, 'kind'), 'poison applies through the condition pipeline');
+
+            $events = [];
+            $neutral = TerrainResolver::enter($poison['state'], 'a1', '3,0', '4,0', 'voluntary', [1, 0], new SequenceRandom([]), $events);
+            expect_same([], $events, 'shallow water is completely neutral');
+            expect_same(false, $neutral['stop'], 'shallow water does not stop movement');
+        },
+
+        'voluntary lava resolves every entered hex and stops immediately on lethal entry' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(4), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3, 'hp' => 1]),
+                vanilla_unit('b1', 'seat-b', '3,0'),
+            ]);
+            $random = new CountingTerrainRandom();
+            $result = (new MatchEngine(test_catalog()))->apply(
+                $state,
+                'seat-a',
+                'moveUnit',
+                ['unitId' => 'a1', 'path' => ['1,0', '2,0']],
+                $random
+            );
+            expect_same(5, $random->rolls, 'only the first lava hex rolls after lethal entry');
+            expect_same(['terrainEntered', 'terrainDamage', 'unitDefeated', 'matchCompleted'], array_column($result['events'], 'kind'), 'later entry and unitMoved never occur');
+            expect_same('completed', $result['state']['phase'], 'lethal terrain completes the match');
+            expect_same(null, $result['state']['pending'], 'completion leaves no pending state');
+        },
+
+        'push and teleport apply Lava Walker water weakness on every arrival' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'water', 'terrain' => 'open-water'],
+                '2,0' => ['biome' => 'water', 'terrain' => 'open-water'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(4), [], $paint), [
+                terrain_unit('a1', 'seat-a', '0,0', ['Lava Walker'], ['hp' => 9]), vanilla_unit('b1', 'seat-b', '3,0'),
+            ]);
+            $events = [];
+            $pushed = Forced::push($state, 'a1', [1, 0], 2, 'b1', new SequenceRandom([1, 1]), $events);
+            expect_same(2, $pushed['units']['a1']['wounds'], 'each pushed water hex rolls one damage die');
+            expect_same(2, count(array_filter($events, static fn(array $event): bool => $event['kind'] === 'terrainDamage')), 'both pushed entries are narrated');
+
+            $teleportState = $state;
+            $teleportEvents = [];
+            (new StepRunner(new SequenceRandom([1]), 0))->run(
+                $teleportState,
+                [StepRunner::teleport('b1', 'a1', '1,0')],
+                $teleportEvents
+            );
+            expect_same(['terrainEntered', 'terrainDamage', 'unitTeleported'], array_column($teleportEvents, 'kind'), 'teleport arrival uses the same terrain pipeline');
         },
     ];
 }
