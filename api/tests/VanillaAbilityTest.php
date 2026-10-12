@@ -343,5 +343,62 @@ function vanilla_ability_tests(): array
             expect_same(['attackResolved', 'unitDefeated', 'attackResolved'], array_slice(array_column($result['events'], 'kind'), 0, 3), 'the bolt carries on (then the spent turn passes)');
             expect_same(3, $result['state']['units']['b2']['wounds'], 'the second link lands');
         },
+
+        'Shield Wall guards an adjacent ally once per turn without spending the attack' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Shield Wall'], ['isHero' => true]),
+                vanilla_unit('a2', 'seat-a', '1,0', ['defense' => 2]),
+                vanilla_unit('b1', 'seat-b', '3,0'),
+            ]);
+            $used = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Shield Wall', 'targetUnitId' => 'a2']);
+            expect_same(['effectApplied', 'abilityUsed'], array_column($used['events'], 'kind'), 'the wall goes up');
+            expect_same(3, Stats::effective($used['state'], 'a2', 'defense'), '+1 Defense');
+            expect_same(['a-hero'], $used['state']['turn']['activated'], 'using the ability activated the hero');
+            expect_same('a-hero', $used['state']['turn']['activeUnitId'], 'the hero may still move and attack');
+            expect_game_error('abilityAlreadyUsed', static fn() => vanilla_command($used['state'], 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Shield Wall', 'targetUnitId' => 'a2']));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Shield Wall', 'targetUnitId' => 'a-hero']));
+        },
+
+        'an activated unit keeps its unused ability after its activation ends, and the turn does not auto-pass' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a-hero', 'seat-a', '1,0', ['Warlord\'s Command'], ['isHero' => true, 'power' => 1]),
+                vanilla_unit('a2', 'seat-a', '0,0', ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '2,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $state['turn']['allowance'] = 1;
+            $struck = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a-hero', 'targetUnitId' => 'b1'], [6]);
+            expect_same('seat-a', $struck['state']['turn']['activeSeatId'], 'the unused command keeps the turn alive');
+            $commanded = vanilla_command($struck['state'], 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Warlord\'s Command', 'targetUnitId' => 'a2']);
+            expect_same(
+                ['effectApplied', 'abilityUsed', 'effectExpired', 'turnEnded'],
+                array_column($commanded['events'], 'kind'),
+                'the command lands after the hero acted, then with nothing left the turn passes and the command fades'
+            );
+            expect_same('seat-b', $commanded['state']['turn']['activeSeatId'], 'the turn has passed');
+            expect_same(1, Stats::effective($commanded['state'], 'a2', 'power'), 'Warlord\'s Command lasted only until end of turn');
+        },
+
+        'runes reach the Rune Smith\'s range and Distraction can hit anyone' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Rune of Warding', 'Rune of Distraction'], ['range' => 3]),
+                vanilla_unit('a2', 'seat-a', '1,0', ['defense' => 1]),
+                vanilla_unit('b1', 'seat-b', '3,0', ['defense' => 3]),
+                vanilla_unit('b2', 'seat-b', '4,0', ['defense' => 3]),
+            ]);
+            $actions = array_values(array_filter(
+                (new MatchEngine(test_catalog()))->legalActions($state, 'seat-a'),
+                static fn(array $a): bool => $a['kind'] === 'useAbility'
+            ));
+            expect_same(
+                [
+                    ['kind' => 'useAbility', 'unitId' => 'a1', 'ability' => 'Rune of Warding', 'targetHexes' => ['0,0', '1,0']],
+                    ['kind' => 'useAbility', 'unitId' => 'a1', 'ability' => 'Rune of Distraction', 'targetHexes' => ['1,0', '3,0']],
+                ],
+                $actions,
+                'warding covers allies incl. self; distraction covers any other unit in range'
+            );
+            $hexed = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a1', 'ability' => 'Rune of Distraction', 'targetUnitId' => 'b1']);
+            expect_same(1, Stats::effective($hexed['state'], 'b1', 'defense'), '-2 Defense');
+        },
     ];
 }

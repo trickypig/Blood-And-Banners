@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\Vanilla\Effects;
+
 /** Maps printed ability names to handlers. Names without a handler are deferred and have no effect in play. */
 final class AbilityRegistry
 {
@@ -73,6 +75,10 @@ final class AbilityRegistry
                 new Fireball('Fireball'),
                 new MysticShield('Mystic Shield'),
                 new ChainLightning('Chain Lightning'),
+                new StatBlessing('Shield Wall', 'defense', 1, Effects::UNTIL_NEXT_TURN, 1, StatBlessing::ALLIES, false),
+                new StatBlessing('Warlord\'s Command', 'power', 1, Effects::UNTIL_END_OF_TURN, 1, StatBlessing::ALLIES, false),
+                new StatBlessing('Rune of Warding', 'defense', 2, Effects::UNTIL_NEXT_TURN, null, StatBlessing::ALLIES, true),
+                new StatBlessing('Rune of Distraction', 'defense', -2, Effects::UNTIL_NEXT_TURN, null, StatBlessing::ANYONE, false),
             ];
             self::$handlers = [];
             foreach ($list as $handler) {

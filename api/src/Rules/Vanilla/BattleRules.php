@@ -8,10 +8,11 @@ use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
+use BloodAndBanners\Rules\Vanilla\Abilities\TargetedAbility;
 
 final class BattleRules
 {
-    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'endActivation', 'endTurn'];
+    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
@@ -30,6 +31,7 @@ final class BattleRules
         'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
+        'abilityAlreadyUsed' => 'That ability has already been used this turn.',
         'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
     ];
 
@@ -57,6 +59,8 @@ final class BattleRules
             $state = $this->attack($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'specialAttack') {
             $state = $this->specialAttack($state, $seatId, $payload, $random, $events);
+        } elseif ($kind === 'useAbility') {
+            $state = $this->useAbility($state, $seatId, $payload, $events);
         } else {
             $unitId = self::text($payload, 'unitId');
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
@@ -84,7 +88,25 @@ final class BattleRules
                 continue;
             }
             $active = $state['turn']['activeUnitId'] === $unitId;
-            if (!$active && $this->activationError($state, $unitId) !== null) {
+            $activated = in_array($unitId, $state['turn']['activated'], true);
+            $canStart = !$activated && $this->activationError($state, $unitId) === null;
+            if ($activated || $canStart) {
+                foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+                    if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true)) {
+                        continue;
+                    }
+                    $targets = $ability->targets($state, $unitId);
+                    if ($targets !== []) {
+                        $actions[] = [
+                            'kind' => 'useAbility',
+                            'unitId' => $unitId,
+                            'ability' => $ability->name,
+                            'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
+                        ];
+                    }
+                }
+            }
+            if (!$active && !$canStart) {
                 continue;
             }
             if (self::canMove($state, $unitId)) {
@@ -283,6 +305,36 @@ final class BattleRules
     private static function spellsLocked(array $state, string $unitId): bool
     {
         return ($state['units'][$unitId]['flags']['spellsLockedOnTurn'] ?? null) === $state['turn']['number'];
+    }
+
+    private function useAbility(array $state, string $seatId, array $payload, array &$events): array
+    {
+        $unitId = self::text($payload, 'unitId');
+        $name = self::text($payload, 'ability');
+        $targetId = self::text($payload, 'targetUnitId');
+        $unit = $state['units'][$unitId] ?? null;
+        if ($unit === null || $unit['hex'] === null) {
+            self::fail('unknownUnit');
+        }
+        if ($unit['seatId'] !== $seatId) {
+            self::fail('notYourUnit');
+        }
+        $ability = self::resolveAbility($unit, $name, TargetedAbility::class);
+        if (in_array($name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true)) {
+            self::fail('abilityAlreadyUsed');
+        }
+        if (!in_array($unitId, $state['turn']['activated'], true)) {
+            $state = $this->activate($state, $seatId, $unitId);
+        }
+        if (!in_array($targetId, $ability->targets($state, $unitId), true)) {
+            self::fail('invalidAbilityTarget');
+        }
+        $state = $ability->apply($state, $unitId, $targetId, $events);
+        $state['turn']['abilitiesUsed'][$unitId][] = $name;
+        $events[] = MatchEngine::event('abilityUsed', [$unit['hex'], $state['units'][$targetId]['hex']], [
+            'unitId' => $unitId, 'ability' => $name, 'targetUnitId' => $targetId,
+        ]);
+        return $state;
     }
 
     private function activate(array $state, string $seatId, string $unitId): array
