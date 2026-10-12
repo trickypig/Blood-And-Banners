@@ -24,6 +24,11 @@
         {
             <div class="targeting-banner" data-testid="targeting-banner" role="status">
                 <span>@aiming.Ability: choose a target</span>
+                @if (Chaining)
+                {
+                    <span>@_chain.Count / @ChainMaxTargets picked</span>
+                    <button type="button" data-action="strikeChain" disabled="@(_chain.Count == 0 || IsBusy)" @onclick="StrikeChain">Strike</button>
+                }
                 <button type="button" data-action="cancelTargeting" @onclick="CancelTargeting">Cancel</button>
             </div>
         }
@@ -90,6 +95,10 @@
                               x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)"
                               fill="@TerrainArt.LabelColor(hex.Biome)"
                               aria-hidden="true">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
+                    }
+                    @if (hex.OccupantId is { } occupant && _chain.IndexOf(occupant) is >= 0 and var link)
+                    {
+                        <!text class="chain-mark" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@(link + 1)</!text>
                     }
                     @if (hex.OccupantId is not null)
                     {
@@ -323,6 +332,7 @@
 
     private void StartTargeting(LegalAction action)
     {
+        _chain.Clear();
         _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
     }
     private string? _hoveredUnitId;
@@ -340,13 +350,13 @@
         }
         if (_targeting is { } aiming && !AbilityActions(_selectedUnitId ?? string.Empty).Any(action => action.Ability == aiming.Ability))
         {
-            _targeting = null;
+            CancelTargeting();
         }
         if (ErrorMessage != _lastError)
         {
             if (!string.IsNullOrEmpty(ErrorMessage))
             {
-                _targeting = null;
+                CancelTargeting();
             }
             _lastError = ErrorMessage;
         }
@@ -405,9 +415,17 @@
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
             var aimed = HexKey(hex);
+            if (Chaining)
+            {
+                if (ChainCandidates().Contains(aimed) && hex.OccupantId is { } link)
+                {
+                    _chain.Add(link);
+                }
+                return;
+            }
             if (aiming.TargetHexes.Contains(aimed) && hex.OccupantId is { } targetId)
             {
-                _targeting = null;
+                CancelTargeting();
                 if (aiming.Kind == "specialAttack")
                 {
                     await Send("specialAttack", new { unitId = caster, ability = aiming.Ability, targetUnitIds = new[] { targetId } });
@@ -436,6 +454,45 @@
         _selectedUnitId = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
     }
 
+    private const int ChainReach = 5;
+    private const int ChainMaxTargets = 3;
+    private readonly List<string> _chain = [];
+
+    private bool Chaining => _targeting?.Ability == "Chain Lightning";
+
+    /// <summary>Hexes the next Chain Lightning link may hit: first hop from the server's list, later hops by remaining reach.</summary>
+    private IReadOnlyList<string> ChainCandidates()
+    {
+        if (_targeting is null || _selectedUnitId is null || _chain.Count >= ChainMaxTargets)
+        {
+            return [];
+        }
+        if (_chain.Count == 0)
+        {
+            return _targeting.TargetHexes;
+        }
+        var caster = UnitById(_selectedUnitId)!;
+        var path = new[] { caster.Hex! }.Concat(_chain.Select(id => UnitById(id)!.Hex!)).ToList();
+        var spent = path.Zip(path.Skip(1), HexMath.Distance).Sum();
+        var last = path[^1];
+        return Projection.Units
+            .Where(unit => unit.Hex is not null && unit.SeatId != caster.SeatId && !_chain.Contains(unit.UnitId))
+            .Where(unit => spent + HexMath.Distance(last, unit.Hex!) <= ChainReach)
+            .Select(unit => unit.Hex!)
+            .ToList();
+    }
+
+    private async Task StrikeChain()
+    {
+        if (_selectedUnitId is { } caster && _chain.Count > 0)
+        {
+            var targets = _chain.ToArray();
+            _chain.Clear();
+            _targeting = null;
+            await Send("specialAttack", new { unitId = caster, ability = "Chain Lightning", targetUnitIds = targets });
+        }
+    }
+
     private string? _hoveredHex;
     private string? _lastError;
 
@@ -451,13 +508,17 @@
         _hoveredHex = null;
     }
 
-    private void CancelTargeting() => _targeting = null;
+    private void CancelTargeting()
+    {
+        _targeting = null;
+        _chain.Clear();
+    }
 
     private void OnBoardKey(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
         {
-            _targeting = null;
+            CancelTargeting();
         }
     }
 
@@ -482,7 +543,7 @@
         }
         if (_targeting is { } aiming)
         {
-            var state = aiming.TargetHexes.Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
+            var state = (Chaining ? ChainCandidates() : aiming.TargetHexes).Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
             return SplashHexes.Contains(key) ? $"{state} splash".Trim() : state;
         }
         if (Targets("attackUnit").Contains(key))

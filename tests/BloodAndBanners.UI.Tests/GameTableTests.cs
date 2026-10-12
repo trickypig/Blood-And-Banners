@@ -322,6 +322,47 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Single(cut.FindAll("[data-hex='3,4'] .effect-marker.debuff"));
         Assert.Contains("Shield Wall", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
     }
+
+    [Fact]
+    public void Chain_lightning_picks_targets_in_order_within_the_remaining_reach()
+    {
+        var sent = new List<GameCommandRequest>();
+        var hexes = Enumerable.Range(0, 8).Select(q => new HexProjection(q, 0, "plains", "grass", 0, false,
+            q switch { 0 => "s1-u5", 2 => "s2-u1", 4 => "s2-u2", 5 => "s2-u3", 7 => "s2-u4", _ => null })).ToList();
+        UnitProjection Enemy(string id, string hex) => new(id, "seat-blue", false, id, "", 2, 1, 3, 2, 5, 0, hex, false);
+        var projection = BattleFixtures.Projection() with
+        {
+            Board = new BoardProjection(8, 1, hexes),
+            Units = [
+                new UnitProjection("s1-u5", "seat-red", false, "Sorcerer", "", 3, 5, 3, 2, 3, 0, "0,0", false)
+                {
+                    Abilities = [new AbilityProjection("Chain Lightning", "Attack", "Power 3, up to 3 units") { Playable = true }],
+                },
+                Enemy("s2-u1", "2,0"), Enemy("s2-u2", "4,0"), Enemy("s2-u3", "5,0"), Enemy("s2-u4", "7,0"),
+            ],
+            LegalActions = [new LegalAction("specialAttack", "s1-u5", ["2,0", "4,0", "5,0"]) { Ability = "Chain Lightning" }, new LegalAction("endTurn", null, [])],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("button[data-use-ability='Chain Lightning']").Click();
+        cut.Find("[data-hex='2,0']").Click();
+
+        Assert.Equal("1", cut.Find("[data-hex='2,0'] .chain-mark").TextContent);
+        Assert.Contains("ability-target", cut.Find("[data-hex='4,0']").ClassList);
+        Assert.Contains("ability-target", cut.Find("[data-hex='5,0']").ClassList);
+        Assert.DoesNotContain("ability-target", cut.Find("[data-hex='7,0']").ClassList);
+
+        cut.Find("[data-hex='4,0']").Click();
+        Assert.Contains("ability-target", cut.Find("[data-hex='5,0']").ClassList);
+        Assert.Empty(sent);
+
+        cut.Find("button[data-action=strikeChain]").Click();
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal(["s2-u1", "s2-u2"], payload.GetProperty("targetUnitIds").EnumerateArray().Select(id => id.GetString()!).ToArray());
+    }
 }
 
 internal static class BattleFixtures
