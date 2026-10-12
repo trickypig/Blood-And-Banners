@@ -158,5 +158,44 @@ function vanilla_match_service_tests(): array
             expect_same([], $spectated['legalActions'], 'spectators cannot act');
             expect_same(14, count($spectated['units']), 'spectators still see the armies');
         },
+
+        'the defending seat resolves a Moonlight Glare choice through the service while the attacker waits' => static function (): void {
+            $match = vanilla_service_match();
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            foreach (vanilla_draft_picks($match) as [$who, $kind, $payload]) {
+                vanilla_submit($match, $who, $kind, $payload);
+            }
+            $statement = $match['db']->prepare('SELECT state_json FROM game_states WHERE game_id = :game');
+            $statement->execute(['game' => $match['gameId']]);
+            $state = json_decode((string)$statement->fetchColumn(), true, flags: JSON_THROW_ON_ERROR);
+            $attacker = array_values(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match['host']['seat']))[0]['unitId'];
+            $defender = array_values(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match['rival']['seat']))[0]['unitId'];
+            $state['pending'] = [
+                'choice' => [
+                    'choiceId' => 'choice-1', 'seatId' => $match['rival']['seat'], 'kind' => 'moonlightGlare', 'unitId' => $defender,
+                    'side' => 'defense', 'faces' => ['blank'], 'options' => ['reroll:0', 'keep'], 'openedAt' => time(),
+                ],
+                'steps' => [[
+                    'op' => 'land', 'attackerId' => $attacker, 'targetId' => $defender, 'ability' => null,
+                    'attackFaces' => ['blank'], 'defenseFaces' => ['blank'], 'rerolled' => null,
+                ]],
+            ];
+            $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+
+            $hostView = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same(null, $hostView['pendingChoice'], 'the attacker never sees the defender\'s dice');
+            expect_same('choice-1', $hostView['pendingChoiceSummary']['choiceId'], 'the attacker knows a decision is pending');
+            expect_same([], $hostView['legalActions'], 'the attacker can do nothing before the timeout');
+            expect_game_error('choicePending', static fn() => vanilla_submit($match, 'host', 'endTurn', []));
+
+            $rivalView = $match['games']->getGame($match['gameId'], $match['rival']['identity']);
+            expect_same(['reroll:0', 'keep'], $rivalView['pendingChoice']['options'], 'the defender sees the choice');
+            expect_same(['blank'], $rivalView['pendingChoice']['faces'], 'with its dice');
+
+            $resolved = vanilla_submit($match, 'rival', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'keep']);
+            expect_same(null, $resolved['pendingChoiceSummary'], 'the choice is closed');
+            expect_same($match['host']['seat'], $resolved['turn']['activeSeatId'], 'the turn stays with the attacker');
+        },
     ];
 }
