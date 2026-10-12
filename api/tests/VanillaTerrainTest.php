@@ -2,8 +2,10 @@
 declare(strict_types=1);
 
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Movement;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
 use BloodAndBanners\Rules\Vanilla\Terrain;
@@ -17,6 +19,27 @@ function terrain_unit(string $unitId, string $seatId, string $hex, array $abilit
         ),
         'flags' => [],
     ]);
+}
+
+final class CountingTerrainRandom implements RandomSource
+{
+    public int $rolls = 0;
+
+    public function roll(int $sides): int
+    {
+        $this->rolls++;
+        return 1;
+    }
+}
+
+function movement_option(array $options, string $destination): ?array
+{
+    foreach ($options as $option) {
+        if ($option['destination'] === $destination) {
+            return $option;
+        }
+    }
+    return null;
 }
 
 function vanilla_terrain_tests(): array
@@ -136,6 +159,136 @@ function vanilla_terrain_tests(): array
                 $ordinaryEvents
             );
             expect_same(1, count($ordinaryEvents[0]['payload']['defenseFaces']), 'fire should not modify an ordinary defender');
+        },
+
+        'canonical options apply water costs stops and climb rules' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'water', 'terrain' => 'open-water'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(3), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 4]),
+                vanilla_unit('b1', 'seat-b', '2,0'),
+            ]);
+            $water = movement_option(Movement::options($state, 'a1', 4), '1,0');
+            expect_same(['1,0'], $water['path'] ?? null, 'the water path enters exactly one hex');
+            expect_same(1, $water['cost'] ?? null, 'entering water costs one');
+            expect_same(true, $water['hazards'][0]['stops'] ?? null, 'water ends voluntary movement');
+            expect_same(null, movement_option(Movement::options($state, 'a1', 4), '2,0'), 'movement cannot continue after water entry');
+
+            $state['units']['a1']['hex'] = '1,0';
+            $state['units']['b1']['hex'] = null;
+            expect_same(2, movement_option(Movement::options($state, 'a1', 4), '2,0')['cost'] ?? null, 'leaving water costs two');
+
+            $climb = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 1], [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            expect_same(null, Movement::canonical($climb, 'a1', '1,0', 3), 'water counts one level higher for climb legality');
+            $climb['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 3]);
+            expect_true(Movement::canonical($climb, 'a1', '1,0', 3) !== null, 'Flying ignores water and may climb two levels');
+        },
+
+        'poison stops while lava accumulates per hex and Flying crosses but cannot land' => static function (): void {
+            $poisonPaint = ['1,0' => ['biome' => 'darkness', 'terrain' => 'poison-pits']];
+            $poison = vanilla_battle(vanilla_board(vanilla_line(3), [], $poisonPaint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 4]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            expect_true(Movement::canonical($poison, 'a1', '1,0', 4) !== null, 'poison itself is reachable');
+            expect_same(null, Movement::canonical($poison, 'a1', '2,0', 4), 'voluntary movement stops in poison');
+
+            $lavaPaint = [
+                '1,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ];
+            $lava = vanilla_battle(vanilla_board(vanilla_line(4), [], $lavaPaint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 4]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $crossing = Movement::canonical($lava, 'a1', '3,0', 4);
+            expect_same(['1,0', '2,0', '3,0'], $crossing['path'] ?? null, 'the exact crossing path is published');
+            expect_same(10, array_sum(array_column($crossing['hazards'] ?? [], 'dice')), 'two lava hexes guarantee ten damage dice');
+
+            $lava['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 4]);
+            $flight = Movement::canonical($lava, 'a1', '3,0', 4);
+            expect_same([], $flight['hazards'] ?? null, 'Flying crosses lava without a hazard');
+            expect_same(null, Movement::canonical($lava, 'a1', '1,0', 4), 'Flying cannot voluntarily end on lava');
+        },
+
+        'Flying ignores ice and may descend any number of levels' => static function (): void {
+            $paint = ['1,0' => ['biome' => 'ice', 'terrain' => 'ice']];
+            $state = vanilla_battle(vanilla_board(['0,0' => 4, '1,0' => 0], [], $paint), [
+                terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 1]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $option = Movement::canonical($state, 'a1', '1,0', 1);
+            expect_same(['1,0'], $option['path'] ?? null, 'Flying may descend four levels in one step');
+            expect_same([], $option['hazards'] ?? null, 'Flying ignores ice entry and forced sliding');
+        },
+
+        'ice projects forced continuation and ties choose a stable path' => static function (): void {
+            $icePaint = [
+                '1,0' => ['biome' => 'ice', 'terrain' => 'ice'],
+                '2,0' => ['biome' => 'ice', 'terrain' => 'ice'],
+            ];
+            $ice = vanilla_battle(vanilla_board(vanilla_line(4), [], $icePaint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $slide = Movement::canonical($ice, 'a1', '3,0', 3);
+            expect_same(['1,0', '2,0', '3,0'], $slide['path'] ?? null, 'entering ice projects the whole straight slide');
+            expect_true(count(array_filter($slide['hazards'] ?? [], static fn(array $hazard): bool => $hazard['forced'])) >= 1, 'the projected slide is marked forced');
+            expect_same(null, Movement::canonical($ice, 'a1', '1,0', 3), 'an ice entry is not an optional stopping point');
+
+            $tie = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 0, '0,1' => 0, '1,1' => 0]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            expect_same(['0,1', '1,1'], Movement::canonical($tie, 'a1', '1,1', 2)['path'] ?? null, 'equal routes use stable hex-key ordering');
+        },
+
+        'movement search stays inside the effective Move radius on Home Map' => static function (): void {
+            $definition = json_decode((string)file_get_contents(dirname(__DIR__) . '/scenarios/home-map.json'), true, flags: JSON_THROW_ON_ERROR);
+            $state = vanilla_battle(Board::fromScenario($definition), [
+                vanilla_unit('a1', 'seat-a', '3,3', ['move' => 2]), vanilla_unit('b1', 'seat-b', '28,26'),
+            ]);
+            $options = Movement::options($state, 'a1', 2);
+            expect_true(count($options) <= 18, 'a Move 2 search should remain local on a 960-hex board');
+            foreach ($options as $option) {
+                expect_true($option['cost'] <= 2, 'every published option stays within budget');
+            }
+        },
+
+        'move commands require the exact canonical path for terrain routes' => static function (): void {
+            $paint = ['1,0' => ['biome' => 'lava', 'terrain' => 'lava']];
+            $state = vanilla_battle(vanilla_board(vanilla_line(3), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3, 'hp' => 20]), vanilla_unit('b1', 'seat-b', '2,0'),
+            ]);
+            expect_game_error('movementPathRequired', static fn() => vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0']));
+            foreach ([['2,0'], ['1,0', '1,0'], ['1,0', '0,0', '1,0']] as $path) {
+                expect_game_error('invalidMovementPath', static fn() => vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => $path]));
+            }
+            $random = new CountingTerrainRandom();
+            try {
+                (new MatchEngine(test_catalog()))->apply($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '0,0', '1,0']], $random);
+            } catch (\BloodAndBanners\Game\GameServiceException) {
+            }
+            expect_same(0, $random->rolls, 'a repeated hazardous path is rejected before random is consumed');
+
+            $flying = $state;
+            $flying['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 3]);
+            expect_game_error('invalidTerrainDestination', static fn() => vanilla_command($flying, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0']]));
+        },
+
+        'exact paths move and destination-only neutral commands remain compatible' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]), vanilla_unit('b1', 'seat-b', '3,0'),
+            ]);
+            $exact = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '2,0']]);
+            expect_same('2,0', $exact['state']['units']['a1']['hex'], 'the submitted canonical path moves the unit');
+            expect_same(['1,0', '2,0'], $exact['events'][0]['payload']['path'] ?? null, 'the movement event keeps the exact path');
+
+            $legacy = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '2,0']);
+            expect_same('2,0', $legacy['state']['units']['a1']['hex'], 'destination-only neutral movement remains accepted');
+
+            $stale = $state;
+            $stale['units']['b1']['hex'] = '1,0';
+            expect_game_error('invalidMovementPath', static fn() => vanilla_command($stale, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '2,0']]));
         },
     ];
 }

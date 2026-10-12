@@ -204,7 +204,12 @@ function vanilla_battle_tests(): array
             $engine = new MatchEngine(test_catalog());
             expect_same(
                 [
-                    ['kind' => 'moveUnit', 'unitId' => 'a1', 'targetHexes' => ['1,0']],
+                    [
+                        'kind' => 'moveUnit', 'unitId' => 'a1', 'targetHexes' => ['1,0'],
+                        'movementOptions' => [[
+                            'destination' => '1,0', 'path' => ['1,0'], 'cost' => 1, 'hazards' => [],
+                        ]],
+                    ],
                     ['kind' => 'endTurn', 'unitId' => null, 'targetHexes' => []],
                 ],
                 $engine->legalActions($state, 'seat-a'),

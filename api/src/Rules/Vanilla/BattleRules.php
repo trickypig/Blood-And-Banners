@@ -28,6 +28,10 @@ final class BattleRules
         'alreadyMoved' => 'That unit has already moved this activation.',
         'unitNotActive' => 'That unit is not the active unit.',
         'hexUnreachable' => 'That unit cannot reach that hex.',
+        'movementPathRequired' => 'Choose the exact route through that terrain.',
+        'invalidMovementPath' => 'That movement route is no longer legal.',
+        'invalidTerrainDestination' => 'That unit cannot voluntarily stop on that terrain.',
+        'invalidSlipChoice' => 'That ice movement choice is no longer legal.',
         'targetOutOfRange' => 'That target is out of range.',
         'noLineOfSight' => 'That target is not in line of sight.',
         'unknownAbility' => 'That unit does not have that ability.',
@@ -134,9 +138,13 @@ final class BattleRules
             }
             if (self::canMove($state, $unitId)) {
                 $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
-                $hexes = Movement::reachable($state, $unitId, $budget);
-                if ($hexes !== []) {
-                    $actions[] = ['kind' => 'moveUnit', 'unitId' => $unitId, 'targetHexes' => $hexes];
+                $options = Movement::options($state, $unitId, $budget);
+                if ($options !== []) {
+                    $actions[] = [
+                        'kind' => 'moveUnit', 'unitId' => $unitId,
+                        'targetHexes' => array_column($options, 'destination'),
+                        'movementOptions' => $options,
+                    ];
                 }
             }
             $targets = self::attacksLeft($state, $unitId) ? Combat::targets($state, $unitId) : [];
@@ -174,7 +182,6 @@ final class BattleRules
     private function move(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
         $unitId = self::text($payload, 'unitId');
-        $to = self::text($payload, 'to');
         $state = $this->activate($state, $seatId, $unitId);
         if (self::rooted($state, $unitId)) {
             self::fail('unitStunned');
@@ -183,14 +190,13 @@ final class BattleRules
             self::fail('alreadyMoved');
         }
         $budget = Stats::effective($state, $unitId, 'move') - $state['turn']['moveSpent'];
-        $costs = Movement::costs($state, $unitId, $budget);
-        if (!isset($costs[$to])) {
-            self::fail('hexUnreachable');
-        }
+        $option = $this->movementOption($state, $unitId, $payload, $budget);
+        $to = $option['destination'];
+        $path = $option['path'];
         $from = $state['units'][$unitId]['hex'];
         $hits = [];
         $evades = AbilityRegistry::any($state['units'][$unitId], static fn(Ability $ability): bool => $ability->evades());
-        foreach (Movement::disengagedFrom($state, $unitId, $to) as $enemyId) {
+        foreach (Movement::disengagedFromPath($state, $unitId, $path) as $enemyId) {
             if ($evades) {
                 $roll = $random->roll(20);
                 if ($roll > 10) {
@@ -203,7 +209,7 @@ final class BattleRules
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
         $state['units'][$unitId]['hex'] = $to;
-        $state['turn']['moveSpent'] += $costs[$to];
+        $state['turn']['moveSpent'] += $option['cost'];
         if ($state['turn']['attacks'] > 0) {
             $state['turn']['movedAfterAttack'] = true;
         } else {
@@ -213,10 +219,45 @@ final class BattleRules
             'unitId' => $unitId,
             'from' => $from,
             'to' => $to,
+            'path' => $path,
             'disengagement' => $hits,
         ]);
         $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
         return self::closeIfSpent($state, $unitId);
+    }
+
+    private function movementOption(array $state, string $unitId, array $payload, int $budget): array
+    {
+        if (array_key_exists('path', $payload)) {
+            $path = $payload['path'];
+            if (!is_array($path) || $path === [] || count($path) !== count(array_unique($path))) {
+                self::fail('invalidMovementPath');
+            }
+            foreach ($path as $hex) {
+                if (!is_string($hex) || !isset($state['board'][$hex])) {
+                    self::fail('invalidMovementPath');
+                }
+            }
+            $destination = $path[array_key_last($path)];
+            if (!Terrain::canEnd($state, $unitId, $destination, 'voluntary')) {
+                self::fail('invalidTerrainDestination');
+            }
+            $option = Movement::canonical($state, $unitId, $destination, $budget);
+            if ($option === null || $option['path'] !== array_values($path)) {
+                self::fail('invalidMovementPath');
+            }
+            return $option;
+        }
+
+        $destination = self::text($payload, 'to');
+        $option = Movement::canonical($state, $unitId, $destination, $budget);
+        if ($option === null) {
+            self::fail('hexUnreachable');
+        }
+        if ($option['hazards'] !== []) {
+            self::fail('movementPathRequired');
+        }
+        return $option;
     }
 
     private function attack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
