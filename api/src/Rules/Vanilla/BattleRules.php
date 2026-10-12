@@ -12,7 +12,9 @@ use BloodAndBanners\Rules\Vanilla\Abilities\TargetedAbility;
 
 final class BattleRules
 {
-    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'endActivation', 'endTurn'];
+    public const CHOICE_TIMEOUT_SECONDS = 45;
+
+    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
@@ -32,6 +34,10 @@ final class BattleRules
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
         'abilityAlreadyUsed' => 'That ability has already been used this turn.',
+        'choicePending' => 'Waiting for a decision before the battle can continue.',
+        'notYourChoice' => 'That decision belongs to the other commander.',
+        'unknownChoice' => 'That decision is no longer open.',
+        'choiceNotExpired' => 'Your opponent still has time to decide.',
         'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
     ];
 
@@ -43,6 +49,9 @@ final class BattleRules
     {
         if (!in_array($kind, self::KINDS, true)) {
             self::fail('unsupportedCommand');
+        }
+        if ($state['pending'] !== null || $kind === 'resolveChoice') {
+            return $this->resolveChoice($state, $seatId, $kind, $payload, $random);
         }
         if ($state['turn']['activeSeatId'] !== $seatId) {
             self::fail('notYourTurn');
@@ -69,7 +78,7 @@ final class BattleRules
             $state['turn']['activeUnitId'] = null;
         }
 
-        if ($state['phase'] === 'active' && !$this->canAct($state, $seatId)) {
+        if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $seatId)) {
             [$state, $passed] = self::passTurn($state);
             $events = array_merge($events, $passed);
         }
@@ -78,7 +87,17 @@ final class BattleRules
 
     public function legalActions(array $state, string $seatId): array
     {
-        if ($state['phase'] !== 'active' || $state['turn']['activeSeatId'] !== $seatId) {
+        if ($state['phase'] !== 'active') {
+            return [];
+        }
+        if ($state['pending'] !== null) {
+            $choice = $state['pending']['choice'];
+            $mayKeep = $this->now - $choice['openedAt'] >= self::CHOICE_TIMEOUT_SECONDS;
+            return $seatId === $choice['seatId'] || $mayKeep
+                ? [['kind' => 'resolveChoice', 'unitId' => $choice['unitId'], 'targetHexes' => []]]
+                : [];
+        }
+        if ($state['turn']['activeSeatId'] !== $seatId) {
             return [];
         }
         $actions = [];
@@ -335,6 +354,34 @@ final class BattleRules
             'unitId' => $unitId, 'ability' => $name, 'targetUnitId' => $targetId,
         ]);
         return $state;
+    }
+
+    private function resolveChoice(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array
+    {
+        $choice = $state['pending']['choice'] ?? null;
+        if ($choice === null || $kind !== 'resolveChoice') {
+            self::fail($choice === null ? 'unknownChoice' : 'choicePending');
+        }
+        $option = self::text($payload, 'option');
+        if (self::text($payload, 'choiceId') !== $choice['choiceId'] || !in_array($option, $choice['options'], true)) {
+            self::fail('unknownChoice');
+        }
+        if ($seatId !== $choice['seatId']) {
+            if ($option !== 'keep') {
+                self::fail('notYourChoice');
+            }
+            if ($this->now - $choice['openedAt'] < self::CHOICE_TIMEOUT_SECONDS) {
+                self::fail('choiceNotExpired');
+            }
+        }
+        $events = [];
+        $state = (new StepRunner($random, $this->now))->resolve($state, $option, $events);
+        $active = $state['turn']['activeSeatId'];
+        if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
+            [$state, $passed] = self::passTurn($state);
+            $events = array_merge($events, $passed);
+        }
+        return ['state' => $state, 'events' => $events];
     }
 
     private function activate(array $state, string $seatId, string $unitId): array

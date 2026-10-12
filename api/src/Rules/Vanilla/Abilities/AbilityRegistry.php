@@ -69,6 +69,7 @@ final class AbilityRegistry
                 new MultiStrike('Twin Strikes'),
                 new MultiStrike('Dual Strikes'),
                 new SilentSting('Silent Sting'),
+                new MoonlightGlare('Moonlight Glare'),
                 new FixedStrike('Bolt of Annihilation', 6, 5),
                 new FixedStrike('Flame Strike', 3, 5),
                 new ChaosStrike('Chaos Strike'),

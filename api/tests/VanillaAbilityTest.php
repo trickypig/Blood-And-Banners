@@ -400,5 +400,72 @@ function vanilla_ability_tests(): array
             $hexed = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a1', 'ability' => 'Rune of Distraction', 'targetUnitId' => 'b1']);
             expect_same(1, Stats::effective($hexed['state'], 'b1', 'defense'), '-2 Defense');
         },
+
+        'Moonlight Glare pauses the defender\'s roll for the owner\'s decision' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 2]),
+                ability_unit('b1', 'seat-b', '1,0', ['Moonlight Glare'], ['defense' => 2, 'hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '2,0'),
+                vanilla_unit('a2', 'seat-a', '3,0'),
+            ]);
+            $opened = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1, 4, 6], 1000);
+            expect_same(['choiceOpened'], array_column($opened['events'], 'kind'), 'nothing lands yet');
+            $choice = $opened['state']['pending']['choice'];
+            expect_same(
+                ['choiceId' => 'choice-1', 'seatId' => 'seat-b', 'kind' => 'moonlightGlare', 'unitId' => 'b1', 'side' => 'defense', 'faces' => ['shield', 'blank'], 'options' => ['reroll:1', 'keep'], 'openedAt' => 1000],
+                $choice,
+                'only the blank can be re-rolled'
+            );
+            expect_game_error('choicePending', static fn() => vanilla_command($opened['state'], 'seat-a', 'endTurn', [], [], 1001));
+            expect_game_error('notYourChoice', static fn() => vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'reroll:1'], [], 1001));
+            expect_game_error('choiceNotExpired', static fn() => vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'keep'], [], 1044));
+            expect_game_error('unknownChoice', static fn() => vanilla_command($opened['state'], 'seat-b', 'resolveChoice', ['choiceId' => 'choice-9', 'option' => 'keep'], [], 1001));
+            expect_same(
+                [['kind' => 'resolveChoice', 'unitId' => 'b1', 'targetHexes' => []]],
+                (new MatchEngine(test_catalog()))->legalActions($opened['state'], 'seat-b', 1001),
+                'the owner may only decide'
+            );
+            expect_same([], (new MatchEngine(test_catalog()))->legalActions($opened['state'], 'seat-a', 1001), 'the attacker waits');
+
+            $saved = json_decode(json_encode($opened['state'], JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+            $resolved = vanilla_command($saved, 'seat-b', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'reroll:1'], [5], 1002);
+            expect_same(['choiceResolved', 'attackResolved'], array_column($resolved['events'], 'kind'), 'the attack lands after the decision');
+            expect_same(['side' => 'defense', 'index' => 1, 'from' => 'blank', 'to' => 'shield'], $resolved['events'][1]['payload']['rerolled'], 'the re-roll is reported');
+            expect_same(0, $resolved['state']['units']['b1']['wounds'], 'two shields stop two swords');
+            expect_same(null, $resolved['state']['pending'], 'the choice is closed');
+            expect_same(['b1'], $resolved['state']['turn']['glareUsed'], 'the glare is spent for this turn');
+        },
+
+        'the waiting seat may keep the roll after 45 seconds' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 1]),
+                ability_unit('b1', 'seat-b', '1,0', ['Moonlight Glare'], ['defense' => 1, 'hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '2,0'),
+            ]);
+            $opened = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 6], 1000)['state'];
+            expect_same(
+                [['kind' => 'resolveChoice', 'unitId' => 'b1', 'targetHexes' => []]],
+                (new MatchEngine(test_catalog()))->legalActions($opened, 'seat-a', 1045),
+                'after 45 s the attacker may keep for them'
+            );
+            $kept = vanilla_command($opened, 'seat-a', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'keep'], [], 1045);
+            expect_same(['choiceResolved', 'attackResolved', 'turnEnded'], array_column($kept['events'], 'kind'), 'the roll stands and the spent turn passes');
+            expect_same(1, $kept['state']['units']['b1']['wounds'], 'the sword lands');
+            expect_same([], $kept['state']['turn']['glareUsed'], 'the turn has passed, so glare usage is fresh');
+        },
+
+        'no prompt when the Duelist\'s dice are already perfect, and once per turn' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Moonlight Glare'], ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '2,0'),
+            ]);
+            $perfect = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1], 1000);
+            expect_same(['attackResolved'], array_column($perfect['events'], 'kind'), 'a sword needs no re-roll');
+            $spent = $state;
+            $spent['turn']['glareUsed'] = ['a1'];
+            $again = vanilla_command($spent, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6], 1000);
+            expect_same(['attackResolved'], array_column($again['events'], 'kind'), 'the glare was already used this turn');
+        },
     ];
 }

@@ -103,7 +103,12 @@ final class StepRunner
             'defenseFaces' => $dice->roll($defense, $this->random)['faces'],
             'rerolled' => null,
         ];
-        return [$state, [$land], null];
+        $choice = $this->glareChoice($state, $land);
+        if ($choice !== null) {
+            $state['choiceCounter'] = (int)($state['choiceCounter'] ?? 0) + 1;
+            $choice = ['choiceId' => 'choice-' . $state['choiceCounter']] + $choice;
+        }
+        return [$state, [$land], $choice];
     }
 
     private function land(array $state, array $step, array &$events): array
@@ -161,5 +166,55 @@ final class StepRunner
         $roll = $this->random->roll(20);
         $events[] = MatchEngine::event('chaosRolled', [$unit['hex']], ['unitId' => $step['unitId'], 'roll' => $roll, 'struck' => $roll >= 10]);
         return [$state, $roll >= 10 ? [self::strike($step['unitId'], $step['targetId'], null, $step['ability'], true)] : [], null];
+    }
+
+    /** A Moonlight Glare decision for whichever side of this strike has an unspent Duelist and an imperfect die. */
+    private function glareChoice(array $state, array $land): ?array
+    {
+        foreach ([['attack', $land['attackerId'], $land['attackFaces'], 'sword'], ['defense', $land['targetId'], $land['defenseFaces'], 'shield']] as [$side, $unitId, $faces, $best]) {
+            $unit = $state['units'][$unitId];
+            if (!AbilityRegistry::any($unit, static fn(Ability $ability): bool => $ability->offersReroll())
+                || in_array($unitId, $state['turn']['glareUsed'], true)) {
+                continue;
+            }
+            $options = [];
+            foreach ($faces as $index => $face) {
+                if ($face !== $best) {
+                    $options[] = "reroll:{$index}";
+                }
+            }
+            if ($options === []) {
+                continue;
+            }
+            return [
+                'seatId' => $unit['seatId'],
+                'kind' => 'moonlightGlare',
+                'unitId' => $unitId,
+                'side' => $side,
+                'faces' => $faces,
+                'options' => [...$options, 'keep'],
+                'openedAt' => $this->now,
+            ];
+        }
+        return null;
+    }
+
+    public function resolve(array $state, string $option, array &$events): array
+    {
+        $pending = $state['pending'];
+        $choice = $pending['choice'];
+        $steps = $pending['steps'];
+        $state['pending'] = null;
+        $events[] = MatchEngine::event('choiceResolved', [], ['choiceId' => $choice['choiceId'], 'option' => $option]);
+        if (str_starts_with($option, 'reroll:')) {
+            $index = (int)substr($option, 7);
+            $key = $choice['side'] === 'attack' ? 'attackFaces' : 'defenseFaces';
+            $from = $steps[0][$key][$index];
+            $to = (new CustomDice())->roll(1, $this->random)['faces'][0];
+            $steps[0][$key][$index] = $to;
+            $steps[0]['rerolled'] = ['side' => $choice['side'], 'index' => $index, 'from' => $from, 'to' => $to];
+            $state['turn']['glareUsed'][] = $choice['unitId'];
+        }
+        return $this->run($state, $steps, $events);
     }
 }
