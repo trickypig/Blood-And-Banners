@@ -48,21 +48,61 @@
   ],
   "units": [
     {
-      "unitId": "unit-thorgrim", "seatId": "seat-red", "isHero": true, "name": "Thorgrim Shattershield",
-      "image": "/images/heroes/Thorgrim Shattershield_card.png", "move": 3, "range": 1, "power": 5,
-      "defense": 5, "hp": 7, "wounds": 2, "hex": "0,0", "activatedThisTurn": true
+      "unitId": "unit-thorgrim",
+      "seatId": "seat-red",
+      "isHero": true,
+      "name": "Thorgrim Shattershield",
+      "image": "/images/heroes/Thorgrim Shattershield_card.png",
+      "move": 3,
+      "range": 1,
+      "power": 5,
+      "defense": 5,
+      "hp": 7,
+      "wounds": 2,
+      "hex": "0,0",
+      "activatedThisTurn": true,
+      "abilities": [
+        {
+          "name": "Shield Wall",
+          "type": "Ability",
+          "description": "Grant one adjacent unit +1 Defense",
+          "playable": true,
+          "usedThisTurn": false
+        }
+      ],
+      "effects": [
+        {
+          "name": "Rune of Warding",
+          "stat": "defense",
+          "amount": 2,
+          "expires": "nextTurn"
+        }
+      ],
+      "effectiveMove": 3,
+      "effectiveRange": 1,
+      "effectivePower": 5,
+      "effectiveDefense": 7
     }
   ],
   "legalActions": [
     {
       "kind": "moveUnit",
       "unitId": "unit-thorgrim",
-      "targetHexes": ["1,0"]
+      "targetHexes": [
+        "1,0"
+      ],
+      "ability": null
     }
   ],
   "scores": {
     "seat-red": 3,
     "seat-blue": 1
   },
-  "result": null
+  "result": null,
+  "pendingChoiceSummary": {
+    "choiceId": "choice-1",
+    "seatId": "seat-blue",
+    "unitId": "unit-duelist",
+    "keepableAt": "2026-10-11T12:00:45Z"
+  }
 }

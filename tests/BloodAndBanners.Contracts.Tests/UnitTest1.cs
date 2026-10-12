@@ -26,6 +26,14 @@ public sealed class ContractFixtureTests
         Assert.Null(projection.Draft);
         Assert.True(projection.Units.Single().IsHero);
         Assert.Equal(2, projection.Units.Single().Wounds);
+        var unit = projection.Units.Single();
+        Assert.Equal("Shield Wall", unit.Abilities.Single().Name);
+        Assert.True(unit.Abilities.Single().Playable);
+        Assert.Equal(2, unit.Effects.Single().Amount);
+        Assert.Equal(7, unit.EffectiveDefense);
+        Assert.Null(projection.LegalActions.Single().Ability);
+        Assert.Equal("choice-1", projection.PendingChoiceSummary?.ChoiceId);
+        Assert.Equal(new DateTimeOffset(2026, 10, 11, 12, 0, 45, TimeSpan.Zero), projection.PendingChoiceSummary?.KeepableAt);
 
         using var serialized = System.Text.Json.JsonDocument.Parse(
             System.Text.Json.JsonSerializer.Serialize(projection, global::BloodAndBanners.Contracts.ContractJson.Options));

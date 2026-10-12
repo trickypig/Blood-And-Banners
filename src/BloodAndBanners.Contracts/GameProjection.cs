@@ -49,12 +49,23 @@ public sealed record PendingChoiceProjection(
     string ChoiceId,
     string SeatId,
     string Kind,
-    IReadOnlyList<string> Options);
+    IReadOnlyList<string> Options)
+{
+    public string? UnitId { get; init; }
+    public string? Side { get; init; }
+    public IReadOnlyList<string> Faces { get; init; } = [];
+    public DateTimeOffset? ExpiresAt { get; init; }
+}
+
+public sealed record PendingChoiceSummary(string ChoiceId, string SeatId, string UnitId, DateTimeOffset KeepableAt);
 
 public sealed record LegalAction(
     string Kind,
     string? UnitId,
-    IReadOnlyList<string> TargetHexes);
+    IReadOnlyList<string> TargetHexes)
+{
+    public string? Ability { get; init; }
+}
 
 public sealed record GameResult(
     string Reason,
@@ -84,4 +95,5 @@ public sealed record GameProjection(
     public IReadOnlyList<MembershipProjection> Memberships { get; init; } = [];
     public DraftProjection? Draft { get; init; }
     public IReadOnlyList<UnitProjection> Units { get; init; } = [];
+    public PendingChoiceSummary? PendingChoiceSummary { get; init; }
 }

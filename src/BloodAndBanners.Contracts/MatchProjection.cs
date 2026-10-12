@@ -1,5 +1,13 @@
 namespace BloodAndBanners.Contracts;
 
+public sealed record AbilityProjection(string Name, string Type, string Description)
+{
+    public bool Playable { get; init; }
+    public bool UsedThisTurn { get; init; }
+}
+
+public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires);
+
 public sealed record UnitCard(
     string Name,
     string Image,
@@ -7,7 +15,10 @@ public sealed record UnitCard(
     int Range,
     int Power,
     int Defense,
-    int Hp);
+    int Hp)
+{
+    public IReadOnlyList<AbilityProjection> Abilities { get; init; } = [];
+}
 
 public sealed record HeroCard(
     string Name,
@@ -17,7 +28,10 @@ public sealed record HeroCard(
     int Power,
     int Defense,
     int Hp,
-    string? TakenBySeatId);
+    string? TakenBySeatId)
+{
+    public IReadOnlyList<AbilityProjection> Abilities { get; init; } = [];
+}
 
 public sealed record ArmyCard(
     string Name,
@@ -48,4 +62,12 @@ public sealed record UnitProjection(
     int Hp,
     int Wounds,
     string? Hex,
-    bool ActivatedThisTurn);
+    bool ActivatedThisTurn)
+{
+    public IReadOnlyList<AbilityProjection> Abilities { get; init; } = [];
+    public IReadOnlyList<EffectProjection> Effects { get; init; } = [];
+    public int? EffectiveMove { get; init; }
+    public int? EffectiveRange { get; init; }
+    public int? EffectivePower { get; init; }
+    public int? EffectiveDefense { get; init; }
+}
