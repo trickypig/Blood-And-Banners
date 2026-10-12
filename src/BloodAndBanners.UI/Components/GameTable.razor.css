@@ -140,3 +140,6 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .choice-waiting { border-left: .3rem solid #9cc3df; padding-left: .9rem; }
 .unit-condition { margin: .25rem 0; padding: .25rem .5rem; color: #f6d6a8; background: #3b2a1a; border-left: .2rem solid #e0a35a; font-size: .85rem; }
 .condition-marker { font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.hex.destination .hex-outline { fill: rgba(120, 170, 255, .3); stroke: #7aa8ff; stroke-width: 3; }
+.hex.push-path .hex-outline { fill: rgba(156, 195, 223, .25); stroke: #9cc3df; stroke-dasharray: 4 3; stroke-width: 2.5; }
+.push-mark { fill: #e8f2fa; font: 700 20px Georgia, serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }

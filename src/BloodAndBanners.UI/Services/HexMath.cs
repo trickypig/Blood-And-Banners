@@ -20,6 +20,20 @@ public static class HexMath
         return Directions.Select(d => $"{q + d.Q},{r + d.R}").ToList();
     }
 
+    public static (int Q, int R)? Direction(string from, string to)
+    {
+        var (q1, r1) = Parse(from);
+        var (q2, r2) = Parse(to);
+        var direction = (q2 - q1, r2 - r1);
+        return Directions.Contains(direction) ? direction : null;
+    }
+
+    public static string Step(string key, (int Q, int R) direction)
+    {
+        var (q, r) = Parse(key);
+        return $"{q + direction.Q},{r + direction.R}";
+    }
+
     private static (int Q, int R) Parse(string key)
     {
         var parts = key.Split(',');

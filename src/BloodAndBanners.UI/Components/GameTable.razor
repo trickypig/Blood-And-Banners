@@ -23,7 +23,11 @@
         @if (_targeting is { } aiming)
         {
             <div class="targeting-banner" data-testid="targeting-banner" role="status">
-                <span>@aiming.Ability: choose a target</span>
+                <span>@BannerText(aiming)</span>
+                @if (Teleporting && _teleportUnitId is not null)
+                {
+                    <button type="button" data-action="teleportBack" @onclick="() => _teleportUnitId = null">Back</button>
+                }
                 @if (Chaining)
                 {
                     <span>@_chain.Count / @ChainMaxTargets picked</span>
@@ -99,6 +103,10 @@
                     @if (hex.OccupantId is { } occupant && _chain.IndexOf(occupant) is >= 0 and var link)
                     {
                         <!text class="chain-mark" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@(link + 1)</!text>
+                    }
+                    @if (PushPreview.Contains(key))
+                    {
+                        <!text class="push-mark" x="@Num(tile.X)" y="@Num(tile.Y)">»</!text>
                     }
                     @if (hex.OccupantId is not null)
                     {
@@ -374,6 +382,7 @@
     private void StartTargeting(LegalAction action)
     {
         _chain.Clear();
+        _teleportUnitId = null;
         _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
     }
     private string? _hoveredUnitId;
@@ -456,6 +465,19 @@
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
             var aimed = HexKey(hex);
+            if (Teleporting)
+            {
+                if (_teleportUnitId is { } traveller && TeleportDestinations(traveller).Contains(aimed))
+                {
+                    CancelTargeting();
+                    await Send("specialAttack", new { unitId = caster, ability = "Teleport", targetUnitIds = new[] { traveller }, toHex = aimed });
+                }
+                else if (aiming.TargetHexes.Contains(aimed) && hex.OccupantId is { } candidate)
+                {
+                    _teleportUnitId = candidate;
+                }
+                return;
+            }
             if (Chaining)
             {
                 if (ChainCandidates().Contains(aimed) && hex.OccupantId is { } link)
@@ -498,6 +520,57 @@
     private const int ChainReach = 5;
     private const int ChainMaxTargets = 3;
     private readonly List<string> _chain = [];
+
+    private const int TeleportReach = 3;
+    private string? _teleportUnitId;
+
+    private bool Teleporting => _targeting?.Ability == "Teleport";
+
+    /// <summary>Same rule as the server's Forced::teleportDestinations.</summary>
+    private IReadOnlyList<string> TeleportDestinations(string unitId)
+    {
+        var origin = UnitById(unitId)?.Hex;
+        var start = Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == origin);
+        if (origin is null || start is null)
+        {
+            return [];
+        }
+        return Projection.Board.Hexes
+            .Where(hex => !hex.SightBlocker && hex.OccupantId is null && HexKey(hex) != origin)
+            .Where(hex => HexMath.Distance(origin, HexKey(hex)) + Math.Abs(hex.Elevation - start.Elevation) / 2 <= TeleportReach)
+            .Select(HexKey)
+            .ToList();
+    }
+
+    private IReadOnlyList<string> PushPreview
+    {
+        get
+        {
+            if (_targeting?.Ability != "Gust of Wind" || _hoveredHex is not { } hovered || !_targeting.TargetHexes.Contains(hovered)
+                || SelectedHex is not { } casterHex || HexMath.Direction(casterHex, hovered) is not { } direction)
+            {
+                return [];
+            }
+            var path = new List<string>();
+            var current = Projection.Board.Hexes.First(hex => HexKey(hex) == hovered);
+            for (var step = 0; step < 2; step++)
+            {
+                var nextKey = HexMath.Step(HexKey(current), direction);
+                var next = Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == nextKey);
+                if (next is null || next.SightBlocker || next.OccupantId is not null || next.Elevation - current.Elevation >= 2)
+                {
+                    break;
+                }
+                path.Add(nextKey);
+                current = next;
+            }
+            return path;
+        }
+    }
+
+    private string BannerText(Targeting aiming) => Teleporting
+        ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
+        : $"{aiming.Ability}: choose a target";
 
     private bool Chaining => _targeting?.Ability == "Chain Lightning";
 
@@ -552,6 +625,7 @@
     private void CancelTargeting()
     {
         _targeting = null;
+        _teleportUnitId = null;
         _chain.Clear();
     }
 
@@ -593,7 +667,15 @@
         }
         if (_targeting is { } aiming)
         {
+            if (Teleporting && _teleportUnitId is { } traveller)
+            {
+                return TeleportDestinations(traveller).Contains(key) ? "destination" : null;
+            }
             var state = (Chaining ? ChainCandidates() : aiming.TargetHexes).Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
+            if (PushPreview.Contains(key))
+            {
+                return $"{state} push-path".Trim();
+            }
             return SplashHexes.Contains(key) ? $"{state} splash".Trim() : state;
         }
         if (Targets("attackUnit").Contains(key))

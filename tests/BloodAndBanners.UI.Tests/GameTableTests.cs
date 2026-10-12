@@ -441,6 +441,94 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Single(cut.FindAll("[data-hex='1,4'] .condition-marker"));
         Assert.Contains("Stunned", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
     }
+
+    private static GameProjection TeleportBoard()
+    {
+        var hexes = new List<HexProjection>
+        {
+            new(0, 0, "plains", "grass", 0, false, "s1-hero"),
+            new(1, 0, "plains", "grass", 0, false, "s1-u1"),
+            new(2, 0, "plains", "grass", 0, false, null),
+            new(3, 0, "stone", "crags", 2, false, null),
+            new(4, 0, "plains", "grass", 0, false, null),
+            new(5, 0, "plains", "grass", 0, false, null),
+            new(6, 0, "plains", "grass", 0, false, "s2-u1"),
+            new(0, 1, "stone", "crags", 0, true, null),
+        };
+        UnitProjection Unit(string id, string seat, string hex, bool hero = false) => new(id, seat, hero, id, "", 3, 1, 3, 2, 5, 0, hex, false);
+        return BattleFixtures.Projection() with
+        {
+            Board = new BoardProjection(7, 2, hexes),
+            Units = [
+                Unit("s1-hero", "seat-red", "0,0", hero: true) with { Abilities = [new AbilityProjection("Teleport", "Attack", "Move a friendly unit") { Playable = true }] },
+                Unit("s1-u1", "seat-red", "1,0"),
+                Unit("s2-u1", "seat-blue", "6,0"),
+            ],
+            LegalActions = [new LegalAction("specialAttack", "s1-hero", ["0,0", "1,0"]) { Ability = "Teleport" }, new LegalAction("endTurn", null, [])],
+        };
+    }
+
+    [Fact]
+    public void Teleport_picks_a_unit_then_a_destination_and_sends_both()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TeleportBoard())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("button[data-use-ability='Teleport']").Click();
+        Assert.Contains("Teleport: choose a unit", cut.Find("[data-testid=targeting-banner]").TextContent);
+        Assert.Contains("ally-target", cut.Find("[data-hex='1,0']").ClassList);
+
+        cut.Find("[data-hex='1,0']").Click();
+        Assert.Contains("Teleport: choose where", cut.Find("[data-testid=targeting-banner]").TextContent);
+        Assert.Contains("destination", cut.Find("[data-hex='3,0']").ClassList);
+        Assert.Contains("destination", cut.Find("[data-hex='4,0']").ClassList);
+        Assert.DoesNotContain("destination", cut.Find("[data-hex='5,0']").ClassList);
+        Assert.DoesNotContain("destination", cut.Find("[data-hex='0,1']").ClassList);
+        Assert.DoesNotContain("destination", cut.Find("[data-hex='6,0']").ClassList);
+
+        cut.Find("button[data-action=teleportBack]").Click();
+        Assert.Contains("Teleport: choose a unit", cut.Find("[data-testid=targeting-banner]").TextContent);
+        cut.Find("[data-hex='1,0']").Click();
+        cut.Find("[data-hex='3,0']").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("specialAttack", sent.Single().Kind);
+        Assert.Equal("Teleport", payload.GetProperty("ability").GetString());
+        Assert.Equal("s1-u1", payload.GetProperty("targetUnitIds")[0].GetString());
+        Assert.Equal("3,0", payload.GetProperty("toHex").GetString());
+    }
+
+    [Fact]
+    public void Hovering_a_gust_target_previews_its_push_path()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { Abilities = [new AbilityProjection("Gust of Wind", "Ability", "Push back") { Playable = true }] }, projection.Units[1], projection.Units[2]],
+            LegalActions = [.. projection.LegalActions, new LegalAction("useAbility", "s1-u3", ["2,4"]) { Ability = "Gust of Wind" }],
+            Board = projection.Board with
+            {
+                Hexes = [
+                    new HexProjection(1, 4, "plains", "roads", 0, false, "s1-u3"),
+                    new HexProjection(2, 4, "plains", "roads", 0, false, "s2-u1"),
+                    new HexProjection(3, 4, "plains", "roads", 0, false, null),
+                    new HexProjection(4, 4, "stone", "stone-path", 1, false, null),
+                ],
+            },
+        };
+        projection = projection with { Units = [projection.Units[0], projection.Units[1] with { Hex = "2,4" }, projection.Units[2]] };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        cut.Find("[data-hex='1,4']").Click();
+        cut.Find("button[data-use-ability='Gust of Wind']").Click();
+        cut.Find("[data-hex='2,4']").MouseEnter();
+
+        Assert.Contains("push-path", cut.Find("[data-hex='3,4']").ClassList);
+        Assert.Contains("push-path", cut.Find("[data-hex='4,4']").ClassList);
+    }
 }
 
 internal static class BattleFixtures

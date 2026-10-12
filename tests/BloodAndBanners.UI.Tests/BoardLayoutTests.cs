@@ -75,4 +75,12 @@ public sealed class BoardLayoutTests
         Assert.Equal(2, HexMath.Distance("0,0", "1,1"));
         Assert.Equal(["1,0", "1,-1", "0,-1", "-1,0", "-1,1", "0,1"], HexMath.Neighbours("0,0"));
     }
+
+    [Fact]
+    public void Hex_math_finds_directions_and_steps()
+    {
+        Assert.Equal((1, 0), HexMath.Direction("0,0", "1,0"));
+        Assert.Null(HexMath.Direction("0,0", "2,0"));
+        Assert.Equal("2,-1", HexMath.Step("1,0", (1, -1)));
+    }
 }
