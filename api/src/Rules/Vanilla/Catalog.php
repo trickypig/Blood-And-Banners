@@ -60,6 +60,11 @@ final class Catalog
             'power' => (int)$card['power'],
             'defense' => (int)$card['defense'],
             'hp' => (int)$card['hp'],
+            'abilities' => array_map(static fn(array $ability): array => [
+                'name' => (string)$ability['name'],
+                'type' => (string)$ability['type'],
+                'description' => (string)($ability['description'] ?? ''),
+            ], $card['abilities'] ?? []),
         ];
     }
 }

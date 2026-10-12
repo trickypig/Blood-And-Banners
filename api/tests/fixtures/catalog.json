@@ -1,6 +1,6 @@
 {
   "heroes": [
-    {"name": "Test Captain", "image": "/images/heroes/captain.png", "move": 3, "range": 1, "power": 4, "defense": 3, "hp": 6, "abilities": []},
+    {"name": "Test Captain", "image": "/images/heroes/captain.png", "move": 3, "range": 1, "power": 4, "defense": 3, "hp": 6, "abilities": [{"name": "Shield Wall", "type": "Ability", "description": "Grant one adjacent unit +1 Defense until the start of your next turn"}]},
     {"name": "Test Marshal", "image": "/images/heroes/marshal.png", "move": 4, "range": 2, "power": 3, "defense": 3, "hp": 5, "abilities": []},
     {"name": "Test Warden", "image": "/images/heroes/warden.png", "move": 2, "range": 1, "power": 5, "defense": 4, "hp": 7, "abilities": []}
   ],

@@ -152,7 +152,8 @@ function vanilla_draft_tests(): array
             expect_same('Red Mage', $state['units']['s1-u6']['name'], 'army units keep catalog order');
             expect_same(0, $state['units']['s1-u1']['wounds'], 'units start unwounded');
             expect_same(
-                ['round' => 1, 'activeSeatId' => 'seat-b', 'activeUnitId' => null, 'activated' => [], 'moved' => false, 'allowance' => 4],
+                ['round' => 1, 'number' => 1, 'activeSeatId' => 'seat-b', 'activeUnitId' => null, 'activated' => [], 'moved' => false, 'allowance' => 4,
+                    'attacks' => 0, 'moveSpent' => 0, 'movedAfterAttack' => false, 'abilitiesUsed' => [], 'glareUsed' => []],
                 $state['turn'],
                 'the chosen first player opens round one'
             );

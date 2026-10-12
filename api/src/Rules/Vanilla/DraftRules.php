@@ -144,7 +144,7 @@ final class DraftRules
             }
             $positions = Placement::place($state['board'], $homes[$start], $homes[3 - $start], array_keys($roster), $occupied);
             foreach ($roster as $unitId => $stats) {
-                $units[$unitId] = ['unitId' => $unitId, 'seatId' => $seatId] + $stats + ['wounds' => 0, 'hex' => $positions[$unitId]];
+                $units[$unitId] = ['unitId' => $unitId, 'seatId' => $seatId] + $stats + ['wounds' => 0, 'hex' => $positions[$unitId], 'flags' => []];
                 $occupied[$positions[$unitId]] = true;
                 $placed[$unitId] = $positions[$unitId];
             }

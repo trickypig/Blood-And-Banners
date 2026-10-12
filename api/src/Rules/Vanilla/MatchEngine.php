@@ -43,6 +43,8 @@ final class MatchEngine
                 'armyBySeat' => $undecided,
             ],
             'units' => [],
+            'effects' => [],
+            'pending' => null,
             'turn' => Turn::idle(),
             'result' => null,
         ];
@@ -57,6 +59,7 @@ final class MatchEngine
 
     public function apply(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array
     {
+        $state = self::normalize($state);
         return match ($state['phase']) {
             'draft' => (new DraftRules($this->catalog))->apply($state, $seatId, $kind, $payload),
             'active' => (new BattleRules())->apply($state, $seatId, $kind, $payload, $random),
@@ -69,11 +72,24 @@ final class MatchEngine
         if ($seatId === null) {
             return [];
         }
+        $state = self::normalize($state);
         return match ($state['phase']) {
             'draft' => (new DraftRules($this->catalog))->legalActions($state, $seatId),
             'active' => (new BattleRules())->legalActions($state, $seatId),
             default => [],
         };
+    }
+
+    /** Fill fields that states saved before abilities existed are missing, so old matches play on stats alone. */
+    public static function normalize(array $state): array
+    {
+        $state['effects'] ??= [];
+        $state['pending'] ??= null;
+        $state['turn'] = Turn::normalize($state['turn'] ?? Turn::idle());
+        foreach ($state['units'] ?? [] as $unitId => $unit) {
+            $state['units'][$unitId] = $unit + ['abilities' => [], 'flags' => []];
+        }
+        return $state;
     }
 
     public static function event(string $kind, array $focusHexes, array $payload): array
