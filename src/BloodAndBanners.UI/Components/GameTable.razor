@@ -137,6 +137,10 @@
                             {
                                 <!text class="effect-marker debuff" x="@Num(tile.X - radius * .85)" y="@Num(tokenY + radius * .55)">▼</!text>
                             }
+                            @if (unit is not null && unit.Conditions.Count > 0)
+                            {
+                                <!text class="condition-marker" x="@Num(tile.X)" y="@Num(tokenY - radius * 1.05)">💫</!text>
+                            }
                             @if (unit is not null)
                             {
                                 var barWidth = radius * 1.7;
@@ -219,6 +223,11 @@
                                 </span>
                             }
                         </p>
+                        @foreach (var condition in selected.Conditions)
+                        {
+                            var summary = ConditionText.Summary(condition.Name);
+                            <p class="unit-condition" data-condition="@condition.Name">@condition.Name — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires)</p>
+                        }
                         <p>Wounds @selected.Wounds / @selected.Hp</p>
                         <AbilityList Abilities="selected.Abilities"
                                      Actions="AbilityActions(selected.UnitId)"
@@ -351,6 +360,9 @@
         var sources = unit.Effects
             .Where(effect => effect.Stat == stat)
             .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {(effect.Expires == "endOfTurn" ? "until end of turn" : "until your next turn")}")
+            .Concat(unit.Conditions
+                .Where(condition => ConditionText.StatDelta(condition.Name, stat) != 0)
+                .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires)}"))
             .ToList();
         return sources.Count == 0 ? null : string.Join("; ", sources);
     }
@@ -677,6 +689,7 @@
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
         (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
         (unit is null || unit.Effects.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Effects.Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {effect.Stat}"))) +
+        (unit is null || unit.Conditions.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Conditions.Select(condition => condition.Name))) +
         ActivationState(unit) switch
         {
             "activating" => ", activating",

@@ -418,6 +418,29 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Equal("keep", payload.GetProperty("option").GetString());
         Assert.Equal("choice-1", payload.GetProperty("choiceId").GetString());
     }
+
+    [Fact]
+    public void A_stunned_unit_shows_its_condition_on_the_card_token_and_label()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [
+                projection.Units[0] with { EffectivePower = 1, Conditions = [new ConditionProjection("Stunned", "endOfNextTurn")] },
+                projection.Units[1],
+                projection.Units[2],
+            ],
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        cut.Find("[data-hex='1,4']").Click();
+
+        Assert.Equal(
+            "Stunned — can't move, no parting strikes, −2 Power, until the end of its next turn",
+            cut.Find("[data-testid=selected-unit] [data-condition='Stunned']").TextContent.Trim());
+        Assert.Contains("Stunned −2", cut.Find("[data-testid=selected-unit] [data-stat='power']").GetAttribute("title"));
+        Assert.Single(cut.FindAll("[data-hex='1,4'] .condition-marker"));
+        Assert.Contains("Stunned", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
+    }
 }
 
 internal static class BattleFixtures
