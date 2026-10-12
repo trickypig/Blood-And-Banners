@@ -5,6 +5,8 @@ namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Rules\CustomDice;
 use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 
 /**
  * Resolves attacks as a queue of steps. A step may add steps in front of the queue, and may open a
@@ -72,6 +74,15 @@ final class StepRunner
         $targetId = $step['targetId'];
         if ($state['units'][$attackerId]['hex'] === null || $state['units'][$targetId]['hex'] === null) {
             return [$state, [], null];
+        }
+        if (AbilityRegistry::any($state['units'][$targetId], static fn(Ability $ability): bool => $ability->evades())) {
+            $roll = $this->random->roll(20);
+            $events[] = MatchEngine::event('evaded', [$state['units'][$targetId]['hex']], [
+                'unitId' => $targetId, 'attackerId' => $attackerId, 'roll' => $roll, 'evaded' => $roll > 10,
+            ]);
+            if ($roll > 10) {
+                return [$state, [], null];
+            }
         }
         $context = ['attackerId' => $attackerId, 'defenderId' => $targetId];
         $power = Stats::effective($state, $attackerId, 'power', $context, $step['power']);

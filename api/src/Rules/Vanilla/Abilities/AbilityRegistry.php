@@ -56,7 +56,14 @@ final class AbilityRegistry
     private static function handlers(): array
     {
         if (self::$handlers === null) {
-            $list = [];
+            $list = [
+                new TremblingFear('Trembling Fear'),
+                new RecklessFury('Reckless Fury'),
+                new UnbreakableLine('Unbreakable Line'),
+                new Evasion('Evasion'),
+                new OneLastHorn('One Last Horn'),
+                new FragileFocus('Fragile Focus'),
+            ];
             self::$handlers = [];
             foreach ($list as $handler) {
                 self::$handlers[$handler->name] = $handler;

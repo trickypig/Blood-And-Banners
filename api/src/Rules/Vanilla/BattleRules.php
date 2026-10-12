@@ -5,6 +5,8 @@ namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Game\GameServiceException;
 use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 
 final class BattleRules
 {
@@ -111,7 +113,17 @@ final class BattleRules
         }
         $from = $state['units'][$unitId]['hex'];
         $hits = [];
+        $evades = AbilityRegistry::any($state['units'][$unitId], static fn(Ability $ability): bool => $ability->evades());
         foreach (Movement::disengagedFrom($state, $unitId, $to) as $enemyId) {
+            if ($evades) {
+                $roll = $random->roll(20);
+                if ($roll > 10) {
+                    $hits[] = ['byUnitId' => $enemyId, 'faces' => [], 'wounds' => 0, 'evasionRoll' => $roll, 'evaded' => true];
+                    continue;
+                }
+                $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random) + ['evasionRoll' => $roll, 'evaded' => false];
+                continue;
+            }
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
         $state['units'][$unitId]['hex'] = $to;

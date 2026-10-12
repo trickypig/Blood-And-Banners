@@ -116,5 +116,87 @@ function vanilla_ability_tests(): array
             expect_same(false, AbilityRegistry::isPlayable('Teleport'), 'Teleport is deferred');
             expect_same(null, AbilityRegistry::find(ability_unit('x', 'seat-a', '0,0', ['Teleport']), 'Teleport'), 'deferred abilities have no handler');
         },
+
+        'Trembling Fear weakens non-hero attackers only' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 3]),
+                vanilla_unit('a-hero', 'seat-a', '2,0', ['power' => 3, 'isHero' => true]),
+                ability_unit('b-hero', 'seat-b', '1,0', ['Trembling Fear'], ['isHero' => true]),
+            ]);
+            $vs = ['attackerId' => 'a1', 'defenderId' => 'b-hero'];
+            expect_same(2, Stats::effective($state, 'a1', 'power', $vs), 'a unit attacking Urgrok loses one Power');
+            expect_same(3, Stats::effective($state, 'a-hero', 'power', ['attackerId' => 'a-hero', 'defenderId' => 'b-hero']), 'heroes are not afraid');
+            expect_same(3, Stats::effective($state, 'a1', 'power'), 'outside an attack nothing changes');
+        },
+
+        'Reckless Fury adds a Power per wound' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(2)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Reckless Fury'], ['power' => 2, 'wounds' => 2, 'hp' => 5]),
+                vanilla_unit('b1', 'seat-b', '1,0'),
+            ]);
+            expect_same(4, Stats::effective($state, 'a1', 'power'), 'two wounds, two more Power');
+        },
+
+        'Unbreakable Line needs the other guard or the center adjacent' => static function (): void {
+            $guard = ability_unit('a1', 'seat-a', '0,0', ['Unbreakable Line'], ['name' => 'Left Guard', 'defense' => 3]);
+            $alone = vanilla_battle(vanilla_board(vanilla_line(4)), [$guard, vanilla_unit('a2', 'seat-a', '2,0', ['name' => 'Center']), vanilla_unit('b1', 'seat-b', '3,0')]);
+            expect_same(3, Stats::effective($alone, 'a1', 'defense'), 'no partner adjacent');
+            $line = vanilla_battle(vanilla_board(vanilla_line(4)), [$guard, vanilla_unit('a2', 'seat-a', '1,0', ['name' => 'Center']), vanilla_unit('b1', 'seat-b', '3,0')]);
+            expect_same(4, Stats::effective($line, 'a1', 'defense'), 'the Center holds the line');
+            $enemyCenter = vanilla_battle(vanilla_board(vanilla_line(4)), [$guard, vanilla_unit('b2', 'seat-b', '1,0', ['name' => 'Center']), vanilla_unit('b1', 'seat-b', '3,0')]);
+            expect_same(3, Stats::effective($enemyCenter, 'a1', 'defense'), 'an enemy Center is no partner');
+        },
+
+        'Evasion makes attacks miss on an 11 or higher' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 3]),
+                vanilla_unit('a2', 'seat-a', '2,0', ['power' => 3]),
+                ability_unit('b1', 'seat-b', '1,0', ['Evasion'], ['defense' => 1, 'hp' => 5]),
+            ]);
+            $missed = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [11]);
+            expect_same(['evaded'], array_column($missed['events'], 'kind'), 'no dice are rolled after a successful evasion');
+            expect_same(['unitId' => 'b1', 'attackerId' => 'a1', 'roll' => 11, 'evaded' => true], $missed['events'][0]['payload'], 'the roll is reported');
+            $hit = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [10, 1, 1, 1, 6]);
+            expect_same(['evaded', 'attackResolved'], array_column($hit['events'], 'kind'), 'a failed evasion still rolls the attack');
+            expect_same(3, $hit['state']['units']['b1']['wounds'], 'the attack lands');
+        },
+
+        'Evasion applies to disengagement strikes' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '1,0', ['Evasion']),
+                vanilla_unit('b1', 'seat-b', '0,0'),
+            ]);
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '3,0'], [15]);
+            expect_same(
+                [['byUnitId' => 'b1', 'faces' => [], 'wounds' => 0, 'evasionRoll' => 15, 'evaded' => true]],
+                $moved['events'][0]['payload']['disengagement'],
+                'the strike is evaded before any die'
+            );
+        },
+
+        'One Last Horn survives the first defeat at 1 HP' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 3]),
+                ability_unit('b-hero', 'seat-b', '1,0', ['One Last Horn'], ['isHero' => true, 'defense' => 0, 'hp' => 2]),
+                vanilla_unit('b2', 'seat-b', '2,0'),
+            ]);
+            $first = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b-hero'], [1, 1, 1]);
+            expect_same(['attackResolved', 'survivedDefeat'], array_slice(array_column($first['events'], 'kind'), 0, 2), 'the horn sounds');
+            expect_same(1, $first['state']['units']['b-hero']['wounds'], 'he stands at 1 HP');
+            expect_same(true, $first['state']['units']['b-hero']['flags']['lastHornSpent'], 'the horn is spent');
+            $later = $first['state'];
+            $later['turn'] = Turn::fresh($later, 'seat-a', 3);
+            $second = vanilla_command($later, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b-hero'], [1, 1, 1]);
+            expect_same(null, $second['state']['units']['b-hero']['hex'], 'the second defeat is final');
+        },
+
+        'Fragile Focus locks spells on Malachar\'s next turn' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 1]),
+                ability_unit('b-hero', 'seat-b', '1,0', ['Fragile Focus'], ['isHero' => true, 'defense' => 0, 'hp' => 6]),
+            ]);
+            $hit = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b-hero'], [1]);
+            expect_same(2, $hit['state']['units']['b-hero']['flags']['spellsLockedOnTurn'], 'seat-b\'s next turn is number two');
+        },
     ];
 }
