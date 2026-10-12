@@ -78,6 +78,7 @@
           "expires": "nextTurn"
         }
       ],
+      "conditions": [{ "name": "Stunned", "expires": "endOfNextTurn" }],
       "effectiveMove": 3,
       "effectiveRange": 1,
       "effectivePower": 5,

@@ -31,6 +31,7 @@ public sealed class ContractFixtureTests
         Assert.True(unit.Abilities.Single().Playable);
         Assert.Equal(2, unit.Effects.Single().Amount);
         Assert.Equal(7, unit.EffectiveDefense);
+        Assert.Equal(new ConditionProjection("Stunned", "endOfNextTurn"), unit.Conditions.Single());
         Assert.Null(projection.LegalActions.Single().Ability);
         Assert.Equal("choice-1", projection.PendingChoiceSummary?.ChoiceId);
         Assert.Equal(new DateTimeOffset(2026, 10, 11, 12, 0, 45, TimeSpan.Zero), projection.PendingChoiceSummary?.KeepableAt);

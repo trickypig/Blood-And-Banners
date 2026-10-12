@@ -8,6 +8,8 @@ public sealed record AbilityProjection(string Name, string Type, string Descript
 
 public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires);
 
+public sealed record ConditionProjection(string Name, string Expires);
+
 public sealed record UnitCard(
     string Name,
     string Image,
@@ -66,6 +68,7 @@ public sealed record UnitProjection(
 {
     public IReadOnlyList<AbilityProjection> Abilities { get; init; } = [];
     public IReadOnlyList<EffectProjection> Effects { get; init; } = [];
+    public IReadOnlyList<ConditionProjection> Conditions { get; init; } = [];
     public int? EffectiveMove { get; init; }
     public int? EffectiveRange { get; init; }
     public int? EffectivePower { get; init; }
