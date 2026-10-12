@@ -5,6 +5,7 @@ use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Stats;
+use BloodAndBanners\Rules\Vanilla\StepRunner;
 use BloodAndBanners\Rules\Vanilla\Terrain;
 
 function terrain_unit(string $unitId, string $seatId, string $hex, array $abilities = [], array $stats = []): array
@@ -101,6 +102,40 @@ function vanilla_terrain_tests(): array
             expect_same(0, Stats::effective($state, 'walker', 'defense', ['damageType' => 'water']), 'water removes two Defense and floors at zero');
             expect_same(1, Stats::effective($state, 'walker', 'defense'), 'untyped damage leaves Defense alone');
             expect_same(1, Stats::effective($state, 'b1', 'defense', ['damageType' => 'fire']), 'other units get no elemental modifier');
+        },
+
+        'typed strikes roll the Lava Walker elemental defense modifier' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 0]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 1]),
+                terrain_unit('walker', 'seat-b', '1,0', ['Lava Walker'], ['defense' => 1, 'hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '2,0'),
+            ]);
+
+            $fireEvents = [];
+            (new StepRunner(new SequenceRandom([6, 6, 6, 6]), 0))->run(
+                $state,
+                [StepRunner::strike('a1', 'walker', 1, null, false, 'fire')],
+                $fireEvents
+            );
+            expect_same(3, count($fireEvents[0]['payload']['defenseFaces']), 'fire should roll base Defense plus two');
+            expect_same('fire', $fireEvents[0]['payload']['damageType'] ?? null, 'the event should retain fire typing');
+
+            $waterEvents = [];
+            (new StepRunner(new SequenceRandom([6]), 0))->run(
+                $state,
+                [StepRunner::strike('a1', 'walker', 1, null, false, 'water')],
+                $waterEvents
+            );
+            expect_same([], $waterEvents[0]['payload']['defenseFaces'], 'water should floor Defense at zero');
+            expect_same('water', $waterEvents[0]['payload']['damageType'] ?? null, 'the event should retain water typing');
+
+            $ordinaryEvents = [];
+            (new StepRunner(new SequenceRandom([6, 6]), 0))->run(
+                $state,
+                [StepRunner::strike('a1', 'b2', 1, null, false, 'fire')],
+                $ordinaryEvents
+            );
+            expect_same(1, count($ordinaryEvents[0]['payload']['defenseFaces']), 'fire should not modify an ordinary defender');
         },
     ];
 }

@@ -18,9 +18,12 @@ final class StepRunner
     {
     }
 
-    public static function strike(string $attackerId, string $targetId, ?int $power = null, ?string $ability = null, bool $double = false): array
+    public static function strike(string $attackerId, string $targetId, ?int $power = null, ?string $ability = null, bool $double = false, ?string $damageType = null): array
     {
-        return ['op' => 'strike', 'attackerId' => $attackerId, 'targetId' => $targetId, 'power' => $power, 'ability' => $ability, 'double' => $double];
+        return [
+            'op' => 'strike', 'attackerId' => $attackerId, 'targetId' => $targetId, 'power' => $power,
+            'ability' => $ability, 'double' => $double, 'damageType' => $damageType,
+        ];
     }
 
     public static function save(string $unitId, string $sourceUnitId, string $ability): array
@@ -99,7 +102,7 @@ final class StepRunner
                 return [$state, [], null];
             }
         }
-        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId];
+        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'damageType' => $step['damageType'] ?? null];
         $power = Stats::effective($state, $attackerId, 'power', $context, $step['power']);
         if ($step['double']) {
             $power *= 2;
@@ -111,6 +114,7 @@ final class StepRunner
             'attackerId' => $attackerId,
             'targetId' => $targetId,
             'ability' => $step['ability'],
+            'damageType' => $step['damageType'] ?? null,
             'attackFaces' => $dice->roll($power, $this->random)['faces'],
             'defenseFaces' => $dice->roll($defense, $this->random)['faces'],
             'rerolled' => null,
@@ -129,18 +133,22 @@ final class StepRunner
         $swords = count(array_filter($step['attackFaces'], static fn(string $face): bool => $face === 'sword'));
         $shields = count(array_filter($step['defenseFaces'], static fn(string $face): bool => $face === 'shield'));
         $wounds = max(0, $swords - $shields);
+        $payload = [
+            'unitId' => $step['attackerId'],
+            'targetUnitId' => $step['targetId'],
+            'ability' => $step['ability'],
+            'attackFaces' => $step['attackFaces'],
+            'defenseFaces' => $step['defenseFaces'],
+            'rerolled' => $step['rerolled'],
+            'wounds' => $wounds,
+        ];
+        if (($step['damageType'] ?? null) !== null) {
+            $payload['damageType'] = $step['damageType'];
+        }
         $events[] = MatchEngine::event(
             'attackResolved',
             [$state['units'][$step['attackerId']]['hex'] ?? $state['units'][$step['targetId']]['hex'], $state['units'][$step['targetId']]['hex']],
-            [
-                'unitId' => $step['attackerId'],
-                'targetUnitId' => $step['targetId'],
-                'ability' => $step['ability'],
-                'attackFaces' => $step['attackFaces'],
-                'defenseFaces' => $step['defenseFaces'],
-                'rerolled' => $step['rerolled'],
-                'wounds' => $wounds,
-            ]
+            $payload
         );
         $state = Wounds::apply($state, $step['targetId'], $wounds, $events);
         $attacker = $state['units'][$step['attackerId']];

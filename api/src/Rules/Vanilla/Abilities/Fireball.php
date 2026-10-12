@@ -17,7 +17,7 @@ final class Fireball extends SpecialAttack
     {
         $target = $targetIds[0];
         return [
-            StepRunner::strike($unitId, $target, 4, $this->name),
+            StepRunner::strike($unitId, $target, 4, $this->name, false, 'fire'),
             StepRunner::splash($state['units'][$target]['hex'], $target, $this->name),
         ];
     }

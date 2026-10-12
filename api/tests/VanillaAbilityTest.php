@@ -293,6 +293,27 @@ function vanilla_ability_tests(): array
             expect_same(null, $result['state']['units']['b2']['hex'], 'the splash can kill');
         },
 
+        'Fireball is fire against its primary target but splash remains one no defense die' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Fireball']),
+                ability_unit('b1', 'seat-b', '2,0', ['Lava Walker'], ['defense' => 1, 'hp' => 9]),
+                ability_unit('b2', 'seat-b', '3,0', ['Lava Walker'], ['defense' => 5, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '4,0'),
+            ]);
+
+            $result = vanilla_command(
+                $state,
+                'seat-a',
+                'specialAttack',
+                ['unitId' => 'a1', 'ability' => 'Fireball', 'targetUnitIds' => ['b1']],
+                [6, 6, 6, 6, 6, 6, 6, 6]
+            );
+            expect_same(3, count($result['events'][0]['payload']['defenseFaces']), 'the primary Lava Walker gets +2 Defense');
+            expect_same('fire', $result['events'][0]['payload']['damageType'] ?? null, 'the primary strike is typed fire');
+            expect_same(['blank'], $result['events'][1]['payload']['hits'][0]['faces'], 'splash still rolls exactly one die');
+            expect_true(!isset($result['events'][1]['payload']['hits'][0]['defenseFaces']), 'splash has no defense roll');
+        },
+
         'Fireball splash that wipes out the last enemy ends the match without further steps' => static function (): void {
             $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
                 ability_unit('a1', 'seat-a', '0,0', ['Fireball']),

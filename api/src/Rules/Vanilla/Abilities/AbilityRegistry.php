@@ -77,7 +77,7 @@ final class AbilityRegistry
                 new SilentSting('Silent Sting'),
                 new MoonlightGlare('Moonlight Glare'),
                 new FixedStrike('Bolt of Annihilation', 6, 5),
-                new FixedStrike('Flame Strike', 3, 5),
+                new FixedStrike('Flame Strike', 3, 5, 'fire'),
                 new ChaosStrike('Chaos Strike'),
                 new Fireball('Fireball'),
                 new MysticShield('Mystic Shield'),

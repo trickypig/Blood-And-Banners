@@ -9,7 +9,7 @@ use BloodAndBanners\Rules\Vanilla\Targeting;
 /** A plain strike with a printed Power and Range (Bolt of Annihilation, Flame Strike). */
 final class FixedStrike extends SpecialAttack
 {
-    public function __construct(string $name, private readonly int $power, private readonly int $range)
+    public function __construct(string $name, private readonly int $power, private readonly int $range, private readonly ?string $damageType = null)
     {
         parent::__construct($name);
     }
@@ -21,6 +21,6 @@ final class FixedStrike extends SpecialAttack
 
     public function steps(array $state, string $unitId, array $targetIds, array $options = []): array
     {
-        return [StepRunner::strike($unitId, $targetIds[0], $this->power, $this->name)];
+        return [StepRunner::strike($unitId, $targetIds[0], $this->power, $this->name, false, $this->damageType)];
     }
 }
