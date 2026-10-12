@@ -72,4 +72,20 @@ public sealed class CombatLogFormatterTests
 
     private static GameEvent Event(string kind, string payload) =>
         new(1, 1, kind, null, [], JsonSerializer.Deserialize<JsonElement>(payload), DateTimeOffset.UnixEpoch);
+
+    [Theory]
+    [InlineData("saveRolled", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","ability":"Knockback","roll":14,"saved":true}""", "Grunt resists Knockback (rolled 14).")]
+    [InlineData("saveRolled", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","ability":"Stunning Blow","roll":3,"saved":false}""", "Grunt fails to resist Stunning Blow (rolled 3).")]
+    [InlineData("unitPushed", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","from":"2,4","to":"4,4","path":["2,4","3,4","4,4"],"collisions":[],"falls":[],"blocked":null}""", "Grunt is driven back to 4,4.")]
+    [InlineData("unitPushed", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","from":"2,4","to":"2,4","path":["2,4"],"collisions":[{"unitId":"s2-u1","faces":["sword"],"wounds":1},{"unitId":"s2-u2","faces":["shield"],"wounds":0}],"falls":[],"blocked":"unit"}""", "Grunt is driven back but slams into Brute. Grunt: 1 wound. Brute: 0 wounds.")]
+    [InlineData("unitPushed", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","from":"2,4","to":"2,4","path":["2,4"],"collisions":[{"unitId":"s2-u1","faces":["blank"],"wounds":0}],"falls":[],"blocked":"edge"}""", "Grunt is driven back but hits the edge of the battlefield. Grunt: 0 wounds.")]
+    [InlineData("unitPushed", """{"unitId":"s2-u1","sourceUnitId":"s1-u3","from":"2,4","to":"3,4","path":["2,4","3,4"],"collisions":[],"falls":[{"levels":2,"faces":["sword","blank"],"wounds":1}],"blocked":null}""", "Grunt is driven back to 3,4. It falls 2 levels: 1 wound.")]
+    [InlineData("conditionApplied", """{"name":"Stunned","unitId":"s2-u1","sourceUnitId":"s1-u3","expires":{"kind":"afterTurn","turnNumber":2}}""", "Grunt is stunned.")]
+    [InlineData("conditionExpired", """{"name":"Stunned","unitId":"s2-u1"}""", "Grunt is no longer stunned.")]
+    [InlineData("unitTeleported", """{"unitId":"s2-u1","casterId":"s1-u3","from":"2,4","to":"5,4"}""", "Ranger teleports Grunt to 5,4.")]
+    [InlineData("unitTeleported", """{"unitId":"s1-u3","casterId":"s1-u3","from":"1,4","to":"3,4"}""", "Ranger teleports to 3,4.")]
+    public void Forced_movement_and_condition_events_have_readable_lines(string kind, string payload, string expected)
+    {
+        Assert.Equal(expected, CombatLogFormatter.Describe(Event(kind, payload), BattleFixtures.Projection()));
+    }
 }

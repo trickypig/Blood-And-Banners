@@ -52,7 +52,8 @@ Hero and unit artwork loads from `ImageBaseUrl` in `wwwroot/appsettings.Developm
 2. Select the Wizard: its card lists **Fireball** as a button. Choose it, hover an enemy to see the splash hexes, then click the enemy. The log reports the strike and the scorched neighbours.
 3. Select Thorgrim and use **Shield Wall** on an adjacent ally; the ally's card shows `Defense 3 → 4` and its token gets a ▲.
 4. Attack the Elvish Duelist (or let it attack). If one of its dice is not a hit/block, its owner sees the **Moonlight Glare** prompt; the other browser shows "Waiting for your opponent's decision…" and, after 45 seconds, a **Keep the roll for them** button.
-5. Abilities not yet implemented (Teleport, Gust of Wind, Knockback, Stunning Blow, Flying, Lava Walker) appear on cards marked "Not yet in the digital game".
+5. Pick **Deepstone Guard** or **Sellsword Marauders** to see **Knockback** and **Stunning Blow**: after a hit the target rolls a save, and a failed save drives it back (watch for collisions and falls) or stuns it (💫 on the token; it can't move until the end of its next turn). **Thalion Windrider**'s **Gust of Wind** blows an adjacent enemy two hexes back — hover the target to preview the path. **Malachar**'s **Teleport** is two clicks: the unit, then where it goes.
+6. Only **Flying** and **Lava Walker** still show "Not yet in the digital game".
 
 ## Seat credentials and reconnect
 

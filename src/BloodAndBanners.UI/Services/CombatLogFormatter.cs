@@ -43,6 +43,15 @@ public static class CombatLogFormatter
             "unitDefeated" => $"{Unit(projection, Text(payload, "unitId"))} is defeated.",
             "turnEnded" => $"Round {payload.GetProperty("round").GetInt32()}: {Possessive(Seat(projection, Text(payload, "nextSeatId")))} turn.",
             "matchCompleted" => $"{Seat(projection, Text(payload, "winningSeatId"))} won by annihilation.",
+            "saveRolled" => payload.GetProperty("saved").GetBoolean()
+                ? $"{Unit(projection, Text(payload, "unitId"))} resists {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()})."
+                : $"{Unit(projection, Text(payload, "unitId"))} fails to resist {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()}).",
+            "unitPushed" => Pushed(projection, payload),
+            "conditionApplied" => $"{Unit(projection, Text(payload, "unitId"))} is {Text(payload, "name").ToLowerInvariant()}.",
+            "conditionExpired" => $"{Unit(projection, Text(payload, "unitId"))} is no longer {Text(payload, "name").ToLowerInvariant()}.",
+            "unitTeleported" => Text(payload, "unitId") == Text(payload, "casterId")
+                ? $"{Unit(projection, Text(payload, "casterId"))} teleports to {Text(payload, "to")}."
+                : $"{Unit(projection, Text(payload, "casterId"))} teleports {Unit(projection, Text(payload, "unitId"))} to {Text(payload, "to")}.",
             _ => null,
         };
     }
@@ -108,6 +117,30 @@ public static class CombatLogFormatter
         }
         var seat = projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
         return seat is null ? "A commander" : $"Commander {seat.SeatIndex}";
+    }
+
+
+    private static string Pushed(GameProjection projection, JsonElement payload)
+    {
+        var name = Unit(projection, Text(payload, "unitId"));
+        var collisions = payload.GetProperty("collisions").EnumerateArray().ToList();
+        var blocked = payload.GetProperty("blocked").ValueKind == JsonValueKind.String ? payload.GetProperty("blocked").GetString() : null;
+        var line = blocked switch
+        {
+            "unit" => $"{name} is driven back but slams into {Unit(projection, Text(collisions[1], "unitId"))}.",
+            "wall" => $"{name} is driven back but hits a wall.",
+            "edge" => $"{name} is driven back but hits the edge of the battlefield.",
+            _ => $"{name} is driven back to {Text(payload, "to")}.",
+        };
+        foreach (var fall in payload.GetProperty("falls").EnumerateArray())
+        {
+            line += $" It falls {fall.GetProperty("levels").GetInt32()} levels: {Wounds(fall.GetProperty("wounds").GetInt32())}.";
+        }
+        foreach (var hit in collisions)
+        {
+            line += $" {Unit(projection, Text(hit, "unitId"))}: {Wounds(hit.GetProperty("wounds").GetInt32())}.";
+        }
+        return line;
     }
 
     private static string Possessive(string name) => name == "You" ? "Your" : $"{name}'s";
