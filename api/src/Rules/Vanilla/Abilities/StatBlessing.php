@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Targeting;
@@ -33,7 +34,7 @@ final class StatBlessing extends TargetedAbility
             : Targeting::unitsWithin($state, $unitId, $reach, $this->includeSelf);
     }
 
-    public function apply(array $state, string $unitId, string $targetId, array &$events): array
+    public function apply(array $state, string $unitId, string $targetId, RandomSource $random, array &$events): array
     {
         return Effects::add($state, $this->name, $unitId, $targetId, $this->stat, $this->amount, $state['units'][$unitId]['seatId'], $this->expires, $events);
     }

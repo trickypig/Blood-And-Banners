@@ -35,6 +35,7 @@ final class BattleRules
         'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
+        'gustNeedsStillness' => 'Gust of Wind must be used instead of moving.',
         'abilityAlreadyUsed' => 'That ability has already been used this turn.',
         'choicePending' => 'Waiting for a decision before the battle can continue.',
         'notYourChoice' => 'That decision belongs to the other commander.',
@@ -71,7 +72,7 @@ final class BattleRules
         } elseif ($kind === 'specialAttack') {
             $state = $this->specialAttack($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'useAbility') {
-            $state = $this->useAbility($state, $seatId, $payload, $events);
+            $state = $this->useAbility($state, $seatId, $payload, $random, $events);
         } else {
             $unitId = self::text($payload, 'unitId');
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
@@ -113,7 +114,7 @@ final class BattleRules
             $canStart = !$activated && $this->activationError($state, $unitId) === null;
             if ($activated || $canStart) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-                    if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true)) {
+                    if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true) || $ability->unavailable($state, $unitId) !== null) {
                         continue;
                     }
                     $targets = $ability->targets($state, $unitId);
@@ -339,7 +340,7 @@ final class BattleRules
         return in_array($state['turn']['number'], $state['units'][$unitId]['flags']['spellsLockedOnTurns'] ?? [], true);
     }
 
-    private function useAbility(array $state, string $seatId, array $payload, array &$events): array
+    private function useAbility(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
         $unitId = self::text($payload, 'unitId');
         $name = self::text($payload, 'ability');
@@ -355,15 +356,19 @@ final class BattleRules
         if (in_array($name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true)) {
             self::fail('abilityAlreadyUsed');
         }
+        $blocked = $ability->unavailable($state, $unitId);
+        if ($blocked !== null) {
+            self::fail($blocked);
+        }
         if (!in_array($unitId, $state['turn']['activated'], true)) {
             $state = $this->activate($state, $seatId, $unitId);
         }
         if (!in_array($targetId, $ability->targets($state, $unitId), true)) {
             self::fail('invalidAbilityTarget');
         }
-        $state = $ability->apply($state, $unitId, $targetId, $events);
+        $state = $ability->apply($state, $unitId, $targetId, $random, $events);
         $state['turn']['abilitiesUsed'][$unitId][] = $name;
-        $events[] = MatchEngine::event('abilityUsed', [$unit['hex'], $state['units'][$targetId]['hex']], [
+        $events[] = MatchEngine::event('abilityUsed', array_values(array_filter([$unit['hex'], $state['units'][$targetId]['hex']])), [
             'unitId' => $unitId, 'ability' => $name, 'targetUnitId' => $targetId,
         ]);
         return $state;

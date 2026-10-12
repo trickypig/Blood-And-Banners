@@ -219,5 +219,35 @@ function vanilla_forced_tests(): array
             $resisted = vanilla_command($setup(), 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6, 11]);
             expect_same([], $resisted['state']['conditions'], '11 or more resists');
         },
+
+        'Gust of Wind pushes an adjacent quick enemy 2 hexes instead of Thalion moving' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a-hero', 'seat-a', '1,0', ['Gust of Wind'], ['isHero' => true]),
+                vanilla_unit('b1', 'seat-b', '2,0', ['move' => 3]),
+                vanilla_unit('b2', 'seat-b', '0,0', ['move' => 2]),
+            ]);
+            $actions = array_values(array_filter((new MatchEngine(test_catalog()))->legalActions($state, 'seat-a'), static fn(array $a): bool => $a['kind'] === 'useAbility'));
+            expect_same([['kind' => 'useAbility', 'unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetHexes' => ['2,0']]], $actions, 'only enemies with Move 3+ can be blown away');
+            $gust = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetUnitId' => 'b1']);
+            expect_same(['unitPushed', 'abilityUsed'], array_slice(array_column($gust['events'], 'kind'), 0, 2), 'the wind blows');
+            expect_same('4,0', $gust['state']['units']['b1']['hex'], 'two hexes back');
+            expect_game_error('alreadyMoved', static fn() => vanilla_command($gust['state'], 'seat-a', 'moveUnit', ['unitId' => 'a-hero', 'to' => '2,0']));
+        },
+
+        'Gust of Wind needs Thalion still and unstunned, and a blocked gust still costs his move' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a-hero', 'seat-a', '1,0', ['Gust of Wind'], ['isHero' => true]),
+                vanilla_unit('b1', 'seat-b', '0,0', ['move' => 3, 'hp' => 5]),
+                vanilla_unit('b2', 'seat-b', '3,0'), // in reach after Thalion moves, so his turn stays open
+            ]);
+            $gust = ['unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetUnitId' => 'b1'];
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a-hero', 'to' => '2,0'], [6]);
+            expect_game_error('gustNeedsStillness', static fn() => vanilla_command($moved['state'], 'seat-a', 'useAbility', $gust + ['targetUnitId' => 'b1']));
+            expect_game_error('unitStunned', static fn() => vanilla_command(stun($state, 'a-hero'), 'seat-a', 'useAbility', $gust));
+            $edge = vanilla_command($state, 'seat-a', 'useAbility', $gust, [1]);
+            expect_same('edge', $edge['events'][0]['payload']['blocked'], 'b1 is already at the edge');
+            expect_same(1, $edge['state']['units']['b1']['wounds'], 'and takes a die for it');
+            expect_same(true, $edge['state']['turn']['moved'], 'Thalion\'s move is spent');
+        },
     ];
 }
