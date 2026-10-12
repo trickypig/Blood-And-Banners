@@ -13,6 +13,8 @@ final class Board
                 'elevation' => (int)$hex['elevation'],
                 'sightBlocker' => (bool)($hex['sightBlocker'] ?? false),
                 'playerStart' => isset($hex['playerStart']) ? (int)$hex['playerStart'] : null,
+                'biome' => (string)($hex['biome'] ?? 'plains'),
+                'terrain' => (string)($hex['terrain'] ?? 'grass'),
             ];
         }
         return $board;

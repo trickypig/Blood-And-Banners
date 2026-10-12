@@ -33,14 +33,17 @@ function proving_field_board(): array
     return Board::fromScenario($definition);
 }
 
-function vanilla_board(array $elevations, array $blockers = []): array
+function vanilla_board(array $elevations, array $blockers = [], array $terrains = []): array
 {
     $board = [];
     foreach ($elevations as $key => $elevation) {
+        $paint = $terrains[(string)$key] ?? ['biome' => 'plains', 'terrain' => 'grass'];
         $board[(string)$key] = [
             'elevation' => $elevation,
             'sightBlocker' => in_array((string)$key, $blockers, true),
             'playerStart' => null,
+            'biome' => $paint['biome'],
+            'terrain' => $paint['terrain'],
         ];
     }
     return $board;

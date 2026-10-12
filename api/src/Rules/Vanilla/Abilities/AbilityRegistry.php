@@ -63,6 +63,8 @@ final class AbilityRegistry
                 new Teleport('Teleport'),
                 new GustOfWind('Gust of Wind'),
                 new StunningBlow('Stunning Blow'),
+                new Flying('Flying'),
+                new LavaWalker('Lava Walker'),
                 new TremblingFear('Trembling Fear'),
                 new RecklessFury('Reckless Fury'),
                 new UnbreakableLine('Unbreakable Line'),
