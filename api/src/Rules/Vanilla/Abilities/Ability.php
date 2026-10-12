@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\RandomSource;
+
 /** A printed ability. Subclasses override only the hooks they need; every hook defaults to "no effect". */
 abstract class Ability
 {
@@ -44,5 +46,17 @@ abstract class Ability
     public function offersReroll(): bool
     {
         return false;
+    }
+
+    /** Steps to run after this unit's strike lands on a surviving target (attack and defense dice were rolled). */
+    public function afterHit(array $state, string $ownerId, string $targetId): array
+    {
+        return [];
+    }
+
+    /** What happens when the target of this ability's save fails it. */
+    public function onFailedSave(array $state, string $ownerId, string $targetId, int $roll, RandomSource $random, array &$events): array
+    {
+        return $state;
     }
 }

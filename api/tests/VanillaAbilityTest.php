@@ -485,7 +485,7 @@ function vanilla_ability_tests(): array
         },
 
         'every ability in gameData.json is either implemented or explicitly deferred' => static function (): void {
-            $deferred = ['Teleport', 'Gust of Wind', 'Knockback', 'Stunning Blow', 'Flying', 'Lava Walker'];
+            $deferred = ['Teleport', 'Gust of Wind', 'Flying', 'Lava Walker'];
             $catalog = new \BloodAndBanners\Rules\Vanilla\Catalog();
             $names = [];
             foreach ($catalog->heroes() as $hero) {

@@ -23,6 +23,11 @@ final class StepRunner
         return ['op' => 'strike', 'attackerId' => $attackerId, 'targetId' => $targetId, 'power' => $power, 'ability' => $ability, 'double' => $double];
     }
 
+    public static function save(string $unitId, string $sourceUnitId, string $ability): array
+    {
+        return ['op' => 'save', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'ability' => $ability];
+    }
+
     public static function splash(string $hex, string $excludeUnitId, string $ability): array
     {
         return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability];
@@ -63,7 +68,8 @@ final class StepRunner
     {
         return match ($step['op']) {
             'strike' => $this->strikeStep($state, $step, $events),
-            'land' => [$this->land($state, $step, $events), [], null],
+            'land' => [...$this->land($state, $step, $events), null],
+            'save' => [$this->saveStep($state, $step, $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
             'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
@@ -111,6 +117,7 @@ final class StepRunner
         return [$state, [$land], $choice];
     }
 
+    /** @return array{0: array, 1: array} state, steps the attacker's abilities queue after the hit */
     private function land(array $state, array $step, array &$events): array
     {
         $swords = count(array_filter($step['attackFaces'], static fn(string $face): bool => $face === 'sword'));
@@ -129,7 +136,35 @@ final class StepRunner
                 'wounds' => $wounds,
             ]
         );
-        return Wounds::apply($state, $step['targetId'], $wounds, $events);
+        $state = Wounds::apply($state, $step['targetId'], $wounds, $events);
+        $attacker = $state['units'][$step['attackerId']];
+        if ($state['phase'] !== 'active' || $attacker['hex'] === null || $state['units'][$step['targetId']]['hex'] === null) {
+            return [$state, []];
+        }
+        $more = [];
+        foreach (AbilityRegistry::abilitiesOf($attacker) as $ability) {
+            $more = array_merge($more, $ability->afterHit($state, $step['attackerId'], $step['targetId']));
+        }
+        return [$state, $more];
+    }
+
+    private function saveStep(array $state, array $step, array &$events): array
+    {
+        $target = $state['units'][$step['unitId']];
+        $source = $state['units'][$step['sourceUnitId']];
+        if ($target['hex'] === null || $source['hex'] === null) {
+            return $state;
+        }
+        $roll = $this->random->roll(20);
+        $saved = $roll >= 11;
+        $events[] = MatchEngine::event('saveRolled', [$target['hex']], [
+            'unitId' => $step['unitId'], 'sourceUnitId' => $step['sourceUnitId'], 'ability' => $step['ability'], 'roll' => $roll, 'saved' => $saved,
+        ]);
+        if ($saved) {
+            return $state;
+        }
+        $handler = AbilityRegistry::get($step['ability']);
+        return $handler === null ? $state : $handler->onFailedSave($state, $step['sourceUnitId'], $step['unitId'], $roll, $this->random, $events);
     }
 
     private function splashStep(array $state, array $step, array &$events): array

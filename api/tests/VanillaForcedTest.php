@@ -160,5 +160,64 @@ function vanilla_forced_tests(): array
             ]);
             expect_same(['2,0'], Forced::teleportDestinations($state, 'a1'), 'occupied, blocked and too-high-or-far hexes are excluded');
         },
+
+        'Knockback drives a target back 1 hex on a failed save and 2 on a natural 1' => static function (): void {
+            $setup = static fn(): array => vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Knockback'], ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $attack = ['unitId' => 'a1', 'targetUnitId' => 'b1'];
+            $pushed = vanilla_command($setup(), 'seat-a', 'attackUnit', $attack, [1, 5]);
+            expect_same(['attackResolved', 'saveRolled', 'unitPushed'], array_slice(array_column($pushed['events'], 'kind'), 0, 3), 'hit, save, push');
+            expect_same(['unitId' => 'b1', 'sourceUnitId' => 'a1', 'ability' => 'Knockback', 'roll' => 5, 'saved' => false], $pushed['events'][1]['payload'], 'the save is reported');
+            expect_same('2,0', $pushed['state']['units']['b1']['hex'], 'one hex back');
+            $flung = vanilla_command($setup(), 'seat-a', 'attackUnit', $attack, [1, 1]);
+            expect_same('3,0', $flung['state']['units']['b1']['hex'], 'a natural 1 means two hexes');
+            $held = vanilla_command($setup(), 'seat-a', 'attackUnit', $attack, [1, 11]);
+            expect_same('1,0', $held['state']['units']['b1']['hex'], '11 or more resists');
+            $glancing = vanilla_command($setup(), 'seat-a', 'attackUnit', $attack, [6, 4]);
+            expect_same(['attackResolved', 'saveRolled', 'unitPushed'], array_slice(array_column($glancing['events'], 'kind'), 0, 3), 'a blow without wounds still forces a save');
+        },
+
+        'no save after an evaded or lethal attack' => static function (): void {
+            $evader = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Knockback'], ['power' => 1]),
+                ability_unit('b1', 'seat-b', '1,0', ['Evasion'], ['hp' => 9]),
+            ]);
+            $missed = vanilla_command($evader, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [15]);
+            expect_same(['evaded'], array_slice(array_column($missed['events'], 'kind'), 0, 1), 'evaded');
+            expect_true(!in_array('saveRolled', array_column($missed['events'], 'kind'), true), 'no save without an attack');
+            $doomed = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Knockback'], ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 1]),
+                vanilla_unit('b2', 'seat-b', '3,0'),
+            ]);
+            $killed = vanilla_command($doomed, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1]);
+            expect_true(!in_array('saveRolled', array_column($killed['events'], 'kind'), true), 'the dead make no save');
+        },
+
+        'Knockback waits for a Moonlight Glare decision before its save' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Knockback'], ['power' => 1]),
+                ability_unit('b1', 'seat-b', '1,0', ['Moonlight Glare'], ['defense' => 1, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '4,0'),
+            ]);
+            $opened = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 6], 1000);
+            expect_same(['choiceOpened'], array_column($opened['events'], 'kind'), 'paused before the save');
+            $kept = vanilla_command($opened['state'], 'seat-b', 'resolveChoice', ['choiceId' => 'choice-1', 'option' => 'keep'], [3], 1001);
+            expect_same(['choiceResolved', 'attackResolved', 'saveRolled', 'unitPushed'], array_column($kept['events'], 'kind'), 'the save follows the resumed attack');
+        },
+
+        'Stunning Blow stuns on a failed save until the end of the victim\'s next turn' => static function (): void {
+            $setup = static fn(): array => vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Stunning Blow'], ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $stunned = vanilla_command($setup(), 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6, 10]);
+            expect_same(['attackResolved', 'saveRolled', 'conditionApplied'], array_slice(array_column($stunned['events'], 'kind'), 0, 3), 'stunned');
+            expect_same(['kind' => 'afterTurn', 'turnNumber' => 2], $stunned['events'][2]['payload']['expires'], 'through seat-b\'s next turn');
+            $resisted = vanilla_command($setup(), 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6, 11]);
+            expect_same([], $resisted['state']['conditions'], '11 or more resists');
+        },
     ];
 }
