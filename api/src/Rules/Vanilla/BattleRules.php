@@ -7,10 +7,11 @@ use BloodAndBanners\Game\GameServiceException;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 
 final class BattleRules
 {
-    private const KINDS = ['moveUnit', 'attackUnit', 'endActivation', 'endTurn'];
+    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
@@ -24,6 +25,10 @@ final class BattleRules
         'hexUnreachable' => 'That unit cannot reach that hex.',
         'targetOutOfRange' => 'That target is out of range.',
         'noLineOfSight' => 'That target is not in line of sight.',
+        'unknownAbility' => 'That unit does not have that ability.',
+        'abilityNotPlayable' => 'That ability is not yet in the digital game.',
+        'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
+        'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
     ];
 
@@ -49,6 +54,8 @@ final class BattleRules
             $state = $this->move($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'attackUnit') {
             $state = $this->attack($state, $seatId, $payload, $random, $events);
+        } elseif ($kind === 'specialAttack') {
+            $state = $this->specialAttack($state, $seatId, $payload, $random, $events);
         } else {
             $unitId = self::text($payload, 'unitId');
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
@@ -93,6 +100,22 @@ final class BattleRules
                     'unitId' => $unitId,
                     'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
                 ];
+            }
+            if (self::attacksLeft($state, $unitId) && !self::spellsLocked($state, $unitId)) {
+                foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+                    if (!$ability instanceof SpecialAttack) {
+                        continue;
+                    }
+                    $targets = $ability->targets($state, $unitId);
+                    if ($targets !== []) {
+                        $actions[] = [
+                            'kind' => 'specialAttack',
+                            'unitId' => $unitId,
+                            'ability' => $ability->name,
+                            'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
+                        ];
+                    }
+                }
             }
         }
         if ($state['turn']['activeUnitId'] !== null) {
@@ -217,6 +240,50 @@ final class BattleRules
         return $state;
     }
 
+    private function specialAttack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
+    {
+        $unitId = self::text($payload, 'unitId');
+        $name = self::text($payload, 'ability');
+        $targets = array_values(array_filter($payload['targetUnitIds'] ?? [], 'is_string'));
+        $state = $this->activate($state, $seatId, $unitId);
+        $ability = self::resolveAbility($state['units'][$unitId], $name, SpecialAttack::class);
+        if (self::spellsLocked($state, $unitId)) {
+            self::fail('abilityLocked');
+        }
+        if (!self::attacksLeft($state, $unitId)) {
+            self::fail('noAttacksLeft');
+        }
+        $error = $ability->validate($state, $unitId, $targets);
+        if ($error !== null) {
+            self::fail($error);
+        }
+        $state['turn']['attacks']++;
+        $state = self::closeIfSpent($state, $unitId);
+        return (new StepRunner($random, $this->now))->run($state, $ability->steps($state, $unitId, $targets), $events);
+    }
+
+    /** The unit's handler for $name, which must be an instance of $class. */
+    private static function resolveAbility(array $unit, string $name, string $class): Ability
+    {
+        $printed = in_array($name, array_column($unit['abilities'], 'name'), true);
+        $handler = AbilityRegistry::find($unit, $name);
+        if (!$printed) {
+            self::fail('unknownAbility');
+        }
+        if ($handler === null) {
+            self::fail('abilityNotPlayable');
+        }
+        if (!$handler instanceof $class) {
+            self::fail('unknownAbility');
+        }
+        return $handler;
+    }
+
+    private static function spellsLocked(array $state, string $unitId): bool
+    {
+        return ($state['units'][$unitId]['flags']['spellsLockedOnTurn'] ?? null) === $state['turn']['number'];
+    }
+
     private function activate(array $state, string $seatId, string $unitId): array
     {
         $unit = $state['units'][$unitId] ?? null;
@@ -264,7 +331,7 @@ final class BattleRules
     private function canAct(array $state, string $seatId): bool
     {
         foreach ($this->legalActions($state, $seatId) as $action) {
-            if ($action['kind'] === 'moveUnit' || $action['kind'] === 'attackUnit') {
+            if (in_array($action['kind'], ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
                 return true;
             }
         }

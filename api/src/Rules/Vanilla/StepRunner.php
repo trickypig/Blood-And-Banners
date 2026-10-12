@@ -64,6 +64,9 @@ final class StepRunner
         return match ($step['op']) {
             'strike' => $this->strikeStep($state, $step, $events),
             'land' => [$this->land($state, $step, $events), [], null],
+            'splash' => [$this->splashStep($state, $step, $events), [], null],
+            'chaos' => $this->chaosStep($state, $step, $events),
+            'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
             default => throw new \LogicException("Unknown step {$step['op']}."),
         };
     }
@@ -122,5 +125,41 @@ final class StepRunner
             ]
         );
         return Wounds::apply($state, $step['targetId'], $wounds, $events);
+    }
+
+    private function splashStep(array $state, array $step, array &$events): array
+    {
+        $dice = new CustomDice();
+        $hits = [];
+        $ids = array_map('strval', array_keys($state['units']));
+        sort($ids, SORT_STRING);
+        foreach ($ids as $unitId) {
+            $unit = $state['units'][$unitId];
+            if ($unitId === $step['excludeUnitId'] || $unit['hex'] === null || Hex::distance($step['hex'], $unit['hex']) !== 1) {
+                continue;
+            }
+            $roll = $dice->roll(1, $this->random);
+            $hits[] = ['unitId' => $unitId, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
+        }
+        if ($hits === []) {
+            return $state;
+        }
+        $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'hits' => $hits]);
+        foreach ($hits as $hit) {
+            $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events);
+        }
+        return $state;
+    }
+
+    private function chaosStep(array $state, array $step, array &$events): array
+    {
+        $unit = $state['units'][$step['unitId']];
+        if ($unit['hex'] === null) {
+            return [$state, [], null];
+        }
+        $state = Effects::add($state, $step['ability'], $step['unitId'], $step['unitId'], 'defense', -2, $unit['seatId'], Effects::UNTIL_NEXT_TURN, $events);
+        $roll = $this->random->roll(20);
+        $events[] = MatchEngine::event('chaosRolled', [$unit['hex']], ['unitId' => $step['unitId'], 'roll' => $roll, 'struck' => $roll >= 10]);
+        return [$state, $roll >= 10 ? [self::strike($step['unitId'], $step['targetId'], null, $step['ability'], true)] : [], null];
     }
 }

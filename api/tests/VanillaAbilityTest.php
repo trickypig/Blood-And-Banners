@@ -227,5 +227,91 @@ function vanilla_ability_tests(): array
             expect_same('3,0', $after['units']['a1']['hex'], 'two remaining steps carry it on');
             expect_same(null, $after['turn']['activeUnitId'], 'the move after the attack ends the activation');
         },
+
+        'Bolt of Annihilation strikes at Power 6 from range 5' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Bolt of Annihilation'], ['isHero' => true, 'range' => 1, 'power' => 1]),
+                vanilla_unit('b1', 'seat-b', '5,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $actions = (new MatchEngine(test_catalog()))->legalActions($state, 'seat-a');
+            expect_same(
+                [['kind' => 'specialAttack', 'unitId' => 'a-hero', 'ability' => 'Bolt of Annihilation', 'targetHexes' => ['5,0']]],
+                array_values(array_filter($actions, static fn(array $a): bool => $a['kind'] === 'specialAttack')),
+                'the bolt reaches what the hero cannot'
+            );
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Bolt of Annihilation', 'targetUnitIds' => ['b1']], [1, 1, 1, 1, 1, 6]);
+            expect_same('Bolt of Annihilation', $result['events'][0]['payload']['ability'], 'the event names the ability');
+            expect_same(6, count($result['events'][0]['payload']['attackFaces']), 'six dice');
+            expect_same(5, $result['state']['units']['b1']['wounds'], 'five swords land');
+        },
+
+        'special attacks reject unknown, deferred and locked abilities' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Bolt of Annihilation', 'Teleport'], ['isHero' => true]),
+                vanilla_unit('b1', 'seat-b', '2,0'),
+            ]);
+            $payload = static fn(string $name): array => ['unitId' => 'a-hero', 'ability' => $name, 'targetUnitIds' => ['b1']];
+            expect_game_error('unknownAbility', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Fireball')));
+            expect_game_error('abilityNotPlayable', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Teleport')));
+            $locked = $state;
+            $locked['units']['a-hero']['flags']['spellsLockedOnTurn'] = $state['turn']['number'];
+            expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('Bolt of Annihilation')));
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Bolt of Annihilation', 'targetUnitIds' => ['a-hero']]));
+        },
+
+        'Chaos Strike doubles on 10 or more, fizzles below, and always lowers defense' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Chaos Strike'], ['isHero' => true, 'power' => 2, 'defense' => 3]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 0, 'hp' => 9]),
+            ]);
+            $payload = ['unitId' => 'a-hero', 'ability' => 'Chaos Strike', 'targetUnitIds' => ['b1']];
+            $surge = vanilla_command($state, 'seat-a', 'specialAttack', $payload, [10, 1, 1, 1, 1]);
+            expect_same(['effectApplied', 'chaosRolled', 'attackResolved'], array_slice(array_column($surge['events'], 'kind'), 0, 3), 'the surge doubles the dice (then the spent turn passes)');
+            expect_same(4, $surge['state']['units']['b1']['wounds'], 'four dice from Power 2');
+            expect_same(1, Stats::effective($surge['state'], 'a-hero', 'defense'), 'Defense drops by two');
+            $fizzle = vanilla_command($state, 'seat-a', 'specialAttack', $payload, [9]);
+            expect_same(['effectApplied', 'chaosRolled'], array_slice(array_column($fizzle['events'], 'kind'), 0, 2), 'no attack on a 9');
+            expect_same(['unitId' => 'a-hero', 'roll' => 9, 'struck' => false], $fizzle['events'][1]['payload'], 'the roll is reported');
+        },
+
+        'Fireball splashes every other adjacent unit for one die without defense' => static function (): void {
+            $board = vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 0, '3,0' => 0, '4,0' => 0, '3,-1' => 0]);
+            $state = vanilla_battle($board, [
+                ability_unit('a1', 'seat-a', '0,0', ['Fireball'], ['range' => 1]),
+                vanilla_unit('a2', 'seat-a', '4,0', ['hp' => 3]),
+                vanilla_unit('b1', 'seat-b', '3,0', ['defense' => 0, 'hp' => 9]),
+                vanilla_unit('b2', 'seat-b', '3,-1', ['hp' => 1]),
+            ]);
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a1', 'ability' => 'Fireball', 'targetUnitIds' => ['b1']], [6, 6, 6, 6, 1, 1]);
+            expect_same(['attackResolved', 'splashDamage', 'unitDefeated'], array_slice(array_column($result['events'], 'kind'), 0, 3), 'strike, splash, then a casualty');
+            expect_same(
+                ['ability' => 'Fireball', 'hits' => [['unitId' => 'a2', 'faces' => ['sword'], 'wounds' => 1], ['unitId' => 'b2', 'faces' => ['sword'], 'wounds' => 1]]],
+                $result['events'][1]['payload'],
+                'friends are scorched too'
+            );
+            expect_same(null, $result['state']['units']['b2']['hex'], 'the splash can kill');
+        },
+
+        'Fireball splash that wipes out the last enemy ends the match without further steps' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Fireball']),
+                vanilla_unit('b1', 'seat-b', '2,0', ['defense' => 0, 'hp' => 1]),
+                vanilla_unit('b2', 'seat-b', '3,0', ['hp' => 1]),
+            ]);
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a1', 'ability' => 'Fireball', 'targetUnitIds' => ['b1']], [1, 6, 6, 6, 1]);
+            expect_same('completed', $result['state']['phase'], 'the splash finishes the war');
+            expect_same(null, $result['state']['pending'], 'nothing is left pending');
+        },
+
+        'Mystic Shield gives an ally +3 Defense and uses the attack' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Mystic Shield'], ['isHero' => true]),
+                vanilla_unit('a2', 'seat-a', '4,0', ['defense' => 1]),
+                vanilla_unit('b1', 'seat-b', '5,0'),
+            ]);
+            $result = vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Mystic Shield', 'targetUnitIds' => ['a2']]);
+            expect_same(4, Stats::effective($result['state'], 'a2', 'defense'), 'the ward holds');
+            expect_same(null, $result['state']['turn']['activeUnitId'], 'the spell was Malachar\'s attack');
+        },
     ];
 }

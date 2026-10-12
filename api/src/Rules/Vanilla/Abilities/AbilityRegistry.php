@@ -67,6 +67,11 @@ final class AbilityRegistry
                 new MultiStrike('Twin Strikes'),
                 new MultiStrike('Dual Strikes'),
                 new SilentSting('Silent Sting'),
+                new FixedStrike('Bolt of Annihilation', 6, 5),
+                new FixedStrike('Flame Strike', 3, 5),
+                new ChaosStrike('Chaos Strike'),
+                new Fireball('Fireball'),
+                new MysticShield('Mystic Shield'),
             ];
             self::$handlers = [];
             foreach ($list as $handler) {
