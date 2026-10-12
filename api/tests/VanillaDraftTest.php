@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\SnakeDraftOrder;
 
 function vanilla_draft_tests(): array
 {
@@ -24,7 +25,7 @@ function vanilla_draft_tests(): array
             expect_same([], $warnings, 'array payload values raise no PHP warnings');
         },
 
-        'initiative winner picks first and picks then alternate' => static function (): void {
+        'initiative winner picks first and snake order moves to the second seat' => static function (): void {
             $engine = new MatchEngine(test_catalog());
             $started = $engine->start(['seat-a', 'seat-b'], proving_field_board(), new SequenceRandom([5, 17]));
             $state = $started['state'];
@@ -41,12 +42,61 @@ function vanilla_draft_tests(): array
             );
 
             $picked = $engine->apply($state, 'seat-b', 'pickHero', ['hero' => 'Test Captain'], new SequenceRandom([]));
-            expect_same('seat-a', $picked['state']['draft']['pickingSeatId'], 'picks alternate');
+            expect_same('seat-a', $picked['state']['draft']['pickingSeatId'], 'the second initiative seat follows the winner');
             expect_same('Test Captain', $picked['state']['draft']['heroBySeat']['seat-b'], 'the hero is claimed');
             expect_same(
                 ['seatId' => 'seat-b', 'decision' => 'pickHero', 'value' => 'Test Captain'],
                 $picked['events'][0]['payload'],
                 'the pick is announced'
+            );
+        },
+
+        'draft choices follow snake order through a complete duel draft' => static function (): void {
+            $engine = new MatchEngine(test_catalog());
+            $none = new SequenceRandom([]);
+            $state = $engine->start(['seat-a', 'seat-b'], proving_field_board(), new SequenceRandom([17, 5]))['state'];
+            $pickingSeats = [];
+            $choices = [
+                ['chooseFirstPlayer', ['seatId' => 'seat-a']],
+                ['chooseStartPosition', ['start' => 2]],
+                ['pickHero', ['hero' => 'Test Marshal']],
+                ['pickHero', ['hero' => 'Test Captain']],
+                ['pickArmy', ['army' => 'Red Company']],
+                ['pickArmy', ['army' => 'Blue Company']],
+            ];
+
+            foreach ($choices as [$kind, $payload]) {
+                $pickingSeats[] = $state['draft']['pickingSeatId'];
+                $state = $engine->apply($state, $state['draft']['pickingSeatId'], $kind, $payload, $none)['state'];
+            }
+
+            expect_same(
+                ['seat-a', 'seat-b', 'seat-b', 'seat-a', 'seat-a', 'seat-b'],
+                $pickingSeats,
+                'the duel draft ascends and descends with duplicated endpoints'
+            );
+            expect_same('active', $state['phase'], 'the snake-ordered draft still completes');
+        },
+
+        'snake draft order repeats for two and three players' => static function (): void {
+            $twoPlayers = [];
+            $threePlayers = [];
+            for ($pick = 0; $pick < 8; $pick++) {
+                $twoPlayers[] = SnakeDraftOrder::seatAt(['seat-1', 'seat-2'], $pick);
+            }
+            for ($pick = 0; $pick < 12; $pick++) {
+                $threePlayers[] = SnakeDraftOrder::seatAt(['seat-1', 'seat-2', 'seat-3'], $pick);
+            }
+
+            expect_same(
+                ['seat-1', 'seat-2', 'seat-2', 'seat-1', 'seat-1', 'seat-2', 'seat-2', 'seat-1'],
+                $twoPlayers,
+                'two-player snake order repeats'
+            );
+            expect_same(
+                ['seat-1', 'seat-2', 'seat-3', 'seat-3', 'seat-2', 'seat-1', 'seat-1', 'seat-2', 'seat-3', 'seat-3', 'seat-2', 'seat-1'],
+                $threePlayers,
+                'three-player snake order repeats'
             );
         },
 
@@ -56,6 +106,7 @@ function vanilla_draft_tests(): array
             $state = $engine->apply($state, 'seat-b', 'pickHero', ['hero' => 'Test Captain'], new SequenceRandom([]))['state'];
             expect_game_error('heroTaken', static fn() => $engine->apply($state, 'seat-a', 'pickHero', ['hero' => 'Test Captain'], new SequenceRandom([])));
             $state = $engine->apply($state, 'seat-a', 'pickArmy', ['army' => 'Red Company'], new SequenceRandom([]))['state'];
+            $state = $engine->apply($state, 'seat-a', 'chooseFirstPlayer', ['seatId' => 'seat-a'], new SequenceRandom([]))['state'];
             expect_game_error('armyTaken', static fn() => $engine->apply($state, 'seat-b', 'pickArmy', ['army' => 'Red Company'], new SequenceRandom([])));
         },
 
@@ -72,6 +123,7 @@ function vanilla_draft_tests(): array
 
             $state = $engine->apply($state, 'seat-b', 'pickHero', ['hero' => 'Test Captain'], $none)['state'];
             $state = $engine->apply($state, 'seat-a', 'pickHero', ['hero' => 'Test Marshal'], $none)['state'];
+            $state = $engine->apply($state, 'seat-a', 'chooseFirstPlayer', ['seatId' => 'seat-a'], $none)['state'];
             expect_game_error('decisionAlreadyMade', static fn() => $engine->apply($state, 'seat-b', 'pickHero', ['hero' => 'Test Warden'], $none));
         },
 
@@ -81,9 +133,9 @@ function vanilla_draft_tests(): array
             $state = $engine->start(['seat-a', 'seat-b'], proving_field_board(), new SequenceRandom([17, 5]))['state'];
             $state = $engine->apply($state, 'seat-a', 'chooseFirstPlayer', ['seatId' => 'seat-b'], $none)['state'];
             $state = $engine->apply($state, 'seat-b', 'pickHero', ['hero' => 'Test Marshal'], $none)['state'];
+            $state = $engine->apply($state, 'seat-b', 'pickArmy', ['army' => 'Blue Company'], $none)['state'];
             $state = $engine->apply($state, 'seat-a', 'chooseStartPosition', ['start' => 1], $none)['state'];
             expect_same(['seat-a' => 1, 'seat-b' => 2], $state['draft']['startBySeat'], 'choosing a start assigns the other one');
-            $state = $engine->apply($state, 'seat-b', 'pickArmy', ['army' => 'Blue Company'], $none)['state'];
             $state = $engine->apply($state, 'seat-a', 'pickHero', ['hero' => 'Test Captain'], $none)['state'];
             expect_same('seat-a', $state['draft']['pickingSeatId'], 'seat-b has nothing left, so seat-a picks again');
 

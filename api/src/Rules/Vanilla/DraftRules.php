@@ -102,10 +102,21 @@ final class DraftRules
         $state['draft'] = $draft;
         $events = [MatchEngine::event('draftPicked', [], ['seatId' => $seatId, 'decision' => $kind, 'value' => $value])];
 
-        if ($this->openDecisions($state, $other) !== []) {
-            $state['draft']['pickingSeatId'] = $other;
-        } elseif ($this->openDecisions($state, $seatId) !== []) {
-            $state['draft']['pickingSeatId'] = $seatId;
+        $pickIndex = ($draft['pickIndex'] ?? array_search($seatId, $state['initiative']['order'], true)) + 1;
+        $nextSeat = null;
+        $candidateCount = count($state['initiative']['order']) * 2;
+        for ($offset = 0; $offset < $candidateCount; $offset++) {
+            $candidate = SnakeDraftOrder::seatAt($state['initiative']['order'], $pickIndex + $offset);
+            if ($this->openDecisions($state, $candidate) !== []) {
+                $pickIndex += $offset;
+                $nextSeat = $candidate;
+                break;
+            }
+        }
+
+        if ($nextSeat !== null) {
+            $state['draft']['pickIndex'] = $pickIndex;
+            $state['draft']['pickingSeatId'] = $nextSeat;
         } else {
             $state['draft']['pickingSeatId'] = null;
             [$state, $placed] = $this->deploy($state);

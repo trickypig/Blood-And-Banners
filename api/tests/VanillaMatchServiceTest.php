@@ -53,11 +53,11 @@ function vanilla_draft_picks(array $match): array
 {
     return [
         ['host', 'chooseFirstPlayer', ['seatId' => $match['host']['seat']]],
+        ['rival', 'chooseStartPosition', ['start' => 2]],
         ['rival', 'pickHero', ['hero' => 'Test Marshal']],
-        ['host', 'chooseStartPosition', ['start' => 1]],
-        ['rival', 'pickArmy', ['army' => 'Blue Company']],
         ['host', 'pickHero', ['hero' => 'Test Captain']],
         ['host', 'pickArmy', ['army' => 'Red Company']],
+        ['rival', 'pickArmy', ['army' => 'Blue Company']],
     ];
 }
 
@@ -122,6 +122,7 @@ function vanilla_match_service_tests(): array
             foreach (vanilla_draft_picks($match) as [$who, $kind, $payload]) {
                 $projection = vanilla_submit($match, $who, $kind, $payload);
             }
+            $projection = $match['games']->getGame($match['gameId'], $match['host']['identity']);
 
             expect_same('active', $projection['lifecycle'], 'the finished draft starts the battle');
             expect_same(null, $projection['draft'], 'the draft block disappears after the draft');

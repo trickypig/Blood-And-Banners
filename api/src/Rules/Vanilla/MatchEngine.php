@@ -36,6 +36,7 @@ final class MatchEngine
             'initiative' => ['rolls' => $initiative['rolls'], 'order' => $initiative['order']],
             'draft' => [
                 'pickingSeatId' => $initiative['order'][0],
+                'pickIndex' => 0,
                 'firstSeatId' => null,
                 'startBySeat' => $undecided,
                 'heroBySeat' => $undecided,
