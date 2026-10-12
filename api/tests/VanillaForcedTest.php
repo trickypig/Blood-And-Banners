@@ -229,7 +229,7 @@ function vanilla_forced_tests(): array
             $actions = array_values(array_filter((new MatchEngine(test_catalog()))->legalActions($state, 'seat-a'), static fn(array $a): bool => $a['kind'] === 'useAbility'));
             expect_same([['kind' => 'useAbility', 'unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetHexes' => ['2,0']]], $actions, 'only enemies with Move 3+ can be blown away');
             $gust = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetUnitId' => 'b1']);
-            expect_same(['unitPushed', 'abilityUsed'], array_slice(array_column($gust['events'], 'kind'), 0, 2), 'the wind blows');
+            expect_same(['abilityUsed', 'unitPushed'], array_slice(array_column($gust['events'], 'kind'), 0, 2), 'the wind blows');
             expect_same('4,0', $gust['state']['units']['b1']['hex'], 'two hexes back');
             expect_game_error('alreadyMoved', static fn() => vanilla_command($gust['state'], 'seat-a', 'moveUnit', ['unitId' => 'a-hero', 'to' => '2,0']));
         },
@@ -245,7 +245,7 @@ function vanilla_forced_tests(): array
             expect_game_error('gustNeedsStillness', static fn() => vanilla_command($moved['state'], 'seat-a', 'useAbility', $gust + ['targetUnitId' => 'b1']));
             expect_game_error('unitStunned', static fn() => vanilla_command(stun($state, 'a-hero'), 'seat-a', 'useAbility', $gust));
             $edge = vanilla_command($state, 'seat-a', 'useAbility', $gust, [1]);
-            expect_same('edge', $edge['events'][0]['payload']['blocked'], 'b1 is already at the edge');
+            expect_same('edge', $edge['events'][1]['payload']['blocked'], 'b1 is already at the edge');
             expect_same(1, $edge['state']['units']['b1']['wounds'], 'and takes a die for it');
             expect_same(true, $edge['state']['turn']['moved'], 'Thalion\'s move is spent');
         },
@@ -271,6 +271,27 @@ function vanilla_forced_tests(): array
             $locked = $state;
             $locked['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
             expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('a2', '2,0')));
+        },
+
+        'a stunned Malachar cannot teleport himself but can still move an ally' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Teleport'], ['isHero' => true]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', '5,0'),
+            ]);
+            $state = stun($state, 'a-hero');
+            $actions = array_values(array_filter((new MatchEngine(test_catalog()))->legalActions($state, 'seat-a'), static fn(array $a): bool => $a['kind'] === 'specialAttack'));
+            expect_same(['1,0'], $actions[0]['targetHexes'], 'only the ally can be teleported');
+            expect_game_error('invalidAbilityTarget', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', ['unitId' => 'a-hero', 'ability' => 'Teleport', 'targetUnitIds' => ['a-hero'], 'toHex' => '3,0']));
+        },
+
+        'a lethal Gust of Wind is announced before the match ends' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(2)), [
+                ability_unit('a-hero', 'seat-a', '0,0', ['Gust of Wind'], ['isHero' => true]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['move' => 3, 'hp' => 1]),
+            ]);
+            $gust = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Gust of Wind', 'targetUnitId' => 'b1'], [1]);
+            expect_same(['abilityUsed', 'unitPushed', 'unitDefeated', 'matchCompleted'], array_column($gust['events'], 'kind'), 'nothing follows the end of the match');
         },
     ];
 }

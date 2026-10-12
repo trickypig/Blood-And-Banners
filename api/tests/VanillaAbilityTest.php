@@ -351,7 +351,7 @@ function vanilla_ability_tests(): array
                 vanilla_unit('b1', 'seat-b', '3,0'),
             ]);
             $used = vanilla_command($state, 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Shield Wall', 'targetUnitId' => 'a2']);
-            expect_same(['effectApplied', 'abilityUsed'], array_column($used['events'], 'kind'), 'the wall goes up');
+            expect_same(['abilityUsed', 'effectApplied'], array_column($used['events'], 'kind'), 'the wall goes up');
             expect_same(3, Stats::effective($used['state'], 'a2', 'defense'), '+1 Defense');
             expect_same(['a-hero'], $used['state']['turn']['activated'], 'using the ability activated the hero');
             expect_same('a-hero', $used['state']['turn']['activeUnitId'], 'the hero may still move and attack');
@@ -370,7 +370,7 @@ function vanilla_ability_tests(): array
             expect_same('seat-a', $struck['state']['turn']['activeSeatId'], 'the unused command keeps the turn alive');
             $commanded = vanilla_command($struck['state'], 'seat-a', 'useAbility', ['unitId' => 'a-hero', 'ability' => 'Warlord\'s Command', 'targetUnitId' => 'a2']);
             expect_same(
-                ['effectApplied', 'abilityUsed', 'effectExpired', 'turnEnded'],
+                ['abilityUsed', 'effectApplied', 'effectExpired', 'turnEnded'],
                 array_column($commanded['events'], 'kind'),
                 'the command lands after the hero acted, then with nothing left the turn passes and the command fades'
             );

@@ -368,12 +368,11 @@ final class BattleRules
         if (!in_array($targetId, $ability->targets($state, $unitId), true)) {
             self::fail('invalidAbilityTarget');
         }
-        $state = $ability->apply($state, $unitId, $targetId, $random, $events);
         $state['turn']['abilitiesUsed'][$unitId][] = $name;
-        $events[] = MatchEngine::event('abilityUsed', array_values(array_filter([$unit['hex'], $state['units'][$targetId]['hex']])), [
+        $events[] = MatchEngine::event('abilityUsed', [$unit['hex'], $state['units'][$targetId]['hex']], [
             'unitId' => $unitId, 'ability' => $name, 'targetUnitId' => $targetId,
         ]);
-        return $state;
+        return $ability->apply($state, $unitId, $targetId, $random, $events);
     }
 
     private function resolveChoice(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array

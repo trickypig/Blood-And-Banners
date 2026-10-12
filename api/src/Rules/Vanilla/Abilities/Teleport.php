@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
 use BloodAndBanners\Rules\Vanilla\Forced;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
 use BloodAndBanners\Rules\Vanilla\Targeting;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
-/** Move a friendly unit within 3 hexes (Malachar included) to an empty hex within 3 (2 levels count as 1 hex). */
+/** Move a friendly unit within 3 hexes (Malachar included, unless he is stunned) to an empty hex within 3 (2 levels count as 1 hex). */
 final class Teleport extends SpecialAttack
 {
     private const REACH = 3;
@@ -17,6 +19,7 @@ final class Teleport extends SpecialAttack
         return array_values(array_filter(
             Targeting::alliesWithin($state, $unitId, self::REACH, true),
             static fn(string $id): bool => Forced::teleportDestinations($state, $id) !== []
+                && !($id === $unitId && UnitConditions::any($state, $id, static fn(Condition $condition): bool => $condition->blocksMovement()))
         ));
     }
 
