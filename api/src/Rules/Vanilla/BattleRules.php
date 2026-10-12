@@ -65,7 +65,7 @@ final class BattleRules
             self::fail('notYourTurn');
         }
         if ($kind === 'endTurn') {
-            [$state, $events] = self::passTurn($state);
+            [$state, $events] = self::passTurn($state, $random);
             return ['state' => $state, 'events' => $events];
         }
 
@@ -87,7 +87,7 @@ final class BattleRules
         }
 
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $seatId)) {
-            [$state, $passed] = self::passTurn($state);
+            [$state, $passed] = self::passTurn($state, $random);
             $events = array_merge($events, $passed);
         }
         return ['state' => $state, 'events' => $events];
@@ -463,7 +463,7 @@ final class BattleRules
         $state = (new StepRunner($random, $this->now))->resolve($state, $option, $events);
         $active = $state['turn']['activeSeatId'];
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
-            [$state, $passed] = self::passTurn($state);
+            [$state, $passed] = self::passTurn($state, $random);
             $events = array_merge($events, $passed);
         }
         return ['state' => $state, 'events' => $events];
@@ -523,12 +523,16 @@ final class BattleRules
         return false;
     }
 
-    private static function passTurn(array $state): array
+    private static function passTurn(array $state, RandomSource $random): array
     {
         $current = $state['turn']['activeSeatId'];
         $next = MatchEngine::otherSeat($state, $current);
         $events = [];
         $state = Effects::expire($state, $current, Effects::UNTIL_END_OF_TURN, $events);
+        $state = TerrainResolver::atTurnEnd($state, $current, $random, $events);
+        if ($state['phase'] !== 'active') {
+            return [$state, $events];
+        }
         $state = UnitConditions::atTurnEnd($state, $events);
         $round = $state['turn']['round'] + ($next === $state['draft']['firstSeatId'] ? 1 : 0);
         $state['turn'] = Turn::fresh($state, $next, $round);

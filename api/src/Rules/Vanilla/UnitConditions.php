@@ -44,6 +44,19 @@ final class UnitConditions
         return in_array($name, array_column(self::forUnit($state, $unitId), 'name'), true);
     }
 
+    public static function clear(array $state, string $unitId, string $name, array &$events): array
+    {
+        $before = count($state['conditions'] ?? []);
+        $state['conditions'] = array_values(array_filter(
+            $state['conditions'] ?? [],
+            static fn(array $condition): bool => !($condition['unitId'] === $unitId && $condition['name'] === $name)
+        ));
+        if (count($state['conditions']) !== $before) {
+            $events[] = MatchEngine::event('conditionExpired', [], ['name' => $name, 'unitId' => $unitId]);
+        }
+        return $state;
+    }
+
     public static function any(array $state, string $unitId, callable $test): bool
     {
         foreach (self::forUnit($state, $unitId) as $condition) {

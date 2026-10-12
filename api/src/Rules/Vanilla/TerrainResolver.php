@@ -48,4 +48,52 @@ final class TerrainResolver
         }
         return ['state' => $state, 'stop' => $stop];
     }
+
+    public static function atTurnEnd(array $state, string $seatId, RandomSource $random, array &$events): array
+    {
+        $ids = array_map('strval', array_keys($state['units']));
+        sort($ids, SORT_STRING);
+        foreach ($ids as $unitId) {
+            $unit = $state['units'][$unitId];
+            if ($unit['seatId'] !== $seatId || $unit['hex'] === null || !UnitConditions::has($state, $unitId, 'Poisoned')) {
+                continue;
+            }
+            $roll = (new CustomDice())->roll(1, $random);
+            $onPoison = Terrain::type($state['board'][$unit['hex']]) === 'poison';
+            $cleared = in_array('shield', $roll['faces'], true) && !$onPoison;
+            $events[] = MatchEngine::event('poisonRolled', [$unit['hex']], [
+                'unitId' => $unitId, 'hex' => $unit['hex'], 'faces' => $roll['faces'],
+                'wounds' => $roll['swords'], 'cleared' => $cleared,
+            ]);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            if ($state['phase'] !== 'active') {
+                return $state;
+            }
+            if ($cleared) {
+                $state = UnitConditions::clear($state, $unitId, 'Poisoned', $events);
+            }
+        }
+        foreach ($ids as $unitId) {
+            $unit = $state['units'][$unitId];
+            if ($unit['seatId'] !== $seatId || $unit['hex'] === null || Terrain::type($state['board'][$unit['hex']]) !== 'lava') {
+                continue;
+            }
+            if (Terrain::hasTrait($state, $unitId, 'Lava Walker')) {
+                $events[] = MatchEngine::event('terrainIgnored', [$unit['hex']], [
+                    'unitId' => $unitId, 'terrain' => 'lava', 'ability' => 'Lava Walker', 'hex' => $unit['hex'],
+                ]);
+                continue;
+            }
+            $roll = (new CustomDice())->roll(5, $random);
+            $events[] = MatchEngine::event('terrainDamage', [$unit['hex']], [
+                'unitId' => $unitId, 'terrain' => 'lava', 'cause' => 'turnEnd', 'dice' => 5,
+                'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $unit['hex'],
+            ]);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            if ($state['phase'] !== 'active') {
+                return $state;
+            }
+        }
+        return $state;
+    }
 }

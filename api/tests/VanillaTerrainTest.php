@@ -372,5 +372,77 @@ function vanilla_terrain_tests(): array
             );
             expect_same(['terrainEntered', 'terrainDamage', 'unitTeleported'], array_column($teleportEvents, 'kind'), 'teleport arrival uses the same terrain pipeline');
         },
+
+        'turn end resolves poison before lava in stable owning-unit order' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'darkness', 'terrain' => 'poison-pits'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(5), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '1,0', ['hp' => 9]),
+                vanilla_unit('a3', 'seat-a', '2,0', ['hp' => 9]),
+                vanilla_unit('b1', 'seat-b', '4,0', ['hp' => 9]),
+            ]);
+            $conditionEvents = [];
+            $state = UnitConditions::apply($state, 'Poisoned', 'a2', null, ['kind' => 'untilCleared'], $conditionEvents);
+            $state = UnitConditions::apply($state, 'Poisoned', 'a1', null, ['kind' => 'untilCleared'], $conditionEvents);
+            $result = vanilla_command($state, 'seat-a', 'endTurn', [], [4, 4, 1, 4, 4, 4, 4]);
+            $terrainEvents = array_values(array_filter($result['events'], static fn(array $event): bool => in_array($event['kind'], ['poisonRolled', 'terrainDamage'], true)));
+            expect_same(['a1', 'a2', 'a3'], array_column(array_column($terrainEvents, 'payload'), 'unitId'), 'poison rolls by unit ID before lava');
+            expect_true(!UnitConditions::has($result['state'], 'a1', 'Poisoned'), 'a shield clears poison off the pits');
+            expect_true(UnitConditions::has($result['state'], 'a2', 'Poisoned'), 'a shield cannot clear poison while in the pits');
+            expect_same(1, $result['state']['units']['a3']['wounds'], 'lava rolls five no-defense dice');
+            expect_same('seat-b', $result['state']['turn']['activeSeatId'], 'the turn advances after terrain resolves');
+        },
+
+        'turn end keeps blank poison and applies lava traits only to the owning seat' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '3,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(5), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['hp' => 9]),
+                terrain_unit('a2', 'seat-a', '1,0', ['Lava Walker'], ['hp' => 9]),
+                terrain_unit('a3', 'seat-a', '2,0', ['Flying'], ['hp' => 9]),
+                vanilla_unit('b1', 'seat-b', '3,0', ['hp' => 9]),
+            ]);
+            $conditionEvents = [];
+            $state = UnitConditions::apply($state, 'Poisoned', 'a1', null, ['kind' => 'untilCleared'], $conditionEvents);
+
+            $result = vanilla_command($state, 'seat-a', 'endTurn', [], [6, 1, 4, 4, 4, 4]);
+
+            expect_true(UnitConditions::has($result['state'], 'a1', 'Poisoned'), 'a blank leaves Poisoned in place');
+            expect_same(0, $result['state']['units']['a1']['wounds'], 'a poison blank causes no wound');
+            expect_same(0, $result['state']['units']['a2']['wounds'], 'Lava Walker ignores turn-end lava');
+            expect_same(1, $result['state']['units']['a3']['wounds'], 'Flying does not ignore turn-end lava');
+            expect_same(0, $result['state']['units']['b1']['wounds'], 'the other seat does not resolve lava yet');
+            $terrainEvents = array_values(array_filter(
+                $result['events'],
+                static fn(array $event): bool => in_array($event['kind'], ['poisonRolled', 'terrainIgnored', 'terrainDamage'], true)
+            ));
+            expect_same(['a1', 'a2', 'a3'], array_column(array_column($terrainEvents, 'payload'), 'unitId'), 'only owning units resolve in stable order');
+        },
+
+        'lethal turn end lava stops later rolls and does not advance the turn' => static function (): void {
+            $paint = [
+                '1,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+                '2,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ];
+            $state = vanilla_battle(vanilla_board(vanilla_line(4), [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['hp' => 1]),
+                vanilla_unit('a2', 'seat-a', '1,0', ['hp' => 1]),
+                vanilla_unit('a3', 'seat-b', '2,0', ['hp' => 9]),
+                vanilla_unit('b1', 'seat-b', '3,0'),
+            ]);
+            $conditionEvents = [];
+            $state = UnitConditions::apply($state, 'Poisoned', 'a1', null, ['kind' => 'untilCleared'], $conditionEvents);
+            $random = new CountingTerrainRandom();
+            $result = (new MatchEngine(test_catalog()))->apply($state, 'seat-a', 'endTurn', [], $random);
+            expect_same(6, $random->rolls, 'one poison die and only the first five lava dice roll');
+            expect_same(['poisonRolled', 'unitDefeated', 'terrainDamage', 'unitDefeated', 'matchCompleted'], array_column($result['events'], 'kind'), 'completion stops the turn pipeline');
+            expect_same(1, $result['state']['turn']['number'], 'the active turn does not advance');
+        },
     ];
 }
