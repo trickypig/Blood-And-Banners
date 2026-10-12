@@ -122,3 +122,12 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .unit-stats { display: flex; flex-wrap: wrap; gap: .2rem .7rem; }
 .unit-stats .raised { color: #a6d98f; }
 .unit-stats .lowered { color: #e2a29a; }
+
+.targeting-banner { position: sticky; z-index: 3; top: .75rem; display: inline-flex; align-items: center; gap: .6rem; margin: .75rem; padding: .4rem .7rem; color: #1f201d; background: #ffd700; border-radius: .2rem; font-weight: 600; }
+.targeting-banner button { min-height: 2rem; padding: .2rem .6rem; color: #f6f0df; background: #373830; border: 0; }
+.hex.ability-target .hex-outline { fill: rgba(255, 107, 90, .3); stroke: #ff6b5a; stroke-width: 3.5; }
+.hex.ally-target .hex-outline { fill: rgba(240, 207, 122, .3); stroke: #f0cf7a; stroke-width: 3.5; }
+.hex.splash .hex-outline { fill: rgba(255, 140, 60, .35); stroke: #ff8c3c; stroke-dasharray: 5 3; stroke-width: 2.5; }
+.effect-marker { font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #000; stroke-width: 2; }
+.effect-marker.buff { fill: #a6d98f; }
+.effect-marker.debuff { fill: #ff8a7a; }

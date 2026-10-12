@@ -241,6 +241,87 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("Shield Wall +1 until your next turn", defense.GetAttribute("title"));
         Assert.NotNull(cut.Find("[data-testid=selected-unit] li[data-ability='Evasion']"));
     }
+
+    [Fact]
+    public void Choosing_a_special_attack_targets_only_its_hexes_and_sends_it()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { Abilities = [new AbilityProjection("Fireball", "Attack", "Power 4") { Playable = true }] }, projection.Units[1], projection.Units[2]],
+            LegalActions = [.. projection.LegalActions, new LegalAction("specialAttack", "s1-u3", ["3,4"]) { Ability = "Fireball" }],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find("[data-hex='1,4']").Click();
+        cut.Find("button[data-use-ability='Fireball']").Click();
+
+        Assert.Contains("Fireball", cut.Find("[data-testid=targeting-banner]").TextContent);
+        Assert.Contains("ability-target", cut.Find("[data-hex='3,4']").ClassList);
+        Assert.DoesNotContain("reachable", cut.Find("[data-hex='2,4']").ClassList);
+
+        cut.Find("[data-hex='3,4']").MouseEnter();
+        Assert.Contains("splash", cut.Find("[data-hex='2,4']").ClassList);
+        Assert.Contains("splash", cut.Find("[data-hex='4,4']").ClassList);
+
+        cut.Find("[data-hex='3,4']").Click();
+
+        var command = sent.Single();
+        Assert.Equal("specialAttack", command.Kind);
+        var payload = JsonSerializer.SerializeToElement(command.Payload);
+        Assert.Equal("Fireball", payload.GetProperty("ability").GetString());
+        Assert.Equal("s2-u1", payload.GetProperty("targetUnitIds")[0].GetString());
+        Assert.Empty(cut.FindAll("[data-testid=targeting-banner]"));
+    }
+
+    [Fact]
+    public void Targeting_can_be_cancelled_and_abilities_send_a_single_target()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { Abilities = [new AbilityProjection("Rune of Distraction", "Ability", "-2 Defense") { Playable = true }] }, projection.Units[1], projection.Units[2]],
+            LegalActions = [.. projection.LegalActions, new LegalAction("useAbility", "s1-u3", ["3,4"]) { Ability = "Rune of Distraction" }],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find("[data-hex='1,4']").Click();
+        cut.Find("button[data-use-ability='Rune of Distraction']").Click();
+        cut.Find("button[data-action=cancelTargeting]").Click();
+        Assert.Empty(cut.FindAll("[data-testid=targeting-banner]"));
+        Assert.Contains("attackable", cut.Find("[data-hex='3,4']").ClassList);
+
+        cut.Find("button[data-use-ability='Rune of Distraction']").Click();
+        cut.Find("[data-hex='3,4']").Click();
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("useAbility", sent.Single().Kind);
+        Assert.Equal("s2-u1", payload.GetProperty("targetUnitId").GetString());
+    }
+
+    [Fact]
+    public void Tokens_mark_buffs_and_debuffs()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [
+                projection.Units[0] with { Effects = [new EffectProjection("Shield Wall", "defense", 1, "nextTurn")] },
+                projection.Units[1] with { Effects = [new EffectProjection("Rune of Distraction", "defense", -2, "nextTurn")] },
+                projection.Units[2],
+            ],
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Single(cut.FindAll("[data-hex='1,4'] .effect-marker.buff"));
+        Assert.Single(cut.FindAll("[data-hex='3,4'] .effect-marker.debuff"));
+        Assert.Contains("Shield Wall", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
+    }
 }
 
 internal static class BattleFixtures

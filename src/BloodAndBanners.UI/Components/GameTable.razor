@@ -14,12 +14,19 @@
         </p>
     </header>
 
-    <section class="battlefield-panel" aria-label="Game board">
+    <section class="battlefield-panel" aria-label="Game board" @onkeydown="OnBoardKey">
         <div class="board-controls" aria-label="Board view controls">
             <button type="button" aria-label="Zoom out" disabled="@(_zoom <= MinZoom)" @onclick="() => Zoom(-ZoomStep)">−</button>
             <button type="button" aria-label="Reset board view" @onclick="() => _zoom = 1">Reset</button>
             <button type="button" aria-label="Zoom in" disabled="@(_zoom >= MaxZoom)" @onclick="() => Zoom(ZoomStep)">+</button>
         </div>
+        @if (_targeting is { } aiming)
+        {
+            <div class="targeting-banner" data-testid="targeting-banner" role="status">
+                <span>@aiming.Ability: choose a target</span>
+                <button type="button" data-action="cancelTargeting" @onclick="CancelTargeting">Cancel</button>
+            </div>
+        }
         @{ var board = BoardLayout.For(Projection.Board.Hexes); }
         <svg class="hex-board"
              role="group"
@@ -60,10 +67,10 @@
                    aria-label="@HexLabel(hex, unit)"
                    @onclick="() => SelectHex(hex)"
                    @onkeydown="args => OnHexKey(args, hex)"
-                   @onmouseenter="() => _hoveredUnitId = hex.OccupantId"
-                   @onmouseleave="() => _hoveredUnitId = null"
-                   @onfocus="() => _hoveredUnitId = hex.OccupantId"
-                   @onblur="() => _hoveredUnitId = null">
+                   @onmouseenter="() => Hover(hex)"
+                   @onmouseleave="Unhover"
+                   @onfocus="() => Hover(hex)"
+                   @onblur="Unhover">
                     @if (tile.Lift > 0)
                     {
                         <path class="hex-side" d="@tile.SidePath" />
@@ -112,6 +119,14 @@
                             @if (unit?.IsHero == true)
                             {
                                 <!text class="token-hero" x="@Num(tile.X + radius * .85)" y="@Num(tokenY - radius * .75)">⚑</!text>
+                            }
+                            @if (unit is not null && unit.Effects.Any(effect => effect.Amount > 0))
+                            {
+                                <!text class="effect-marker buff" x="@Num(tile.X + radius * .85)" y="@Num(tokenY + radius * .55)">▲</!text>
+                            }
+                            @if (unit is not null && unit.Effects.Any(effect => effect.Amount < 0))
+                            {
+                                <!text class="effect-marker debuff" x="@Num(tile.X - radius * .85)" y="@Num(tokenY + radius * .55)">▼</!text>
                             }
                             @if (unit is not null)
                             {
@@ -323,6 +338,18 @@
         {
             _selectedUnitId = active;
         }
+        if (_targeting is { } aiming && !AbilityActions(_selectedUnitId ?? string.Empty).Any(action => action.Ability == aiming.Ability))
+        {
+            _targeting = null;
+        }
+        if (ErrorMessage != _lastError)
+        {
+            if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                _targeting = null;
+            }
+            _lastError = ErrorMessage;
+        }
     }
 
     private bool IsMyTurn => Projection.Viewer.SeatId is not null && Projection.Turn.ActiveSeatId == Projection.Viewer.SeatId;
@@ -375,6 +402,23 @@
         {
             return;
         }
+        if (_targeting is { } aiming && _selectedUnitId is { } caster)
+        {
+            var aimed = HexKey(hex);
+            if (aiming.TargetHexes.Contains(aimed) && hex.OccupantId is { } targetId)
+            {
+                _targeting = null;
+                if (aiming.Kind == "specialAttack")
+                {
+                    await Send("specialAttack", new { unitId = caster, ability = aiming.Ability, targetUnitIds = new[] { targetId } });
+                }
+                else
+                {
+                    await Send("useAbility", new { unitId = caster, ability = aiming.Ability, targetUnitId = targetId });
+                }
+            }
+            return;
+        }
         var key = HexKey(hex);
         if (_selectedUnitId is { } unitId)
         {
@@ -392,6 +436,39 @@
         _selectedUnitId = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
     }
 
+    private string? _hoveredHex;
+    private string? _lastError;
+
+    private void Hover(HexProjection hex)
+    {
+        _hoveredUnitId = hex.OccupantId;
+        _hoveredHex = HexKey(hex);
+    }
+
+    private void Unhover()
+    {
+        _hoveredUnitId = null;
+        _hoveredHex = null;
+    }
+
+    private void CancelTargeting() => _targeting = null;
+
+    private void OnBoardKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _targeting = null;
+        }
+    }
+
+    private bool TargetsAlly(string key) =>
+        UnitById(Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == key)?.OccupantId)?.SeatId == Projection.Viewer.SeatId;
+
+    private IReadOnlyList<string> SplashHexes =>
+        _targeting?.Ability == "Fireball" && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
+            ? HexMath.Neighbours(hovered)
+            : [];
+
     private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
 
     private static object ActionPayload(LegalAction action) =>
@@ -402,6 +479,11 @@
         if (key == SelectedHex)
         {
             return "selected";
+        }
+        if (_targeting is { } aiming)
+        {
+            var state = aiming.TargetHexes.Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
+            return SplashHexes.Contains(key) ? $"{state} splash".Trim() : state;
         }
         if (Targets("attackUnit").Contains(key))
         {
@@ -495,6 +577,7 @@
     private string HexLabel(HexProjection hex, UnitProjection? unit) =>
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
         (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
+        (unit is null || unit.Effects.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Effects.Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {effect.Stat}"))) +
         ActivationState(unit) switch
         {
             "activating" => ", activating",

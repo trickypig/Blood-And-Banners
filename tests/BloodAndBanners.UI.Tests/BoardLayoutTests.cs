@@ -67,4 +67,12 @@ public sealed class BoardLayoutTests
     [InlineData("jungle", "#a1b096")]
     public void Height_labels_use_a_muted_shade_of_the_biome_color(string biome, string expected) =>
         Assert.Equal(expected, TerrainArt.LabelColor(biome));
+
+    [Fact]
+    public void Hex_math_measures_axial_distance_and_lists_neighbours()
+    {
+        Assert.Equal(3, HexMath.Distance("0,0", "3,0"));
+        Assert.Equal(2, HexMath.Distance("0,0", "1,1"));
+        Assert.Equal(["1,0", "1,-1", "0,-1", "-1,0", "-1,1", "0,1"], HexMath.Neighbours("0,0"));
+    }
 }
