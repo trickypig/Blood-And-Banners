@@ -15,7 +15,7 @@ final class BattleRules
 {
     public const CHOICE_TIMEOUT_SECONDS = 45;
 
-    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
+    private const KINDS = ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
@@ -70,7 +70,9 @@ final class BattleRules
         }
 
         $events = [];
-        if ($kind === 'moveUnit') {
+        if ($kind === 'activateUnit') {
+            $state = $this->activate($state, $seatId, self::text($payload, 'unitId'), $random, $events);
+        } elseif ($kind === 'moveUnit') {
             $state = $this->move($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'attackUnit') {
             $state = $this->attack($state, $seatId, $payload, $random, $events);
@@ -117,6 +119,10 @@ final class BattleRules
             $active = $state['turn']['activeUnitId'] === $unitId;
             $activated = in_array($unitId, $state['turn']['activated'], true);
             $canStart = !$activated && $this->activationError($state, $unitId) === null;
+            if (!$active && $canStart && UnitConditions::has($state, $unitId, 'Slipping')) {
+                $actions[] = ['kind' => 'activateUnit', 'unitId' => $unitId, 'targetHexes' => []];
+                continue;
+            }
             if ($activated || $canStart) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
                     if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true) || $ability->unavailable($state, $unitId) !== null) {
@@ -182,7 +188,10 @@ final class BattleRules
     private function move(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
         $unitId = self::text($payload, 'unitId');
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         if (self::rooted($state, $unitId)) {
             self::fail('unitStunned');
         }
@@ -220,14 +229,25 @@ final class BattleRules
 
         $entered = [];
         $previous = $from;
-        foreach ($path as $hex) {
+        $spent = 0;
+        foreach ($path as $index => $hex) {
             [$fromQ, $fromR] = Hex::parse($previous);
             [$toQ, $toR] = Hex::parse($hex);
+            $spent += Terrain::stepCost($state, $unitId, $previous, $hex, 'voluntary');
             $resolved = TerrainResolver::enter($state, $unitId, $previous, $hex, 'voluntary', [$toQ - $fromQ, $toR - $fromR], $random, $events);
             $state = $resolved['state'];
             $entered[] = $hex;
             $previous = $hex;
             if ($resolved['stop'] || $state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+                break;
+            }
+            if (Terrain::type($state['board'][$hex]) === 'ice' && UnitConditions::has($state, $unitId, 'Slipping')) {
+                $slide = IceMovement::continue($state, $unitId, $budget - $spent, $random, $events);
+                $state = $slide['state'];
+                array_push($entered, ...$slide['path']);
+                if ($slide['pending'] === null && $slide['path'] !== array_slice($path, $index + 1)) {
+                    self::fail('invalidMovementPath');
+                }
                 break;
             }
         }
@@ -289,7 +309,10 @@ final class BattleRules
     {
         $unitId = self::text($payload, 'unitId');
         $targetId = self::text($payload, 'targetUnitId');
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         if (!self::attacksLeft($state, $unitId)) {
             self::fail('noAttacksLeft');
         }
@@ -368,7 +391,10 @@ final class BattleRules
         $unitId = self::text($payload, 'unitId');
         $name = self::text($payload, 'ability');
         $targets = array_values(array_filter($payload['targetUnitIds'] ?? [], 'is_string'));
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         $ability = self::resolveAbility($state['units'][$unitId], $name, SpecialAttack::class);
         if (self::spellsLocked($state, $unitId)) {
             self::fail('abilityLocked');
@@ -429,8 +455,12 @@ final class BattleRules
             self::fail($blocked);
         }
         if (!in_array($unitId, $state['turn']['activated'], true)) {
-            $state = $this->activate($state, $seatId, $unitId);
+            $state = $this->activate($state, $seatId, $unitId, $random, $events);
         }
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        $unit = $state['units'][$unitId];
         if (!in_array($targetId, $ability->targets($state, $unitId), true)) {
             self::fail('invalidAbilityTarget');
         }
@@ -469,7 +499,7 @@ final class BattleRules
         return ['state' => $state, 'events' => $events];
     }
 
-    private function activate(array $state, string $seatId, string $unitId): array
+    private function activate(array $state, string $seatId, string $unitId, RandomSource $random, array &$events): array
     {
         $unit = $state['units'][$unitId] ?? null;
         if ($unit === null || $unit['hex'] === null) {
@@ -485,11 +515,18 @@ final class BattleRules
         if ($blocked !== null) {
             self::fail($blocked);
         }
+        $wasSlipping = UnitConditions::has($state, $unitId, 'Slipping');
+        $move = Stats::effective($state, $unitId, 'move');
+        $slide = IceMovement::beforeActivation($state, $unitId, $random, $events);
+        $state = $slide['state'];
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         $state['turn']['activeUnitId'] = $unitId;
         $state['turn']['activated'][] = $unitId;
-        $state['turn']['moved'] = false;
+        $state['turn']['moved'] = $wasSlipping;
         $state['turn']['attacks'] = 0;
-        $state['turn']['moveSpent'] = 0;
+        $state['turn']['moveSpent'] = $wasSlipping ? $move - $slide['remainingMove'] : 0;
         $state['turn']['movedAfterAttack'] = false;
         return $state;
     }
@@ -516,7 +553,7 @@ final class BattleRules
     private function canAct(array $state, string $seatId): bool
     {
         foreach ($this->legalActions($state, $seatId) as $action) {
-            if (in_array($action['kind'], ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
+            if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
                 return true;
             }
         }

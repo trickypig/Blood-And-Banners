@@ -44,6 +44,16 @@ final class UnitConditions
         return in_array($name, array_column(self::forUnit($state, $unitId), 'name'), true);
     }
 
+    public static function named(array $state, string $unitId, string $name): ?array
+    {
+        foreach (self::forUnit($state, $unitId) as $condition) {
+            if ($condition['name'] === $name) {
+                return $condition;
+            }
+        }
+        return null;
+    }
+
     public static function clear(array $state, string $unitId, string $name, array &$events): array
     {
         $before = count($state['conditions'] ?? []);

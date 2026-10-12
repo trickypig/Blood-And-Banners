@@ -12,6 +12,9 @@ final class TerrainResolver
     {
         $state['units'][$unitId]['hex'] = $to;
         $type = Terrain::type($state['board'][$to]);
+        if ($type !== 'ice' && (UnitConditions::has($state, $unitId, 'Unsteady') || UnitConditions::has($state, $unitId, 'Slipping'))) {
+            $state = self::clearIce($state, $unitId, $events, true);
+        }
         if ($type === null) {
             return ['state' => $state, 'stop' => false];
         }
@@ -24,6 +27,26 @@ final class TerrainResolver
             $events[] = MatchEngine::event('terrainIgnored', [$to], [
                 'unitId' => $unitId, 'terrain' => $paint, 'ability' => $ability, 'hex' => $to,
             ]);
+            return ['state' => $state, 'stop' => false];
+        }
+
+        if ($type === 'ice') {
+            if ($movementKind === 'teleport') {
+                $state = UnitConditions::clear($state, $unitId, 'Slipping', $events);
+            }
+            $state = UnitConditions::apply($state, 'Unsteady', $unitId, null, ['kind' => 'whileOnTerrain'], $events);
+            if ($movementKind !== 'teleport' && $direction !== null) {
+                $locked = UnitConditions::named($state, $unitId, 'Slipping')['data']['direction'] ?? $direction;
+                $state = UnitConditions::apply(
+                    $state,
+                    'Slipping',
+                    $unitId,
+                    null,
+                    ['kind' => 'untilCleared'],
+                    $events,
+                    ['direction' => array_values($locked)]
+                );
+            }
             return ['state' => $state, 'stop' => false];
         }
 
@@ -47,6 +70,15 @@ final class TerrainResolver
             $events[] = MatchEngine::event('movementStopped', [$to], ['unitId' => $unitId, 'hex' => $to, 'reason' => $type]);
         }
         return ['state' => $state, 'stop' => $stop];
+    }
+
+    public static function clearIce(array $state, string $unitId, array &$events, bool $leftIce): array
+    {
+        $state = UnitConditions::clear($state, $unitId, 'Slipping', $events);
+        if ($leftIce) {
+            $state = UnitConditions::clear($state, $unitId, 'Unsteady', $events);
+        }
+        return $state;
     }
 
     public static function atTurnEnd(array $state, string $seatId, RandomSource $random, array &$events): array

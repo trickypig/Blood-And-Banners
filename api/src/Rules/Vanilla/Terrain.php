@@ -70,6 +70,9 @@ final class Terrain
         if (self::type($destination) === 'ice' && $rise > 0) {
             return false;
         }
+        if ($movementKind === 'slip' && $rise < 0) {
+            return true;
+        }
         $effectiveDestination = $destination['elevation'] + (self::type($destination) === 'water' ? 1 : 0);
         return abs($effectiveDestination - $source['elevation']) <= 1;
     }
