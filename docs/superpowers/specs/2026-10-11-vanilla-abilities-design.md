@@ -39,7 +39,7 @@ Where the card text is silent or ambiguous, the choice below is the decision for
 
 ### Turn flow
 
-- Attacking ends a unit's movement, except Silent Sting. The activation ends after its attacks are used up (one, or two with a Dual Strike-type essence) unless an ability is still unused — abilities stay usable for the rest of the owner's turn.
+- Attacking ends a unit's movement, except Silent Sting. The activation ends once its attacks are used up (one, or two with a Dual Strike-type essence) or the player ends it. Separately, a unit activated this turn can still use its unused Abilities for the rest of its owner's turn, even after its activation has ended.
 - Using an Ability with a unit that has not activated this turn activates it, spending one of the seat's activations under the existing activation rules (including the three-non-hero limit while the hero lives). Using an ability does not consume the unit's move or attack.
 - "Until your next turn" means until the start of the caster's seat's next turn. "Until end of turn" means until the current seat's turn ends.
 - Effects on different units stack. Reapplying the same named effect to the same unit refreshes its expiry instead of stacking.
