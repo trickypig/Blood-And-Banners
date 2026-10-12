@@ -24,6 +24,10 @@ final class BattleRules
         'noLineOfSight' => 'That target is not in line of sight.',
     ];
 
+    public function __construct(private readonly int $now)
+    {
+    }
+
     public function apply(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array
     {
         if (!in_array($kind, self::KINDS, true)) {
@@ -118,7 +122,7 @@ final class BattleRules
             'to' => $to,
             'disengagement' => $hits,
         ]);
-        return $this->wound($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
+        return Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
     }
 
     private function attack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
@@ -134,14 +138,9 @@ final class BattleRules
         if ($blocked !== null) {
             self::fail($blocked);
         }
-        $roll = Combat::attack($state, $unitId, $targetId, $random);
-        $events[] = MatchEngine::event(
-            'attackResolved',
-            [$state['units'][$unitId]['hex'], $target['hex']],
-            ['unitId' => $unitId, 'targetUnitId' => $targetId] + $roll
-        );
+        $state['turn']['attacks']++;
         $state['turn']['activeUnitId'] = null;
-        return $this->wound($state, $targetId, $roll['wounds'], $events);
+        return (new StepRunner($random, $this->now))->run($state, [StepRunner::strike($unitId, $targetId)], $events);
     }
 
     private function activate(array $state, string $seatId, string $unitId): array
@@ -195,34 +194,6 @@ final class BattleRules
         return false;
     }
 
-    private function wound(array $state, string $unitId, int $wounds, array &$events): array
-    {
-        if ($wounds <= 0) {
-            return $state;
-        }
-        $unit = $state['units'][$unitId];
-        $state['units'][$unitId]['wounds'] = min($unit['hp'], $unit['wounds'] + $wounds);
-        if ($state['units'][$unitId]['wounds'] < $unit['hp']) {
-            return $state;
-        }
-        $events[] = MatchEngine::event('unitDefeated', [$unit['hex']], ['unitId' => $unitId]);
-        $state['units'][$unitId]['hex'] = null;
-        if ($state['turn']['activeUnitId'] === $unitId) {
-            $state['turn']['activeUnitId'] = null;
-        }
-        foreach ($state['seats'] as $seatId) {
-            if (!self::anyAlive($state, $seatId)) {
-                $winner = MatchEngine::otherSeat($state, $seatId);
-                $state['phase'] = 'completed';
-                $state['result'] = ['reason' => 'annihilation', 'winningSeatId' => $winner];
-                $state['turn']['activeUnitId'] = null;
-                $events[] = MatchEngine::event('matchCompleted', [], ['winningSeatId' => $winner, 'reason' => 'annihilation']);
-                break;
-            }
-        }
-        return $state;
-    }
-
     private static function passTurn(array $state): array
     {
         $current = $state['turn']['activeSeatId'];
@@ -240,16 +211,6 @@ final class BattleRules
     {
         foreach ($state['units'] as $unit) {
             if ($unit['seatId'] === $seatId && $unit['isHero'] && $unit['hex'] !== null) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static function anyAlive(array $state, string $seatId): bool
-    {
-        foreach ($state['units'] as $unit) {
-            if ($unit['seatId'] === $seatId && $unit['hex'] !== null) {
                 return true;
             }
         }

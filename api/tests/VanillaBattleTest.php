@@ -153,7 +153,7 @@ function vanilla_battle_tests(): array
             $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 2, 3, 4, 6]);
             expect_same(['attackResolved', 'unitDefeated', 'turnEnded'], array_column($result['events'], 'kind'), 'attack, defeat, then the spent turn passes');
             expect_same(
-                ['unitId' => 'a1', 'targetUnitId' => 'b1', 'attackFaces' => ['sword', 'sword', 'sword'], 'defenseFaces' => ['shield', 'blank'], 'wounds' => 2],
+                ['unitId' => 'a1', 'targetUnitId' => 'b1', 'ability' => null, 'attackFaces' => ['sword', 'sword', 'sword'], 'defenseFaces' => ['shield', 'blank'], 'rerolled' => null, 'wounds' => 2],
                 $result['events'][0]['payload'],
                 'dice faces and wounds are reported'
             );

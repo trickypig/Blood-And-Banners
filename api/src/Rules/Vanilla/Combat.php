@@ -32,18 +32,6 @@ final class Combat
         return (new HexLineOfSight())->isVisible($fromHex, $toHex, self::sightBoard($state));
     }
 
-    public static function attack(array $state, string $attackerId, string $targetId, RandomSource $random): array
-    {
-        $dice = new CustomDice();
-        $attack = $dice->roll($state['units'][$attackerId]['power'], $random);
-        $defense = $dice->roll($state['units'][$targetId]['defense'], $random);
-        return [
-            'attackFaces' => $attack['faces'],
-            'defenseFaces' => $defense['faces'],
-            'wounds' => max(0, $attack['swords'] - $defense['shields']),
-        ];
-    }
-
     public static function disengagementHit(RandomSource $random): array
     {
         $roll = (new CustomDice())->roll(1, $random);

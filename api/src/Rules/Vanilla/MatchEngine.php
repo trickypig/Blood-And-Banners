@@ -57,17 +57,17 @@ final class MatchEngine
         ];
     }
 
-    public function apply(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array
+    public function apply(array $state, string $seatId, string $kind, array $payload, RandomSource $random, ?int $now = null): array
     {
         $state = self::normalize($state);
         return match ($state['phase']) {
             'draft' => (new DraftRules($this->catalog))->apply($state, $seatId, $kind, $payload),
-            'active' => (new BattleRules())->apply($state, $seatId, $kind, $payload, $random),
+            'active' => (new BattleRules($now ?? time()))->apply($state, $seatId, $kind, $payload, $random),
             default => throw new GameServiceException('matchCompleted', 'The match is already over.'),
         };
     }
 
-    public function legalActions(array $state, ?string $seatId): array
+    public function legalActions(array $state, ?string $seatId, ?int $now = null): array
     {
         if ($seatId === null) {
             return [];
@@ -75,7 +75,7 @@ final class MatchEngine
         $state = self::normalize($state);
         return match ($state['phase']) {
             'draft' => (new DraftRules($this->catalog))->legalActions($state, $seatId),
-            'active' => (new BattleRules())->legalActions($state, $seatId),
+            'active' => (new BattleRules($now ?? time()))->legalActions($state, $seatId),
             default => [],
         };
     }

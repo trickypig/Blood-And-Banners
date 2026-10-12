@@ -90,7 +90,7 @@ function vanilla_battle(array $board, array $units, string $activeSeat = 'seat-a
     return $state;
 }
 
-function vanilla_command(array $state, string $seatId, string $kind, array $payload = [], array $rolls = []): array
+function vanilla_command(array $state, string $seatId, string $kind, array $payload = [], array $rolls = [], ?int $now = null): array
 {
-    return (new MatchEngine(test_catalog()))->apply($state, $seatId, $kind, $payload, new SequenceRandom($rolls));
+    return (new MatchEngine(test_catalog()))->apply($state, $seatId, $kind, $payload, new SequenceRandom($rolls), $now);
 }
