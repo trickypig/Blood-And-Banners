@@ -132,3 +132,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .effect-marker.buff { fill: #a6d98f; }
 .effect-marker.debuff { fill: #ff8a7a; }
 .chain-mark { fill: #fff3aa; font: 700 14px Georgia, serif; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
+.choice-dice { display: flex; gap: .4rem; margin-bottom: .6rem; }
+.die { width: 2.6rem; height: 2.6rem; font-size: 1.3rem; color: #1f201d; background: #ede8da; border: 2px solid #b18b48; border-radius: .35rem; }
+.die:disabled { opacity: .55; }
+.choice-waiting { border-left: .3rem solid #9cc3df; padding-left: .9rem; }

@@ -158,7 +158,28 @@
             <p class="rail-error" role="alert">@ErrorMessage</p>
         }
 
-        @if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
+        @if (Projection.PendingChoice is { Kind: "moonlightGlare" } glare && glare.SeatId == Projection.Viewer.SeatId)
+        {
+            <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title" data-testid="glare-prompt">
+                <h2 id="choice-title">Moonlight Glare</h2>
+                <p>@(UnitById(glare.UnitId)?.Name ?? "Your Duelist") may re-roll one @glare.Side die.</p>
+                <div class="choice-dice">
+                    @for (var index = 0; index < glare.Faces.Count; index++)
+                    {
+                        var option = $"reroll:{index}";
+                        var face = glare.Faces[index];
+                        <button type="button"
+                                class="die face-@face"
+                                data-choice="@option"
+                                aria-label="Re-roll @glare.Side die @(index + 1) (@face)"
+                                disabled="@(!glare.Options.Contains(option) || IsBusy)"
+                                @onclick="() => Resolve(glare.ChoiceId, option)">@FaceSymbol(face)</button>
+                    }
+                </div>
+                <button type="button" data-choice="keep" disabled="@IsBusy" @onclick='() => Resolve(glare.ChoiceId, "keep")'>Keep the roll</button>
+            </section>
+        }
+        else if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
         {
             <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title">
                 <h2 id="choice-title">@Humanize(Projection.PendingChoice.Kind)</h2>
@@ -166,9 +187,20 @@
                 <div class="choice-options">
                     @foreach (var option in Projection.PendingChoice.Options)
                     {
-                        <button type="button" data-choice="@option" @onclick="() => OnChoice.InvokeAsync(option)">@option</button>
+                        <button type="button" data-choice="@option" @onclick="() => Resolve(Projection.PendingChoice.ChoiceId, option)">@option</button>
                     }
                 </div>
+            </section>
+        }
+        else if (Projection.PendingChoiceSummary is { } waitingOn && Projection.Viewer.CanCommand)
+        {
+            <section class="choice-waiting" data-testid="choice-waiting" role="status">
+                <h2>Moonlight Glare</h2>
+                <p>Waiting for your opponent's decision…</p>
+                @if (Projection.LegalActions.Any(action => action.Kind == "resolveChoice"))
+                {
+                    <button type="button" data-action="keepForThem" disabled="@IsBusy" @onclick='() => Resolve(waitingOn.ChoiceId, "keep")'>Keep the roll for them</button>
+                }
             </section>
         }
         else if (Projection.Viewer.CanCommand)
@@ -293,9 +325,6 @@
 
     [Parameter]
     public EventCallback OnReturnToWarRoom { get; set; }
-
-    [Parameter]
-    public EventCallback<string> OnChoice { get; set; }
 
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }
@@ -529,6 +558,15 @@
         _targeting?.Ability == "Fireball" && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
             ? HexMath.Neighbours(hovered)
             : [];
+
+    private Task Resolve(string choiceId, string option) => Send("resolveChoice", new { choiceId, option });
+
+    private static string FaceSymbol(string face) => face switch
+    {
+        "sword" => "⚔",
+        "shield" => "⛨",
+        _ => "·",
+    };
 
     private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
 

@@ -296,7 +296,7 @@ else
 
             var interval = PollingCadence.Select(
                 current.Turn.ActiveSeatId == current.Viewer.SeatId,
-                current.PendingChoice?.SeatId == current.Viewer.SeatId || current.Draft?.PickingSeatId == current.Viewer.SeatId,
+                current.PendingChoiceSummary is not null || current.Draft?.PickingSeatId == current.Viewer.SeatId,
                 backgrounded: false,
                 failures);
 

@@ -363,6 +363,61 @@ public sealed partial class GameTableTests : BunitContext
         var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
         Assert.Equal(["s2-u1", "s2-u2"], payload.GetProperty("targetUnitIds").EnumerateArray().Select(id => id.GetString()!).ToArray());
     }
+
+    [Fact]
+    public void The_glare_owner_picks_a_die_to_reroll_or_keeps()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection() with
+        {
+            PendingChoice = new PendingChoiceProjection("choice-1", "seat-red", "moonlightGlare", ["reroll:1", "keep"])
+            {
+                UnitId = "s1-u3", Side = "defense", Faces = ["shield", "blank"],
+            },
+            PendingChoiceSummary = new PendingChoiceSummary("choice-1", "seat-red", "s1-u3", DateTimeOffset.UtcNow.AddSeconds(45)),
+            LegalActions = [new LegalAction("resolveChoice", "s1-u3", [])],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        var prompt = cut.Find("[data-testid=glare-prompt]");
+        Assert.Contains("Moonlight Glare", prompt.TextContent);
+        Assert.Contains("defense", prompt.TextContent);
+        Assert.True(cut.Find("button[data-choice='reroll:0']").HasAttribute("disabled"));
+
+        cut.Find("button[data-choice='reroll:1']").Click();
+
+        Assert.Equal("resolveChoice", sent.Single().Kind);
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("choice-1", payload.GetProperty("choiceId").GetString());
+        Assert.Equal("reroll:1", payload.GetProperty("option").GetString());
+    }
+
+    [Fact]
+    public void The_other_player_waits_and_may_keep_for_them_once_allowed()
+    {
+        var sent = new List<GameCommandRequest>();
+        var waiting = BattleFixtures.Projection() with
+        {
+            PendingChoiceSummary = new PendingChoiceSummary("choice-1", "seat-blue", "s2-u1", DateTimeOffset.UtcNow.AddSeconds(30)),
+            LegalActions = [],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, waiting)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        Assert.Contains("Waiting for your opponent's decision", cut.Find("[data-testid=choice-waiting]").TextContent);
+        Assert.Empty(cut.FindAll("button[data-action=keepForThem]"));
+        Assert.Empty(cut.FindAll("button[data-action=endTurn]"));
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, waiting with { LegalActions = [new LegalAction("resolveChoice", "s2-u1", [])] }));
+        cut.Find("button[data-action=keepForThem]").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("keep", payload.GetProperty("option").GetString());
+        Assert.Equal("choice-1", payload.GetProperty("choiceId").GetString());
+    }
 }
 
 internal static class BattleFixtures
