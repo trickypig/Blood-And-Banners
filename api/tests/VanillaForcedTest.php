@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Rules\Vanilla\Forced;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
@@ -68,6 +69,96 @@ function vanilla_forced_tests(): array
             $state = vanilla_battle(vanilla_board(vanilla_line(3)), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '2,0')]);
             unset($state['conditions']);
             expect_same([], MatchEngine::normalize($state)['conditions'], 'conditions default to empty');
+        },
+
+        'a free push moves the unit straight back without dice' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '1,0')]);
+            $events = [];
+            $state = Forced::push($state, 'b1', [1, 0], 2, 'a1', new SequenceRandom([]), $events);
+            expect_same('3,0', $state['units']['b1']['hex'], 'two hexes back');
+            expect_same(
+                ['unitId' => 'b1', 'sourceUnitId' => 'a1', 'from' => '1,0', 'to' => '3,0', 'path' => ['1,0', '2,0', '3,0'], 'collisions' => [], 'falls' => [], 'blocked' => null],
+                $events[0]['payload'],
+                'the push is reported'
+            );
+            expect_same(['1,0', '2,0', '3,0'], $events[0]['focusHexes'], 'the path is focused');
+        },
+
+        'pushing into a unit stops the push and hurts both' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                vanilla_unit('a1', 'seat-a', '0,0'),
+                vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 5]),
+                vanilla_unit('a2', 'seat-a', '2,0', ['hp' => 5]),
+            ]);
+            $events = [];
+            $state = Forced::push($state, 'b1', [1, 0], 1, 'a1', new SequenceRandom([1, 4]), $events);
+            expect_same('1,0', $state['units']['b1']['hex'], 'blocked in place');
+            expect_same('unit', $events[0]['payload']['blocked'], 'blocked by a unit');
+            expect_same([['unitId' => 'b1', 'faces' => ['sword'], 'wounds' => 1], ['unitId' => 'a2', 'faces' => ['shield'], 'wounds' => 0]], $events[0]['payload']['collisions'], 'each rolls one die');
+            expect_same(1, $state['units']['b1']['wounds'], 'the pushed unit is hurt');
+        },
+
+        'walls, sight blockers and the board edge stop a push and hurt the pushed unit' => static function (): void {
+            $cases = [
+                'wall' => [vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 2]), 'wall'],
+                'blocker' => [vanilla_board(vanilla_line(3), ['2,0']), 'wall'],
+                'edge' => [vanilla_board(vanilla_line(2)), 'edge'],
+            ];
+            foreach ($cases as $label => [$board, $blocked]) {
+                $state = vanilla_battle($board, [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 5])]);
+                $events = [];
+                $state = Forced::push($state, 'b1', [1, 0], 1, 'a1', new SequenceRandom([1]), $events);
+                expect_same($blocked, $events[0]['payload']['blocked'], "{$label} blocks");
+                expect_same('1,0', $state['units']['b1']['hex'], "{$label} holds the unit in place");
+                expect_same(1, $state['units']['b1']['wounds'], "{$label} costs a die of damage");
+            }
+        },
+
+        'falling two or more levels costs a die per level and the push continues' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 3, '1,0' => 3, '2,0' => 1, '3,0' => 1]), [
+                vanilla_unit('a1', 'seat-a', '0,0'),
+                vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 5]),
+            ]);
+            $events = [];
+            $state = Forced::push($state, 'b1', [1, 0], 2, 'a1', new SequenceRandom([1, 1]), $events);
+            expect_same('3,0', $state['units']['b1']['hex'], 'over the ledge and on');
+            expect_same([['levels' => 2, 'faces' => ['sword', 'sword'], 'wounds' => 2]], $events[0]['payload']['falls'], 'two levels, two dice');
+            expect_same(2, $state['units']['b1']['wounds'], 'the fall hurts');
+
+            $gentle = vanilla_battle(vanilla_board(['0,0' => 1, '1,0' => 1, '2,0' => 0]), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '1,0')]);
+            $events = [];
+            $gentle = Forced::push($gentle, 'b1', [1, 0], 1, 'a1', new SequenceRandom([]), $events);
+            expect_same([], $events[0]['payload']['falls'], 'a one-level drop is a normal step');
+        },
+
+        'a unit killed mid-push stops there, and a lethal push can end the match' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 3, '1,0' => 3, '2,0' => 1, '3,0' => 1, '4,0' => 1]), [
+                vanilla_unit('a1', 'seat-a', '0,0'),
+                vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 1]),
+                vanilla_unit('b2', 'seat-b', '4,0'),
+            ]);
+            $events = [];
+            $state = Forced::push($state, 'b1', [1, 0], 2, 'a1', new SequenceRandom([1, 6]), $events);
+            expect_same(['unitPushed', 'unitDefeated'], array_column($events, 'kind'), 'the push is reported before the fall kills');
+            expect_same(['1,0', '2,0'], $events[0]['payload']['path'], 'the dead do not slide on');
+
+            $last = vanilla_battle(vanilla_board(vanilla_line(2)), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 1])]);
+            $events = [];
+            $last = Forced::push($last, 'b1', [1, 0], 1, 'a1', new SequenceRandom([1]), $events);
+            expect_same(['unitPushed', 'unitDefeated', 'matchCompleted'], array_column($events, 'kind'), 'the edge finishes the war');
+            expect_same('completed', $last['phase'], 'the match is over');
+        },
+
+        'directions and teleport destinations' => static function (): void {
+            expect_same([1, 0], Forced::directionFrom('0,0', '1,0'), 'adjacent hexes give a direction');
+            expect_same([0, -1], Forced::directionFrom('2,3', '2,2'), 'any of the six');
+            expect_same(null, Forced::directionFrom('0,0', '2,0'), 'non-adjacent hexes give none');
+
+            $state = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 2, '3,0' => 4, '4,0' => 0, '0,1' => 0], ['0,1']), [
+                vanilla_unit('a1', 'seat-a', '0,0'),
+                vanilla_unit('b1', 'seat-b', '1,0'),
+            ]);
+            expect_same(['2,0'], Forced::teleportDestinations($state, 'a1'), 'occupied, blocked and too-high-or-far hexes are excluded');
         },
     ];
 }
