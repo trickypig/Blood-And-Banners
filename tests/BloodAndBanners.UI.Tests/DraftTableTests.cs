@@ -53,6 +53,18 @@ public sealed class DraftTableTests : BunitContext
     }
 
     [Fact]
+    public void Army_cards_render_each_units_numeric_stats()
+    {
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red")));
+
+        var armyCard = cut.Find("button[data-army='Blackmaw']").TextContent;
+
+        Assert.Contains("Grunt M2 R1 P4 D3 HP5", armyCard);
+        Assert.DoesNotContain("@unit.", armyCard);
+    }
+
+    [Fact]
     public void Players_can_leave_the_draft_after_confirming()
     {
         var left = false;

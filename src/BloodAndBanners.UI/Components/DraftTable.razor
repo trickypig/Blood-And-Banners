@@ -111,7 +111,7 @@
                     <ul>
                         @foreach (var unit in army.Units)
                         {
-                            <li>@unit.Name <small>M@unit.Move R@unit.Range P@unit.Power D@unit.Defense HP@unit.Hp</small></li>
+                            <li>@unit.Name <small>M@(unit.Move) R@(unit.Range) P@(unit.Power) D@(unit.Defense) HP@(unit.Hp)</small></li>
                         }
                     </ul>
                     @if (taken)
