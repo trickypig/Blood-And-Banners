@@ -271,7 +271,7 @@ function vanilla_match_service_tests(): array
             expect_same(['resolveChoice'], array_column($owner['legalActions'], 'kind'), 'only resolution remains actionable');
             $projectedMover = array_values(array_filter($owner['units'], static fn(array $unit): bool => $unit['unitId'] === $moverId))[0];
             $slipping = array_values(array_filter($projectedMover['conditions'], static fn(array $condition): bool => $condition['name'] === 'Slipping'))[0];
-            expect_same(['direction' => [1, 0]], $slipping['data'], 'condition data carries the locked direction');
+            expect_same('{"direction":[1,0]}', json_encode($slipping['data'], JSON_THROW_ON_ERROR), 'condition data carries the locked direction as a JSON object');
 
             $opponent = $match['games']->getGame($match['gameId'], $match['rival']['identity']);
             expect_same(null, $opponent['pendingChoice'], 'the opponent cannot inspect actionable choice details');
@@ -303,7 +303,12 @@ function vanilla_match_service_tests(): array
 
             $view = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             $unit = array_values(array_filter($view['units'], static fn(array $unit): bool => $unit['unitId'] === $victim['unitId']))[0];
-            expect_same([['name' => 'Stunned', 'expires' => 'endOfNextTurn', 'data' => []]], $unit['conditions'], 'the stun is visible to everyone');
+            expect_true($unit['conditions'][0]['data'] instanceof \stdClass, 'empty condition data remains a JSON object for the client contract');
+            expect_same(
+                '{"name":"Stunned","expires":"endOfNextTurn","data":{}}',
+                json_encode($unit['conditions'][0], JSON_THROW_ON_ERROR),
+                'the actual PHP projection serializes empty condition data as an object'
+            );
             expect_same(max(0, $victim['power'] - 2), $unit['effectivePower'], 'its Power is shown reduced');
         },
     ];

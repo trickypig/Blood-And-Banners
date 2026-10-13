@@ -20,6 +20,22 @@ public sealed class BoardViewportTests
     }
 
     [Fact]
+    public void Fit_can_zoom_below_the_interaction_floor_to_contain_Home_Map_on_mobile()
+    {
+        var viewport = new BoardViewport();
+
+        viewport.ResetForGame("home-map", new WorldRect(0, 0, 2042, 3622), 375, 667);
+
+        Assert.True(viewport.Scale < BoardViewport.MinScale);
+        Assert.True(viewport.VisibleWorld.Contains(new ViewportPoint(0, 0)));
+        Assert.True(viewport.VisibleWorld.Contains(new ViewportPoint(2042, 3622)));
+        Assert.Equal(viewport.Scale, viewport.MinimumScale, 6);
+
+        viewport.ZoomAt(new ViewportPoint(187.5, 333.5), .01);
+        Assert.Equal(viewport.MinimumScale, viewport.Scale, 6);
+    }
+
+    [Fact]
     public void Zoom_preserves_the_world_point_under_the_cursor_and_clamps()
     {
         var viewport = ReadyViewport();

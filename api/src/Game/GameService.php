@@ -567,7 +567,7 @@ final class GameService
             'conditions' => array_map(static fn(array $condition): array => [
                 'name' => $condition['name'],
                 'expires' => self::conditionExpiry($state, $condition['expires']),
-                'data' => $condition['data'] ?? [],
+                'data' => (object)($condition['data'] ?? []),
             ], UnitConditions::forUnit($state, $id)),
             'effectiveMove' => $effective('move'),
             'effectiveRange' => $effective('range'),

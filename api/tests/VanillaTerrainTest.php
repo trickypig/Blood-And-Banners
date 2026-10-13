@@ -182,13 +182,26 @@ function vanilla_terrain_tests(): array
             $state['units']['b1']['hex'] = null;
             expect_same(2, movement_option(Movement::options($state, 'a1', 4), '2,0')['cost'] ?? null, 'leaving water costs two');
 
-            $climb = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 1], [], $paint), [
+            $leaveWaterPaint = ['0,0' => ['biome' => 'water', 'terrain' => 'open-water']];
+            $climb = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 1], [], $leaveWaterPaint), [
                 vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
                 vanilla_unit('b1', 'seat-b', null),
             ]);
-            expect_same(null, Movement::canonical($climb, 'a1', '1,0', 3), 'water counts one level higher for climb legality');
+            expect_same(null, Movement::canonical($climb, 'a1', '1,0', 3), 'leaving water counts the destination one level higher for climb legality');
             $climb['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 3]);
             expect_true(Movement::canonical($climb, 'a1', '1,0', 3) !== null, 'Flying ignores water and may climb two levels');
+
+            $enterWater = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 1], [], $paint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            expect_true(Movement::canonical($enterWater, 'a1', '1,0', 3) !== null, 'entering water uses the ordinary one-level climb limit');
+
+            $waterDescent = vanilla_battle(vanilla_board(['0,0' => 2, '1,0' => 0], [], $leaveWaterPaint), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            expect_same(null, Movement::canonical($waterDescent, 'a1', '1,0', 3), 'the water climb penalty does not legalize a two-level descent');
         },
 
         'poison stops while lava accumulates per hex and Flying crosses but cannot land' => static function (): void {
@@ -243,6 +256,36 @@ function vanilla_terrain_tests(): array
                 vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]), vanilla_unit('b1', 'seat-b', null),
             ]);
             expect_same(['0,1', '1,1'], Movement::canonical($tie, 'a1', '1,1', 2)['path'] ?? null, 'equal routes use stable hex-key ordering');
+        },
+
+        'ice projection includes guaranteed fall and enemy collision dice' => static function (): void {
+            $fall = vanilla_battle(vanilla_board(
+                ['0,0' => 2, '1,0' => 2, '2,0' => 0, '3,0' => 0],
+                [],
+                ice_paint(['1,0', '2,0'])
+            ), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $fallOption = Movement::canonical($fall, 'a1', '3,0', 3);
+            $fallHazards = array_values(array_filter(
+                $fallOption['hazards'] ?? [],
+                static fn(array $hazard): bool => $hazard['terrain'] === 'fall'
+            ));
+            expect_same(2, array_sum(array_column($fallHazards, 'dice')), 'a two-level forced descent projects two fall dice');
+            expect_same(true, $fallHazards[0]['forced'] ?? null, 'projected fall damage is marked forced');
+
+            $collision = vanilla_battle(vanilla_board(vanilla_line(3), [], ice_paint(['1,0'])), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', '2,0'),
+            ]);
+            $collisionOption = Movement::canonical($collision, 'a1', '1,0', 3);
+            $collisionHazards = array_values(array_filter(
+                $collisionOption['hazards'] ?? [],
+                static fn(array $hazard): bool => $hazard['kind'] === 'collision'
+            ));
+            expect_same(2, array_sum(array_column($collisionHazards, 'dice')), 'enemy collision projects one die for each unit');
+            expect_same(true, $collisionHazards[0]['stops'] ?? null, 'the collision projection identifies the forced stop');
         },
 
         'movement search stays inside the effective Move radius on Home Map' => static function (): void {

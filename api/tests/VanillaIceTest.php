@@ -272,6 +272,50 @@ function vanilla_ice_tests(): array
             expect_true(!in_array('2,0', array_merge(...array_map(static fn(array $event): array => $event['focusHexes'], $result['events'])), true), 'no later hex is entered or narrated');
         },
 
+        'move commands accept a projected slide prefix when a fall defeats the mover' => static function (): void {
+            $state = vanilla_battle(vanilla_board(
+                ['0,0' => 2, '1,0' => 2, '2,0' => 0, '3,0' => 0, '4,0' => 0],
+                [],
+                ice_paint(['1,0', '2,0'])
+            ), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3, 'hp' => 1]),
+                vanilla_unit('b1', 'seat-b', '4,0'),
+            ]);
+
+            $result = vanilla_command(
+                $state,
+                'seat-a',
+                'moveUnit',
+                ['unitId' => 'a1', 'path' => ['1,0', '2,0', '3,0']],
+                [1]
+            );
+
+            expect_same(null, $result['state']['units']['a1']['hex'], 'the lethal fall is committed instead of rejected as a path mismatch');
+            expect_same('completed', $result['state']['phase'], 'the fall may complete the match');
+        },
+
+        'only the voluntary portion of an ice move can provoke disengagement' => static function (): void {
+            $state = vanilla_battle(vanilla_board(
+                ['0,0' => 0, '1,0' => 0, '2,0' => 0, '3,0' => 0, '0,1' => 0],
+                [],
+                ice_paint(['1,0', '2,0'])
+            ), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
+                vanilla_unit('b1', 'seat-b', '0,1'),
+            ]);
+
+            $result = vanilla_command(
+                $state,
+                'seat-a',
+                'moveUnit',
+                ['unitId' => 'a1', 'path' => ['1,0', '2,0', '3,0']],
+                [1]
+            );
+            $move = array_values(array_filter($result['events'], static fn(array $event): bool => $event['kind'] === 'unitMoved'))[0];
+            expect_same([], $move['payload']['disengagement'], 'leaving an enemy only during the forced slide causes no strike');
+            expect_same(0, $result['state']['units']['a1']['wounds'], 'the forced continuation causes no disengagement wound');
+        },
+
         'enemy ice collision damages mover then occupant and clears only Slipping' => static function (): void {
             $state = vanilla_battle(vanilla_board(vanilla_line(3), [], ice_paint(['0,0', '1,0'])), [
                 vanilla_unit('a1', 'seat-a', '0,0', ['hp' => 9]),
@@ -360,6 +404,69 @@ function vanilla_ice_tests(): array
             $waterEvents = [];
             $waterChoice = IceMovement::continue($water, 'a1', 2, new IceSequenceRandom([]), $waterEvents)['state']['pending']['choice'];
             expect_same(['stop'], $waterChoice['options'], 'Continue is withheld when exiting through open water exceeds remaining Move');
+        },
+
+        'friendly Continue resolves terrain and falls on the occupied intermediate hex' => static function (): void {
+            $lava = vanilla_battle(vanilla_board(vanilla_line(3), [], [
+                '0,0' => ['biome' => 'ice', 'terrain' => 'ice'],
+                '1,0' => ['biome' => 'lava', 'terrain' => 'lava'],
+            ]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $lava = ice_condition($lava, 'a1', [1, 0], $conditionEvents);
+            $events = [];
+            $opened = IceMovement::continue($lava, 'a1', 2, new IceSequenceRandom([]), $events)['state'];
+            $random = new IceSequenceRandom([1, 4, 4, 4, 4]);
+            $resolved = IceMovement::resolveChoice($opened, 'continue', $random, $events);
+            expect_same(5, $random->rolls, 'the occupied lava hex rolls all five entry dice');
+            expect_same(1, $resolved['state']['units']['a1']['wounds'], 'lava on the blocker hex can wound the slider');
+            expect_same(['1,0', '2,0'], $resolved['path'], 'the slide path records both traversed hexes');
+
+            $fall = vanilla_battle(vanilla_board(['0,0' => 2, '1,0' => 0, '2,0' => 0], [], ice_paint(['0,0'])), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $fall = ice_condition($fall, 'a1', [1, 0], $conditionEvents);
+            $fallEvents = [];
+            $fallOpened = IceMovement::continue($fall, 'a1', 2, new IceSequenceRandom([]), $fallEvents)['state'];
+            $fallRandom = new IceSequenceRandom([4, 4]);
+            $fallResolved = IceMovement::resolveChoice($fallOpened, 'continue', $fallRandom, $fallEvents);
+            expect_same(2, $fallRandom->rolls, 'dropping onto the occupied intermediate hex rolls once per level');
+            expect_same(['1,0', '2,0'], $fallResolved['path'], 'the fall landing remains part of the resolved path');
+        },
+
+        'resolved friendly slides charge every step against split movement' => static function (): void {
+            $mover = vanilla_unit('a1', 'seat-a', '0,0', ['move' => 4, 'range' => 1, 'power' => 1]);
+            $mover['abilities'] = [[
+                'name' => 'Silent Sting', 'type' => 'Essence', 'description' => '',
+            ]];
+            $state = vanilla_battle(vanilla_board(
+                vanilla_line(7) + ['3,1' => 0],
+                [],
+                ice_paint(['1,0'])
+            ), [
+                $mover,
+                vanilla_unit('a2', 'seat-a', '2,0'),
+                vanilla_unit('b1', 'seat-b', '3,1', ['defense' => 0, 'hp' => 9]),
+            ]);
+
+            $opened = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0']])['state'];
+            $choice = $opened['pending']['choice'];
+            $continued = vanilla_command($opened, 'seat-a', 'resolveChoice', [
+                'choiceId' => $choice['choiceId'], 'option' => 'continue',
+            ])['state'];
+            expect_same('3,0', $continued['units']['a1']['hex'], 'Continue traverses the ally and exits the ice');
+            expect_same(3, $continued['turn']['moveSpent'], 'the entry blocker and exit steps all spend Move');
+
+            $struck = vanilla_command($continued, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1])['state'];
+            expect_game_error('hexUnreachable', static fn() => vanilla_command($struck, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '5,0']));
+            $finished = vanilla_command($struck, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '4,0'])['state'];
+            expect_same('4,0', $finished['units']['a1']['hex'], 'Silent Sting has exactly one step left after the attack');
         },
 
         'ice choices reject wrong unknown forged and stale resolutions without mutating the saved state' => static function (): void {

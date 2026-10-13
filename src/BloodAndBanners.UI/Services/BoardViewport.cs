@@ -44,6 +44,7 @@ public sealed class BoardViewport
     public double ContainerHeight { get; private set; } = 600;
     public WorldRect BoardBounds { get; private set; } = new(0, 0, 800, 600);
     public bool SuppressActivation { get; private set; }
+    public double MinimumScale => Math.Min(MinScale, FitScale());
 
     public WorldRect VisibleWorld => new(
         Center.X - ContainerWidth / Scale / 2,
@@ -76,11 +77,7 @@ public sealed class BoardViewport
 
     public void Fit(double padding = 24)
     {
-        var usableWidth = Math.Max(1, ContainerWidth - 2 * Math.Max(0, padding));
-        var usableHeight = Math.Max(1, ContainerHeight - 2 * Math.Max(0, padding));
-        var widthScale = BoardBounds.Width <= 0 ? MaxScale : usableWidth / BoardBounds.Width;
-        var heightScale = BoardBounds.Height <= 0 ? MaxScale : usableHeight / BoardBounds.Height;
-        Scale = Math.Clamp(Math.Min(widthScale, heightScale), MinScale, MaxScale);
+        Scale = Math.Min(FitScale(padding), MaxScale);
         Center = new ViewportPoint(
             BoardBounds.Left + BoardBounds.Width / 2,
             BoardBounds.Top + BoardBounds.Height / 2);
@@ -94,7 +91,7 @@ public sealed class BoardViewport
         }
 
         var anchoredWorld = ScreenToWorld(screenPoint);
-        Scale = Math.Clamp(Scale * factor, MinScale, MaxScale);
+        Scale = Math.Clamp(Scale * factor, MinimumScale, MaxScale);
         Center = CenterForAnchor(anchoredWorld, screenPoint, Scale);
     }
 
@@ -142,7 +139,7 @@ public sealed class BoardViewport
             var midpoint = Midpoint(first.Current, second.Current);
             var distance = Distance(first.Current, second.Current);
             var factor = pinch.InitialDistance <= 0 ? 1 : distance / pinch.InitialDistance;
-            Scale = Math.Clamp(pinch.InitialScale * factor, MinScale, MaxScale);
+            Scale = Math.Clamp(pinch.InitialScale * factor, MinimumScale, MaxScale);
             Center = CenterForAnchor(pinch.WorldAtMidpoint, midpoint, Scale);
             SuppressActivation = true;
             return;
@@ -212,6 +209,15 @@ public sealed class BoardViewport
         return new ViewportPoint(
             visible.Left + screenPoint.X / Scale,
             visible.Top + screenPoint.Y / Scale);
+    }
+
+    private double FitScale(double padding = 24)
+    {
+        var usableWidth = Math.Max(1, ContainerWidth - 2 * Math.Max(0, padding));
+        var usableHeight = Math.Max(1, ContainerHeight - 2 * Math.Max(0, padding));
+        var widthScale = BoardBounds.Width <= 0 ? MaxScale : usableWidth / BoardBounds.Width;
+        var heightScale = BoardBounds.Height <= 0 ? MaxScale : usableHeight / BoardBounds.Height;
+        return Math.Min(widthScale, heightScale);
     }
 
     private ViewportPoint CenterForAnchor(ViewportPoint worldPoint, ViewportPoint screenPoint, double scale) => new(

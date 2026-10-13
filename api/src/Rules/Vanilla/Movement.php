@@ -135,7 +135,7 @@ final class Movement
         while ($candidate['cost'] < $budget && Terrain::type($state['board'][$candidate['hex']]) === 'ice') {
             [$q, $r] = Hex::parse($candidate['hex']);
             $next = Hex::key($q + $direction[0], $r + $direction[1]);
-            if (!isset($state['board'][$next]) || isset($candidate['visited'][$next]) || isset($occupants[$next])) {
+            if (!isset($state['board'][$next]) || isset($candidate['visited'][$next])) {
                 break;
             }
             if (!Terrain::canEnter($state, $unitId, $candidate['hex'], $next, 'slip')) {
@@ -145,10 +145,34 @@ final class Movement
             if ($candidate['cost'] + $cost > $budget) {
                 break;
             }
+            if (isset($occupants[$next])) {
+                $enemy = $occupants[$next]['seatId'] !== $state['units'][$unitId]['seatId'];
+                $hazard = [
+                    'kind' => $enemy ? 'collision' : 'choice',
+                    'terrain' => 'ice',
+                    'hex' => $next,
+                    'dice' => $enemy ? 2 : 0,
+                    'forced' => true,
+                    'stops' => true,
+                ];
+                $candidate['hazards'][] = $hazard;
+                $candidate['damage'] += $hazard['dice'];
+                break;
+            }
+            $from = $candidate['hex'];
             $candidate['hex'] = $next;
             $candidate['path'][] = $next;
             $candidate['cost'] += $cost;
             $candidate['visited'][$next] = true;
+            $drop = max(0, $state['board'][$from]['elevation'] - $state['board'][$next]['elevation']);
+            if ($drop > 0) {
+                $fall = [
+                    'kind' => 'damage', 'terrain' => 'fall', 'hex' => $next,
+                    'dice' => $drop, 'forced' => true, 'stops' => false,
+                ];
+                $candidate['hazards'][] = $fall;
+                $candidate['damage'] += $drop;
+            }
             $hazards = Terrain::hazards($state, $unitId, $next, 'slip');
             $candidate['hazards'] = [...$candidate['hazards'], ...$hazards];
             $candidate['damage'] += array_sum(array_column($hazards, 'dice'));

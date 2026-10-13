@@ -176,14 +176,31 @@ final class IceMovement
         [$blockerQ, $blockerR] = Hex::parse($blockerHex);
         [$targetQ, $targetR] = Hex::parse($target);
         $newDirection = [$targetQ - $blockerQ, $targetR - $blockerR];
-        if ($option !== 'continue') {
+
+        $cost = Terrain::stepCost($state, $unitId, $current, $blockerHex, 'slip');
+        $drop = max(0, $state['board'][$current]['elevation'] - $state['board'][$blockerHex]['elevation']);
+        $resolved = TerrainResolver::enter($state, $unitId, $current, $blockerHex, 'slip', $direction, $random, $events);
+        $state = $resolved['state'];
+        $path[] = $blockerHex;
+        $remainingMove -= $cost;
+        $state = self::resolveFall($state, $unitId, $blockerHex, $drop, $random, $events);
+        if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+            self::slideEvent($events, $unitId, $from, $blockerHex, $path, $direction, 'defeated');
+            return [
+                'state' => $state, 'path' => $path, 'remainingMove' => $remainingMove,
+                'pending' => null, 'activateAfter' => $activateAfter,
+            ];
+        }
+
+        if ($option !== 'continue' && UnitConditions::has($state, $unitId, 'Slipping')) {
             $state = UnitConditions::updateData($state, $unitId, 'Slipping', ['direction' => $newDirection]);
         }
+        $cost = Terrain::stepCost($state, $unitId, $blockerHex, $target, 'slip');
         $drop = max(0, $state['board'][$blockerHex]['elevation'] - $state['board'][$target]['elevation']);
         $resolved = TerrainResolver::enter($state, $unitId, $blockerHex, $target, 'slip', $newDirection, $random, $events);
         $state = $resolved['state'];
         $path[] = $target;
-        $remainingMove -= self::exitCost($state, $unitId, $current, $blockerHex, $target);
+        $remainingMove -= $cost;
         $state = self::resolveFall($state, $unitId, $target, $drop, $random, $events);
         if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
             self::slideEvent($events, $unitId, $from, $target, $path, $newDirection, 'defeated');

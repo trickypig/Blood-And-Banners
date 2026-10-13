@@ -19,7 +19,7 @@
 
     <section class="battlefield-panel" aria-label="Game board" @onkeydown="OnBoardKey">
         <div class="board-controls" aria-label="Board view controls">
-            <button type="button" aria-label="Zoom out" disabled="@(_viewport.Scale <= BoardViewport.MinScale)" @onclick="() => ZoomViewport(1 / ZoomFactor)">−</button>
+            <button type="button" aria-label="Zoom out" disabled="@(_viewport.Scale <= _viewport.MinimumScale)" @onclick="() => ZoomViewport(1 / ZoomFactor)">−</button>
             <button type="button" aria-label="Fit whole battlefield" @onclick="FitViewport">Fit</button>
             <button type="button" aria-label="Zoom in" disabled="@(_viewport.Scale >= BoardViewport.MaxScale)" @onclick="() => ZoomViewport(ZoomFactor)">+</button>
             <span class="viewport-status" data-testid="viewport-status" role="status">Zoom @ZoomPercent% · @(_followEvents ? "Following events" : "Manual view")</span>
@@ -445,6 +445,7 @@
 
     private const double ZoomFactor = 1.2;
     private readonly BoardViewport _viewport = new();
+    private readonly HashSet<long> _capturedPointers = [];
     private ElementReference _boardElement;
     private IJSObjectReference? _viewportModule;
     private ElementBounds _boardBounds = new();
@@ -1074,8 +1075,9 @@
     {
         await MeasureBoard();
         _viewport.BeginPointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY), args.PointerType == "touch", canPan);
-        if (_viewportModule is not null)
+        if (canPan && _viewportModule is not null)
         {
+            _capturedPointers.Add(args.PointerId);
             await _viewportModule.InvokeVoidAsync("capturePointer", _boardElement, args.PointerId);
         }
     }
@@ -1113,7 +1115,7 @@
     private async Task EndBoardPointer(PointerEventArgs args)
     {
         _viewport.EndPointer(args.PointerId);
-        if (_viewportModule is not null)
+        if (_capturedPointers.Remove(args.PointerId) && _viewportModule is not null)
         {
             await _viewportModule.InvokeVoidAsync("releasePointer", _boardElement, args.PointerId);
         }

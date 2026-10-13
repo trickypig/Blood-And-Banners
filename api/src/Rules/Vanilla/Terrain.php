@@ -73,7 +73,8 @@ final class Terrain
         if ($movementKind === 'slip' && $rise < 0) {
             return true;
         }
-        $effectiveDestination = $destination['elevation'] + (self::type($destination) === 'water' ? 1 : 0);
+        $leavingWater = self::type($source) === 'water' && !self::ignored($state, $unitId, 'water', $movementKind);
+        $effectiveDestination = $destination['elevation'] + ($leavingWater && $rise >= 0 ? 1 : 0);
         return abs($effectiveDestination - $source['elevation']) <= 1;
     }
 

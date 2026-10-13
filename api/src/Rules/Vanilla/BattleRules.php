@@ -213,7 +213,14 @@ final class BattleRules
         $from = $state['units'][$unitId]['hex'];
         $hits = [];
         $evades = AbilityRegistry::any($state['units'][$unitId], static fn(Ability $ability): bool => $ability->evades());
-        foreach (Movement::disengagedFromPath($state, $unitId, $path) as $enemyId) {
+        $voluntaryPath = [];
+        foreach ($path as $hex) {
+            $voluntaryPath[] = $hex;
+            if (Terrain::type($state['board'][$hex]) === 'ice' && !Terrain::ignored($state, $unitId, 'ice', 'voluntary')) {
+                break;
+            }
+        }
+        foreach (Movement::disengagedFromPath($state, $unitId, $voluntaryPath) as $enemyId) {
             if ($evades) {
                 $roll = $random->roll(20);
                 if ($roll > 10) {
@@ -253,7 +260,10 @@ final class BattleRules
                 $slide = IceMovement::continue($state, $unitId, $budget - $spent, $random, $events);
                 $state = $slide['state'];
                 array_push($entered, ...$slide['path']);
-                if ($slide['pending'] === null && $slide['path'] !== array_slice($path, $index + 1)) {
+                if ($slide['pending'] === null
+                    && $state['phase'] === 'active'
+                    && $state['units'][$unitId]['hex'] !== null
+                    && $slide['path'] !== array_slice($path, $index + 1)) {
                     self::fail('invalidMovementPath');
                 }
                 break;
@@ -493,10 +503,15 @@ final class BattleRules
             if ($seatId !== $choice['seatId']) {
                 self::fail('notYourChoice');
             }
+            $remainingBeforeChoice = (int)($state['pending']['context']['remainingMove'] ?? 0);
             $events = [];
             $resolved = IceMovement::resolveChoice($state, $option, $random, $events);
             $state = $resolved['state'];
-            if (($resolved['activateAfter'] ?? false)
+            $activateAfter = (bool)($resolved['activateAfter'] ?? false);
+            if (!$activateAfter && ($state['turn']['activeUnitId'] ?? null) === $choice['unitId']) {
+                $state['turn']['moveSpent'] += max(0, $remainingBeforeChoice - $resolved['remainingMove']);
+            }
+            if ($activateAfter
                 && $state['phase'] === 'active'
                 && $state['pending'] === null
                 && $state['units'][$choice['unitId']]['hex'] !== null) {

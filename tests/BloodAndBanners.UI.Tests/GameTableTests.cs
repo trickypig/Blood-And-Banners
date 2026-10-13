@@ -599,6 +599,24 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Ordinary_hex_pointers_are_not_captured_by_the_parent_svg()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+        var board = cut.Find(".board-interaction-surface");
+        var hex = cut.Find("[data-hex='1,0']");
+
+        hex.PointerDown(new PointerEventArgs { PointerId = 11, ClientX = 100, ClientY = 100, PointerType = "mouse" });
+        hex.PointerUp(new PointerEventArgs { PointerId = 11, ClientX = 100, ClientY = 100, PointerType = "mouse" });
+        Assert.DoesNotContain(JSInterop.Invocations, invocation => invocation.Identifier is "capturePointer" or "releasePointer");
+
+        board.PointerDown(new PointerEventArgs { PointerId = 12, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 12, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "capturePointer");
+        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "releasePointer");
+    }
+
+    [Fact]
     public void Pinch_always_suppresses_hex_activation()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
