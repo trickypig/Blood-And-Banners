@@ -24,29 +24,33 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:zoom="8.07"
-     inkscape:cx="50"
-     inkscape:cy="50"
-     inkscape:window-width="2560"
-     inkscape:window-height="1369"
-     inkscape:window-x="1912"
-     inkscape:window-y="-8"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="g5" />
+     inkscape:cx="49.938042"
+     inkscape:cy="49.938042"
+     inkscape:window-width="1707"
+     inkscape:window-height="1032"
+     inkscape:window-x="2267"
+     inkscape:window-y="194"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg5" />
   <rect
      width="100"
      height="100"
      fill="#a8d8e8"
-     id="rect1" />
+     id="rect1"
+     style="fill:#dbeff6;fill-opacity:1" />
   <g
      stroke="#86adba"
      stroke-width="3"
-     id="g2">
+     id="g2"
+     style="stroke:#a8d8e8;stroke-opacity:1">
     <path
        d="M50 30 L50 56 M39 36 L61 50 M39 50 L61 36"
-       id="path1" />
+       id="path1"
+       style="stroke:#a8d8e8;stroke-opacity:1" />
     <path
        d="M14 72 Q32 62 50 72 T86 70"
-       id="path2" />
+       id="path2"
+       style="stroke:#a8d8e8;stroke-opacity:1" />
   </g>
   <g
      stroke="#FFFFFF"
