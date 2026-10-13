@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <rect width="100" height="100" fill="#6b6b6b"/>
+  <g><polygon points="65.6,85.1 55.4,39.8 48.5,29.3 41.2,85.1" fill="#a3a3a3" stroke="#4d4d4d" stroke-width="2.5"/><path d="M48.5 29.3 L53.4 85.1" stroke="#4d4d4d" stroke-width="2"/><path d="M57.7 48.5 L61.2 65.9" stroke="#cfcfcf" stroke-width="2"/></g>
+  <g><polygon points="13.9,86.4 19.8,66.7 33.6,60.7 41.5,76.5 35.6,88.4" fill="#a3a3a3" stroke="#4d4d4d" stroke-width="2.5"/><path d="M33.6 60.7 L27.7 74.5 L19.8 66.7 M27.7 74.5 L35.6 88.4" stroke="#4d4d4d" stroke-width="2"/><path d="M21.7 66.7 L30.6 62.7" stroke="#cfcfcf" stroke-width="2"/></g>
+  <g><polygon points="82.4,87.1 78.8,75.1 70.4,71.5 65.6,81.1 69.2,88.3" fill="#a3a3a3" stroke="#4d4d4d" stroke-width="2.5"/><path d="M70.4 71.5 L74 79.9 L78.8 75.1 M74 79.9 L69.2 88.3" stroke="#4d4d4d" stroke-width="2"/><path d="M77.6 75.1 L72.2 72.7" stroke="#cfcfcf" stroke-width="2"/></g>
+  <g stroke="#404040" stroke-width="2.5"><path d="M23.3 18.3 L26.7 14.4 L29.6 19.3 Z"/><path d="M30.2 44 L33.6 40.1 L36.6 45 Z"/><path d="M70.6 45.1 L73.4 41.9 L75.8 45.9 Z"/></g>
+</svg>
