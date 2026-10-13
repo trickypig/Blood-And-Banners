@@ -1,6 +1,9 @@
 @namespace BloodAndBanners.UI.Components
 @using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Services
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <main class="game-table">
     <header class="turn-ribbon">
@@ -16,9 +19,10 @@
 
     <section class="battlefield-panel" aria-label="Game board" @onkeydown="OnBoardKey">
         <div class="board-controls" aria-label="Board view controls">
-            <button type="button" aria-label="Zoom out" disabled="@(_zoom <= MinZoom)" @onclick="() => Zoom(-ZoomStep)">−</button>
-            <button type="button" aria-label="Reset board view" @onclick="() => _zoom = 1">Reset</button>
-            <button type="button" aria-label="Zoom in" disabled="@(_zoom >= MaxZoom)" @onclick="() => Zoom(ZoomStep)">+</button>
+            <button type="button" aria-label="Zoom out" disabled="@(_viewport.Scale <= BoardViewport.MinScale)" @onclick="() => ZoomViewport(1 / ZoomFactor)">−</button>
+            <button type="button" aria-label="Fit whole battlefield" @onclick="FitViewport">Fit</button>
+            <button type="button" aria-label="Zoom in" disabled="@(_viewport.Scale >= BoardViewport.MaxScale)" @onclick="() => ZoomViewport(ZoomFactor)">+</button>
+            <span class="viewport-status" data-testid="viewport-status" role="status">Zoom @ZoomPercent% · @(_followEvents ? "Following events" : "Manual view")</span>
         </div>
         @if (_targeting is { } aiming)
         {
@@ -44,11 +48,17 @@
             </div>
         }
         @{ var board = BoardLayout.For(Projection.Board.Hexes); }
-        <svg class="hex-board"
+        <svg class="hex-board board-interaction-surface"
+             @ref="_boardElement"
              role="group"
-             viewBox="0 0 @Num(board.Width) @Num(board.Height)"
-             width="@Num(board.Width * _zoom)"
-             height="@Num(board.Height * _zoom)"
+             viewBox="@ViewportViewBox"
+             preserveAspectRatio="xMidYMid meet"
+             @onwheel="OnWheel"
+             @onwheel:preventDefault="true"
+             @onpointerdown="args => BeginBoardPointer(args, true)"
+             @onpointermove="MoveBoardPointer"
+             @onpointerup="EndBoardPointer"
+             @onpointercancel="EndBoardPointer"
              aria-label="Battlefield, @Projection.Board.Rows columns by @Projection.Board.Columns rows">
             <defs>
                 @foreach (var terrain in board.Tiles.Select(tile => tile.Hex).DistinctBy(TerrainPatternId))
@@ -97,6 +107,8 @@
                    data-hex="@key"
                    aria-label="@HexLabel(hex, unit)"
                    @onclick="() => SelectHex(hex)"
+                   @onpointerdown="args => BeginBoardPointer(args, false)"
+                   @onpointerdown:stopPropagation="true"
                    @onkeydown="args => OnHexKey(args, hex)"
                    @onmouseenter="() => Hover(hex)"
                    @onmouseleave="Unhover"
@@ -349,7 +361,7 @@
         {
             <section class="spectator-controls">
                 <h2>Battle camera</h2>
-                <button type="button" data-follow-events @onclick="() => OnFollowEvents.InvokeAsync()">
+                <button type="button" data-follow-events aria-pressed="@_followEvents" @onclick="ResumeFollowing">
                     Follow the action
                 </button>
                 <p>Moving the board pauses automatic following.</p>
@@ -431,9 +443,12 @@
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }
 
-    private const double MinZoom = .6;
-    private const double MaxZoom = 2;
-    private const double ZoomStep = .2;
+    private const double ZoomFactor = 1.2;
+    private readonly BoardViewport _viewport = new();
+    private ElementReference _boardElement;
+    private IJSObjectReference? _viewportModule;
+    private ElementBounds _boardBounds = new();
+    private bool _followEvents = true;
 
     private string? _selectedUnitId;
     private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes);
@@ -478,10 +493,29 @@
         _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
     }
     private string? _hoveredUnitId;
-    private double _zoom = 1;
 
     protected override void OnParametersSet()
     {
+        var newGame = _lastGameId != Projection.GameId;
+        if (newGame)
+        {
+            _followEvents = true;
+        }
+        var layout = BoardLayout.For(Projection.Board.Hexes);
+        _viewport.ResetForGame(
+            Projection.GameId,
+            new WorldRect(0, 0, layout.Width, layout.Height),
+            _viewport.ContainerWidth,
+            _viewport.ContainerHeight);
+        var focusPoints = FocusHexes
+            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
+            .Where(tile => tile is not null)
+            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
+            .ToList();
+        if (_followEvents)
+        {
+            _viewport.EnsureVisible(focusPoints);
+        }
         if (_lastGameId != Projection.GameId || _lastProjectionVersion != Projection.Version)
         {
             ClearMovementState();
@@ -555,9 +589,13 @@
             .SelectMany(action => action.TargetHexes)
             .ToList();
 
-    private async Task SelectHex(HexProjection hex)
+    private async Task SelectHex(HexProjection hex, bool keyboardActivation = false)
     {
         if (!Projection.Viewer.CanCommand || IsBusy)
+        {
+            return;
+        }
+        if (!keyboardActivation && _viewport.ConsumeSuppressedActivation())
         {
             return;
         }
@@ -996,10 +1034,141 @@
         return classes.Count == 0 ? null : string.Join(' ', classes);
     }
 
-    private void Zoom(double delta) => _zoom = Math.Clamp(Math.Round(_zoom + delta, 1), MinZoom, MaxZoom);
-
     private Task OnHexKey(KeyboardEventArgs args, HexProjection hex) =>
-        args.Key is "Enter" or " " ? SelectHex(hex) : Task.CompletedTask;
+        args.Key is "Enter" or " " ? SelectHex(hex, keyboardActivation: true) : Task.CompletedTask;
+
+    private string ViewportViewBox
+    {
+        get
+        {
+            var visible = _viewport.VisibleWorld;
+            return $"{Num(visible.X)} {Num(visible.Y)} {Num(visible.Width)} {Num(visible.Height)}";
+        }
+    }
+
+    private int ZoomPercent => (int)Math.Round(_viewport.Scale * 100);
+
+    private async Task ZoomViewport(double factor)
+    {
+        await MeasureBoard();
+        _viewport.ZoomAt(new ViewportPoint(_viewport.ContainerWidth / 2, _viewport.ContainerHeight / 2), factor);
+        await PauseFollowing();
+    }
+
+    private async Task FitViewport()
+    {
+        await MeasureBoard();
+        _viewport.Fit();
+        await PauseFollowing();
+    }
+
+    private async Task OnWheel(WheelEventArgs args)
+    {
+        await MeasureBoard();
+        var point = LocalPoint(args.ClientX, args.ClientY);
+        _viewport.ZoomAt(point, args.DeltaY < 0 ? ZoomFactor : 1 / ZoomFactor);
+        await PauseFollowing();
+    }
+
+    private async Task BeginBoardPointer(PointerEventArgs args, bool canPan)
+    {
+        await MeasureBoard();
+        _viewport.BeginPointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY), args.PointerType == "touch", canPan);
+        if (_viewportModule is not null)
+        {
+            await _viewportModule.InvokeVoidAsync("capturePointer", _boardElement, args.PointerId);
+        }
+    }
+
+    private async Task MoveBoardPointer(PointerEventArgs args)
+    {
+        var center = _viewport.Center;
+        var scale = _viewport.Scale;
+        _viewport.MovePointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY));
+        if (center != _viewport.Center || scale != _viewport.Scale)
+        {
+            await PauseFollowing();
+        }
+    }
+
+    private async Task PauseFollowing()
+    {
+        _followEvents = false;
+        await OnFollowEvents.InvokeAsync();
+    }
+
+    private async Task ResumeFollowing()
+    {
+        _followEvents = true;
+        var layout = BoardLayout.For(Projection.Board.Hexes);
+        var focusPoints = FocusHexes
+            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
+            .Where(tile => tile is not null)
+            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
+            .ToList();
+        _viewport.EnsureVisible(focusPoints);
+        await OnFollowEvents.InvokeAsync();
+    }
+
+    private async Task EndBoardPointer(PointerEventArgs args)
+    {
+        _viewport.EndPointer(args.PointerId);
+        if (_viewportModule is not null)
+        {
+            await _viewportModule.InvokeVoidAsync("releasePointer", _boardElement, args.PointerId);
+        }
+    }
+
+    private ViewportPoint LocalPoint(double clientX, double clientY) =>
+        new(clientX - _boardBounds.Left, clientY - _boardBounds.Top);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        _viewportModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/BloodAndBanners.UI/js/boardViewport.js");
+        if (_viewportModule is null)
+        {
+            return;
+        }
+        await MeasureBoard();
+        if (_boardBounds.Width > 0 && _boardBounds.Height > 0)
+        {
+            _viewport.Fit();
+            StateHasChanged();
+        }
+    }
+
+    private async Task MeasureBoard()
+    {
+        if (_viewportModule is null)
+        {
+            return;
+        }
+        _boardBounds = await _viewportModule.InvokeAsync<ElementBounds>("bounds", _boardElement) ?? new ElementBounds();
+        if (_boardBounds.Width > 0 && _boardBounds.Height > 0)
+        {
+            _viewport.Resize(_boardBounds.Width, _boardBounds.Height);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_viewportModule is not null)
+        {
+            await _viewportModule.DisposeAsync();
+        }
+    }
+
+    private sealed class ElementBounds
+    {
+        public double Left { get; init; }
+        public double Top { get; init; }
+        public double Width { get; init; }
+        public double Height { get; init; }
+    }
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 

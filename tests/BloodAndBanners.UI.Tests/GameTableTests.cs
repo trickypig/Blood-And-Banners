@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Components.Web;
 
 public sealed partial class GameTableTests : BunitContext
 {
+    public GameTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
+
     [Fact]
     public void Selecting_a_unit_highlights_its_legal_moves_and_attacks_and_sends_them()
     {
@@ -103,10 +105,10 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Single(cut.FindAll("[data-hex='4,4'] .hex-side"));
         Assert.Empty(cut.FindAll("[data-hex='2,4'] .hex-side"));
 
-        var width = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
+        var viewBox = cut.Find("svg.hex-board").GetAttribute("viewBox");
         cut.Find("[aria-label='Zoom in']").Click();
-        var zoomed = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Equal(width * 1.2, zoomed, 1);
+        var zoomed = cut.Find("svg.hex-board").GetAttribute("viewBox");
+        Assert.NotEqual(viewBox, zoomed);
     }
 
     [Fact]
@@ -550,6 +552,72 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("[data-hex='0,0']").Click();
         Assert.Contains("must continue", cut.Find("[data-condition='Slipping']").TextContent);
         Assert.Contains("until cleared", cut.Find("[data-condition='Poisoned']").TextContent);
+    }
+
+    [Fact]
+    public void Board_view_controls_offer_fit_and_report_zoom_accessibly()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+
+        Assert.Equal("Fit", cut.Find("button[aria-label='Fit whole battlefield']").TextContent);
+        Assert.Equal("status", cut.Find("[data-testid=viewport-status]").GetAttribute("role"));
+        Assert.Contains("Zoom", cut.Find("[data-testid=viewport-status]").TextContent);
+        Assert.NotNull(cut.Find(".board-interaction-surface"));
+    }
+
+    [Fact]
+    public void Pointer_drag_suppresses_the_following_hex_click_but_small_motion_and_keyboard_still_activate()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var sent = new List<GameCommandRequest>();
+        var pausedFollow = false;
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request))
+            .Add(component => component.OnFollowEvents, () => pausedFollow = true));
+        cut.Find("[data-hex='0,0']").Click();
+        var board = cut.Find(".board-interaction-surface");
+        var destination = cut.Find("[data-hex='1,0']");
+
+        board.PointerDown(new PointerEventArgs { PointerId = 1, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerMove(new PointerEventArgs { PointerId = 1, ClientX = 16, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 1, ClientX = 16, ClientY = 10, PointerType = "mouse" });
+        destination.Click();
+        Assert.Empty(sent);
+        Assert.True(pausedFollow);
+
+        board.PointerDown(new PointerEventArgs { PointerId = 2, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerMove(new PointerEventArgs { PointerId = 2, ClientX = 15, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 2, ClientX = 15, ClientY = 10, PointerType = "mouse" });
+        destination.Click();
+        Assert.Single(sent);
+
+        sent.Clear();
+        destination.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Single(sent);
+    }
+
+    [Fact]
+    public void Pinch_always_suppresses_hex_activation()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='0,0']").Click();
+        var board = cut.Find(".board-interaction-surface");
+        var destination = cut.Find("[data-hex='1,0']");
+
+        destination.PointerDown(new PointerEventArgs { PointerId = 1, ClientX = 100, ClientY = 100, PointerType = "touch" });
+        board.PointerDown(new PointerEventArgs { PointerId = 2, ClientX = 200, ClientY = 100, PointerType = "touch" });
+        board.PointerMove(new PointerEventArgs { PointerId = 2, ClientX = 250, ClientY = 100, PointerType = "touch" });
+        board.PointerUp(new PointerEventArgs { PointerId = 2, ClientX = 250, ClientY = 100, PointerType = "touch" });
+        board.PointerUp(new PointerEventArgs { PointerId = 1, ClientX = 100, ClientY = 100, PointerType = "touch" });
+        destination.Click();
+
+        Assert.Empty(sent);
     }
 
     [Fact]

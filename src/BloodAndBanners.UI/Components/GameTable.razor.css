@@ -34,18 +34,20 @@
 
 .battlefield-panel {
     position: relative;
-    overflow: auto;
+    overflow: hidden;
     min-height: 34rem;
     background: #2a2a3e;
 }
 
-.board-controls { position: sticky; z-index: 3; top: .75rem; left: .75rem; display: inline-flex; margin: .75rem; border: 1px solid #4a463a; }
+.board-controls { position: absolute; z-index: 3; top: .75rem; left: .75rem; display: inline-flex; align-items: center; border: 1px solid #4a463a; background: #24241f; box-shadow: 0 .3rem .8rem rgba(0, 0, 0, .35); }
 .board-controls button,
 .spectator-controls button,
 .choice-options button { min-height: 2.65rem; padding: .45rem .7rem; color: #f6f0df; background: #373830; border: 0; border-right: 1px solid #6a6658; }
 .board-controls button:disabled { color: #8b8578; }
 
-.hex-board { display: block; margin: 0 auto 1.5rem; }
+.viewport-status { min-width: 4.8rem; padding: 0 .55rem; color: #e7d7ad; font-size: .78rem; text-align: center; }
+.hex-board { display: block; width: 100%; height: 100%; min-height: 34rem; }
+.board-interaction-surface { touch-action: none; user-select: none; }
 .hex { cursor: pointer; outline: none; }
 .hex-side { fill: #2a2a3e; }
 .hex-side-edges { fill: none; stroke: #d4af37; stroke-width: 1; }
