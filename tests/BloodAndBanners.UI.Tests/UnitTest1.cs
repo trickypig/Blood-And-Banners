@@ -10,15 +10,37 @@ public sealed partial class GameTableTests : BunitContext
     [Fact]
     public void Quick_start_sends_the_selected_mode_and_disables_all_choices_while_connecting()
     {
-        GameMode? selected = null;
+        GameSetupSelection? selected = null;
         var cut = Render<QuickStart>(parameters => parameters
             .Add(component => component.OnCreate, mode => selected = mode));
 
         cut.Find("button[data-mode=battleRoyale]").Click();
-        Assert.Equal(GameMode.BattleRoyale, selected);
+        Assert.Equal(new GameSetupSelection(GameMode.BattleRoyale, "Last Banner"), selected);
 
         var busy = Render<QuickStart>(parameters => parameters.Add(component => component.IsBusy, true));
         Assert.All(busy.FindAll("button[data-mode]"), button => Assert.True(button.HasAttribute("disabled")));
+    }
+
+    [Fact]
+    public void Quick_start_battlefields_are_ordered_accessible_and_fully_disabled_while_connecting()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<QuickStart>();
+
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+
+        Assert.Equal("Choose the battlefield.", cut.Find("#battlefield-title").TextContent);
+        Assert.Equal("-1", cut.Find("#battlefield-title").GetAttribute("tabindex"));
+        Assert.Equal("radiogroup", cut.Find(".battlefield-list").GetAttribute("role"));
+        var cards = cut.FindAll("button[data-scenario]");
+        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map" }, cards.Select(card => card.GetAttribute("data-scenario")));
+        Assert.All(cards, card => Assert.Equal("radio", card.GetAttribute("role")));
+        Assert.Contains("13 × 11", cards[0].TextContent);
+        Assert.Contains("Maximum terrain", cards[0].TextContent);
+        Assert.Contains("32 × 30", cards[2].TextContent);
+
+        cut.Render(parameters => parameters.Add(component => component.IsBusy, true));
+        Assert.All(cut.FindAll("[data-testid=battlefield-picker] button"), button => Assert.True(button.HasAttribute("disabled")));
     }
 
     [Fact]
