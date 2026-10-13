@@ -102,6 +102,14 @@ final class BattleRules
         }
         if ($state['pending'] !== null) {
             $choice = $state['pending']['choice'];
+            if (($choice['kind'] ?? null) === 'iceCollision') {
+                return $seatId === $choice['seatId']
+                    ? [[
+                        'kind' => 'resolveChoice', 'unitId' => $choice['unitId'],
+                        'targetHexes' => $choice['targetHexes'] ?? [],
+                    ]]
+                    : [];
+            }
             $mayKeep = $this->now - $choice['openedAt'] >= self::CHOICE_TIMEOUT_SECONDS;
             return $seatId === $choice['seatId'] || $mayKeep
                 ? [['kind' => 'resolveChoice', 'unitId' => $choice['unitId'], 'targetHexes' => []]]
@@ -480,6 +488,33 @@ final class BattleRules
         $option = self::text($payload, 'option');
         if (self::text($payload, 'choiceId') !== $choice['choiceId'] || !in_array($option, $choice['options'], true)) {
             self::fail('unknownChoice');
+        }
+        if (($choice['kind'] ?? null) === 'iceCollision') {
+            if ($seatId !== $choice['seatId']) {
+                self::fail('notYourChoice');
+            }
+            $events = [];
+            $resolved = IceMovement::resolveChoice($state, $option, $random, $events);
+            $state = $resolved['state'];
+            if (($resolved['activateAfter'] ?? false)
+                && $state['phase'] === 'active'
+                && $state['pending'] === null
+                && $state['units'][$choice['unitId']]['hex'] !== null) {
+                $unitId = $choice['unitId'];
+                $move = Stats::effective($state, $unitId, 'move');
+                $state['turn']['activeUnitId'] = $unitId;
+                $state['turn']['activated'][] = $unitId;
+                $state['turn']['moved'] = true;
+                $state['turn']['attacks'] = 0;
+                $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
+                $state['turn']['movedAfterAttack'] = false;
+            }
+            $active = $state['turn']['activeSeatId'];
+            if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
+                [$state, $passed] = self::passTurn($state, $random);
+                $events = array_merge($events, $passed);
+            }
+            return ['state' => $state, 'events' => $events];
         }
         if ($seatId !== $choice['seatId']) {
             if ($option !== 'keep') {

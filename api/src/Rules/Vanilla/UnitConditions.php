@@ -54,6 +54,17 @@ final class UnitConditions
         return null;
     }
 
+    public static function updateData(array $state, string $unitId, string $name, array $data): array
+    {
+        foreach ($state['conditions'] as $index => $condition) {
+            if ($condition['unitId'] === $unitId && $condition['name'] === $name) {
+                $state['conditions'][$index]['data'] = $data;
+                break;
+            }
+        }
+        return $state;
+    }
+
     public static function clear(array $state, string $unitId, string $name, array &$events): array
     {
         $before = count($state['conditions'] ?? []);

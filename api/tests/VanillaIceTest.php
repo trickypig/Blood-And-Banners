@@ -234,9 +234,9 @@ function vanilla_ice_tests(): array
         },
 
         'Stunned and push-created sliders move only when activated' => static function (): void {
-            $board = vanilla_board(vanilla_line(4), [], ice_paint(['1,0', '2,0']));
+            $board = vanilla_board(vanilla_line(4) + ['2,1' => 0], [], ice_paint(['1,0', '2,0']));
             $state = vanilla_battle($board, [
-                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]), vanilla_unit('b1', 'seat-b', '3,0'),
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]), vanilla_unit('b1', 'seat-b', '2,1'),
             ]);
             $pushEvents = [];
             $pushed = Forced::push($state, 'a1', [1, 0], 1, 'b1', new SequenceRandom([]), $pushEvents);
@@ -245,7 +245,7 @@ function vanilla_ice_tests(): array
             $pushed = UnitConditions::apply($pushed, 'Stunned', 'a1', 'b1', UnitConditions::afterTurn(2), $conditionEvents);
 
             $activated = vanilla_command($pushed, 'seat-a', 'activateUnit', ['unitId' => 'a1']);
-            expect_same('2,0', $activated['state']['units']['a1']['hex'], 'Stunned slides until the occupied hex stops it');
+            expect_same('3,0', $activated['state']['units']['a1']['hex'], 'Stunned does not prevent forced sliding on activation');
             $rules = new \BloodAndBanners\Rules\Vanilla\BattleRules(0);
             $moveActions = array_filter($rules->legalActions($activated['state'], 'seat-a'), static fn(array $action): bool => $action['kind'] === 'moveUnit' && $action['unitId'] === 'a1');
             expect_same([], array_values($moveActions), 'Stunned still prevents ordinary movement afterward');
@@ -270,6 +270,164 @@ function vanilla_ice_tests(): array
             expect_same(null, $result['state']['units']['a1']['hex'], 'the falling unit is defeated');
             expect_same('completed', $result['state']['phase'], 'last-unit defeat completes the match');
             expect_true(!in_array('2,0', array_merge(...array_map(static fn(array $event): array => $event['focusHexes'], $result['events'])), true), 'no later hex is entered or narrated');
+        },
+
+        'enemy ice collision damages mover then occupant and clears only Slipping' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(3), [], ice_paint(['0,0', '1,0'])), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['hp' => 9]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['hp' => 9]),
+            ]);
+            $conditionEvents = [];
+            $state = ice_condition($state, 'a1', [1, 0], $conditionEvents);
+            $events = [];
+            $random = new IceSequenceRandom([1, 4]);
+            $result = IceMovement::continue($state, 'a1', 3, $random, $events);
+            expect_same(2, $random->rolls, 'the mover and enemy each roll one no-defense die');
+            expect_same(1, $result['state']['units']['a1']['wounds'], 'the mover takes its collision sword');
+            expect_same(0, $result['state']['units']['b1']['wounds'], 'the enemy shield causes no wound');
+            expect_true(UnitConditions::has($result['state'], 'a1', 'Unsteady'), 'the mover remains Unsteady on ice');
+            expect_true(!UnitConditions::has($result['state'], 'a1', 'Slipping'), 'enemy collision clears Slipping');
+            $slides = array_values(array_filter($events, static fn(array $event): bool => $event['kind'] === 'unitSlid'));
+            expect_same('enemyCollision', $slides[0]['payload']['stopped'] ?? null, 'the slide event identifies enemy collision');
+
+            $lethalMover = $state;
+            $lethalMover['units']['a1']['hp'] = 1;
+            $events = [];
+            $random = new IceSequenceRandom([1]);
+            $moverResult = IceMovement::continue($lethalMover, 'a1', 3, $random, $events);
+            expect_same(1, $random->rolls, 'mover annihilation prevents the enemy roll');
+            expect_same('completed', $moverResult['state']['phase'], 'lethal mover collision completes the match');
+
+            $lethalEnemy = $state;
+            $lethalEnemy['units']['b1']['hp'] = 1;
+            $events = [];
+            $random = new IceSequenceRandom([4, 1]);
+            $enemyResult = IceMovement::continue($lethalEnemy, 'a1', 3, $random, $events);
+            expect_same(2, $random->rolls, 'the enemy roll occurs after the mover survives');
+            expect_same('completed', $enemyResult['state']['phase'], 'lethal enemy collision completes the match');
+        },
+
+        'friendly ice collision offers and resolves only legal Continue Stop and Swing branches' => static function (): void {
+            $board = vanilla_board(
+                ['0,0' => 0, '1,0' => 0, '2,0' => 0, '1,1' => 0, '2,-1' => 1, '1,-1' => 0],
+                ['1,-1'],
+                ice_paint(['0,0', '1,0', '2,0', '1,1', '2,-1'])
+            );
+            $state = vanilla_battle($board, [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $state = ice_condition($state, 'a1', [1, 0], $conditionEvents);
+            $events = [];
+            $opened = IceMovement::continue($state, 'a1', 2, new IceSequenceRandom([]), $events);
+            $choice = $opened['state']['pending']['choice'];
+            expect_same('iceCollision', $choice['kind'], 'friendly collision opens the ice choice kind');
+            expect_same(['continue', 'stop', 'swing:1,1'], $choice['options'], 'only legal branches are stored server-side');
+            expect_same(['1,1'], $choice['targetHexes'], 'swing targets exclude origin blockers and higher ice');
+            expect_same(['0,0', [1, 0], 2, [], 'a2'], [
+                $opened['state']['pending']['context']['currentHex'],
+                $opened['state']['pending']['context']['direction'],
+                $opened['state']['pending']['context']['remainingMove'],
+                $opened['state']['pending']['context']['path'],
+                $opened['state']['pending']['context']['blockerUnitId'],
+            ], 'the complete continuation context is persisted');
+            expect_same(['choiceOpened'], array_column($events, 'kind'), 'movement suspends at the decision');
+
+            $stopped = vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => $choice['choiceId'], 'option' => 'stop']);
+            expect_same('0,0', $stopped['state']['units']['a1']['hex'], 'Stop remains before the ally');
+            expect_true(!UnitConditions::has($stopped['state'], 'a1', 'Slipping'), 'Stop clears Slipping');
+            expect_true(UnitConditions::has($stopped['state'], 'a1', 'Unsteady'), 'Stop retains Unsteady on ice');
+
+            $continued = vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => $choice['choiceId'], 'option' => 'continue']);
+            expect_same('2,0', $continued['state']['units']['a1']['hex'], 'Continue passes through the ally to the forward exit');
+            expect_same([1, 0], ice_named_condition($continued['state'], 'a1', 'Slipping')['data']['direction'] ?? null, 'Continue keeps the locked direction');
+
+            $swung = vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => $choice['choiceId'], 'option' => 'swing:1,1']);
+            expect_same('1,1', $swung['state']['units']['a1']['hex'], 'Swing passes through the ally to the selected exit');
+            expect_same([0, 1], ice_named_condition($swung['state'], 'a1', 'Slipping')['data']['direction'] ?? null, 'Swing locks the selected exit direction');
+
+            $waterBoard = vanilla_board(vanilla_line(3), [], [
+                '0,0' => ['biome' => 'ice', 'terrain' => 'ice'],
+                '1,0' => ['biome' => 'water', 'terrain' => 'open-water'],
+            ]);
+            $water = vanilla_battle($waterBoard, [
+                vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('a2', 'seat-a', '1,0'), vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $water = ice_condition($water, 'a1', [1, 0], $conditionEvents);
+            $waterEvents = [];
+            $waterChoice = IceMovement::continue($water, 'a1', 2, new IceSequenceRandom([]), $waterEvents)['state']['pending']['choice'];
+            expect_same(['stop'], $waterChoice['options'], 'Continue is withheld when exiting through open water exceeds remaining Move');
+        },
+
+        'ice choices reject wrong unknown forged and stale resolutions without mutating the saved state' => static function (): void {
+            $board = vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 0, '1,1' => 0], [], ice_paint(['0,0', '1,0', '2,0', '1,1']));
+            $state = vanilla_battle($board, [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $state = ice_condition($state, 'a1', [1, 0], $conditionEvents);
+            $events = [];
+            $opened = IceMovement::continue($state, 'a1', 2, new IceSequenceRandom([]), $events)['state'];
+            $choiceId = $opened['pending']['choice']['choiceId'];
+            expect_game_error('notYourChoice', static fn() => vanilla_command($opened, 'seat-b', 'resolveChoice', ['choiceId' => $choiceId, 'option' => 'stop']));
+            expect_game_error('unknownChoice', static fn() => vanilla_command($opened, 'seat-a', 'resolveChoice', ['choiceId' => 'choice-999', 'option' => 'stop']));
+            expect_game_error('unknownChoice', static fn() => vanilla_command($opened, 'seat-a', 'resolveChoice', ['choiceId' => $choiceId, 'option' => 'swing:9,9']));
+
+            $stale = $opened;
+            $stale['units']['b1']['hex'] = '2,0';
+            $before = json_encode($stale, JSON_THROW_ON_ERROR);
+            expect_game_error('invalidSlipChoice', static fn() => vanilla_command($stale, 'seat-a', 'resolveChoice', ['choiceId' => $choiceId, 'option' => 'continue']));
+            expect_same($before, json_encode($stale, JSON_THROW_ON_ERROR), 'a stale rejection leaves the caller state byte-for-byte unchanged');
+
+            $staleSwing = $opened;
+            $staleSwing['units']['b1']['hex'] = '1,1';
+            expect_game_error('invalidSlipChoice', static fn() => vanilla_command($staleSwing, 'seat-a', 'resolveChoice', ['choiceId' => $choiceId, 'option' => 'swing:1,1']));
+        },
+
+        'pending ice choices survive JSON and expose only resolution actions' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 0, '2,0' => 0], [], ice_paint(['0,0', '1,0', '2,0'])), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $conditionEvents = [];
+            $state = ice_condition($state, 'a1', [1, 0], $conditionEvents);
+            $events = [];
+            $opened = IceMovement::continue($state, 'a1', 2, new IceSequenceRandom([]), $events)['state'];
+            $saved = json_decode(json_encode($opened, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
+            expect_same($opened['pending'], $saved['pending'], 'the complete pending ice context survives JSON');
+            $rules = new \BloodAndBanners\Rules\Vanilla\BattleRules(time());
+            expect_same(['resolveChoice'], array_column($rules->legalActions($saved, 'seat-a'), 'kind'), 'the owner may only resolve the pending choice');
+            expect_same([], $rules->legalActions($saved, 'seat-b'), 'the opponent cannot act on an ice choice');
+        },
+
+        'activation waits for a friendly ice choice before marking the slider active' => static function (): void {
+            $state = vanilla_battle(vanilla_board(
+                ['0,0' => 0, '1,0' => 0, '2,0' => 0, '0,1' => 0],
+                [],
+                ice_paint(['0,0', '1,0', '2,0'])
+            ), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]),
+                vanilla_unit('a2', 'seat-a', '1,0'),
+                vanilla_unit('b1', 'seat-b', '0,1'),
+            ]);
+            $conditionEvents = [];
+            $state = ice_condition($state, 'a1', [1, 0], $conditionEvents);
+            $opened = vanilla_command($state, 'seat-a', 'activateUnit', ['unitId' => 'a1']);
+            expect_same(null, $opened['state']['turn']['activeUnitId'], 'the unit is not active while its collision choice is pending');
+            expect_same([], $opened['state']['turn']['activated'], 'the pending activation has not spent an allowance');
+            expect_same(true, $opened['state']['pending']['context']['activateAfter'] ?? null, 'the pending context remembers activation priority');
+
+            $choice = $opened['state']['pending']['choice'];
+            $resolved = vanilla_command($opened['state'], 'seat-a', 'resolveChoice', ['choiceId' => $choice['choiceId'], 'option' => 'stop']);
+            expect_same('a1', $resolved['state']['turn']['activeUnitId'], 'the slider becomes active after resolving Stop');
+            expect_same(['a1'], $resolved['state']['turn']['activated'], 'activation allowance is spent exactly once');
+            expect_same(true, $resolved['state']['turn']['moved'], 'the forced slide consumes the activation movement');
         },
     ];
 }
