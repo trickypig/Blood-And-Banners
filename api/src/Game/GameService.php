@@ -567,6 +567,7 @@ final class GameService
             'conditions' => array_map(static fn(array $condition): array => [
                 'name' => $condition['name'],
                 'expires' => self::conditionExpiry($state, $condition['expires']),
+                'data' => (object)($condition['data'] ?? []),
             ], UnitConditions::forUnit($state, $id)),
             'effectiveMove' => $effective('move'),
             'effectiveRange' => $effective('range'),
@@ -606,9 +607,12 @@ final class GameService
             'kind' => $choice['kind'],
             'options' => $choice['options'],
             'unitId' => $choice['unitId'],
-            'side' => $choice['side'],
-            'faces' => $choice['faces'],
-            'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS),
+            'side' => $choice['side'] ?? null,
+            'faces' => $choice['faces'] ?? [],
+            'targetHexes' => $choice['targetHexes'] ?? [],
+            'expiresAt' => $choice['kind'] === 'moonlightGlare' && isset($choice['openedAt'])
+                ? gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS)
+                : null,
         ];
     }
 
@@ -619,7 +623,10 @@ final class GameService
             'choiceId' => $choice['choiceId'],
             'seatId' => $choice['seatId'],
             'unitId' => $choice['unitId'],
-            'keepableAt' => gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS),
+            'kind' => $choice['kind'],
+            'keepableAt' => $choice['kind'] === 'moonlightGlare' && isset($choice['openedAt'])
+                ? gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS)
+                : null,
         ];
     }
 

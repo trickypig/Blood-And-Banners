@@ -94,13 +94,13 @@ else
         }
     }
 
-    private Task CreateGame(GameMode mode) => RunCommand(async () =>
+    private Task CreateGame(GameSetupSelection selection) => RunCommand(async () =>
     {
         _generation++;
         ApplyProjection(await Sessions.CreateGuestGameAsync(
             DeviceId(),
-            mode,
-            DefaultScenario(mode),
+            selection.Mode,
+            selection.ScenarioName,
             _pollCancellation.Token));
         _status = "War room opened. Share the invite link with your rival.";
         StartPolling();
@@ -367,14 +367,6 @@ else
     }
 
     private string DeviceId() => $"{ClientKind}-{Guid.NewGuid():N}";
-
-    private static string DefaultScenario(GameMode mode) => mode switch
-    {
-        GameMode.VanillaPvp => "Proving Field",
-        GameMode.Coop => "Portal Watch",
-        GameMode.BattleRoyale => "Last Banner",
-        _ => "Proving Field"
-    };
 
     public async ValueTask DisposeAsync()
     {

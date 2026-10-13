@@ -67,8 +67,8 @@ function vanilla_geometry_tests(): array
         'engine board keeps elevation sight blockers and homes' => static function (): void {
             $board = proving_field_board();
             expect_same(99, count($board), 'every scenario hex becomes a board hex');
-            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null], $board['5,1'], 'tall crags block sight');
-            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null], $board['3,1'], 'statues block sight');
+            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'stone', 'terrain' => 'crags'], $board['5,1'], 'tall crags retain their paint and block sight');
+            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'plains', 'terrain' => 'grass'], $board['3,1'], 'statues retain ground paint and block sight');
             expect_same([1 => '-1,4', 2 => '7,4'], Board::homes($board), 'homes are keyed by start number');
         },
     ];

@@ -88,6 +88,9 @@ final class MatchEngine
         $state['conditions'] ??= [];
         $state['pending'] ??= null;
         $state['turn'] = Turn::normalize($state['turn'] ?? Turn::idle());
+        foreach ($state['board'] ?? [] as $key => $hex) {
+            $state['board'][$key] = $hex + ['biome' => 'plains', 'terrain' => 'grass'];
+        }
         foreach ($state['units'] ?? [] as $unitId => $unit) {
             $state['units'][$unitId] = $unit + ['abilities' => [], 'flags' => []];
         }

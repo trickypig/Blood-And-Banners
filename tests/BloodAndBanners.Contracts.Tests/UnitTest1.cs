@@ -31,16 +31,55 @@ public sealed class ContractFixtureTests
         Assert.True(unit.Abilities.Single().Playable);
         Assert.Equal(2, unit.Effects.Single().Amount);
         Assert.Equal(7, unit.EffectiveDefense);
-        Assert.Equal(new ConditionProjection("Stunned", "endOfNextTurn"), unit.Conditions.Single());
+        Assert.Equal("Stunned", unit.Conditions[0].Name);
+        Assert.Null(unit.Conditions[0].Data.Direction);
+        Assert.Equal(new[] { 1, 0 }, unit.Conditions[1].Data.Direction);
         Assert.Null(projection.LegalActions.Single().Ability);
+        var movement = projection.LegalActions.Single().MovementOptions;
+        Assert.Equal(2, movement.Count);
+        Assert.Equal(new[] { "1,0" }, movement[0].Path);
+        Assert.Empty(movement[0].Hazards);
+        Assert.Equal(5, movement[1].Hazards.Single().Dice);
+        Assert.Equal("lava", movement[1].Hazards.Single().Terrain);
+        Assert.False(movement[1].Hazards.Single().Forced);
+        Assert.Equal("iceCollision", projection.PendingChoice?.Kind);
+        Assert.Equal(new[] { "1,1" }, projection.PendingChoice?.TargetHexes);
         Assert.Equal("choice-1", projection.PendingChoiceSummary?.ChoiceId);
-        Assert.Equal(new DateTimeOffset(2026, 10, 11, 12, 0, 45, TimeSpan.Zero), projection.PendingChoiceSummary?.KeepableAt);
+        Assert.Equal("iceCollision", projection.PendingChoiceSummary?.Kind);
+        Assert.Null(projection.PendingChoiceSummary?.KeepableAt);
 
         using var serialized = System.Text.Json.JsonDocument.Parse(
             System.Text.Json.JsonSerializer.Serialize(projection, global::BloodAndBanners.Contracts.ContractJson.Options));
         Assert.True(serialized.RootElement.TryGetProperty("gameId", out _));
         Assert.False(serialized.RootElement.TryGetProperty("GameId", out _));
         Assert.Equal("active", serialized.RootElement.GetProperty("lifecycle").GetString());
+    }
+
+    [Fact]
+    public void Additive_terrain_fields_default_for_older_json()
+    {
+        var action = System.Text.Json.JsonSerializer.Deserialize<LegalAction>(
+            """{"kind":"moveUnit","unitId":"u1","targetHexes":["1,0"]}""",
+            ContractJson.Options);
+        var condition = System.Text.Json.JsonSerializer.Deserialize<ConditionProjection>(
+            """{"name":"Stunned","expires":"endOfNextTurn"}""",
+            ContractJson.Options);
+        var choice = System.Text.Json.JsonSerializer.Deserialize<PendingChoiceProjection>(
+            """{"choiceId":"choice-1","seatId":"seat-a","kind":"moonlightGlare","options":["keep"]}""",
+            ContractJson.Options);
+        var summary = System.Text.Json.JsonSerializer.Deserialize<PendingChoiceSummary>(
+            """{"choiceId":"choice-1","seatId":"seat-a","unitId":"u1","keepableAt":"2026-10-11T12:00:45Z"}""",
+            ContractJson.Options);
+
+        Assert.NotNull(action);
+        Assert.Empty(action.MovementOptions);
+        Assert.NotNull(condition);
+        Assert.Null(condition.Data.Direction);
+        Assert.NotNull(choice);
+        Assert.Empty(choice.TargetHexes);
+        Assert.NotNull(summary);
+        Assert.Equal(string.Empty, summary.Kind);
+        Assert.NotNull(summary.KeepableAt);
     }
 
     [Fact]

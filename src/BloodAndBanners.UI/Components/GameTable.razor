@@ -1,6 +1,9 @@
 @namespace BloodAndBanners.UI.Components
 @using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Services
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <main class="game-table">
     <header class="turn-ribbon">
@@ -16,9 +19,10 @@
 
     <section class="battlefield-panel" aria-label="Game board" @onkeydown="OnBoardKey">
         <div class="board-controls" aria-label="Board view controls">
-            <button type="button" aria-label="Zoom out" disabled="@(_zoom <= MinZoom)" @onclick="() => Zoom(-ZoomStep)">−</button>
-            <button type="button" aria-label="Reset board view" @onclick="() => _zoom = 1">Reset</button>
-            <button type="button" aria-label="Zoom in" disabled="@(_zoom >= MaxZoom)" @onclick="() => Zoom(ZoomStep)">+</button>
+            <button type="button" aria-label="Zoom out" disabled="@(_viewport.Scale <= _viewport.MinimumScale)" @onclick="() => ZoomViewport(1 / ZoomFactor)">−</button>
+            <button type="button" aria-label="Fit whole battlefield" @onclick="FitViewport">Fit</button>
+            <button type="button" aria-label="Zoom in" disabled="@(_viewport.Scale >= BoardViewport.MaxScale)" @onclick="() => ZoomViewport(ZoomFactor)">+</button>
+            <span class="viewport-status" data-testid="viewport-status" role="status">Zoom @ZoomPercent% · @(_followEvents ? "Following events" : "Manual view")</span>
         </div>
         @if (_targeting is { } aiming)
         {
@@ -36,12 +40,25 @@
                 <button type="button" data-action="cancelTargeting" @onclick="CancelTargeting">Cancel</button>
             </div>
         }
+        @if (PreviewedMovement is { } movement)
+        {
+            <div class="movement-preview" data-testid="movement-preview" role="status">
+                <strong>@movement.Path.Count-step path</strong>
+                <span>@MovementRisk(movement)</span>
+            </div>
+        }
         @{ var board = BoardLayout.For(Projection.Board.Hexes); }
-        <svg class="hex-board"
+        <svg class="hex-board board-interaction-surface"
+             @ref="_boardElement"
              role="group"
-             viewBox="0 0 @Num(board.Width) @Num(board.Height)"
-             width="@Num(board.Width * _zoom)"
-             height="@Num(board.Height * _zoom)"
+             viewBox="@ViewportViewBox"
+             preserveAspectRatio="xMidYMid meet"
+             @onwheel="OnWheel"
+             @onwheel:preventDefault="true"
+             @onpointerdown="args => BeginBoardPointer(args, true)"
+             @onpointermove="MoveBoardPointer"
+             @onpointerup="EndBoardPointer"
+             @onpointercancel="EndBoardPointer"
              aria-label="Battlefield, @Projection.Board.Rows columns by @Projection.Board.Columns rows">
             <defs>
                 @foreach (var terrain in board.Tiles.Select(tile => tile.Hex).DistinctBy(TerrainPatternId))
@@ -64,6 +81,21 @@
                     }
                 }
             </defs>
+            @if (PreviewedMovement is { } preview)
+            {
+                @for (var index = 0; index < preview.Path.Count - 1; index++)
+                {
+                    var from = board.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == preview.Path[index]);
+                    var to = board.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == preview.Path[index + 1]);
+                    if (from is not null && to is not null)
+                    {
+                        <line class="movement-path-connector"
+                              data-path-connector="@(index + 1)"
+                              x1="@Num(from.X)" y1="@Num(from.Y)"
+                              x2="@Num(to.X)" y2="@Num(to.Y)" />
+                    }
+                }
+            }
             @foreach (var tile in board.Tiles)
             {
                 var hex = tile.Hex;
@@ -75,6 +107,8 @@
                    data-hex="@key"
                    aria-label="@HexLabel(hex, unit)"
                    @onclick="() => SelectHex(hex)"
+                   @onpointerdown="args => BeginBoardPointer(args, false)"
+                   @onpointerdown:stopPropagation="true"
                    @onkeydown="args => OnHexKey(args, hex)"
                    @onmouseenter="() => Hover(hex)"
                    @onmouseleave="Unhover"
@@ -93,6 +127,21 @@
                                  fill-opacity="@Num(Math.Min(.6, Math.Abs(hex.Elevation) * .08))" />
                     }
                     <polygon class="hex-outline" points="@tile.TopPoints" />
+                    @if (PathStep(key) is { } pathStep)
+                    {
+                        <g class="movement-path-marker" data-path-step="@pathStep" aria-hidden="true">
+                            <circle cx="@Num(tile.X)" cy="@Num(tile.Y)" r="10" />
+                            <!text x="@Num(tile.X)" y="@Num(tile.Y)">@pathStep</!text>
+                        </g>
+                    }
+                    @if (HazardAt(key) is { } hazard)
+                    {
+                        <!text class="movement-hazard-marker"
+                              data-hazard="@hazard.Terrain"
+                              x="@Num(tile.X + BoardLayout.Size * .42)"
+                              y="@Num(tile.Y + BoardLayout.Size * .42)"
+                              aria-hidden="true">!</!text>
+                    }
                     @if (hex.Elevation != 0)
                     {
                         <!text class="hex-elevation"
@@ -145,9 +194,17 @@
                             {
                                 <!text class="effect-marker debuff" x="@Num(tile.X - radius * .85)" y="@Num(tokenY + radius * .55)">▼</!text>
                             }
-                            @if (unit is not null && unit.Conditions.Count > 0)
+                            @if (unit is not null)
                             {
-                                <!text class="condition-marker" x="@Num(tile.X)" y="@Num(tokenY - radius * 1.05)">💫</!text>
+                                @for (var conditionIndex = 0; conditionIndex < unit.Conditions.Count; conditionIndex++)
+                                {
+                                    var condition = unit.Conditions[conditionIndex];
+                                    <!text class="condition-marker condition-@SafeId(condition.Name)"
+                                          data-condition-marker="@condition.Name"
+                                          x="@Num(tile.X + (conditionIndex - (unit.Conditions.Count - 1) / 2d) * 13)"
+                                          y="@Num(tokenY - radius * 1.05)"
+                                          aria-hidden="true">@ConditionMarker(condition.Name)</!text>
+                                }
                             }
                             @if (unit is not null)
                             {
@@ -162,6 +219,21 @@
                 </g>
             }
         </svg>
+        @if (_confirmingMovement is { } confirmation)
+        {
+            <section class="movement-confirmation"
+                     data-testid="movement-confirmation"
+                     role="dialog"
+                     aria-modal="false"
+                     aria-labelledby="movement-confirmation-title">
+                <h2 id="movement-confirmation-title">Enter dangerous terrain?</h2>
+                <p>@MovementRisk(confirmation)</p>
+                <div>
+                    <button type="button" data-action="cancelMovement" disabled="@IsBusy" @onclick="CancelMovement">Cancel</button>
+                    <button type="button" data-action="confirmMovement" disabled="@IsBusy" @onclick="ConfirmMovement">Confirm move</button>
+                </div>
+            </section>
+        }
     </section>
 
     <aside class="command-rail" aria-label="Game commands">
@@ -189,6 +261,31 @@
                     }
                 </div>
                 <button type="button" data-choice="keep" disabled="@IsBusy" @onclick='() => Resolve(glare.ChoiceId, "keep")'>Keep the roll</button>
+            </section>
+        }
+        else if (Projection.PendingChoice is { Kind: "iceCollision" } ice && ice.SeatId == Projection.Viewer.SeatId)
+        {
+            <section class="choice-prompt ice-choice" role="dialog" aria-modal="false" aria-labelledby="ice-choice-title" data-testid="ice-choice">
+                <h2 id="ice-choice-title">Ice collision</h2>
+                <p>Your sliding unit has met an ally. Choose how it continues.</p>
+                <div class="choice-options">
+                    @if (ice.Options.Contains("continue"))
+                    {
+                        <button type="button" data-choice="continue" disabled="@IsBusy" @onclick='() => ResolveIce(ice, "continue")'>Continue</button>
+                    }
+                    @if (ice.Options.Contains("stop"))
+                    {
+                        <button type="button" data-choice="stop" disabled="@IsBusy" @onclick='() => ResolveIce(ice, "stop")'>Stop</button>
+                    }
+                    @if (ice.Options.Any(option => option.StartsWith("swing:", StringComparison.Ordinal)))
+                    {
+                        <button type="button" data-action="chooseSwing" aria-pressed="@_swingChoice" disabled="@IsBusy" @onclick="ChooseSwing">Swing</button>
+                    }
+                </div>
+                @if (_swingChoice)
+                {
+                    <p role="status">Choose one of the highlighted exit hexes.</p>
+                }
             </section>
         }
         else if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
@@ -264,7 +361,7 @@
         {
             <section class="spectator-controls">
                 <h2>Battle camera</h2>
-                <button type="button" data-follow-events @onclick="() => OnFollowEvents.InvokeAsync()">
+                <button type="button" data-follow-events aria-pressed="@_followEvents" @onclick="ResumeFollowing">
                     Follow the action
                 </button>
                 <p>Moving the board pauses automatic following.</p>
@@ -346,14 +443,23 @@
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }
 
-    private const double MinZoom = .6;
-    private const double MaxZoom = 2;
-    private const double ZoomStep = .2;
+    private const double ZoomFactor = 1.2;
+    private readonly BoardViewport _viewport = new();
+    private readonly HashSet<long> _capturedPointers = [];
+    private ElementReference _boardElement;
+    private IJSObjectReference? _viewportModule;
+    private ElementBounds _boardBounds = new();
+    private bool _followEvents = true;
 
     private string? _selectedUnitId;
     private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes);
 
     private Targeting? _targeting;
+    private MovementOptionProjection? _previewedMovement;
+    private MovementOptionProjection? _confirmingMovement;
+    private bool _swingChoice;
+    private string? _lastGameId;
+    private long _lastProjectionVersion = long.MinValue;
 
     private static IEnumerable<(string Stat, string Label, int Base, int Effective)> StatRows(UnitProjection unit) =>
     [
@@ -381,15 +487,43 @@
 
     private void StartTargeting(LegalAction action)
     {
+        ClearMovementState();
+        _swingChoice = false;
         _chain.Clear();
         _teleportUnitId = null;
         _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
     }
     private string? _hoveredUnitId;
-    private double _zoom = 1;
 
     protected override void OnParametersSet()
     {
+        var newGame = _lastGameId != Projection.GameId;
+        if (newGame)
+        {
+            _followEvents = true;
+        }
+        var layout = BoardLayout.For(Projection.Board.Hexes);
+        _viewport.ResetForGame(
+            Projection.GameId,
+            new WorldRect(0, 0, layout.Width, layout.Height),
+            _viewport.ContainerWidth,
+            _viewport.ContainerHeight);
+        var focusPoints = FocusHexes
+            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
+            .Where(tile => tile is not null)
+            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
+            .ToList();
+        if (_followEvents)
+        {
+            _viewport.EnsureVisible(focusPoints);
+        }
+        if (_lastGameId != Projection.GameId || _lastProjectionVersion != Projection.Version)
+        {
+            ClearMovementState();
+            _swingChoice = false;
+            _lastGameId = Projection.GameId;
+            _lastProjectionVersion = Projection.Version;
+        }
         if (_selectedUnitId is not null && !Selectable(_selectedUnitId))
         {
             _selectedUnitId = null;
@@ -456,15 +590,32 @@
             .SelectMany(action => action.TargetHexes)
             .ToList();
 
-    private async Task SelectHex(HexProjection hex)
+    private async Task SelectHex(HexProjection hex, bool keyboardActivation = false)
     {
         if (!Projection.Viewer.CanCommand || IsBusy)
         {
             return;
         }
+        if (!keyboardActivation && _viewport.ConsumeSuppressedActivation())
+        {
+            return;
+        }
+        var key = HexKey(hex);
+        if (Projection.PendingChoice is { Kind: "iceCollision" } ice)
+        {
+            if (_swingChoice && ice.TargetHexes.Contains(key) && ice.Options.Contains($"swing:{key}"))
+            {
+                await ResolveIce(ice, $"swing:{key}");
+            }
+            return;
+        }
+        if (Projection.PendingChoice is not null)
+        {
+            return;
+        }
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
-            var aimed = HexKey(hex);
+            var aimed = key;
             if (Teleporting)
             {
                 if (_teleportUnitId is { } traveller && TeleportDestinations(traveller).Contains(aimed))
@@ -500,11 +651,21 @@
             }
             return;
         }
-        var key = HexKey(hex);
         if (_selectedUnitId is { } unitId)
         {
             if (Targets("moveUnit").Contains(key))
             {
+                if (MovementOption(key) is { } movement)
+                {
+                    _previewedMovement = movement;
+                    if (RequiresConfirmation(movement))
+                    {
+                        _confirmingMovement = movement;
+                        return;
+                    }
+                    await Send("moveUnit", new { unitId, path = movement.Path });
+                    return;
+                }
                 await Send("moveUnit", new { unitId, to = key });
                 return;
             }
@@ -514,7 +675,12 @@
                 return;
             }
         }
-        _selectedUnitId = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
+        var selected = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
+        if (_selectedUnitId != selected)
+        {
+            ClearMovementState();
+        }
+        _selectedUnitId = selected;
     }
 
     private const int ChainReach = 5;
@@ -614,12 +780,20 @@
     {
         _hoveredUnitId = hex.OccupantId;
         _hoveredHex = HexKey(hex);
+        if (_confirmingMovement is null && MovementOption(_hoveredHex) is { } movement)
+        {
+            _previewedMovement = movement;
+        }
     }
 
     private void Unhover()
     {
         _hoveredUnitId = null;
         _hoveredHex = null;
+        if (_confirmingMovement is null)
+        {
+            _previewedMovement = null;
+        }
     }
 
     private void CancelTargeting()
@@ -634,6 +808,8 @@
         if (args.Key == "Escape")
         {
             CancelTargeting();
+            ClearMovementState();
+            _swingChoice = false;
         }
     }
 
@@ -647,6 +823,19 @@
 
     private Task Resolve(string choiceId, string option) => Send("resolveChoice", new { choiceId, option });
 
+    private Task ResolveIce(PendingChoiceProjection choice, string option)
+    {
+        _swingChoice = false;
+        return Resolve(choice.ChoiceId, option);
+    }
+
+    private void ChooseSwing()
+    {
+        ClearMovementState();
+        _swingChoice = true;
+        CancelTargeting();
+    }
+
     private static string FaceSymbol(string face) => face switch
     {
         "sword" => "⚔",
@@ -654,13 +843,40 @@
         _ => "·",
     };
 
-    private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
+    private Task Send(string kind, object payload)
+    {
+        ClearMovementState();
+        _swingChoice = false;
+        return OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
+    }
 
     private static object ActionPayload(LegalAction action) =>
         action.Kind == "endTurn" ? new { } : new { unitId = action.UnitId };
 
     private string? HexState(string key)
     {
+        var classes = new List<string>();
+        if (InteractionHexState(key) is { } interaction)
+        {
+            classes.Add(interaction);
+        }
+        if (PreviewedMovement?.Path.Contains(key) == true)
+        {
+            classes.Add("movement-path");
+        }
+        if (HazardAt(key)?.Forced == true)
+        {
+            classes.Add("forced-slide");
+        }
+        return classes.Count == 0 ? null : string.Join(' ', classes);
+    }
+
+    private string? InteractionHexState(string key)
+    {
+        if (_swingChoice && Projection.PendingChoice?.TargetHexes.Contains(key) == true)
+        {
+            return "swing-target";
+        }
         if (key == SelectedHex)
         {
             return "selected";
@@ -687,6 +903,80 @@
             return "reachable";
         }
         return FocusHexes.Contains(key) ? "focus" : null;
+    }
+
+    private MovementOptionProjection? PreviewedMovement => _confirmingMovement ?? _previewedMovement;
+
+    private MovementOptionProjection? MovementOption(string destination) => _selectedUnitId is null
+        ? null
+        : Projection.LegalActions
+            .Where(action => action.Kind == "moveUnit" && action.UnitId == _selectedUnitId)
+            .SelectMany(action => action.MovementOptions)
+            .FirstOrDefault(option => option.Destination == destination);
+
+    private int? PathStep(string key)
+    {
+        var path = PreviewedMovement?.Path;
+        if (path is null)
+        {
+            return null;
+        }
+        for (var index = 0; index < path.Count; index++)
+        {
+            if (path[index] == key)
+            {
+                return index + 1;
+            }
+        }
+        return null;
+    }
+
+    private MovementHazardProjection? HazardAt(string key) =>
+        PreviewedMovement?.Hazards.FirstOrDefault(hazard => hazard.Hex == key);
+
+    private MovementHazardProjection? ProjectedHazardAt(string key) => Projection.LegalActions
+        .SelectMany(action => action.MovementOptions)
+        .SelectMany(option => option.Hazards)
+        .FirstOrDefault(hazard => hazard.Hex == key);
+
+    private static bool RequiresConfirmation(MovementOptionProjection movement) =>
+        movement.Hazards.Any(hazard => hazard.Dice > 0 || hazard.Forced || hazard.Stops);
+
+    private static string MovementRisk(MovementOptionProjection movement)
+    {
+        var risks = new List<string>();
+        var dice = movement.Hazards.Sum(hazard => hazard.Dice);
+        if (dice > 0)
+        {
+            risks.Add($"{dice} damage {(dice == 1 ? "die" : "dice")}, no Defense roll");
+        }
+        if (movement.Hazards.Any(hazard => hazard.Forced))
+        {
+            risks.Add("includes forced ice movement");
+        }
+        if (movement.Hazards.Any(hazard => hazard.Stops))
+        {
+            risks.Add("movement stops on entry");
+        }
+        return risks.Count == 0 ? "No projected terrain hazards." : string.Join(" · ", risks);
+    }
+
+    private async Task ConfirmMovement()
+    {
+        if (_selectedUnitId is not { } unitId || _confirmingMovement is not { } movement)
+        {
+            return;
+        }
+        var path = movement.Path.ToArray();
+        await Send("moveUnit", new { unitId, path });
+    }
+
+    private void CancelMovement() => ClearMovementState();
+
+    private void ClearMovementState()
+    {
+        _previewedMovement = null;
+        _confirmingMovement = null;
     }
 
     private UnitProjection? UnitById(string? unitId) =>
@@ -745,10 +1035,142 @@
         return classes.Count == 0 ? null : string.Join(' ', classes);
     }
 
-    private void Zoom(double delta) => _zoom = Math.Clamp(Math.Round(_zoom + delta, 1), MinZoom, MaxZoom);
-
     private Task OnHexKey(KeyboardEventArgs args, HexProjection hex) =>
-        args.Key is "Enter" or " " ? SelectHex(hex) : Task.CompletedTask;
+        args.Key is "Enter" or " " ? SelectHex(hex, keyboardActivation: true) : Task.CompletedTask;
+
+    private string ViewportViewBox
+    {
+        get
+        {
+            var visible = _viewport.VisibleWorld;
+            return $"{Num(visible.X)} {Num(visible.Y)} {Num(visible.Width)} {Num(visible.Height)}";
+        }
+    }
+
+    private int ZoomPercent => (int)Math.Round(_viewport.Scale * 100);
+
+    private async Task ZoomViewport(double factor)
+    {
+        await MeasureBoard();
+        _viewport.ZoomAt(new ViewportPoint(_viewport.ContainerWidth / 2, _viewport.ContainerHeight / 2), factor);
+        await PauseFollowing();
+    }
+
+    private async Task FitViewport()
+    {
+        await MeasureBoard();
+        _viewport.Fit();
+        await PauseFollowing();
+    }
+
+    private async Task OnWheel(WheelEventArgs args)
+    {
+        await MeasureBoard();
+        var point = LocalPoint(args.ClientX, args.ClientY);
+        _viewport.ZoomAt(point, args.DeltaY < 0 ? ZoomFactor : 1 / ZoomFactor);
+        await PauseFollowing();
+    }
+
+    private async Task BeginBoardPointer(PointerEventArgs args, bool canPan)
+    {
+        await MeasureBoard();
+        _viewport.BeginPointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY), args.PointerType == "touch", canPan);
+        if (canPan && _viewportModule is not null)
+        {
+            _capturedPointers.Add(args.PointerId);
+            await _viewportModule.InvokeVoidAsync("capturePointer", _boardElement, args.PointerId);
+        }
+    }
+
+    private async Task MoveBoardPointer(PointerEventArgs args)
+    {
+        var center = _viewport.Center;
+        var scale = _viewport.Scale;
+        _viewport.MovePointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY));
+        if (center != _viewport.Center || scale != _viewport.Scale)
+        {
+            await PauseFollowing();
+        }
+    }
+
+    private async Task PauseFollowing()
+    {
+        _followEvents = false;
+        await OnFollowEvents.InvokeAsync();
+    }
+
+    private async Task ResumeFollowing()
+    {
+        _followEvents = true;
+        var layout = BoardLayout.For(Projection.Board.Hexes);
+        var focusPoints = FocusHexes
+            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
+            .Where(tile => tile is not null)
+            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
+            .ToList();
+        _viewport.EnsureVisible(focusPoints);
+        await OnFollowEvents.InvokeAsync();
+    }
+
+    private async Task EndBoardPointer(PointerEventArgs args)
+    {
+        _viewport.EndPointer(args.PointerId);
+        if (_capturedPointers.Remove(args.PointerId) && _viewportModule is not null)
+        {
+            await _viewportModule.InvokeVoidAsync("releasePointer", _boardElement, args.PointerId);
+        }
+    }
+
+    private ViewportPoint LocalPoint(double clientX, double clientY) =>
+        new(clientX - _boardBounds.Left, clientY - _boardBounds.Top);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        _viewportModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/BloodAndBanners.UI/js/boardViewport.js");
+        if (_viewportModule is null)
+        {
+            return;
+        }
+        await MeasureBoard();
+        if (_boardBounds.Width > 0 && _boardBounds.Height > 0)
+        {
+            _viewport.Fit();
+            StateHasChanged();
+        }
+    }
+
+    private async Task MeasureBoard()
+    {
+        if (_viewportModule is null)
+        {
+            return;
+        }
+        _boardBounds = await _viewportModule.InvokeAsync<ElementBounds>("bounds", _boardElement) ?? new ElementBounds();
+        if (_boardBounds.Width > 0 && _boardBounds.Height > 0)
+        {
+            _viewport.Resize(_boardBounds.Width, _boardBounds.Height);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_viewportModule is not null)
+        {
+            await _viewportModule.DisposeAsync();
+        }
+    }
+
+    private sealed class ElementBounds
+    {
+        public double Left { get; init; }
+        public double Top { get; init; }
+        public double Width { get; init; }
+        public double Height { get; init; }
+    }
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
@@ -769,15 +1191,59 @@
 
     private string HexLabel(HexProjection hex, UnitProjection? unit) =>
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
+        (ProjectedHazardAt(HexKey(hex)) is not { } hazard ? string.Empty : $", {HazardLabel(hazard)}") +
         (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
         (unit is null || unit.Effects.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Effects.Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {effect.Stat}"))) +
-        (unit is null || unit.Conditions.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Conditions.Select(condition => condition.Name))) +
+        (unit is null || unit.Conditions.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Conditions.Select(ConditionLabel))) +
         ActivationState(unit) switch
         {
             "activating" => ", activating",
             "spent" => ", already activated this turn",
             _ => string.Empty,
         };
+
+    private static string HazardLabel(MovementHazardProjection hazard)
+    {
+        var details = new List<string>();
+        if (hazard.Dice > 0)
+        {
+            details.Add($"{hazard.Dice} damage {(hazard.Dice == 1 ? "die" : "dice")}, no Defense roll");
+        }
+        if (hazard.Forced)
+        {
+            details.Add("forced movement");
+        }
+        if (hazard.Stops)
+        {
+            details.Add("stops movement");
+        }
+        return $"{Title(hazard.Terrain)} hazard" + (details.Count == 0 ? string.Empty : ": " + string.Join(", ", details));
+    }
+
+    private static string ConditionLabel(ConditionProjection condition) =>
+        condition.Name == "Slipping" && condition.Data.Direction is { Count: 2 } direction
+            ? $"Slipping {DirectionName(direction)}"
+            : condition.Name;
+
+    private static string DirectionName(IReadOnlyList<int> direction) => (direction[0], direction[1]) switch
+    {
+        (1, 0) => "east",
+        (1, -1) => "north-east",
+        (0, -1) => "north-west",
+        (-1, 0) => "west",
+        (-1, 1) => "south-west",
+        (0, 1) => "south-east",
+        _ => $"toward {direction[0]},{direction[1]}",
+    };
+
+    private static string ConditionMarker(string name) => name switch
+    {
+        "Stunned" => "✦",
+        "Unsteady" => "≈",
+        "Slipping" => "➜",
+        "Poisoned" => "◆",
+        _ => "•",
+    };
 
     private static string Initials(string value) => string.Concat(
         value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => char.ToUpperInvariant(part[0])));

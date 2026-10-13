@@ -25,6 +25,31 @@
 .mode-list button:hover:not(:disabled), .mode-list button:focus-visible { background: #302e29; box-shadow: inset .3rem 0 #a6813a; }
 .mode-list button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
 .mode-list button:disabled { opacity: .5; cursor: wait; }
+.battlefield-picker { align-self: center; border-top: 1px solid #5b5548; }
+.battlefield-picker > header { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 1.3fr); gap: 1.5rem; align-items: end; padding: 1.1rem .75rem 1.25rem; border-bottom: 1px solid #5b5548; }
+.battlefield-picker h2 { margin: 0; color: #f2ead8; font: 700 clamp(1.8rem, 4vw, 2.8rem)/1 Georgia, serif; letter-spacing: -.025em; }
+.battlefield-picker header p { margin: 0; color: #aaa394; line-height: 1.45; }
+.battlefield-list { display: grid; }
+.battlefield-card { position: relative; display: grid; grid-template-columns: minmax(9rem, 1.25fr) 5rem minmax(9rem, 1fr); gap: .35rem 1rem; align-items: baseline; width: 100%; padding: 1.05rem .8rem 1rem 1.45rem; color: #e9e3d2; text-align: left; background: transparent; border: 0; border-bottom: 1px solid #5b5548; cursor: pointer; }
+.battlefield-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: .38rem; background: #565247; }
+.battlefield-card[data-scenario="Four Corners"]::before { background: linear-gradient(#52768b 0 25%, #90aeba 25% 50%, #9b3e26 50% 75%, #66507b 75%); }
+.battlefield-card[data-scenario="Proving Field"]::before { background: #8d7847; }
+.battlefield-card[data-scenario="Home Map"]::before { background: repeating-linear-gradient(#687759 0 .35rem, #8b7250 .35rem .7rem); }
+.battlefield-card:hover:not(:disabled) { background: #292824; }
+.battlefield-card.selected { color: #fff5dd; background: #302e29; box-shadow: inset .28rem 0 #d0ad66; }
+.battlefield-card:focus-visible, .picker-actions button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: -.2rem; }
+.battlefield-card:disabled, .picker-actions button:disabled { opacity: .5; cursor: wait; }
+.battlefield-name { font: 700 1.25rem Georgia, serif; }
+.battlefield-size { color: #d0ad66; font-variant-numeric: tabular-nums; }
+.battlefield-role { color: #c5bdad; }
+.battlefield-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .25rem; }
+.battlefield-tags > span { padding: .15rem .4rem; color: #aaa394; border: 1px solid #514d43; font-size: .78rem; }
+.picker-actions { display: flex; justify-content: space-between; gap: 1rem; padding: 1.25rem .75rem 0; }
+.picker-actions button { padding: .8rem 1.15rem; color: #e9e3d2; cursor: pointer; }
+.picker-actions .back { background: transparent; border: 1px solid #5b5548; }
+.picker-actions .create { background: #681e24; border: 1px solid #a6813a; font-weight: 700; }
+.picker-actions .back:hover:not(:disabled) { background: #302e29; }
+.picker-actions .create:hover:not(:disabled) { background: #7b252b; }
 .join-room { margin-top: 1.4rem; padding: .2rem .75rem 0; }
 .join-room label { display: block; margin-bottom: .55rem; color: #d0ad66; font: 700 1rem Georgia, serif; }
 .join-room div { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
@@ -41,4 +66,7 @@
     .intro-copy h1 { font-size: clamp(3rem, 18vw, 5.5rem); }
     .connection-note, .connection-error { grid-column: 1; }
     .join-room div { grid-template-columns: 1fr; }
+    .battlefield-picker > header { grid-template-columns: 1fr; gap: .75rem; }
+    .battlefield-card { grid-template-columns: 1fr auto; }
+    .battlefield-role { grid-column: 1 / -1; }
 }

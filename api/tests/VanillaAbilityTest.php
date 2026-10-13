@@ -113,8 +113,9 @@ function vanilla_ability_tests(): array
         },
 
         'the registry only knows implemented abilities' => static function (): void {
-            expect_same(false, AbilityRegistry::isPlayable('Flying'), 'Flying is deferred');
-            expect_same(null, AbilityRegistry::find(ability_unit('x', 'seat-a', '0,0', ['Flying']), 'Flying'), 'deferred abilities have no handler');
+            expect_same(true, AbilityRegistry::isPlayable('Flying'), 'Flying is implemented');
+            expect_true(AbilityRegistry::find(ability_unit('x', 'seat-a', '0,0', ['Flying']), 'Flying') !== null, 'implemented traits have handlers');
+            expect_same(false, AbilityRegistry::isPlayable('Not Printed'), 'unknown abilities remain unplayable');
         },
 
         'Trembling Fear weakens non-hero attackers only' => static function (): void {
@@ -245,14 +246,14 @@ function vanilla_ability_tests(): array
             expect_same(5, $result['state']['units']['b1']['wounds'], 'five swords land');
         },
 
-        'special attacks reject unknown, deferred and locked abilities' => static function (): void {
+        'special attacks reject unknown, passive and locked abilities' => static function (): void {
             $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
                 ability_unit('a-hero', 'seat-a', '0,0', ['Bolt of Annihilation', 'Flying'], ['isHero' => true]),
                 vanilla_unit('b1', 'seat-b', '2,0'),
             ]);
             $payload = static fn(string $name): array => ['unitId' => 'a-hero', 'ability' => $name, 'targetUnitIds' => ['b1']];
             expect_game_error('unknownAbility', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Fireball')));
-            expect_game_error('abilityNotPlayable', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Flying')));
+            expect_game_error('unknownAbility', static fn() => vanilla_command($state, 'seat-a', 'specialAttack', $payload('Flying')));
             $locked = $state;
             $locked['units']['a-hero']['flags']['spellsLockedOnTurns'] = [$state['turn']['number']];
             expect_game_error('abilityLocked', static fn() => vanilla_command($locked, 'seat-a', 'specialAttack', $payload('Bolt of Annihilation')));
@@ -290,6 +291,27 @@ function vanilla_ability_tests(): array
                 'friends are scorched too'
             );
             expect_same(null, $result['state']['units']['b2']['hex'], 'the splash can kill');
+        },
+
+        'Fireball is fire against its primary target but splash remains one no defense die' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Fireball']),
+                ability_unit('b1', 'seat-b', '2,0', ['Lava Walker'], ['defense' => 1, 'hp' => 9]),
+                ability_unit('b2', 'seat-b', '3,0', ['Lava Walker'], ['defense' => 5, 'hp' => 9]),
+                vanilla_unit('a2', 'seat-a', '4,0'),
+            ]);
+
+            $result = vanilla_command(
+                $state,
+                'seat-a',
+                'specialAttack',
+                ['unitId' => 'a1', 'ability' => 'Fireball', 'targetUnitIds' => ['b1']],
+                [6, 6, 6, 6, 6, 6, 6, 6]
+            );
+            expect_same(3, count($result['events'][0]['payload']['defenseFaces']), 'the primary Lava Walker gets +2 Defense');
+            expect_same('fire', $result['events'][0]['payload']['damageType'] ?? null, 'the primary strike is typed fire');
+            expect_same(['blank'], $result['events'][1]['payload']['hits'][0]['faces'], 'splash still rolls exactly one die');
+            expect_true(!isset($result['events'][1]['payload']['hits'][0]['defenseFaces']), 'splash has no defense roll');
         },
 
         'Fireball splash that wipes out the last enemy ends the match without further steps' => static function (): void {
@@ -485,7 +507,7 @@ function vanilla_ability_tests(): array
         },
 
         'every ability in gameData.json is either implemented or explicitly deferred' => static function (): void {
-            $deferred = ['Flying', 'Lava Walker'];
+            $deferred = [];
             $catalog = new \BloodAndBanners\Rules\Vanilla\Catalog();
             $names = [];
             foreach ($catalog->heroes() as $hero) {

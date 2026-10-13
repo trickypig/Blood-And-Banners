@@ -15,7 +15,7 @@ final class BattleRules
 {
     public const CHOICE_TIMEOUT_SECONDS = 45;
 
-    private const KINDS = ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
+    private const KINDS = ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
@@ -28,6 +28,10 @@ final class BattleRules
         'alreadyMoved' => 'That unit has already moved this activation.',
         'unitNotActive' => 'That unit is not the active unit.',
         'hexUnreachable' => 'That unit cannot reach that hex.',
+        'movementPathRequired' => 'Choose the exact route through that terrain.',
+        'invalidMovementPath' => 'That movement route is no longer legal.',
+        'invalidTerrainDestination' => 'That unit cannot voluntarily stop on that terrain.',
+        'invalidSlipChoice' => 'That ice movement choice is no longer legal.',
         'targetOutOfRange' => 'That target is out of range.',
         'noLineOfSight' => 'That target is not in line of sight.',
         'unknownAbility' => 'That unit does not have that ability.',
@@ -61,12 +65,14 @@ final class BattleRules
             self::fail('notYourTurn');
         }
         if ($kind === 'endTurn') {
-            [$state, $events] = self::passTurn($state);
+            [$state, $events] = self::passTurn($state, $random);
             return ['state' => $state, 'events' => $events];
         }
 
         $events = [];
-        if ($kind === 'moveUnit') {
+        if ($kind === 'activateUnit') {
+            $state = $this->activate($state, $seatId, self::text($payload, 'unitId'), $random, $events);
+        } elseif ($kind === 'moveUnit') {
             $state = $this->move($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'attackUnit') {
             $state = $this->attack($state, $seatId, $payload, $random, $events);
@@ -83,7 +89,7 @@ final class BattleRules
         }
 
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $seatId)) {
-            [$state, $passed] = self::passTurn($state);
+            [$state, $passed] = self::passTurn($state, $random);
             $events = array_merge($events, $passed);
         }
         return ['state' => $state, 'events' => $events];
@@ -96,6 +102,14 @@ final class BattleRules
         }
         if ($state['pending'] !== null) {
             $choice = $state['pending']['choice'];
+            if (($choice['kind'] ?? null) === 'iceCollision') {
+                return $seatId === $choice['seatId']
+                    ? [[
+                        'kind' => 'resolveChoice', 'unitId' => $choice['unitId'],
+                        'targetHexes' => $choice['targetHexes'] ?? [],
+                    ]]
+                    : [];
+            }
             $mayKeep = $this->now - $choice['openedAt'] >= self::CHOICE_TIMEOUT_SECONDS;
             return $seatId === $choice['seatId'] || $mayKeep
                 ? [['kind' => 'resolveChoice', 'unitId' => $choice['unitId'], 'targetHexes' => []]]
@@ -113,6 +127,10 @@ final class BattleRules
             $active = $state['turn']['activeUnitId'] === $unitId;
             $activated = in_array($unitId, $state['turn']['activated'], true);
             $canStart = !$activated && $this->activationError($state, $unitId) === null;
+            if (!$active && $canStart && UnitConditions::has($state, $unitId, 'Slipping')) {
+                $actions[] = ['kind' => 'activateUnit', 'unitId' => $unitId, 'targetHexes' => []];
+                continue;
+            }
             if ($activated || $canStart) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
                     if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true) || $ability->unavailable($state, $unitId) !== null) {
@@ -134,9 +152,13 @@ final class BattleRules
             }
             if (self::canMove($state, $unitId)) {
                 $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
-                $hexes = Movement::reachable($state, $unitId, $budget);
-                if ($hexes !== []) {
-                    $actions[] = ['kind' => 'moveUnit', 'unitId' => $unitId, 'targetHexes' => $hexes];
+                $options = Movement::options($state, $unitId, $budget);
+                if ($options !== []) {
+                    $actions[] = [
+                        'kind' => 'moveUnit', 'unitId' => $unitId,
+                        'targetHexes' => array_column($options, 'destination'),
+                        'movementOptions' => $options,
+                    ];
                 }
             }
             $targets = self::attacksLeft($state, $unitId) ? Combat::targets($state, $unitId) : [];
@@ -174,8 +196,10 @@ final class BattleRules
     private function move(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
         $unitId = self::text($payload, 'unitId');
-        $to = self::text($payload, 'to');
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         if (self::rooted($state, $unitId)) {
             self::fail('unitStunned');
         }
@@ -183,14 +207,20 @@ final class BattleRules
             self::fail('alreadyMoved');
         }
         $budget = Stats::effective($state, $unitId, 'move') - $state['turn']['moveSpent'];
-        $costs = Movement::costs($state, $unitId, $budget);
-        if (!isset($costs[$to])) {
-            self::fail('hexUnreachable');
-        }
+        $option = $this->movementOption($state, $unitId, $payload, $budget);
+        $to = $option['destination'];
+        $path = $option['path'];
         $from = $state['units'][$unitId]['hex'];
         $hits = [];
         $evades = AbilityRegistry::any($state['units'][$unitId], static fn(Ability $ability): bool => $ability->evades());
-        foreach (Movement::disengagedFrom($state, $unitId, $to) as $enemyId) {
+        $voluntaryPath = [];
+        foreach ($path as $hex) {
+            $voluntaryPath[] = $hex;
+            if (Terrain::type($state['board'][$hex]) === 'ice' && !Terrain::ignored($state, $unitId, 'ice', 'voluntary')) {
+                break;
+            }
+        }
+        foreach (Movement::disengagedFromPath($state, $unitId, $voluntaryPath) as $enemyId) {
             if ($evades) {
                 $roll = $random->roll(20);
                 if ($roll > 10) {
@@ -202,8 +232,48 @@ final class BattleRules
             }
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
-        $state['units'][$unitId]['hex'] = $to;
-        $state['turn']['moveSpent'] += $costs[$to];
+        $consequences = [];
+        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences);
+        if ($state['units'][$unitId]['hex'] === null || $state['phase'] !== 'active') {
+            $events[] = MatchEngine::event('unitMoved', [$from], [
+                'unitId' => $unitId, 'from' => $from, 'to' => $from, 'path' => [], 'disengagement' => $hits,
+            ]);
+            array_push($events, ...$consequences);
+            return $state;
+        }
+
+        $entered = [];
+        $previous = $from;
+        $spent = 0;
+        foreach ($path as $index => $hex) {
+            [$fromQ, $fromR] = Hex::parse($previous);
+            [$toQ, $toR] = Hex::parse($hex);
+            $spent += Terrain::stepCost($state, $unitId, $previous, $hex, 'voluntary');
+            $resolved = TerrainResolver::enter($state, $unitId, $previous, $hex, 'voluntary', [$toQ - $fromQ, $toR - $fromR], $random, $events);
+            $state = $resolved['state'];
+            $entered[] = $hex;
+            $previous = $hex;
+            if ($resolved['stop'] || $state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+                break;
+            }
+            if (Terrain::type($state['board'][$hex]) === 'ice' && UnitConditions::has($state, $unitId, 'Slipping')) {
+                $slide = IceMovement::continue($state, $unitId, $budget - $spent, $random, $events);
+                $state = $slide['state'];
+                array_push($entered, ...$slide['path']);
+                if ($slide['pending'] === null
+                    && $state['phase'] === 'active'
+                    && $state['units'][$unitId]['hex'] !== null
+                    && $slide['path'] !== array_slice($path, $index + 1)) {
+                    self::fail('invalidMovementPath');
+                }
+                break;
+            }
+        }
+        if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        $to = $state['units'][$unitId]['hex'];
+        $state['turn']['moveSpent'] += $option['cost'];
         if ($state['turn']['attacks'] > 0) {
             $state['turn']['movedAfterAttack'] = true;
         } else {
@@ -213,17 +283,54 @@ final class BattleRules
             'unitId' => $unitId,
             'from' => $from,
             'to' => $to,
+            'path' => $entered,
             'disengagement' => $hits,
         ]);
-        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $events);
         return self::closeIfSpent($state, $unitId);
+    }
+
+    private function movementOption(array $state, string $unitId, array $payload, int $budget): array
+    {
+        if (array_key_exists('path', $payload)) {
+            $path = $payload['path'];
+            if (!is_array($path) || $path === [] || count($path) !== count(array_unique($path))) {
+                self::fail('invalidMovementPath');
+            }
+            foreach ($path as $hex) {
+                if (!is_string($hex) || !isset($state['board'][$hex])) {
+                    self::fail('invalidMovementPath');
+                }
+            }
+            $destination = $path[array_key_last($path)];
+            if (!Terrain::canEnd($state, $unitId, $destination, 'voluntary')) {
+                self::fail('invalidTerrainDestination');
+            }
+            $option = Movement::canonical($state, $unitId, $destination, $budget);
+            if ($option === null || $option['path'] !== array_values($path)) {
+                self::fail('invalidMovementPath');
+            }
+            return $option;
+        }
+
+        $destination = self::text($payload, 'to');
+        $option = Movement::canonical($state, $unitId, $destination, $budget);
+        if ($option === null) {
+            self::fail('hexUnreachable');
+        }
+        if ($option['hazards'] !== []) {
+            self::fail('movementPathRequired');
+        }
+        return $option;
     }
 
     private function attack(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
     {
         $unitId = self::text($payload, 'unitId');
         $targetId = self::text($payload, 'targetUnitId');
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         if (!self::attacksLeft($state, $unitId)) {
             self::fail('noAttacksLeft');
         }
@@ -302,7 +409,10 @@ final class BattleRules
         $unitId = self::text($payload, 'unitId');
         $name = self::text($payload, 'ability');
         $targets = array_values(array_filter($payload['targetUnitIds'] ?? [], 'is_string'));
-        $state = $this->activate($state, $seatId, $unitId);
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         $ability = self::resolveAbility($state['units'][$unitId], $name, SpecialAttack::class);
         if (self::spellsLocked($state, $unitId)) {
             self::fail('abilityLocked');
@@ -363,8 +473,12 @@ final class BattleRules
             self::fail($blocked);
         }
         if (!in_array($unitId, $state['turn']['activated'], true)) {
-            $state = $this->activate($state, $seatId, $unitId);
+            $state = $this->activate($state, $seatId, $unitId, $random, $events);
         }
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        $unit = $state['units'][$unitId];
         if (!in_array($targetId, $ability->targets($state, $unitId), true)) {
             self::fail('invalidAbilityTarget');
         }
@@ -385,6 +499,38 @@ final class BattleRules
         if (self::text($payload, 'choiceId') !== $choice['choiceId'] || !in_array($option, $choice['options'], true)) {
             self::fail('unknownChoice');
         }
+        if (($choice['kind'] ?? null) === 'iceCollision') {
+            if ($seatId !== $choice['seatId']) {
+                self::fail('notYourChoice');
+            }
+            $remainingBeforeChoice = (int)($state['pending']['context']['remainingMove'] ?? 0);
+            $events = [];
+            $resolved = IceMovement::resolveChoice($state, $option, $random, $events);
+            $state = $resolved['state'];
+            $activateAfter = (bool)($resolved['activateAfter'] ?? false);
+            if (!$activateAfter && ($state['turn']['activeUnitId'] ?? null) === $choice['unitId']) {
+                $state['turn']['moveSpent'] += max(0, $remainingBeforeChoice - $resolved['remainingMove']);
+            }
+            if ($activateAfter
+                && $state['phase'] === 'active'
+                && $state['pending'] === null
+                && $state['units'][$choice['unitId']]['hex'] !== null) {
+                $unitId = $choice['unitId'];
+                $move = Stats::effective($state, $unitId, 'move');
+                $state['turn']['activeUnitId'] = $unitId;
+                $state['turn']['activated'][] = $unitId;
+                $state['turn']['moved'] = true;
+                $state['turn']['attacks'] = 0;
+                $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
+                $state['turn']['movedAfterAttack'] = false;
+            }
+            $active = $state['turn']['activeSeatId'];
+            if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
+                [$state, $passed] = self::passTurn($state, $random);
+                $events = array_merge($events, $passed);
+            }
+            return ['state' => $state, 'events' => $events];
+        }
         if ($seatId !== $choice['seatId']) {
             if ($option !== 'keep') {
                 self::fail('notYourChoice');
@@ -397,13 +543,13 @@ final class BattleRules
         $state = (new StepRunner($random, $this->now))->resolve($state, $option, $events);
         $active = $state['turn']['activeSeatId'];
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
-            [$state, $passed] = self::passTurn($state);
+            [$state, $passed] = self::passTurn($state, $random);
             $events = array_merge($events, $passed);
         }
         return ['state' => $state, 'events' => $events];
     }
 
-    private function activate(array $state, string $seatId, string $unitId): array
+    private function activate(array $state, string $seatId, string $unitId, RandomSource $random, array &$events): array
     {
         $unit = $state['units'][$unitId] ?? null;
         if ($unit === null || $unit['hex'] === null) {
@@ -419,11 +565,18 @@ final class BattleRules
         if ($blocked !== null) {
             self::fail($blocked);
         }
+        $wasSlipping = UnitConditions::has($state, $unitId, 'Slipping');
+        $move = Stats::effective($state, $unitId, 'move');
+        $slide = IceMovement::beforeActivation($state, $unitId, $random, $events);
+        $state = $slide['state'];
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
         $state['turn']['activeUnitId'] = $unitId;
         $state['turn']['activated'][] = $unitId;
-        $state['turn']['moved'] = false;
+        $state['turn']['moved'] = $wasSlipping;
         $state['turn']['attacks'] = 0;
-        $state['turn']['moveSpent'] = 0;
+        $state['turn']['moveSpent'] = $wasSlipping ? $move - $slide['remainingMove'] : 0;
         $state['turn']['movedAfterAttack'] = false;
         return $state;
     }
@@ -450,19 +603,23 @@ final class BattleRules
     private function canAct(array $state, string $seatId): bool
     {
         foreach ($this->legalActions($state, $seatId) as $action) {
-            if (in_array($action['kind'], ['moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
+            if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static function passTurn(array $state): array
+    private static function passTurn(array $state, RandomSource $random): array
     {
         $current = $state['turn']['activeSeatId'];
         $next = MatchEngine::otherSeat($state, $current);
         $events = [];
         $state = Effects::expire($state, $current, Effects::UNTIL_END_OF_TURN, $events);
+        $state = TerrainResolver::atTurnEnd($state, $current, $random, $events);
+        if ($state['phase'] !== 'active') {
+            return [$state, $events];
+        }
         $state = UnitConditions::atTurnEnd($state, $events);
         $round = $state['turn']['round'] + ($next === $state['draft']['firstSeatId'] ? 1 : 0);
         $state['turn'] = Turn::fresh($state, $next, $round);

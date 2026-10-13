@@ -5,9 +5,12 @@ using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
 using BloodAndBanners.UI.Services;
 using Bunit;
+using Microsoft.AspNetCore.Components.Web;
 
 public sealed partial class GameTableTests : BunitContext
 {
+    public GameTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
+
     [Fact]
     public void Selecting_a_unit_highlights_its_legal_moves_and_attacks_and_sends_them()
     {
@@ -102,10 +105,10 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Single(cut.FindAll("[data-hex='4,4'] .hex-side"));
         Assert.Empty(cut.FindAll("[data-hex='2,4'] .hex-side"));
 
-        var width = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
+        var viewBox = cut.Find("svg.hex-board").GetAttribute("viewBox");
         cut.Find("[aria-label='Zoom in']").Click();
-        var zoomed = double.Parse(cut.Find("svg.hex-board").GetAttribute("width")!, System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Equal(width * 1.2, zoomed, 1);
+        var zoomed = cut.Find("svg.hex-board").GetAttribute("viewBox");
+        Assert.NotEqual(viewBox, zoomed);
     }
 
     [Fact]
@@ -420,6 +423,222 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Projected_movement_paths_preview_from_pointer_and_keyboard_with_hazards_and_forced_steps()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+        cut.Find("[data-hex='0,0']").Click();
+
+        var destination = cut.Find("[data-hex='3,0']");
+        destination.MouseEnter();
+
+        Assert.Equal(["1", "2", "3"], cut.FindAll("[data-path-step]").Select(marker => marker.GetAttribute("data-path-step")!).ToArray());
+        Assert.Equal(2, cut.FindAll("[data-path-connector]").Count);
+        Assert.Equal("lava", cut.Find("[data-hex='2,0'] [data-hazard]").GetAttribute("data-hazard"));
+        Assert.Contains("forced-slide", cut.Find("[data-hex='3,0']").ClassList);
+        Assert.Contains("5 damage dice", cut.Find("[data-testid=movement-preview]").TextContent);
+
+        destination.MouseLeave();
+        Assert.Empty(cut.FindAll("[data-path-step]"));
+        destination.TriggerEvent("onfocus", new FocusEventArgs());
+        Assert.Equal(3, cut.FindAll("[data-path-step]").Count);
+    }
+
+    [Fact]
+    public void Safe_movement_sends_the_projected_path_immediately()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-hex='1,0']").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("moveUnit", sent.Single().Kind);
+        Assert.Equal("s1-u3", payload.GetProperty("unitId").GetString());
+        Assert.Equal(["1,0"], payload.GetProperty("path").EnumerateArray().Select(step => step.GetString()!).ToArray());
+    }
+
+    [Fact]
+    public void First_tap_on_hazardous_movement_requires_confirmation_and_cancel_is_safe()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='0,0']").Click();
+
+        cut.Find("[data-hex='3,0']").Click();
+
+        var dialog = cut.Find("[data-testid=movement-confirmation]");
+        Assert.Equal("dialog", dialog.GetAttribute("role"));
+        Assert.Contains("5 damage dice", dialog.TextContent);
+        Assert.Empty(sent);
+        cut.Find("button[data-action=cancelMovement]").Click();
+        Assert.Empty(cut.FindAll("[data-testid=movement-confirmation]"));
+        Assert.Empty(sent);
+
+        cut.Find("[data-hex='3,0']").Click();
+        cut.Find("button[data-action=confirmMovement]").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal(["1,0", "2,0", "3,0"], payload.GetProperty("path").EnumerateArray().Select(step => step.GetString()!).ToArray());
+    }
+
+    [Fact]
+    public void Ice_collision_choices_resolve_direct_options_or_target_only_projected_swing_exits()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = TerrainMovementProjection() with
+        {
+            PendingChoice = new PendingChoiceProjection("ice-1", "seat-red", "iceCollision", ["continue", "stop", "swing:1,1"])
+            {
+                UnitId = "s1-u3",
+                TargetHexes = ["1,1"],
+            },
+            LegalActions = [new LegalAction("resolveChoice", "s1-u3", [])],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        var prompt = cut.Find("[data-testid=ice-choice]");
+        Assert.Equal("dialog", prompt.GetAttribute("role"));
+        Assert.Empty(cut.FindAll("button[data-action=endTurn]"));
+        cut.Find("button[data-choice=continue]").Click();
+        Assert.Equal("continue", JsonSerializer.SerializeToElement(sent.Single().Payload).GetProperty("option").GetString());
+
+        sent.Clear();
+        cut.Find("button[data-choice=stop]").Click();
+        Assert.Equal("stop", JsonSerializer.SerializeToElement(sent.Single().Payload).GetProperty("option").GetString());
+
+        sent.Clear();
+        cut.Find("button[data-action=chooseSwing]").Click();
+        Assert.Contains("swing-target", cut.Find("[data-hex='1,1']").ClassList);
+        Assert.DoesNotContain("swing-target", cut.Find("[data-hex='2,0']").ClassList);
+        cut.Find("[data-hex='1,1']").Click();
+        Assert.Equal("swing:1,1", JsonSerializer.SerializeToElement(sent.Single().Payload).GetProperty("option").GetString());
+
+        var reconnected = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        Assert.Equal("Ice collision", reconnected.Find("[data-testid=ice-choice] h2").TextContent);
+        Assert.Empty(reconnected.FindAll("button[data-action=endTurn]"));
+    }
+
+    [Fact]
+    public void Terrain_hazards_and_slipping_direction_are_exposed_in_accessible_labels_and_distinct_markers()
+    {
+        var projection = TerrainMovementProjection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with
+            {
+                Conditions = [
+                    new ConditionProjection("Unsteady", "whileOnTerrain"),
+                    new ConditionProjection("Slipping", "untilCleared") { Data = new ConditionDataProjection { Direction = [1, 0] } },
+                    new ConditionProjection("Poisoned", "untilCleared"),
+                ],
+            }],
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("Lava lava flow", cut.Find("[data-hex='2,0']").GetAttribute("aria-label"));
+        Assert.Contains("5 damage dice", cut.Find("[data-hex='2,0']").GetAttribute("aria-label"));
+        Assert.Contains("Slipping east", cut.Find("[data-hex='0,0']").GetAttribute("aria-label"));
+        Assert.Equal(3, cut.FindAll("[data-hex='0,0'] [data-condition-marker]").Count);
+        Assert.Equal("−1 Power and no disengagement strikes", ConditionText.Summary("Unsteady"));
+        Assert.Equal(-1, ConditionText.StatDelta("Unsteady", "power"));
+        Assert.Contains("wound", ConditionText.Summary("Poisoned"));
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("must continue", cut.Find("[data-condition='Slipping']").TextContent);
+        Assert.Contains("until cleared", cut.Find("[data-condition='Poisoned']").TextContent);
+    }
+
+    [Fact]
+    public void Board_view_controls_offer_fit_and_report_zoom_accessibly()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+
+        Assert.Equal("Fit", cut.Find("button[aria-label='Fit whole battlefield']").TextContent);
+        Assert.Equal("status", cut.Find("[data-testid=viewport-status]").GetAttribute("role"));
+        Assert.Contains("Zoom", cut.Find("[data-testid=viewport-status]").TextContent);
+        Assert.NotNull(cut.Find(".board-interaction-surface"));
+    }
+
+    [Fact]
+    public void Pointer_drag_suppresses_the_following_hex_click_but_small_motion_and_keyboard_still_activate()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var sent = new List<GameCommandRequest>();
+        var pausedFollow = false;
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request))
+            .Add(component => component.OnFollowEvents, () => pausedFollow = true));
+        cut.Find("[data-hex='0,0']").Click();
+        var board = cut.Find(".board-interaction-surface");
+        var destination = cut.Find("[data-hex='1,0']");
+
+        board.PointerDown(new PointerEventArgs { PointerId = 1, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerMove(new PointerEventArgs { PointerId = 1, ClientX = 16, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 1, ClientX = 16, ClientY = 10, PointerType = "mouse" });
+        destination.Click();
+        Assert.Empty(sent);
+        Assert.True(pausedFollow);
+
+        board.PointerDown(new PointerEventArgs { PointerId = 2, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerMove(new PointerEventArgs { PointerId = 2, ClientX = 15, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 2, ClientX = 15, ClientY = 10, PointerType = "mouse" });
+        destination.Click();
+        Assert.Single(sent);
+
+        sent.Clear();
+        destination.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Single(sent);
+    }
+
+    [Fact]
+    public void Ordinary_hex_pointers_are_not_captured_by_the_parent_svg()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+        var board = cut.Find(".board-interaction-surface");
+        var hex = cut.Find("[data-hex='1,0']");
+
+        hex.PointerDown(new PointerEventArgs { PointerId = 11, ClientX = 100, ClientY = 100, PointerType = "mouse" });
+        hex.PointerUp(new PointerEventArgs { PointerId = 11, ClientX = 100, ClientY = 100, PointerType = "mouse" });
+        Assert.DoesNotContain(JSInterop.Invocations, invocation => invocation.Identifier is "capturePointer" or "releasePointer");
+
+        board.PointerDown(new PointerEventArgs { PointerId = 12, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        board.PointerUp(new PointerEventArgs { PointerId = 12, ClientX = 10, ClientY = 10, PointerType = "mouse" });
+        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "capturePointer");
+        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "releasePointer");
+    }
+
+    [Fact]
+    public void Pinch_always_suppresses_hex_activation()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, TerrainMovementProjection())
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='0,0']").Click();
+        var board = cut.Find(".board-interaction-surface");
+        var destination = cut.Find("[data-hex='1,0']");
+
+        destination.PointerDown(new PointerEventArgs { PointerId = 1, ClientX = 100, ClientY = 100, PointerType = "touch" });
+        board.PointerDown(new PointerEventArgs { PointerId = 2, ClientX = 200, ClientY = 100, PointerType = "touch" });
+        board.PointerMove(new PointerEventArgs { PointerId = 2, ClientX = 250, ClientY = 100, PointerType = "touch" });
+        board.PointerUp(new PointerEventArgs { PointerId = 2, ClientX = 250, ClientY = 100, PointerType = "touch" });
+        board.PointerUp(new PointerEventArgs { PointerId = 1, ClientX = 100, ClientY = 100, PointerType = "touch" });
+        destination.Click();
+
+        Assert.Empty(sent);
+    }
+
+    [Fact]
     public void A_stunned_unit_shows_its_condition_on_the_card_token_and_label()
     {
         var projection = BattleFixtures.Projection();
@@ -465,6 +684,35 @@ public sealed partial class GameTableTests : BunitContext
                 Unit("s2-u1", "seat-blue", "6,0"),
             ],
             LegalActions = [new LegalAction("specialAttack", "s1-hero", ["0,0", "1,0"]) { Ability = "Teleport" }, new LegalAction("endTurn", null, [])],
+        };
+    }
+
+    private static GameProjection TerrainMovementProjection()
+    {
+        var projection = BattleFixtures.Projection();
+        return projection with
+        {
+            Board = new BoardProjection(4, 2, [
+                new HexProjection(0, 0, "plains", "grass", 0, false, "s1-u3"),
+                new HexProjection(1, 0, "water", "shallow water", 0, false, null),
+                new HexProjection(2, 0, "lava", "lava flow", 0, false, null),
+                new HexProjection(3, 0, "ice", "ice sheet", 0, false, null),
+                new HexProjection(1, 1, "plains", "grass", 0, false, null),
+            ]),
+            Units = [projection.Units[0] with { Hex = "0,0" }],
+            LegalActions = [
+                new LegalAction("moveUnit", "s1-u3", ["1,0", "3,0"])
+                {
+                    MovementOptions = [
+                        new MovementOptionProjection("1,0", ["1,0"], 1, []),
+                        new MovementOptionProjection("3,0", ["1,0", "2,0", "3,0"], 3, [
+                            new MovementHazardProjection("damage", "lava", "2,0", 5, false, false),
+                            new MovementHazardProjection("slide", "ice", "3,0", 0, true, false),
+                        ]),
+                    ],
+                },
+                new LegalAction("endTurn", null, []),
+            ],
         };
     }
 

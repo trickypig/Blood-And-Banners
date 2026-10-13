@@ -48,6 +48,16 @@ abstract class Ability
         return false;
     }
 
+    public function ignoresTerrain(string $terrain, string $movementKind): bool
+    {
+        return false;
+    }
+
+    public function defenseDeltaForDamageType(string $damageType): int
+    {
+        return 0;
+    }
+
     /** Steps to run after this unit's strike lands on a surviving target (attack and defense dice were rolled). */
     public function afterHit(array $state, string $ownerId, string $targetId): array
     {

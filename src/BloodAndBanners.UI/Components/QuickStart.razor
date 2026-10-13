@@ -1,5 +1,6 @@
 @namespace BloodAndBanners.UI.Components
 @using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
 
 <section class="quick-start" aria-labelledby="quick-start-title">
     <div class="intro-copy">
@@ -11,38 +12,77 @@
         </p>
     </div>
 
-    <div class="mode-list" aria-label="Choose a game mode">
-        <button type="button" data-mode="vanillaPvp" disabled="@IsBusy" @onclick="() => Create(GameMode.VanillaPvp)">
-            <strong>Vanilla duel</strong>
-            <span>Two commanders. One hero and army each. No second chances.</span>
-        </button>
-        <button type="button" data-mode="coop" disabled="@IsBusy" @onclick="() => Create(GameMode.Coop)">
-            <strong>Void incursion</strong>
-            <span>One Void Lord against one to four allied commanders.</span>
-        </button>
-        <button type="button" data-mode="battleRoyale" disabled="@IsBusy" @onclick="() => Create(GameMode.BattleRoyale)">
-            <strong>Battle royale</strong>
-            <span>A human dungeon master drives the battlefield against two to four rivals.</span>
-        </button>
+    @if (!_choosingBattlefield)
+    {
+        <div class="mode-list" aria-label="Choose a game mode">
+            <button type="button" data-mode="vanillaPvp" disabled="@IsBusy" @ref="_vanillaButton" @onclick="() => ChooseMode(GameMode.VanillaPvp)">
+                <strong>Vanilla duel</strong>
+                <span>Two commanders. One hero and army each. No second chances.</span>
+            </button>
+            <button type="button" data-mode="coop" disabled="@IsBusy" @onclick="() => ChooseMode(GameMode.Coop)">
+                <strong>Void incursion</strong>
+                <span>One Void Lord against one to four allied commanders.</span>
+            </button>
+            <button type="button" data-mode="battleRoyale" disabled="@IsBusy" @onclick="() => ChooseMode(GameMode.BattleRoyale)">
+                <strong>Battle royale</strong>
+                <span>A human dungeon master drives the battlefield against two to four rivals.</span>
+            </button>
 
-        <form class="join-room" @onsubmit="Join" @onsubmit:preventDefault>
-            <label for="join-code">Have an invite?</label>
-            <div>
-                <input id="join-code"
-                       data-join-code
-                       autocomplete="off"
-                       placeholder="Paste a game code"
-                       disabled="@IsBusy"
-                       @bind="_joinCode"
-                       @bind:event="oninput" />
-                <button type="submit"
-                        data-action="join-game"
-                        disabled="@(IsBusy || string.IsNullOrWhiteSpace(_joinCode))">
-                    Join war room
-                </button>
+            <form class="join-room" @onsubmit="Join" @onsubmit:preventDefault>
+                <label for="join-code">Have an invite?</label>
+                <div>
+                    <input id="join-code"
+                           data-join-code
+                           autocomplete="off"
+                           placeholder="Paste a game code"
+                           disabled="@IsBusy"
+                           @bind="_joinCode"
+                           @bind:event="oninput" />
+                    <button type="submit"
+                            data-action="join-game"
+                            disabled="@(IsBusy || string.IsNullOrWhiteSpace(_joinCode))">
+                        Join war room
+                    </button>
+                </div>
+            </form>
+        </div>
+    }
+    else
+    {
+        <section class="battlefield-picker" data-testid="battlefield-picker" aria-labelledby="battlefield-title">
+            <header>
+                <h2 id="battlefield-title" tabindex="-1" @ref="_pickerHeading">Choose the battlefield.</h2>
+                <p>Terrain changes the fight. Pick the ground before the banners rise.</p>
+            </header>
+            <div class="battlefield-list" role="radiogroup" aria-label="Vanilla battlefield">
+                @foreach (var battlefield in Battlefields)
+                {
+                    var selected = battlefield.Name == _selectedScenario;
+                    <button type="button"
+                            class="battlefield-card @(selected ? "selected" : null)"
+                            role="radio"
+                            aria-checked="@(selected ? "true" : "false")"
+                            data-scenario="@battlefield.Name"
+                            disabled="@IsBusy"
+                            @onclick="() => _selectedScenario = battlefield.Name">
+                        <span class="battlefield-name">@battlefield.Name</span>
+                        <span class="battlefield-size">@battlefield.Size</span>
+                        <span class="battlefield-role">@battlefield.Role</span>
+                        <span class="battlefield-tags">
+                            @foreach (var tag in battlefield.Tags)
+                            {
+                                <span>@tag</span>
+                            }
+                        </span>
+                    </button>
+                }
             </div>
-        </form>
-    </div>
+            <div class="picker-actions">
+                <button type="button" class="back" data-action="back-modes" disabled="@IsBusy" @onclick="BackToModes">Back</button>
+                <button type="button" class="create" data-action="create-game" disabled="@IsBusy" @onclick="CreateVanilla">Open war room</button>
+            </div>
+        </section>
+    }
 
     @if (IsBusy)
     {
@@ -62,7 +102,7 @@
     public string? ErrorMessage { get; set; }
 
     [Parameter]
-    public EventCallback<GameMode> OnCreate { get; set; }
+    public EventCallback<GameSetupSelection> OnCreate { get; set; }
 
     [Parameter]
     public EventCallback<string> OnJoin { get; set; }
@@ -71,6 +111,19 @@
     public string? InitialJoinCode { get; set; }
 
     private string _joinCode = string.Empty;
+    private bool _choosingBattlefield;
+    private string _selectedScenario = "Four Corners";
+    private bool _focusPicker;
+    private bool _focusVanilla;
+    private ElementReference _pickerHeading;
+    private ElementReference _vanillaButton;
+
+    private static readonly Battlefield[] Battlefields =
+    [
+        new("Four Corners", "13 × 11", "Maximum terrain", ["Water", "Ice", "Lava", "Poison"]),
+        new("Proving Field", "11 × 9", "Classic duel", ["Open lanes", "Balanced"]),
+        new("Home Map", "32 × 30", "Grand battlefield", ["Large", "Mixed ground"]),
+    ];
 
     protected override void OnParametersSet()
     {
@@ -80,9 +133,44 @@
         }
     }
 
-    private Task Create(GameMode mode) => OnCreate.InvokeAsync(mode);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPicker)
+        {
+            _focusPicker = false;
+            await _pickerHeading.FocusAsync();
+        }
+        else if (_focusVanilla)
+        {
+            _focusVanilla = false;
+            await _vanillaButton.FocusAsync();
+        }
+    }
+
+    private Task ChooseMode(GameMode mode)
+    {
+        if (mode == GameMode.VanillaPvp)
+        {
+            _selectedScenario = "Four Corners";
+            _choosingBattlefield = true;
+            _focusPicker = true;
+            return Task.CompletedTask;
+        }
+        var scenario = mode == GameMode.Coop ? "Portal Watch" : "Last Banner";
+        return OnCreate.InvokeAsync(new GameSetupSelection(mode, scenario));
+    }
+
+    private Task CreateVanilla() => OnCreate.InvokeAsync(new GameSetupSelection(GameMode.VanillaPvp, _selectedScenario));
+
+    private void BackToModes()
+    {
+        _choosingBattlefield = false;
+        _focusVanilla = true;
+    }
 
     private Task Join() => string.IsNullOrWhiteSpace(_joinCode)
         ? Task.CompletedTask
         : OnJoin.InvokeAsync(_joinCode.Trim());
+
+    private sealed record Battlefield(string Name, string Size, string Role, IReadOnlyList<string> Tags);
 }

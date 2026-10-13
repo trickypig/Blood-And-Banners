@@ -9,6 +9,78 @@ using Microsoft.Extensions.DependencyInjection;
 public sealed class GameExperienceTests : BunitContext
 {
     [Fact]
+    public void Vanilla_mode_opens_the_battlefield_picker_without_creating_a_game()
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+
+        Assert.Null(api.CreateRequest);
+        Assert.NotNull(cut.Find("[data-testid=battlefield-picker]"));
+        Assert.Equal("true", cut.Find("button[data-scenario='Four Corners']").GetAttribute("aria-checked"));
+        Assert.Equal("false", cut.Find("button[data-scenario='Proving Field']").GetAttribute("aria-checked"));
+    }
+
+    [Theory]
+    [InlineData("Four Corners")]
+    [InlineData("Proving Field")]
+    [InlineData("Home Map")]
+    public void Vanilla_battlefield_cards_submit_the_selected_scenario(string scenario)
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+        cut.Find($"button[data-scenario='{scenario}']").Click();
+        cut.Find("button[data-action=create-game]").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(api.CreateRequest);
+            Assert.StartsWith("web-", api.CreateRequest?.DeviceId);
+            Assert.Equal(GameMode.VanillaPvp, api.CreateRequest?.Mode);
+            Assert.Equal(scenario, api.CreateRequest?.ScenarioName);
+        });
+    }
+
+    [Fact]
+    public void Battlefield_back_returns_to_modes_without_creating_a_game()
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+        cut.Find("button[data-action=back-modes]").Click();
+
+        Assert.Null(api.CreateRequest);
+        Assert.Empty(cut.FindAll("[data-testid=battlefield-picker]"));
+        Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]"));
+    }
+
+    [Theory]
+    [InlineData(GameMode.Coop, "coop", "Portal Watch")]
+    [InlineData(GameMode.BattleRoyale, "battleRoyale", "Last Banner")]
+    public void Non_vanilla_modes_create_directly_with_their_existing_scenarios(GameMode mode, string selector, string scenario)
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.Find($"button[data-mode={selector}]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal((mode, scenario), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName)));
+        Assert.Empty(cut.FindAll("[data-testid=battlefield-picker]"));
+    }
+
+    [Fact]
     public void Invite_join_creates_a_separate_guest_seat_and_opens_the_lobby()
     {
         var api = new FakeSessionCoordinator
@@ -184,9 +256,11 @@ public sealed class GameExperienceTests : BunitContext
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
         public GameProjection? Reconnected { get; init; }
+        public GameProjection? Created { get; init; }
         public GameProjection? Joined { get; init; }
         public GameProjection? Readied { get; init; }
         public (string ClientKind, string GameId)? JoinRequest { get; private set; }
+        public (string DeviceId, GameMode Mode, string ScenarioName)? CreateRequest { get; private set; }
         public (long Version, bool Ready)? ReadyRequest { get; private set; }
 
         public GameProjection? Commanded { get; init; }
@@ -218,8 +292,11 @@ public sealed class GameExperienceTests : BunitContext
             return Task.CompletedTask;
         }
 
-        public Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+        public Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, CancellationToken cancellationToken = default)
+        {
+            CreateRequest = (deviceId, mode, scenarioName);
+            return Task.FromResult(Created ?? throw new InvalidOperationException());
+        }
 
         public Task<GameProjection> JoinGuestGameAsync(string deviceId, string gameId, CancellationToken cancellationToken = default)
         {

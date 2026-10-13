@@ -20,6 +20,7 @@ final class Stats
             }
         }
         $value += UnitConditions::statDelta($state, $unitId, $stat, $context);
+        $value += Terrain::statDelta($state, $unitId, $stat, $context);
         return max(0, $value);
     }
 }
