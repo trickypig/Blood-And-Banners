@@ -744,6 +744,7 @@
         </div>
     </div>
 
+    <script src="map_coordinates.js"></script>
     <script>
         // Biomes and the terrain types within each. The first terrain is the biome's default.
         // Each terrain's pattern lives at images/terrain/<biome>-<terrain>.svg (plus variants, see terrainVariant)
@@ -764,7 +765,7 @@
             forest: 'jungle', darkness: 'darkness', lava: 'lava', ice: 'ice'
         };
 
-        const MAP_FORMAT_VERSION = 2;
+        const MAP_FORMAT_VERSION = MapCoordinates.FORMAT_VERSION;
         const defaultBiome = 'plains';
 
         function terrainKeys(biome) {
@@ -782,8 +783,8 @@
 
         // Which image a hex shows: purely cosmetic, never saved. A hash of the position scatters the images
         // evenly but always gives a hex the same one. Must stay identical to TerrainArt.Variant in the game.
-        function terrainVariant(col, row) {
-            let h = (Math.imul(col, 374761393) + Math.imul(row, 668265263)) >>> 0;
+        function terrainVariant(q, r) {
+            let h = (Math.imul(q, 374761393) + Math.imul(r, 668265263)) >>> 0;
             h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
             h = (h ^ (h >>> 16)) >>> 0;
             return h % TERRAIN_VARIANTS;
@@ -988,9 +989,10 @@
             // Initialize hexes
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
+                    const { q, r } = MapCoordinates.fromOffset(col, row);
                     mapData.hexes.push({
-                        row: row,
-                        col: col,
+                        q,
+                        r,
                         biome: defaultBiome,
                         terrain: terrainKeys(defaultBiome)[0],
                         height: 0,
@@ -1014,25 +1016,25 @@
         }
 
         // Get hex center position (flat-top hexagons)
-        function getHexCenter(col, row) {
+        function getHexCenter(q, r) {
             const dims = getHexDimensions();
-            const x = 20 + col * dims.width * 0.75 + dims.width / 2;
+            const x = 20 + r * dims.width * 0.75 + dims.width / 2;
             // Leave room at the top for the tallest possible tiles
-            const y = 20 + maxHeight * getLiftPerLevel() + row * dims.height + dims.height / 2;
-            const yOffset = (col % 2) * (dims.height / 2);
-            return { x, y: y + yOffset };
+            const y = 20 + maxHeight * getLiftPerLevel()
+                + (q + r / 2) * dims.height + dims.height / 2;
+            return { x, y };
         }
 
         // Hex center shifted up by its height
         function getRaisedHexCenter(hex) {
-            const pos = getHexCenter(hex.col, hex.row);
+            const pos = getHexCenter(hex.q, hex.r);
             return { x: pos.x, y: pos.y - hex.height * getLiftPerLevel() };
         }
 
         // Back-to-front order: by ground y, so nearer (lower) tiles paint over the sides of farther ones
         function hexesInDrawOrder() {
             return mapData.hexes.slice().sort((a, b) =>
-                getHexCenter(a.col, a.row).y - getHexCenter(b.col, b.row).y || a.col - b.col);
+                getHexCenter(a.q, a.r).y - getHexCenter(b.q, b.r).y || a.r - b.r);
         }
 
         // Outline of a raised tile plus the column beneath it down to ground level (flat-top hex)
@@ -1110,7 +1112,7 @@
             ctx.closePath();
 
             // Base terrain: SVG pattern clipped to the hex, falling back to flat color until loaded
-            const image = terrainImages[`${hex.biome}/${hex.terrain}/${terrainVariant(hex.col, hex.row)}`];
+            const image = terrainImages[`${hex.biome}/${hex.terrain}/${terrainVariant(hex.q, hex.r)}`];
             ctx.save();
             ctx.clip();
             if (image && image.complete && image.naturalWidth) {
@@ -1168,8 +1170,8 @@
             hexesInDrawOrder().forEach(hex => {
                 const pos = getRaisedHexCenter(hex);
                 const isSelected = selectedHex &&
-                    selectedHex.row === hex.row &&
-                    selectedHex.col === hex.col;
+                    selectedHex.q === hex.q &&
+                    selectedHex.r === hex.r;
                 drawHexSides(pos.x, pos.y, hex.height * getLiftPerLevel());
                 drawHexagon(pos.x, pos.y, hex, isSelected);
             });
@@ -1240,7 +1242,7 @@
 
                 updateHexInfo(hex);
                 // Only redraw the previous hex if it's different from the current one
-                if (previousHex && (previousHex.row !== hex.row || previousHex.col !== hex.col)) {
+                if (previousHex && (previousHex.q !== hex.q || previousHex.r !== hex.r)) {
                     redrawHex(previousHex);
                 }
                 redrawHex(hex);
@@ -1266,7 +1268,7 @@
             const playerInfo = hex.playerStart ? `Player ${hex.playerStart} Start` : 'No player start';
 
             info.innerHTML = `
-                <strong>Position:</strong> Row ${hex.row}, Col ${hex.col}<br>
+                <strong>Position:</strong> Axial Q ${hex.q}, R ${hex.r}<br>
                 <strong>Terrain:</strong> ${terrain}<br>
                 <strong>Height:</strong> ${hex.height}<br>
                 <strong>Player Start:</strong> ${playerInfo}
@@ -1337,11 +1339,11 @@
                         throw new Error('Invalid map format');
                     }
 
-                    // Accepts both v2 (biome + terrain) and v1 (terrain only) maps
-                    imported.hexes.forEach(normalizeHexTerrain);
-                    imported.version = MAP_FORMAT_VERSION;
+                    // Legacy offset maps are converted once; editor state is always canonical axial q/r.
+                    const normalized = MapCoordinates.normalizeMap(imported);
+                    normalized.hexes.forEach(normalizeHexTerrain);
 
-                    mapData = imported;
+                    mapData = normalized;
                     document.getElementById('mapName').value = mapData.name || 'Imported Map';
                     document.getElementById('columns').value = mapData.columns;
                     document.getElementById('rows').value = mapData.rows;

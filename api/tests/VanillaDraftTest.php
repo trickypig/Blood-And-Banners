@@ -144,9 +144,9 @@ function vanilla_draft_tests(): array
             expect_same('active', $state['phase'], 'the finished draft starts the battle');
             expect_same(['draftPicked', 'armiesPlaced'], array_column($final['events'], 'kind'), 'deployment is announced');
             expect_same(14, count($state['units']), 'both armies take the field');
-            expect_same('0,4', $state['units']['s1-hero']['hex'], 'seat-a holds start 1');
-            expect_same('1,4', $state['units']['s1-u6']['hex'], 'the last seat-a unit clusters near home');
-            expect_same('6,4', $state['units']['s2-hero']['hex'], 'seat-b holds start 2');
+            expect_same('3,2', $state['units']['s1-hero']['hex'], 'seat-a holds start 1');
+            expect_same('2,3', $state['units']['s1-u6']['hex'], 'the last seat-a unit clusters near home');
+            expect_same('0,8', $state['units']['s2-hero']['hex'], 'seat-b holds start 2');
             expect_same('Test Marshal', $state['units']['s2-hero']['name'], 'hero stats are copied in');
             expect_same(true, $state['units']['s2-hero']['isHero'], 'the hero is flagged');
             expect_same('Red Mage', $state['units']['s1-u6']['name'], 'army units keep catalog order');

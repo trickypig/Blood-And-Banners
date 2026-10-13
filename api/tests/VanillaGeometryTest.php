@@ -44,15 +44,15 @@ function vanilla_geometry_tests(): array
         'proving field places both armies deterministically beside their portals' => static function (): void {
             $board = proving_field_board();
             $ids = ['hero', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6'];
-            $first = Placement::place($board, '-1,4', '7,4', $ids, []);
+            $first = Placement::place($board, '4,1', '0,9', $ids, []);
             expect_same(
-                ['hero' => '0,4', 'u1' => '-1,5', 'u2' => '0,3', 'u3' => '-2,4', 'u4' => '-2,5', 'u5' => '-1,3', 'u6' => '1,4'],
+                ['hero' => '3,2', 'u1' => '4,2', 'u2' => '3,1', 'u3' => '5,1', 'u4' => '4,0', 'u5' => '5,0', 'u6' => '2,3'],
                 $first,
                 'start 1 fills its portal ring nearest the enemy, then clusters around home'
             );
-            $second = Placement::place($board, '7,4', '-1,4', $ids, array_fill_keys(array_values($first), true));
+            $second = Placement::place($board, '0,9', '4,1', $ids, array_fill_keys(array_values($first), true));
             expect_same(
-                ['hero' => '6,4', 'u1' => '6,5', 'u2' => '7,3', 'u3' => '7,5', 'u4' => '8,3', 'u5' => '8,4', 'u6' => '5,4'],
+                ['hero' => '0,8', 'u1' => '1,8', 'u2' => '-1,9', 'u3' => '1,9', 'u4' => '-1,10', 'u5' => '0,10', 'u6' => '0,7'],
                 $second,
                 'start 2 mirrors the same rules'
             );
@@ -67,9 +67,9 @@ function vanilla_geometry_tests(): array
         'engine board keeps elevation sight blockers and homes' => static function (): void {
             $board = proving_field_board();
             expect_same(99, count($board), 'every scenario hex becomes a board hex');
-            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'stone', 'terrain' => 'crags'], $board['5,1'], 'tall crags retain their paint and block sight');
-            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'plains', 'terrain' => 'grass'], $board['3,1'], 'statues retain ground paint and block sight');
-            expect_same([1 => '-1,4', 2 => '7,4'], Board::homes($board), 'homes are keyed by start number');
+            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'stone', 'terrain' => 'crags'], $board['-1,5'], 'tall crags retain their paint and block sight');
+            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'plains', 'terrain' => 'grass'], $board['0,3'], 'statues retain ground paint and block sight');
+            expect_same([1 => '4,1', 2 => '0,9'], Board::homes($board), 'homes are keyed by start number');
         },
     ];
 }

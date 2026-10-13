@@ -47,9 +47,10 @@ final class LegacyMapImporter
     {
         $terrain = strtolower((string)($hex['terrain'] ?? 'grass'));
         $biome = strtolower((string)($hex['biome'] ?? self::TERRAIN_BIOMES[$terrain] ?? 'plains'));
+        $coordinates = $this->normalizeCoordinates($hex);
         return [
-            'q' => (int)($hex['q'] ?? $hex['col'] ?? 0),
-            'r' => (int)($hex['r'] ?? $hex['row'] ?? 0),
+            'q' => $coordinates['q'],
+            'r' => $coordinates['r'],
             'biome' => $biome,
             'terrain' => $terrain,
             'elevation' => (int)($hex['elevation'] ?? $hex['height'] ?? 0),
@@ -61,5 +62,25 @@ final class LegacyMapImporter
             'fountain' => (bool)($hex['fountain'] ?? (($hex['object'] ?? null) === 'fountain')),
             'sightBlocker' => (bool)($hex['sightBlocker'] ?? false),
         ];
+    }
+
+    /** @return array{q:int, r:int} */
+    private function normalizeCoordinates(array $hex): array
+    {
+        $hasQ = array_key_exists('q', $hex);
+        $hasR = array_key_exists('r', $hex);
+        if ($hasQ || $hasR) {
+            if (!$hasQ || !$hasR) {
+                throw new InvalidArgumentException('invalidLegacyMap');
+            }
+            return ['q' => (int)$hex['q'], 'r' => (int)$hex['r']];
+        }
+
+        $hasColumn = array_key_exists('col', $hex);
+        $hasRow = array_key_exists('row', $hex);
+        if (!$hasColumn || !$hasRow) {
+            throw new InvalidArgumentException('invalidLegacyMap');
+        }
+        return AxialCoordinates::fromOddColumnOffset((int)$hex['col'], (int)$hex['row']);
     }
 }

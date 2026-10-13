@@ -41,27 +41,78 @@ function expect_connected_scenario(array $scenario, string $message): void
     expect_same(count($traversable), count($seen), $message);
 }
 
+function expect_canonical_rectangle(array $scenario, string $message): void
+{
+    $columns = (int)$scenario['map']['columns'];
+    $rows = (int)$scenario['map']['rows'];
+    $cells = [];
+    foreach ($scenario['map']['hexes'] as $hex) {
+        $column = (int)$hex['r'];
+        $row = (int)$hex['q'] + intdiv($column, 2);
+        expect_true($column >= 0 && $column < $columns, "{$message}: column {$column} should be in bounds");
+        expect_true($row >= 0 && $row < $rows, "{$message}: row {$row} should be in bounds");
+        $cells["{$column},{$row}"] = true;
+    }
+
+    expect_same($columns * $rows, count($cells), "{$message}: every rectangular cell should exist exactly once");
+}
+
 function scenario_tests(): array
 {
     return [
         'legacy editor maps normalize into the versioned scenario schema' => static function (): void {
             $legacy = [
                 'name' => 'Old Crossing',
-                'columns' => 2,
-                'rows' => 1,
+                'columns' => 3,
+                'rows' => 2,
                 'hexes' => [
                     ['col' => 0, 'row' => 0, 'terrain' => 'grass', 'height' => 2, 'playerStart' => 1],
                     ['col' => 1, 'row' => 0, 'terrain' => 'lava', 'object' => 'fountain'],
+                    ['col' => 2, 'row' => 1, 'terrain' => 'ice'],
                 ],
             ];
 
             $scenario = (new LegacyMapImporter())->import($legacy);
 
             expect_same(1, $scenario['schemaVersion'], 'scenario schema version should be explicit');
+            expect_same(
+                [[0, 0], [0, 1], [0, 2]],
+                array_map(static fn(array $hex): array => [$hex['q'], $hex['r']], $scenario['map']['hexes']),
+                'odd-column offset positions should become canonical axial coordinates'
+            );
             expect_same('plains', $scenario['map']['hexes'][0]['biome'], 'grass should map to the plains biome');
             expect_same(2, $scenario['map']['hexes'][0]['elevation'], 'legacy height should become elevation');
             expect_same(1, $scenario['map']['hexes'][0]['playerStart'], 'player starts should be retained');
             expect_same(['vanillaPvp', 'coop', 'battleRoyale'], $scenario['modeCompatibility'], 'legacy maps should remain playable in every mode');
+        },
+
+        'scenario imports preserve canonical axial coordinates' => static function (): void {
+            $scenario = (new LegacyMapImporter())->import([
+                'name' => 'Axial Crossing',
+                'columns' => 1,
+                'rows' => 1,
+                'hexes' => [['q' => -3, 'r' => 7, 'terrain' => 'grass']],
+            ]);
+
+            expect_same(
+                [-3, 7],
+                [$scenario['map']['hexes'][0]['q'], $scenario['map']['hexes'][0]['r']],
+                'canonical axial coordinates must not be converted again'
+            );
+        },
+
+        'scenario imports reject incomplete coordinate pairs' => static function (): void {
+            try {
+                (new LegacyMapImporter())->import([
+                    'name' => 'Broken Crossing',
+                    'columns' => 1,
+                    'rows' => 1,
+                    'hexes' => [['col' => 0, 'terrain' => 'grass']],
+                ]);
+                throw new RuntimeException('incomplete coordinates were accepted');
+            } catch (InvalidArgumentException $error) {
+                expect_same('invalidLegacyMap', $error->getMessage(), 'incomplete coordinates should be rejected cleanly');
+            }
         },
 
         'saved scenario revisions are immutable and owner restricted' => static function (): void {
@@ -122,7 +173,7 @@ function scenario_tests(): array
             }
 
             $board = Board::fromScenario($scenario);
-            expect_same([1 => '0,5', 2 => '12,5'], Board::homes($board), 'starts should be centered on the left and right edges');
+            expect_same([1 => '5,0', 2 => '-1,12'], Board::homes($board), 'starts should be centered on the left and right edges');
             foreach (Board::homes($board) as $home) {
                 $hex = $scenario['map']['hexes'][array_search($home, array_map(static fn(array $candidate): string => "{$candidate['q']},{$candidate['r']}", $scenario['map']['hexes']), true)];
                 expect_true(!in_array($hex['terrain'], ['open-water', 'ice', 'lava', 'poison-pits'], true), 'starts must be on safe terrain');
@@ -154,15 +205,23 @@ function scenario_tests(): array
                 }
             }
             foreach ($source['hexes'] as $hex) {
-                $key = "{$hex['col']},{$hex['row']}";
+                $q = (int)$hex['row'] - intdiv((int)$hex['col'], 2);
+                $r = (int)$hex['col'];
+                $key = "{$q},{$r}";
                 expect_same(
-                    [(int)$hex['col'], (int)$hex['row'], $hex['biome'], $hex['terrain'], (int)$hex['height']],
+                    [$q, $r, $hex['biome'], $hex['terrain'], (int)$hex['height']],
                     $generated[$key] ?? null,
                     "source terrain {$key} should be unchanged"
                 );
             }
-            expect_same(['1' => '3,3', '2' => '28,26'], $starts, 'only the approved homes should be added');
+            expect_same(['1' => '2,3', '2' => '12,28'], $starts, 'only the approved homes should be added');
             Placement::assertCapacity(Board::fromScenario($scenario), 7);
+        },
+
+        'rectangular built in maps use one canonical axial orientation' => static function (): void {
+            expect_canonical_rectangle(built_in_scenario('proving-field'), 'Proving Field');
+            expect_canonical_rectangle(built_in_scenario('four-corners'), 'Four Corners');
+            expect_canonical_rectangle(built_in_scenario('home-map'), 'Home Map');
         },
 
         'large built in maps remain connected' => static function (): void {

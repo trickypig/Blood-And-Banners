@@ -153,7 +153,7 @@ function vanilla_match_service_tests(): array
             }
             expect_same(null, $projection['pendingChoiceSummary'], 'nothing is pending');
             expect_true(in_array('moveUnit', array_column($projection['legalActions'], 'kind'), true), 'the host may move');
-            $occupied = array_values(array_filter($projection['board']['hexes'], static fn(array $hex): bool => $hex['q'] === 0 && $hex['r'] === 4));
+            $occupied = array_values(array_filter($projection['board']['hexes'], static fn(array $hex): bool => $hex['q'] === 3 && $hex['r'] === 2));
             expect_same('s1-hero', $occupied[0]['occupantId'], 'the board shows live occupants');
 
             $link = $match['games']->createSpectatorLink($match['gameId'], $match['host']['identity'], $match['host']['token']);

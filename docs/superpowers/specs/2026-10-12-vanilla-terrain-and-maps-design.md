@@ -62,6 +62,8 @@ Proving Field is unchanged and remains the low-complexity Vanilla option.
 
 ### Home Map
 
+> Coordinate representation in this section is superseded by `2026-10-13-canonical-map-coordinates-design.md`.
+
 `data/Home_Map.json` is user-provided legacy editor data and remains unchanged as source input. A converted, checked-in built-in scenario is added at `api/scenarios/home-map.json`:
 
 - Name: `Home Map`.
