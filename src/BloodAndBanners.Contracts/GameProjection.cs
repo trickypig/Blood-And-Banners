@@ -54,10 +54,28 @@ public sealed record PendingChoiceProjection(
     public string? UnitId { get; init; }
     public string? Side { get; init; }
     public IReadOnlyList<string> Faces { get; init; } = [];
+    public IReadOnlyList<string> TargetHexes { get; init; } = [];
     public DateTimeOffset? ExpiresAt { get; init; }
 }
 
-public sealed record PendingChoiceSummary(string ChoiceId, string SeatId, string UnitId, DateTimeOffset KeepableAt);
+public sealed record PendingChoiceSummary(string ChoiceId, string SeatId, string UnitId, DateTimeOffset? KeepableAt)
+{
+    public string Kind { get; init; } = string.Empty;
+}
+
+public sealed record MovementHazardProjection(
+    string Kind,
+    string Terrain,
+    string Hex,
+    int Dice,
+    bool Forced,
+    bool Stops);
+
+public sealed record MovementOptionProjection(
+    string Destination,
+    IReadOnlyList<string> Path,
+    int Cost,
+    IReadOnlyList<MovementHazardProjection> Hazards);
 
 public sealed record LegalAction(
     string Kind,
@@ -65,6 +83,7 @@ public sealed record LegalAction(
     IReadOnlyList<string> TargetHexes)
 {
     public string? Ability { get; init; }
+    public IReadOnlyList<MovementOptionProjection> MovementOptions { get; init; } = [];
 }
 
 public sealed record GameResult(

@@ -8,7 +8,15 @@ public sealed record AbilityProjection(string Name, string Type, string Descript
 
 public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires);
 
-public sealed record ConditionProjection(string Name, string Expires);
+public sealed record ConditionDataProjection
+{
+    public IReadOnlyList<int>? Direction { get; init; }
+}
+
+public sealed record ConditionProjection(string Name, string Expires)
+{
+    public ConditionDataProjection Data { get; init; } = new();
+}
 
 public sealed record UnitCard(
     string Name,

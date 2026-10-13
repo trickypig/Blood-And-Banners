@@ -31,7 +31,17 @@
     "activationsRemaining": 3,
     "activeUnitId": "unit-thorgrim"
   },
-  "pendingChoice": null,
+  "pendingChoice": {
+    "choiceId": "choice-1",
+    "seatId": "seat-red",
+    "kind": "iceCollision",
+    "options": ["continue", "stop", "swing:1,1"],
+    "unitId": "unit-thorgrim",
+    "side": null,
+    "faces": [],
+    "targetHexes": ["1,1"],
+    "expiresAt": null
+  },
   "memberships": [
     {
       "seatId": "seat-red",
@@ -78,7 +88,10 @@
           "expires": "nextTurn"
         }
       ],
-      "conditions": [{ "name": "Stunned", "expires": "endOfNextTurn" }],
+      "conditions": [
+        { "name": "Stunned", "expires": "endOfNextTurn", "data": {} },
+        { "name": "Slipping", "expires": "untilCleared", "data": { "direction": [1, 0] } }
+      ],
       "effectiveMove": 3,
       "effectiveRange": 1,
       "effectivePower": 5,
@@ -90,9 +103,33 @@
       "kind": "moveUnit",
       "unitId": "unit-thorgrim",
       "targetHexes": [
-        "1,0"
+        "1,0",
+        "2,0"
       ],
-      "ability": null
+      "ability": null,
+      "movementOptions": [
+        {
+          "destination": "1,0",
+          "path": ["1,0"],
+          "cost": 1,
+          "hazards": []
+        },
+        {
+          "destination": "2,0",
+          "path": ["1,0", "2,0"],
+          "cost": 2,
+          "hazards": [
+            {
+              "kind": "damage",
+              "terrain": "lava",
+              "hex": "2,0",
+              "dice": 5,
+              "forced": false,
+              "stops": false
+            }
+          ]
+        }
+      ]
     }
   ],
   "scores": {
@@ -102,8 +139,9 @@
   "result": null,
   "pendingChoiceSummary": {
     "choiceId": "choice-1",
-    "seatId": "seat-blue",
-    "unitId": "unit-duelist",
-    "keepableAt": "2026-10-11T12:00:45Z"
+    "seatId": "seat-red",
+    "unitId": "unit-thorgrim",
+    "kind": "iceCollision",
+    "keepableAt": null
   }
 }

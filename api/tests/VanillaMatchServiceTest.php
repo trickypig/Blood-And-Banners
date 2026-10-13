@@ -4,7 +4,10 @@ declare(strict_types=1);
 use BloodAndBanners\Auth\AuthService;
 use BloodAndBanners\Game\GameService;
 use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\Vanilla\IceMovement;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Turn;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
 final class ScriptedRandom implements RandomSource
 {
@@ -198,6 +201,89 @@ function vanilla_match_service_tests(): array
             expect_same($match['host']['seat'], $resolved['turn']['activeSeatId'], 'the turn stays with the attacker');
         },
 
+        'terrain movement and ice choices project only to the commanding seat' => static function (): void {
+            $match = vanilla_service_match();
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            foreach (vanilla_draft_picks($match) as [$who, $kind, $payload]) {
+                vanilla_submit($match, $who, $kind, $payload);
+            }
+            $statement = $match['db']->prepare('SELECT state_json FROM game_states WHERE game_id = :game');
+            $statement->execute(['game' => $match['gameId']]);
+            $state = json_decode((string)$statement->fetchColumn(), true, flags: JSON_THROW_ON_ERROR);
+            $hostIds = array_keys(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match['host']['seat']));
+            $rivalIds = array_keys(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match['rival']['seat']));
+            foreach ($state['units'] as $unitId => $unit) {
+                $state['units'][$unitId]['hex'] = null;
+            }
+            $moverId = (string)$hostIds[0];
+            $allyId = (string)$hostIds[1];
+            $enemyId = (string)$rivalIds[0];
+            $state['board'] = vanilla_board(
+                ['0,0' => 0, '1,0' => 0, '2,0' => 0, '3,0' => 0, '0,1' => 0],
+                [],
+                ['1,0' => ['biome' => 'lava', 'terrain' => 'lava']]
+            );
+            $state['units'][$moverId]['hex'] = '0,0';
+            $state['units'][$moverId]['move'] = 2;
+            $state['units'][$enemyId]['hex'] = '3,0';
+            $state['conditions'] = [];
+            $state['pending'] = null;
+            $state['turn'] = Turn::fresh($state, $match['host']['seat'], 1);
+            $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+
+            $hostView = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            $move = array_values(array_filter($hostView['legalActions'], static fn(array $action): bool => $action['kind'] === 'moveUnit'))[0];
+            $neutral = array_values(array_filter($move['movementOptions'], static fn(array $option): bool => $option['destination'] === '0,1'))[0];
+            expect_same(['0,1'], $neutral['path'], 'neutral movement publishes its exact canonical path');
+            expect_same([], $neutral['hazards'], 'neutral movement has no hazards');
+            $lava = array_values(array_filter($move['movementOptions'], static fn(array $option): bool => $option['destination'] === '1,0'))[0];
+            expect_same(['1,0'], $lava['path'], 'lava movement publishes its exact canonical path');
+            expect_same([
+                'kind' => 'damage', 'terrain' => 'lava', 'hex' => '1,0',
+                'dice' => 5, 'forced' => false, 'stops' => false,
+            ], $lava['hazards'][0], 'lava projection carries the five guaranteed dice');
+            expect_same([], $match['games']->getGame($match['gameId'], $match['rival']['identity'])['legalActions'], 'the waiting seat receives no commands');
+            $link = $match['games']->createSpectatorLink($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            expect_same([], $match['games']->getSpectatorGame($link['token'])['legalActions'], 'spectators receive no commands');
+
+            $state['board'] = vanilla_board(vanilla_line(3), [], ice_paint(['0,0', '1,0', '2,0']));
+            foreach ($state['units'] as $unitId => $unit) {
+                $state['units'][$unitId]['hex'] = null;
+            }
+            $state['units'][$moverId]['hex'] = '0,0';
+            $state['units'][$allyId]['hex'] = '1,0';
+            $state['units'][$enemyId]['hex'] = '2,0';
+            $state['turn'] = Turn::fresh($state, $match['host']['seat'], 1);
+            $conditionEvents = [];
+            $state = UnitConditions::apply($state, 'Unsteady', $moverId, null, ['kind' => 'whileOnTerrain'], $conditionEvents);
+            $state = UnitConditions::apply($state, 'Slipping', $moverId, null, ['kind' => 'untilCleared'], $conditionEvents, ['direction' => [1, 0]]);
+            $iceEvents = [];
+            $state = IceMovement::continue($state, $moverId, 2, new SequenceRandom([]), $iceEvents)['state'];
+            $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+
+            $owner = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same('iceCollision', $owner['pendingChoice']['kind'], 'the owner sees the generic choice kind');
+            expect_same(['stop'], $owner['pendingChoice']['options'], 'the owner sees only server-approved options');
+            expect_same([], $owner['pendingChoice']['targetHexes'], 'no legal Swing exits project in this corridor');
+            expect_true(!array_key_exists('context', $owner['pendingChoice']), 'internal continuation context never projects');
+            expect_same(['resolveChoice'], array_column($owner['legalActions'], 'kind'), 'only resolution remains actionable');
+            $projectedMover = array_values(array_filter($owner['units'], static fn(array $unit): bool => $unit['unitId'] === $moverId))[0];
+            $slipping = array_values(array_filter($projectedMover['conditions'], static fn(array $condition): bool => $condition['name'] === 'Slipping'))[0];
+            expect_same(['direction' => [1, 0]], $slipping['data'], 'condition data carries the locked direction');
+
+            $opponent = $match['games']->getGame($match['gameId'], $match['rival']['identity']);
+            expect_same(null, $opponent['pendingChoice'], 'the opponent cannot inspect actionable choice details');
+            expect_same('iceCollision', $opponent['pendingChoiceSummary']['kind'], 'the opponent sees why play is waiting');
+            expect_same(null, $opponent['pendingChoiceSummary']['keepableAt'], 'ice choices never gain a timeout keep action');
+            expect_same([], $opponent['legalActions'], 'the opponent cannot resolve the owner choice');
+            $spectator = $match['games']->getSpectatorGame($link['token']);
+            expect_same(null, $spectator['pendingChoice'], 'spectators never receive actionable choice details');
+            expect_same('iceCollision', $spectator['pendingChoiceSummary']['kind'], 'spectators receive only the non-actionable choice summary');
+            expect_same([], $spectator['legalActions'], 'spectators remain unable to resolve pending choices');
+        },
+
         'a stunned unit projects its condition and its weakened Power' => static function (): void {
             $match = vanilla_service_match();
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
@@ -217,7 +303,7 @@ function vanilla_match_service_tests(): array
 
             $view = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             $unit = array_values(array_filter($view['units'], static fn(array $unit): bool => $unit['unitId'] === $victim['unitId']))[0];
-            expect_same([['name' => 'Stunned', 'expires' => 'endOfNextTurn']], $unit['conditions'], 'the stun is visible to everyone');
+            expect_same([['name' => 'Stunned', 'expires' => 'endOfNextTurn', 'data' => []]], $unit['conditions'], 'the stun is visible to everyone');
             expect_same(max(0, $victim['power'] - 2), $unit['effectivePower'], 'its Power is shown reduced');
         },
     ];
