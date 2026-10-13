@@ -65,7 +65,7 @@
                 {
                     <pattern id="@TerrainPatternId(terrain)" patternContentUnits="objectBoundingBox" width="1" height="1">
                         <rect width="1" height="1" fill="@TerrainArt.Color(terrain.Biome)" />
-                        @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(terrain.Biome, terrain.Terrain)) is { } terrainImage)
+                        @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(terrain.Biome, terrain.Terrain, TerrainArt.Variant(terrain.Q, terrain.R))) is { } terrainImage)
                         {
                             <image href="@terrainImage" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
                         }
@@ -1174,7 +1174,9 @@
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string TerrainPatternId(HexProjection hex) => "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}");
+    // One pattern per terrain image in use; variant 0 (the primary) keeps the plain id.
+    private static string TerrainPatternId(HexProjection hex) =>
+        "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}") + (TerrainArt.Variant(hex.Q, hex.R) is var variant and > 0 ? $"-v{variant}" : "");
 
     private static string UnitPatternId(UnitProjection unit) => "bb-unit-" + SafeId(unit.UnitId);
 

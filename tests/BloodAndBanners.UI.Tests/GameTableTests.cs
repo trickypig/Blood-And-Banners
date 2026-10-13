@@ -95,11 +95,12 @@ public sealed partial class GameTableTests : BunitContext
             .Add(component => component.Projection, BattleFixtures.Projection())
             .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
 
+        // Hex 4,4 lands on the stone path's seventh variant image
         var stone = cut.Find("[data-hex='4,4'] .hex-top").GetAttribute("fill");
-        Assert.Equal("url(#bb-terrain-stone-stone-path)", stone);
+        Assert.Equal("url(#bb-terrain-stone-stone-path-v7)", stone);
         Assert.Equal(
-            "https://example.test/blood/images/terrain/stone-stone-path.svg",
-            cut.Find("#bb-terrain-stone-stone-path image").GetAttribute("href"));
+            "https://example.test/blood/images/terrain/stone-stone-path-7.svg",
+            cut.Find("#bb-terrain-stone-stone-path-v7 image").GetAttribute("href"));
         Assert.Equal("+1", cut.Find("[data-hex='4,4'] .hex-elevation").TextContent);
         Assert.Equal("#3b3b3b", cut.Find("[data-hex='4,4'] .hex-elevation").GetAttribute("fill"));
         Assert.Single(cut.FindAll("[data-hex='4,4'] .hex-side"));

@@ -63,6 +63,40 @@ public sealed class BoardLayoutTests
         Assert.Equal(expected, TerrainArt.ImagePath(biome, terrain));
 
     [Theory]
+    [InlineData("stone", "crags", 0, "images/terrain/stone-crags.svg")]
+    [InlineData("stone", "crags", 3, "images/terrain/stone-crags-3.svg")]
+    [InlineData("stone", "stone", 7, "images/terrain/stone-stone-path-7.svg")]
+    [InlineData("void", "rift", 2, null)]
+    public void Terrain_variants_are_numbered_images_beside_the_primary(string biome, string terrain, int variant, string? expected) =>
+        Assert.Equal(expected, TerrainArt.ImagePath(biome, terrain, variant));
+
+    // These values are pinned so hex_map_editor.html's terrainVariant() can be checked against them.
+    [Theory]
+    [InlineData(0, 0, 0)]
+    [InlineData(1, 0, 6)]
+    [InlineData(0, 1, 5)]
+    [InlineData(4, 4, 7)]
+    [InlineData(-3, 7, 7)]
+    [InlineData(31, 29, 2)]
+    public void Terrain_variant_is_a_fixed_hash_of_the_hex_position(int q, int r, int expected) =>
+        Assert.Equal(expected, TerrainArt.Variant(q, r));
+
+    [Fact]
+    public void Terrain_variants_spread_evenly_across_a_map()
+    {
+        var counts = new int[TerrainArt.VariantCount];
+        for (var q = 0; q < 32; q++)
+        {
+            for (var r = 0; r < 30; r++)
+            {
+                counts[TerrainArt.Variant(q, r)]++;
+            }
+        }
+        // 960 hexes over 8 images is 120 each; every image should land near that
+        Assert.All(counts, count => Assert.InRange(count, 90, 150));
+    }
+
+    [Theory]
     [InlineData("stone", "#3b3b3b")]
     [InlineData("jungle", "#a1b096")]
     public void Height_labels_use_a_muted_shade_of_the_biome_color(string biome, string expected) =>

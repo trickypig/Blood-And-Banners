@@ -3,10 +3,14 @@ namespace BloodAndBanners.UI.Services;
 /// <summary>
 /// Terrain look shared with hex_map_editor.html: each biome's flat fallback color and the terrains
 /// that have a pattern at images/terrain/&lt;biome&gt;-&lt;terrain&gt;.svg. The first terrain is the biome's default.
+/// Each terrain also has cosmetic variants &lt;biome&gt;-&lt;terrain&gt;-1.svg to -7.svg, picked per hex by position.
 /// </summary>
 public static class TerrainArt
 {
     private const string UnknownColor = "#6b6b6b";
+
+    /// <summary>Images per terrain: the primary plus seven variants.</summary>
+    public const int VariantCount = 8;
 
     private static readonly Dictionary<string, (string Color, string[] Terrains)> Biomes = new()
     {
@@ -34,8 +38,24 @@ public static class TerrainArt
             ((int)Math.Round(c + (target - c) * amount, MidpointRounding.AwayFromZero)).ToString("x2")));
     }
 
+    /// <summary>
+    /// Which of the terrain's images a hex shows: 0 is the primary, 1-7 the variants. Purely cosmetic, so it
+    /// is never stored; a hash of the position scatters the images evenly but always picks the same one for a
+    /// hex. Must stay identical to terrainVariant() in hex_map_editor.html.
+    /// </summary>
+    public static int Variant(int q, int r)
+    {
+        unchecked
+        {
+            var h = (uint)q * 374761393u + (uint)r * 668265263u;
+            h = (h ^ (h >> 13)) * 1274126177u;
+            h ^= h >> 16;
+            return (int)(h % VariantCount);
+        }
+    }
+
     /// <summary>The pattern image path, falling back to the biome's default terrain like the editor does.</summary>
-    public static string? ImagePath(string biome, string terrain)
+    public static string? ImagePath(string biome, string terrain, int variant = 0)
     {
         var biomeKey = Normalize(biome);
         if (!Biomes.TryGetValue(biomeKey, out var art))
@@ -44,7 +64,7 @@ public static class TerrainArt
         }
         var terrainKey = Normalize(terrain);
         var resolved = art.Terrains.Contains(terrainKey) ? terrainKey : art.Terrains[0];
-        return $"images/terrain/{biomeKey}-{resolved}.svg";
+        return variant == 0 ? $"images/terrain/{biomeKey}-{resolved}.svg" : $"images/terrain/{biomeKey}-{resolved}-{variant}.svg";
     }
 
     private static string Normalize(string value) => value.Trim().ToLowerInvariant().Replace(' ', '-');

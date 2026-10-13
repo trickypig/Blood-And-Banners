@@ -746,7 +746,7 @@
 
     <script>
         // Biomes and the terrain types within each. The first terrain is the biome's default.
-        // Each terrain's pattern lives at images/terrain/<biome>-<terrain>.svg
+        // Each terrain's pattern lives at images/terrain/<biome>-<terrain>.svg (plus variants, see terrainVariant)
         const biomes = {
             plains: { color: '#4a7c4e', name: 'Plains', terrains: { grass: 'Grass', roads: 'Roads' } },
             water: { color: '#4a7c9e', name: 'Water', terrains: { 'open-water': 'Open Water', 'shallow-water': 'Shallow Water' } },
@@ -771,18 +771,43 @@
             return Object.keys(biomes[biome].terrains);
         }
 
-        function terrainImagePath(biome, terrain) {
-            return `images/terrain/${biome}-${terrain}.svg`;
+        // Each terrain has a primary image plus seven cosmetic variants (<biome>-<terrain>-1.svg to -7.svg)
+        const TERRAIN_VARIANTS = 8;
+
+        function terrainImagePath(biome, terrain, variant = 0) {
+            return variant === 0
+                ? `images/terrain/${biome}-${terrain}.svg`
+                : `images/terrain/${biome}-${terrain}-${variant}.svg`;
         }
 
-        // Terrain pattern images, keyed "biome/terrain" (redraw the map as each one finishes loading)
+        // Which image a hex shows: purely cosmetic, never saved. A hash of the position scatters the images
+        // evenly but always gives a hex the same one. Must stay identical to TerrainArt.Variant in the game.
+        function terrainVariant(col, row) {
+            let h = (Math.imul(col, 374761393) + Math.imul(row, 668265263)) >>> 0;
+            h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+            h = (h ^ (h >>> 16)) >>> 0;
+            return h % TERRAIN_VARIANTS;
+        }
+
+        // Terrain pattern images, keyed "biome/terrain/variant" (redraw the map once a batch finishes loading)
         const terrainImages = {};
+        let redrawQueued = false;
+        function queueRedraw() {
+            if (redrawQueued) return;
+            redrawQueued = true;
+            requestAnimationFrame(() => {
+                redrawQueued = false;
+                drawMap();
+            });
+        }
         Object.keys(biomes).forEach(biome => {
             terrainKeys(biome).forEach(terrain => {
-                const img = new Image();
-                img.onload = () => drawMap();
-                img.src = terrainImagePath(biome, terrain);
-                terrainImages[`${biome}/${terrain}`] = img;
+                for (let variant = 0; variant < TERRAIN_VARIANTS; variant++) {
+                    const img = new Image();
+                    img.onload = queueRedraw;
+                    img.src = terrainImagePath(biome, terrain, variant);
+                    terrainImages[`${biome}/${terrain}/${variant}`] = img;
+                }
             });
         });
 
@@ -1085,7 +1110,7 @@
             ctx.closePath();
 
             // Base terrain: SVG pattern clipped to the hex, falling back to flat color until loaded
-            const image = terrainImages[`${hex.biome}/${hex.terrain}`];
+            const image = terrainImages[`${hex.biome}/${hex.terrain}/${terrainVariant(hex.col, hex.row)}`];
             ctx.save();
             ctx.clip();
             if (image && image.complete && image.naturalWidth) {
