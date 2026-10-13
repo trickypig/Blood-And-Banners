@@ -38,7 +38,7 @@ public static class CombatLogFormatter
             "abilityUsed" => $"{Unit(projection, Text(payload, "unitId"))} uses {Text(payload, "ability")} on {Unit(projection, Text(payload, "targetUnitId"))}.",
             "effectApplied" => $"{Unit(projection, Text(payload, "targetUnitId"))} gets {Signed(payload.GetProperty("amount").GetInt32())} {Title(Text(payload, "stat"))} ({Text(payload, "name")}).",
             "effectExpired" => $"{Text(payload, "name")} fades from {Unit(projection, Text(payload, "targetUnitId"))}.",
-            "choiceOpened" => $"{Unit(projection, Text(payload, "unitId"))} may re-roll a die (Moonlight Glare).",
+            "choiceOpened" => ChoiceOpened(projection, payload),
             "choiceResolved" => Text(payload, "option") == "keep" ? "The roll stands." : null,
             "unitDefeated" => $"{Unit(projection, Text(payload, "unitId"))} is defeated.",
             "turnEnded" => $"Round {payload.GetProperty("round").GetInt32()}: {Possessive(Seat(projection, Text(payload, "nextSeatId")))} turn.",
@@ -52,8 +52,100 @@ public static class CombatLogFormatter
             "unitTeleported" => Text(payload, "unitId") == Text(payload, "casterId")
                 ? $"{Unit(projection, Text(payload, "casterId"))} teleports to {Text(payload, "to")}."
                 : $"{Unit(projection, Text(payload, "casterId"))} teleports {Unit(projection, Text(payload, "unitId"))} to {Text(payload, "to")}.",
+            "terrainEntered" => TerrainEntered(projection, payload),
+            "terrainIgnored" => TerrainIgnored(projection, payload),
+            "terrainDamage" => TerrainDamage(projection, payload),
+            "movementStopped" => MovementStopped(projection, payload),
+            "unitSlid" => UnitSlid(projection, payload),
+            "poisonRolled" => PoisonRolled(projection, payload),
             _ => null,
         };
+    }
+
+    private static string? ChoiceOpened(GameProjection projection, JsonElement payload) => Text(payload, "kind") switch
+    {
+        "moonlightGlare" => $"{Unit(projection, Text(payload, "unitId"))} may re-roll a die (Moonlight Glare).",
+        "iceCollision" => $"{Unit(projection, Text(payload, "unitId"))} must choose how to pass an ally on the ice.",
+        _ => null,
+    };
+
+    private static string TerrainEntered(GameProjection projection, JsonElement payload)
+    {
+        _ = Text(payload, "movementKind");
+        return $"{Unit(projection, Text(payload, "unitId"))} enters {TerrainName(Text(payload, "terrain"))} at {Text(payload, "hex")}.";
+    }
+
+    private static string TerrainIgnored(GameProjection projection, JsonElement payload)
+    {
+        _ = Text(payload, "hex");
+        var unit = Unit(projection, Text(payload, "unitId"));
+        var terrain = TerrainName(Text(payload, "terrain"));
+        var ability = Text(payload, "ability");
+        return ability == "Flying"
+            ? $"{unit} flies over {terrain}."
+            : $"{unit} ignores {terrain} with {ability}.";
+    }
+
+    private static string MovementStopped(GameProjection projection, JsonElement payload) =>
+        $"{Possessive(Unit(projection, Text(payload, "unitId")))} movement stops in {TerrainName(Text(payload, "reason"))} at {Text(payload, "hex")}.";
+
+    private static string TerrainDamage(GameProjection projection, JsonElement payload)
+    {
+        var unit = Unit(projection, Text(payload, "unitId"));
+        var terrain = TerrainName(Text(payload, "terrain"));
+        var cause = Text(payload, "cause");
+        _ = payload.GetProperty("dice").GetInt32();
+        _ = Text(payload, "hex");
+        var roll = Faces(payload.GetProperty("faces"));
+        var wounds = Wounds(payload.GetProperty("wounds").GetInt32());
+        var lead = cause switch
+        {
+            "entry" => $"{unit} enters {terrain}",
+            "turnEnd" => $"Lava burns {unit} at turn end",
+            "slipFall" => $"{unit} falls while sliding",
+            "collision" => $"{unit} hits another unit on the ice",
+            _ => $"{terrain} harms {unit}",
+        };
+        return $"{lead}: {roll} — {wounds} (no Defense).";
+    }
+
+    private static string PoisonRolled(GameProjection projection, JsonElement payload)
+    {
+        var unit = Unit(projection, Text(payload, "unitId"));
+        _ = Text(payload, "hex");
+        var roll = Faces(payload.GetProperty("faces"));
+        var wounds = payload.GetProperty("wounds").GetInt32();
+        var cleared = payload.GetProperty("cleared").GetBoolean();
+        if (cleared)
+        {
+            return $"{unit} fights off the poison: {roll} — {Wounds(wounds)}.";
+        }
+        var lead = wounds > 0 ? $"Poison wracks {unit}" : $"{unit} resists the poison";
+        return $"{lead}: {roll} — {Wounds(wounds)}; it remains poisoned.";
+    }
+
+    private static string UnitSlid(GameProjection projection, JsonElement payload)
+    {
+        var unit = Unit(projection, Text(payload, "unitId"));
+        _ = Text(payload, "from");
+        var to = Text(payload, "to");
+        var path = payload.GetProperty("path").EnumerateArray().Select(step => step.GetString() ?? string.Empty).ToList();
+        var direction = payload.GetProperty("direction").EnumerateArray().Select(value => value.GetInt32()).ToList();
+        if (direction.Count != 2)
+        {
+            throw new FormatException("Ice slide direction must contain two coordinates.");
+        }
+        var ending = Text(payload, "stopped") switch
+        {
+            "exit" => "leaves the ice",
+            "blocked" => "stops at an obstacle",
+            "moveSpent" => "runs out of movement",
+            "enemyCollision" => "collides with an enemy",
+            "friendlyStop" => "stops before an ally",
+            "defeated" => "falls",
+            var stopped => $"stops ({TerrainName(stopped)})",
+        };
+        return $"{unit} slides {path.Count} {(path.Count == 1 ? "hex" : "hexes")} to {to} and {ending}.";
     }
 
     private static string Moved(GameProjection projection, JsonElement payload)
@@ -87,6 +179,8 @@ public static class CombatLogFormatter
     private static string Signed(int amount) => amount > 0 ? $"+{amount}" : amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private static string Title(string value) => string.IsNullOrEmpty(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
+
+    private static string TerrainName(string value) => value.Replace('-', ' ').ToLowerInvariant();
 
     private static string JoinAnd(IEnumerable<string> parts)
     {
