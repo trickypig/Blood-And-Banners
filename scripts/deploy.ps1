@@ -8,8 +8,8 @@
 
     Only files git tracks are uploaded, as they are in the working tree, so
     uncommitted edits to tracked files do go up but a brand-new file does not
-    until it is at least `git add`ed. Repo plumbing (this script, .claude,
-    .gitignore) never goes up. The files are staged into a temp folder and
+    until it is at least `git add`ed. Only the root pages, data/ and images/
+    go up ($IncludePatterns); source such as api/ and src/ never does. The files are staged into a temp folder and
     rsynced from there, so stray local files cannot leak onto the site.
 
     rsync runs inside WSL. Git Bash has no usable rsync - see the
@@ -61,8 +61,14 @@ $SftpConfig = Join-Path $RepoRoot '.vscode\sftp.json'
 # serves, so it is spelled out here.
 $SiteUrl = 'https://trickypig.com/blood/public/'
 
-# Tracked files that are repo plumbing, not site content.
-$ExcludePatterns = @('^\.', '^scripts/', '/\.')
+# What the site serves: the pages at the root, the data they fetch and the
+# images. Everything else tracked (api/, src/, tests/, docs/, project files)
+# is source, not site, and must never land in the public folder - so this is
+# an allowlist, and a new top-level folder stays private until added here.
+$IncludePatterns = @('^[^/]+\.html$', '^data/', '^images/')
+
+# Dotfiles anywhere inside the allowed folders still stay home.
+$ExcludePatterns = @('/\.')
 
 # A prune that would remove more than this share of what is live is treated
 # as a mistake rather than a cleanup, and needs -Force.
@@ -137,6 +143,7 @@ function New-Staging {
 
     $files = @($tracked | Where-Object {
         $path = $_
+        ($IncludePatterns | Where-Object { $path -match $_ }) -and
         -not ($ExcludePatterns | Where-Object { $path -match $_ })
     })
 

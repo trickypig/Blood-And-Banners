@@ -31,8 +31,10 @@ Only **git-tracked** files, as they currently are in the working tree. So:
 - Uncommitted edits to tracked files *do* go up.
 - A brand-new file does **not** go up until it is at least `git add`ed. If a
   new image is missing from the live site, this is why.
-- Dotfiles and dot-folders (`.gitignore`, `.claude/`, `.vscode/`) and
-  `scripts/` never go up.
+- Only an allowlist goes up: the `.html` pages at the root, `data/` and
+  `images/` (`$IncludePatterns` in the script). Source - `api/`, `src/`,
+  `tests/`, `docs/`, `scripts/`, project files, dotfiles - never does. A new
+  top-level folder the site needs must be added to the allowlist first.
 
 The files are copied into `%TEMP%\blood-deploy` and synced from there, so
 untracked scratch files in the repo can't leak onto the site.
