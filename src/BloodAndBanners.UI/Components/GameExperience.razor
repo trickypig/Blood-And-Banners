@@ -24,6 +24,7 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
                   ErrorMessage="@_error"
                   OnReadyChanged="SetReady"
                   OnStart="StartGame"
+                  OnCommand="SubmitGameCommand"
                   OnCopyInvite="CopyInvite" />
 }
 else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)

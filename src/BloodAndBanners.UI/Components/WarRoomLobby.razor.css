@@ -92,3 +92,6 @@
     .war-room__orders { grid-template-columns: 1fr; }
     .host-note { grid-column: 1; text-align: left; }
 }
+
+.seat__role { font-weight: 700; color: #b48cff; letter-spacing: .04em; }
+.seat__assign, .role-order { font: inherit; }
