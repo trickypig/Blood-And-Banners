@@ -87,10 +87,10 @@ function vanilla_match_service_tests(): array
             expect_same(['gameStarted', 'initiativeRolled'], array_slice(array_column($events, 'kind'), -2), 'start and initiative are logged');
         },
 
-        'only vanilla duels on a large enough map can start' => static function (): void {
-            $coop = vanilla_service_match('Void Reaches', 'coop');
-            expect_game_error('modeNotPlayable', static fn() => $coop['games']->startGame($coop['gameId'], $coop['host']['identity'], $coop['host']['token']));
-            expect_same('lobby', $coop['games']->getGame($coop['gameId'], $coop['host']['identity'])['lifecycle'], 'a refused start leaves the lobby intact');
+        'battle royale cannot start yet and small duel maps are refused' => static function (): void {
+            $royale = vanilla_service_match('Last Banner', 'battleRoyale');
+            expect_game_error('modeNotPlayable', static fn() => $royale['games']->startGame($royale['gameId'], $royale['host']['identity'], $royale['host']['token']));
+            expect_same('lobby', $royale['games']->getGame($royale['gameId'], $royale['host']['identity'])['lifecycle'], 'a refused start leaves the lobby intact');
 
             $small = vanilla_service_match('Training Grounds');
             expect_game_error('scenarioTooSmall', static fn() => $small['games']->startGame($small['gameId'], $small['host']['identity'], $small['host']['token']));
