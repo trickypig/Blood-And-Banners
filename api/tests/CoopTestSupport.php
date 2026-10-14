@@ -54,3 +54,23 @@ function coop_command(array $state, string $seatId, string $kind, array $payload
 {
     return (new MatchEngine(test_catalog()))->apply($state, $seatId, $kind, $payload, new SequenceRandom($rolls));
 }
+
+/** A co-op state at the start of the hero draft with one Test Wolf at 7,4. */
+function coop_ready_draft(): array
+{
+    $state = coop_command(coop_start()['state'], 'void-lord', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,4'])['state'];
+    return coop_command($state, 'void-lord', 'confirmSetup')['state'];
+}
+
+/** Picks that finish the two-seat co-op draft in snake order: a, b, b, a, a, b. */
+function coop_draft_picks(): array
+{
+    return [
+        ['hero-a', 'pickHero', ['hero' => 'Test Captain']],
+        ['hero-b', 'pickHero', ['hero' => 'Test Marshal']],
+        ['hero-b', 'pickHero', ['hero' => 'Test Warden']],
+        ['hero-a', 'pickHero', ['hero' => 'Test Ranger']],
+        ['hero-a', 'pickArmy', ['army' => 'Red Company']],
+        ['hero-b', 'pickArmy', ['army' => 'Blue Company']],
+    ];
+}
