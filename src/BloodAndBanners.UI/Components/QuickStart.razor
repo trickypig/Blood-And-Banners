@@ -74,6 +74,12 @@
                                 <span>@tag</span>
                             }
                         </span>
+                        <span class="battlefield-map">
+                            @if (_boards.TryGetValue(battlefield.Name, out var board))
+                            {
+                                <MapPreview Board="board" Name="@battlefield.Name" />
+                            }
+                        </span>
                     </button>
                 }
             </div>
@@ -110,11 +116,16 @@
     [Parameter]
     public string? InitialJoinCode { get; set; }
 
+    /// <summary>Fetches a battlefield's board for its card preview; cards without one simply show no map.</summary>
+    [Parameter]
+    public Func<string, Task<BoardProjection>>? LoadBoard { get; set; }
+
     private string _joinCode = string.Empty;
     private bool _choosingBattlefield;
     private string _selectedScenario = "Four Corners";
     private bool _focusPicker;
     private bool _focusVanilla;
+    private readonly Dictionary<string, BoardProjection> _boards = [];
     private ElementReference _pickerHeading;
     private ElementReference _vanillaButton;
 
@@ -154,10 +165,35 @@
             _selectedScenario = "Four Corners";
             _choosingBattlefield = true;
             _focusPicker = true;
-            return Task.CompletedTask;
+            return LoadPreviews();
         }
         var scenario = mode == GameMode.Coop ? "Void Reaches" : "Last Banner";
         return OnCreate.InvokeAsync(new GameSetupSelection(mode, scenario));
+    }
+
+    private async Task LoadPreviews()
+    {
+        if (LoadBoard is null)
+        {
+            return;
+        }
+
+        var loads = Battlefields
+            .Where(battlefield => !_boards.ContainsKey(battlefield.Name))
+            .Select(battlefield => (battlefield.Name, Board: LoadBoard(battlefield.Name)))
+            .ToList();
+        foreach (var (name, load) in loads)
+        {
+            try
+            {
+                _boards[name] = await load;
+                StateHasChanged();
+            }
+            catch (Exception)
+            {
+                // A preview is decoration: a battlefield whose board cannot be fetched is still pickable by name.
+            }
+        }
     }
 
     private Task CreateVanilla() => OnCreate.InvokeAsync(new GameSetupSelection(GameMode.VanillaPvp, _selectedScenario));

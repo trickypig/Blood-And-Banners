@@ -28,6 +28,7 @@
 .decision h2,
 .roster-section h2 { margin: 0 0 .75rem; font-family: Georgia, serif; color: #ddbf76; font-size: 1.2rem; }
 .decided { margin: 0; }
+.decision ::deep .map-preview { max-width: 14rem; margin: 0 0 .75rem; }
 .choice-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .choice-buttons button { min-height: 2.75rem; padding: .5rem .9rem; color: #f8f0dc; background: var(--oxblood); border: 1px solid #b18b48; }
 

@@ -1,0 +1,65 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+@if (_layout is { } layout)
+{
+    <svg class="map-preview"
+         viewBox="0 0 @Num(layout.Width) @Num(layout.Height)"
+         role="img"
+         aria-label="@($"{Name} map preview with {_starts.Count} starting points")">
+        @foreach (var tile in layout.Tiles)
+        {
+            <circle class="map-dot"
+                    data-hex="@($"{tile.Hex.Q},{tile.Hex.R}")"
+                    cx="@Num(tile.X)"
+                    cy="@Num(tile.Y)"
+                    r="@Num(DotRadius)"
+                    fill="@TerrainArt.Color(tile.Hex.Biome)" />
+        }
+        @foreach (var start in _starts)
+        {
+            <g class="map-start @(start.Hex.PlayerStart == HighlightStart ? "mine" : null)" data-start="@start.Hex.PlayerStart">
+                <circle cx="@Num(start.X)" cy="@Num(start.Y)" r="@Num(_markerRadius)" stroke-width="@Num(_markerRadius / 4)" />
+                <text x="@Num(start.X)" y="@Num(start.Y)" font-size="@Num(_markerRadius * 1.3)" text-anchor="middle" dominant-baseline="central">@start.Hex.PlayerStart</text>
+            </g>
+        }
+    </svg>
+}
+
+@code {
+    /// <summary>Dots sit a little inside each hex so the terrain reads as a stipple rather than a solid sheet.</summary>
+    private const double DotRadius = BoardLayout.Size * .8;
+
+    [Parameter, EditorRequired]
+    public BoardProjection Board { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The viewer's start position, drawn in the accent colour.</summary>
+    [Parameter]
+    public int? HighlightStart { get; set; }
+
+    private BoardLayout? _layout;
+    private IReadOnlyList<HexTile> _starts = [];
+    private double _markerRadius;
+
+    protected override void OnParametersSet()
+    {
+        if (Board.Hexes.Count == 0)
+        {
+            _layout = null;
+            _starts = [];
+            return;
+        }
+
+        // A preview is a plan view: flatten elevation so every dot sits on the same grid.
+        _layout = BoardLayout.For(Board.Hexes.Select(hex => hex with { Elevation = 0 }).ToList());
+        _starts = _layout.Tiles.Where(tile => tile.Hex.PlayerStart is not null).OrderBy(tile => tile.Hex.PlayerStart).ToList();
+        // Markers grow with the board so they stay legible however far a large map is scaled down.
+        _markerRadius = Math.Max(BoardLayout.Size, Math.Max(_layout.Width, _layout.Height) * .07);
+    }
+
+    private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}

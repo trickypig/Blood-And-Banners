@@ -211,6 +211,24 @@ public sealed class GameClientTests
     }
 
     [Fact]
+    public async Task Scenario_boards_are_read_anonymously_by_escaped_name()
+    {
+        const string board = """
+            {"columns":2,"rows":1,"hexes":[
+              {"q":0,"r":0,"biome":"plains","terrain":"grass","elevation":0,"sightBlocker":false,"occupantId":null,"playerStart":1},
+              {"q":1,"r":0,"biome":"water","terrain":"open-water","elevation":0,"sightBlocker":false,"occupantId":null,"playerStart":null}]}
+            """;
+        var handler = new QueueHandler(board);
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+
+        var result = await client.GetScenarioBoardAsync("Four Corners");
+
+        Assert.EndsWith("api/v1/scenarios/Four%20Corners/board", handler.Requests[0].RequestUri?.AbsoluteUri);
+        Assert.Null(handler.Requests[0].Headers.Authorization);
+        Assert.Equal(new int?[] { 1, null }, result.Hexes.Select(hex => hex.PlayerStart));
+    }
+
+    [Fact]
     public async Task Rejected_commands_surface_the_server_error_code_and_message()
     {
         const string error = """{"error":{"code":"heroTaken","message":"Another commander has already claimed that hero.","currentVersion":8}}""";

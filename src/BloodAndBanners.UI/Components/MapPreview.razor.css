@@ -1,0 +1,18 @@
+.map-preview {
+    display: block;
+    width: 100%;
+    max-height: 9rem;
+}
+
+.map-start circle {
+    fill: #f4ead0;
+    stroke: #181711;
+}
+
+.map-start text {
+    fill: #181711;
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+}
+
+.map-start.mine circle { fill: #f0cf7a; }

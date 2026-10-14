@@ -354,6 +354,14 @@ function foundation_tests(): array
             expect_true(is_string($revisionId) && $revisionId !== '', 'game should reference a concrete scenario revision');
             expect_same(11, $created['board']['columns'], 'selected scenario columns should be projected in the lobby');
             expect_same(99, count($created['board']['hexes']), 'selected scenario hexes should be projected in the lobby');
+            $starts = [];
+            foreach ($created['board']['hexes'] as $hex) {
+                if ($hex['playerStart'] !== null) {
+                    $starts[$hex['playerStart']] = "{$hex['q']},{$hex['r']}";
+                }
+            }
+            ksort($starts);
+            expect_same([1 => '4,1', 2 => '0,9'], $starts, 'the lobby board should mark both starting points');
 
             $joined = $games->joinGame($created['gameId'], $rival['identityId']);
             $games->setReady($created['gameId'], $host['identityId'], $created['seatToken'], true);

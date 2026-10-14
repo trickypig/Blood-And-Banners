@@ -53,6 +53,24 @@ public sealed class DraftTableTests : BunitContext
     }
 
     [Fact]
+    public void The_start_choice_shows_a_map_preview_and_highlights_the_viewers_start_once_chosen()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red") with { Board = MapPreviewFixtures.Board() };
+        var cut = Render<DraftTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Equal(2, cut.FindAll("[aria-labelledby=start-title] g.map-start").Count);
+        Assert.Empty(cut.FindAll("g.map-start.mine"));
+
+        var chosen = projection with
+        {
+            Draft = projection.Draft! with { StartBySeat = new Dictionary<string, int?> { ["seat-red"] = 2, ["seat-blue"] = 1 } },
+        };
+        cut.Render(parameters => parameters.Add(component => component.Projection, chosen));
+
+        Assert.Equal("2", cut.Find("g.map-start.mine").GetAttribute("data-start"));
+    }
+
+    [Fact]
     public void Army_cards_render_each_units_numeric_stats()
     {
         var cut = Render<DraftTable>(parameters => parameters

@@ -893,6 +893,19 @@ final class GameService
                 $occupants[$unit['hex']] = $unit['unitId'];
             }
         }
+        return self::mapProjection($definition, static fn(array $hex): ?string => $state !== null
+            ? ($occupants["{$hex['q']},{$hex['r']}"] ?? null)
+            : (isset($hex['piece']) ? (string)$hex['piece'] : null));
+    }
+
+    /** A built-in scenario's empty board, for previewing the battlefield before a game exists. */
+    public function scenarioBoard(string $scenarioName): array
+    {
+        return self::mapProjection($this->scenarios->builtInDefinition($scenarioName), static fn(): ?string => null);
+    }
+
+    private static function mapProjection(array $definition, callable $occupant): array
+    {
         return [
             'columns' => (int)$definition['map']['columns'],
             'rows' => (int)$definition['map']['rows'],
@@ -903,9 +916,8 @@ final class GameService
                 'terrain' => (string)$hex['terrain'],
                 'elevation' => (int)$hex['elevation'],
                 'sightBlocker' => (bool)($hex['sightBlocker'] ?? false),
-                'occupantId' => $state !== null
-                    ? ($occupants["{$hex['q']},{$hex['r']}"] ?? null)
-                    : (isset($hex['piece']) ? (string)$hex['piece'] : null),
+                'occupantId' => $occupant($hex),
+                'playerStart' => isset($hex['playerStart']) ? (int)$hex['playerStart'] : null,
             ], $definition['map']['hexes']),
         ];
     }

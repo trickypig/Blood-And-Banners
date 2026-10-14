@@ -11,6 +11,8 @@ public interface IGameApiClient
         string deviceId,
         CancellationToken cancellationToken = default);
 
+    Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default);
+
     Task<GameSeatSession> CreateGameAsync(
         AuthSession session,
         GameMode mode,

@@ -46,6 +46,7 @@
 
             <section class="decision" aria-labelledby="start-title">
                 <h2 id="start-title">Start position</h2>
+                <MapPreview Board="Projection.Board" Name="@Projection.ScenarioName" HighlightStart="ViewerStart" />
                 @if (Draft.StartBySeat.Values.All(start => start is not null))
                 {
                     <p class="decided">
@@ -161,6 +162,8 @@
     private DraftProjection Draft => Projection.Draft!;
 
     private string? ViewerSeat => Projection.Viewer.SeatId;
+
+    private int? ViewerStart => ViewerSeat is not null ? Draft.StartBySeat.GetValueOrDefault(ViewerSeat) : null;
 
     private bool IsMyPick => ViewerSeat is not null && Draft.PickingSeatId == ViewerSeat;
 

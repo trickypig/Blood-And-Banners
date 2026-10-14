@@ -12,6 +12,7 @@
     <QuickStart IsBusy="_isBusy"
                 ErrorMessage="@_error"
                 InitialJoinCode="@InitialJoinCode"
+                LoadBoard="LoadScenarioBoard"
                 OnCreate="CreateGame"
                 OnJoin="JoinGame" />
 }
@@ -94,6 +95,9 @@ else
             _isBusy = false;
         }
     }
+
+    private Task<BoardProjection> LoadScenarioBoard(string scenarioName) =>
+        Sessions.GetScenarioBoardAsync(scenarioName, _pollCancellation.Token);
 
     private Task CreateGame(GameSetupSelection selection) => RunCommand(async () =>
     {

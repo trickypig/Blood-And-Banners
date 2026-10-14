@@ -57,6 +57,17 @@ final class Application
                 return new Response(200, $this->games->getSpectatorGame($matches[1]));
             }
 
+            if (preg_match('#^/api/v1/scenarios/([^/]+)/board$#', $request->path, $matches) === 1 && $request->method === 'GET') {
+                try {
+                    return new Response(200, $this->games->scenarioBoard(rawurldecode($matches[1])));
+                } catch (DomainException $error) {
+                    if ($error->getMessage() !== 'scenarioNotFound') {
+                        throw $error;
+                    }
+                    return $this->error(404, 'scenarioNotFound', 'No built-in scenario has that name.');
+                }
+            }
+
             $principal = $this->principal($request);
             if ($request->method === 'POST' && $request->path === '/api/v1/auth/convert') {
                 if ($principal['kind'] !== 'guest') {

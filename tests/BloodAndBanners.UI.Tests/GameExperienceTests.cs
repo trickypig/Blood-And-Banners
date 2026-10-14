@@ -322,5 +322,8 @@ public sealed class GameExperienceTests : BunitContext
 
         public Task<GameProjection> StartGameAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new BoardProjection(0, 0, []));
     }
 }

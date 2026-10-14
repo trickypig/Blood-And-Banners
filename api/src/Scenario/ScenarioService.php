@@ -79,7 +79,7 @@ final class ScenarioService
         return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
     }
 
-    public function resolveBuiltInRevision(string $name, string $mode): array
+    public function builtInDefinition(string $name): array
     {
         $files = glob(dirname(__DIR__, 2) . '/scenarios/*.json') ?: [];
         foreach ($files as $file) {
@@ -92,40 +92,46 @@ final class ScenarioService
                 continue;
             }
             $this->validate($definition);
-            if (!in_array($mode, $definition['modeCompatibility'], true)) {
-                throw new DomainException('scenarioModeIncompatible');
-            }
-
-            $scenarioId = substr(hash('sha256', "built-in-scenario:{$name}"), 0, 32);
-            $definitionJson = json_encode($definition, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-            $revisionId = substr(hash('sha256', "{$scenarioId}:{$definitionJson}"), 0, 32);
-            $now = self::now();
-            $scenarioInsert = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
-                ? 'INSERT IGNORE INTO scenarios (id, owner_user_id, name, visibility, created_at) VALUES (:id, NULL, :name, :visibility, :created)'
-                : 'INSERT OR IGNORE INTO scenarios (id, owner_user_id, name, visibility, created_at) VALUES (:id, NULL, :name, :visibility, :created)';
-            $this->connection->prepare($scenarioInsert)->execute([
-                'id' => $scenarioId,
-                'name' => $name,
-                'visibility' => 'builtin',
-                'created' => $now,
-            ]);
-
-            $existing = (int)$this->scalar(
-                'SELECT COUNT(*) FROM scenario_revisions WHERE id = :id',
-                ['id' => $revisionId]
-            );
-            if ($existing === 0) {
-                $revision = (int)$this->scalar(
-                    'SELECT COALESCE(MAX(revision), 0) + 1 FROM scenario_revisions WHERE scenario_id = :scenario',
-                    ['scenario' => $scenarioId]
-                );
-                $this->insertRevision($revisionId, $scenarioId, $revision, $definition, $now);
-            }
-
-            return ['revisionId' => $revisionId, 'definition' => $definition];
+            return $definition;
         }
 
         throw new DomainException('scenarioNotFound');
+    }
+
+    public function resolveBuiltInRevision(string $name, string $mode): array
+    {
+        $definition = $this->builtInDefinition($name);
+        if (!in_array($mode, $definition['modeCompatibility'], true)) {
+            throw new DomainException('scenarioModeIncompatible');
+        }
+
+        $scenarioId = substr(hash('sha256', "built-in-scenario:{$name}"), 0, 32);
+        $definitionJson = json_encode($definition, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $revisionId = substr(hash('sha256', "{$scenarioId}:{$definitionJson}"), 0, 32);
+        $now = self::now();
+        $scenarioInsert = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
+            ? 'INSERT IGNORE INTO scenarios (id, owner_user_id, name, visibility, created_at) VALUES (:id, NULL, :name, :visibility, :created)'
+            : 'INSERT OR IGNORE INTO scenarios (id, owner_user_id, name, visibility, created_at) VALUES (:id, NULL, :name, :visibility, :created)';
+        $this->connection->prepare($scenarioInsert)->execute([
+            'id' => $scenarioId,
+            'name' => $name,
+            'visibility' => 'builtin',
+            'created' => $now,
+        ]);
+
+        $existing = (int)$this->scalar(
+            'SELECT COUNT(*) FROM scenario_revisions WHERE id = :id',
+            ['id' => $revisionId]
+        );
+        if ($existing === 0) {
+            $revision = (int)$this->scalar(
+                'SELECT COALESCE(MAX(revision), 0) + 1 FROM scenario_revisions WHERE scenario_id = :scenario',
+                ['scenario' => $scenarioId]
+            );
+            $this->insertRevision($revisionId, $scenarioId, $revision, $definition, $now);
+        }
+
+        return ['revisionId' => $revisionId, 'definition' => $definition];
     }
 
     private function validate(array $definition): void
