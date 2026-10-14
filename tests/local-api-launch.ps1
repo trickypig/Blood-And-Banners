@@ -13,8 +13,11 @@ $listener.Stop()
 $runId = [Guid]::NewGuid().ToString('N')
 $stdoutPath = Join-Path ([IO.Path]::GetTempPath()) "blood-banners-api-$runId.out.log"
 $stderrPath = Join-Path ([IO.Path]::GetTempPath()) "blood-banners-api-$runId.err.log"
+$databasePath = Join-Path ([IO.Path]::GetTempPath()) "blood-banners-api-$runId.sqlite"
 $previousSigningKey = $env:BLOOD_BANNERS_SIGNING_KEY
+$previousDsn = $env:BLOOD_BANNERS_DSN
 $env:BLOOD_BANNERS_SIGNING_KEY = 'local-development-signing-key-32-bytes'
+$env:BLOOD_BANNERS_DSN = "sqlite:$databasePath"
 
 try {
     $process = Start-Process powershell.exe -ArgumentList @(
@@ -47,6 +50,9 @@ try {
     if ($response.apiVersion -ne '1.0') {
         throw "Expected API version 1.0, received '$($response.apiVersion)'."
     }
+    if (-not (Test-Path -LiteralPath $databasePath -PathType Leaf)) {
+        throw 'Local API migration did not create its SQLite database.'
+    }
 
     Write-Host 'PASS: local API starts from outside the repository and serves compatibility data.'
 }
@@ -58,5 +64,7 @@ finally {
         $process.WaitForExit()
     }
     $env:BLOOD_BANNERS_SIGNING_KEY = $previousSigningKey
+    $env:BLOOD_BANNERS_DSN = $previousDsn
     Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $databasePath, "$databasePath-shm", "$databasePath-wal" -Force -ErrorAction SilentlyContinue
 }
