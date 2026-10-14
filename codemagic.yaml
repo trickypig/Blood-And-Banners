@@ -40,5 +40,14 @@ workflows:
     scripts:
       - name: Restore workloads
         script: dotnet workload restore src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj
+      - name: .NET tests
+        script: |
+          dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj
+          dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj
+      - name: PowerShell release tests
+        script: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/game-release-build.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/deployment-package.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/deploy-game-script.ps1
       - name: Build Windows
         script: dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -c Release -f net10.0-windows10.0.19041.0

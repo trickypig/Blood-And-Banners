@@ -87,10 +87,34 @@ dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Test
 dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj
 dotnet build src/BloodAndBanners.Web/BloodAndBanners.Web.csproj
 dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -f net10.0-windows10.0.19041.0
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/game-release-build.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/deployment-package.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/deploy-game-script.ps1
 ```
 
 ## Production configuration
 
-Point Apache's `/api` alias or document root at `api/public`, enable `mod_rewrite` and `mod_headers`, and supply the four environment values shown in `api/.env.example`. The signing key must be a random secret of at least 32 bytes. MySQL uses `api/migrations/001_initial.mysql.sql`; local SQLite uses the matching SQLite migration automatically.
+The public game is deployed at <https://blood.trickypig.com/play/> without replacing the existing static pages. The release uses two allowlisted roots beneath the account directory:
+
+```text
+trickypig/blood/
+|-- .env                         # private, mode 600
+|-- public/play/                 # PWA plus the sole public PHP gateway
+|-- server/api/                  # private PHP source, migrations, and scenarios
+`-- .deploy/                     # staged and previous releases
+```
+
+The production `.env` uses these key names: `DB_DRIVER`, `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `APP_SIGNING_KEY`, `APP_ENV`, and `CORS_ORIGIN`. `DB_PATH` is used only for SQLite configurations. Do not put values in the repository or the public tree. `APP_SIGNING_KEY` must be a random secret of at least 32 bytes. Rotating it immediately invalidates outstanding access tokens; refresh tokens and seat credentials are independent, so clients with a valid refresh token can obtain a newly signed access token.
+
+The game publisher is dry-run-first:
+
+```powershell
+.\scripts\deploy-game.ps1         # local checks/build plus read-only SSH and rsync dry run
+.\scripts\deploy-game.ps1 -Push   # staged migration, atomic activation, and HTTPS checks
+```
+
+Review the dry run before changing anything remotely. Before `-Push`, set only `trickypig/blood/.env` to mode `600` and verify it with `stat -c %a`. Activation syntax-checks every staged PHP file and runs migrations explicitly with `php8.4-cli server/api/tools/migrate.php --env-file .env`. It retains the prior public and private trees together at `.deploy/previous-<release-id>`; a failed HTTPS check invokes rollback automatically. Never run `-Push` without explicit production authorization.
+
+The older static-site publisher remains separate: `scripts/deploy.ps1` publishes the root HTML, `data/`, and `images/` at <https://trickypig.com/blood/public/>. Its rsync rules protect `/play/`, including prune runs.
 
 The MAUI host currently targets `https://api.bloodandbanners.com/` in `MauiProgram.cs`; change that URI for staging or alternate production hosting. Never embed database or signing credentials in either client.

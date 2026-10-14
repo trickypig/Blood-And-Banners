@@ -2,6 +2,9 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/ConfigTest.php';
+require __DIR__ . '/HttpRequestFactoryTest.php';
+require __DIR__ . '/GatewayTest.php';
 require __DIR__ . '/FoundationTest.php';
 require __DIR__ . '/ApiTest.php';
 require __DIR__ . '/CoreRulesTest.php';
@@ -24,7 +27,7 @@ require __DIR__ . '/ModeScheduleTest.php';
 require __DIR__ . '/CoopBattleTest.php';
 
 $failures = 0;
-$tests = array_merge(foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_terrain_tests(), vanilla_ice_tests(), vanilla_match_service_tests(), coop_service_tests(), coop_sides_tests(), coop_setup_tests(), coop_draft_tests(), mode_schedule_tests(), coop_battle_tests());
+$tests = array_merge(config_tests(), http_request_factory_tests(), gateway_tests(), foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_terrain_tests(), vanilla_ice_tests(), vanilla_match_service_tests(), coop_service_tests(), coop_sides_tests(), coop_setup_tests(), coop_draft_tests(), mode_schedule_tests(), coop_battle_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

@@ -1,14 +1,16 @@
 ---
 name: publishing-the-site
-description: Use when pushing Blood and Banners live - "publish", "deploy", "push it to the server", "upload the hex map editor" - or checking whether a change reached https://trickypig.com/blood/public/. Covers the deploy script, what does and does not get uploaded, and the ssh/rsync traps on the IONOS host.
+description: Use when publishing, deploying, rolling back, or verifying the Blood and Banners legacy static site or public game at trickypig.com and blood.trickypig.com.
 ---
 
 # Publishing the Site
 
-The site is plain static files - no build step. `scripts\deploy.ps1` rsyncs
-them to `trickypig/blood/public/` on the IONOS box, which serves
-<https://trickypig.com/blood/public/> (the hex map editor is
-<https://trickypig.com/blood/public/hex_map_editor.html>).
+There are two independent publishers. Choose by target and never substitute one for the other.
+
+| Target | Script | Live URL |
+|---|---|---|
+| Legacy static pages | `scripts\deploy.ps1` | <https://trickypig.com/blood/public/> |
+| Digital game and API | `scripts\deploy-game.ps1` | <https://blood.trickypig.com/play/> |
 
 ## Deploying is the user's call
 
@@ -22,7 +24,23 @@ is always fine; it writes nothing.
 .\scripts\deploy.ps1 -Prune -Push   # deploy and delete remote files not in the repo
 ```
 
-Always run the dry run first and read it before `-Push`.
+Always run the matching dry run first and read it before `-Push`. A user request to inspect or dry-run is not authorization to change permissions or push.
+
+## Publishing the game
+
+```powershell
+.\scripts\deploy-game.ps1                 # read-only remote checks and rsync dry run
+.\scripts\deploy-game.ps1 -CommandPreview # print the default remote command plan
+.\scripts\deploy-game.ps1 -Push           # staged production release
+```
+
+The package contains only `public/play/` and `server/api/`. The first is public PWA output plus `api/index.php`; the second is private application code, MySQL migrations, scenarios, and the migration CLI. `.env` stays at `trickypig/blood/.env`, outside both trees, and must be mode `600` before a push.
+
+The game script builds and tests locally, uploads to `.deploy/<release-id>`, validates PHP, runs `php8.4-cli .../tools/migrate.php --env-file trickypig/blood/.env`, activates both trees, and checks the live PWA, deep-link fallback, service worker, and compatibility API. It never prints or uploads `.env` values. The former live trees remain together at `.deploy/previous-<release-id>` for rollback. If post-activation HTTPS verification fails, the script invokes rollback.
+
+`APP_SIGNING_KEY` rotation invalidates outstanding access tokens immediately. Refresh tokens and seat credentials are independent, so clients with a valid refresh token can recover. Never rotate it casually during a release.
+
+## Publishing legacy static pages
 
 ## What gets uploaded
 
@@ -42,7 +60,7 @@ untracked scratch files in the repo can't leak onto the site.
 Without `-Prune`, nothing on the server is ever deleted. The live folder has
 held files that never came from git (e.g. `rulebook.html.bak`), so pruning is
 opt-in, and a prune that would delete more than a quarter of the live files
-is refused without `-Force`.
+is refused without `-Force`. Every legacy rsync invocation protects `/play/***`, so a legacy prune cannot remove the game.
 
 ## Connection
 
@@ -85,9 +103,17 @@ zero-byte `rsync.exe` that exits 0 and transfers nothing.
 
 ## Verifying
 
-After a push, load the page and hard-refresh (Ctrl+F5) - the browser caches
-the old HTML and SVGs. For a quick check from the shell:
+After a legacy push, load the page and hard-refresh (Ctrl+F5) - the browser caches the old HTML and SVGs. For a quick check from the shell:
 
 ```powershell
 curl.exe -sI https://trickypig.com/blood/public/hex_map_editor.html
 ```
+
+After a game push, confirm `/play/`, `/play/service-worker.js`, a deep `/play/...` path, and `/play/api/v1/compatibility`. Then smoke-test two independent browser profiles through create, join, ready, draft, one action per seat, and refresh/reconnect.
+
+## Common mistakes
+
+- Running `deploy.ps1` for game files: its static allowlist intentionally excludes the game package.
+- Treating a clean dry run as push approval: permission change and `-Push` require an explicit user instruction.
+- Putting `.env` below `public/`: it belongs at `trickypig/blood/.env`, mode `600`.
+- Manually copying only the PWA: `public/play/` and `server/api/` activate and roll back as one release.

@@ -13,7 +13,13 @@ final class Catalog
 
     public function __construct(?string $path = null)
     {
-        $path ??= dirname(__DIR__, 4) . '/data/gameData.json';
+        if ($path === null) {
+            $apiRoot = dirname(__DIR__, 3);
+            $packagedPath = $apiRoot . '/data/gameData.json';
+            $path = is_file($packagedPath)
+                ? $packagedPath
+                : dirname($apiRoot) . '/data/gameData.json';
+        }
         $json = file_get_contents($path);
         if ($json === false) {
             throw new RuntimeException("Unable to read the game catalog at {$path}.");

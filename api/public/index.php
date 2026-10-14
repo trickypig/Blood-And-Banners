@@ -3,36 +3,22 @@ declare(strict_types=1);
 
 use BloodAndBanners\Auth\AuthService;
 use BloodAndBanners\Database\ConnectionFactory;
-use BloodAndBanners\Database\Migrator;
 use BloodAndBanners\Game\GameService;
 use BloodAndBanners\Http\Application;
-use BloodAndBanners\Http\Request;
+use BloodAndBanners\Http\RequestFactory;
 
-spl_autoload_register(static function (string $class): void {
-    $prefix = 'BloodAndBanners\\';
-    if (!str_starts_with($class, $prefix)) {
-        return;
-    }
-    $relative = str_replace('\\', DIRECTORY_SEPARATOR, substr($class, strlen($prefix)));
-    $path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . $relative . '.php';
-    if (is_file($path)) {
-        require $path;
-    }
-});
+require dirname(__DIR__) . '/autoload.php';
 
 $connection = ConnectionFactory::fromEnvironment();
-(new Migrator($connection))->migrate();
 $signingKey = getenv('BLOOD_BANNERS_SIGNING_KEY') ?: '';
 $application = new Application(new AuthService($connection, $signingKey), new GameService($connection));
 
 $rawBody = file_get_contents('php://input');
-$body = $rawBody === false || $rawBody === '' ? [] : json_decode($rawBody, true, flags: JSON_THROW_ON_ERROR);
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$response = $application->handle(new Request(
+$response = $application->handle(RequestFactory::fromHttp(
     $_SERVER['REQUEST_METHOD'] ?? 'GET',
-    $path,
+    $_SERVER['REQUEST_URI'] ?? '/',
     function_exists('getallheaders') ? getallheaders() : [],
-    is_array($body) ? $body : [],
+    $rawBody === false ? '' : $rawBody,
     $_GET,
 ));
 

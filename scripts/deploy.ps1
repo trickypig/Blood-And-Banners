@@ -56,6 +56,8 @@ trap {
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $SftpConfig = Join-Path $RepoRoot '.vscode\sftp.json'
+$DeploymentHelpers = Join-Path $PSScriptRoot 'deployment\DeploymentHelpers.psm1'
+Import-Module $DeploymentHelpers -Force
 
 # The public URL. The SFTP hostname is the hosting box, not the domain it
 # serves, so it is spelled out here.
@@ -175,7 +177,7 @@ function Get-RsyncArguments($sshCommand, $source, $destination, [switch]$DryRun)
     $arguments = @('rsync', '-rltz', '--human-readable')
     if ($Prune) { $arguments += '--delete' }
     if ($DryRun) { $arguments += @('--dry-run', '--itemize-changes') } else { $arguments += '--verbose' }
-    return $arguments + @('-e', $sshCommand, $source, $destination)
+    return $arguments + @(Get-LegacyRsyncProtection) + @('-e', $sshCommand, $source, $destination)
 }
 
 $target = Read-DeployTarget

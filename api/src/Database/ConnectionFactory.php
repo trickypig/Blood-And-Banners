@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Database;
 
+use BloodAndBanners\Config\AppConfig;
 use PDO;
 
 final class ConnectionFactory
@@ -18,6 +19,13 @@ final class ConnectionFactory
         $user = getenv('BLOOD_BANNERS_DB_USER') ?: null;
         $password = getenv('BLOOD_BANNERS_DB_PASSWORD') ?: null;
         return self::configure(new PDO($dsn, $user, $password));
+    }
+
+    public static function fromConfig(AppConfig $config): PDO
+    {
+        $user = $config->dbDriver === 'mysql' ? $config->dbUser : null;
+        $password = $config->dbDriver === 'mysql' ? $config->dbPassword : null;
+        return self::configure(new PDO($config->pdoDsn(), $user, $password));
     }
 
     private static function configure(PDO $connection): PDO
