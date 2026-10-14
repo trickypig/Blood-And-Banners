@@ -2,11 +2,11 @@
 @using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Services
 
-<section class="combat-log" aria-label="Battle log">
-    <h2>Battle log</h2>
+<section class="combat-log" aria-label="@Title">
+    <h2>@Title</h2>
     @if (Lines.Count == 0)
     {
-        <p>No blows struck yet.</p>
+        <p>@EmptyText</p>
     }
     else
     {
@@ -26,11 +26,11 @@
     [Parameter]
     public IReadOnlyList<GameEvent> Events { get; set; } = [];
 
-    private IReadOnlyList<(string Kind, string Text)> Lines => Events
-        .Reverse()
-        .Select(gameEvent => (gameEvent.Kind, Text: CombatLogFormatter.Describe(gameEvent, Projection)))
-        .Where(line => line.Text is not null)
-        .Take(40)
-        .Select(line => (line.Kind, line.Text!))
-        .ToList();
+    [Parameter]
+    public string Title { get; set; } = "Battle log";
+
+    [Parameter]
+    public string EmptyText { get; set; } = "No blows struck yet.";
+
+    private IReadOnlyList<(string Kind, string Text)> Lines => CombatLogFormatter.Recent(Events, Projection, 40);
 }
