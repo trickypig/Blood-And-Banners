@@ -150,6 +150,7 @@ public sealed class CombatLogFormatterTests
         Assert.Equal("The heroes have destroyed every monster.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"monstersDefeated","winningSeatId":null,"winningSide":"heroes"}"""), projection));
         Assert.Equal("The Void Lord has slain every hero.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"heroesDefeated","winningSeatId":"seat-void","winningSide":"void"}"""), projection));
     }
+
     [Fact]
     public void Turn_lines_use_the_chosen_name()
     {

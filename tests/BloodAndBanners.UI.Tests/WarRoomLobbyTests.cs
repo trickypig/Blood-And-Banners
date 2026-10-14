@@ -72,6 +72,7 @@ public sealed class WarRoomLobbyTests : BunitContext
         Assert.Equal("Void Lord", SeatNames.Display(projection, "seat-2"));
         Assert.True(SeatNames.IsVoidLord(projection, "seat-2"));
     }
+
     [Fact]
     public void Named_seats_show_their_name_in_the_muster()
     {
@@ -88,5 +89,13 @@ public sealed class WarRoomLobbyTests : BunitContext
 
         Assert.Contains("Seris (You)", cut.Find("li[data-seat='1'] strong").TextContent);
         Assert.Contains("Commander 2", cut.Find("li[data-seat='2'] strong").TextContent);
+    }
+
+    [Fact]
+    public void The_muster_offers_the_name_field()
+    {
+        var cut = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null, "setReady", "setCommanderName")));
+
+        Assert.NotNull(cut.Find(".war-room__muster [data-testid=commander-name]"));
     }
 }

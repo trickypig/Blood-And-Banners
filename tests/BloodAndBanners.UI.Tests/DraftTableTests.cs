@@ -100,6 +100,7 @@ public sealed class DraftTableTests : BunitContext
 
         Assert.Contains("Shield Wall", cut.Find("button[data-hero='Thorgrim Shattershield'] li[data-ability='Shield Wall']").TextContent);
     }
+
     [Fact]
     public void Chosen_names_appear_in_claims_and_initiative()
     {
@@ -134,6 +135,19 @@ public sealed class DraftTableTests : BunitContext
 
         Assert.Contains("Claimed by <b>Ash</b>", cut.Find("button[data-hero='Malachar the Voidcaller']").TextContent);
         Assert.Empty(cut.FindAll(".taken-by b"));
+    }
+
+    [Fact]
+    public void The_draft_ribbon_offers_the_name_field_when_renaming_is_legal()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red") with
+        {
+            LegalActions = [new LegalAction("pickHero", null, []), new LegalAction("setCommanderName", null, [])],
+        };
+
+        var cut = Render<DraftTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.NotNull(cut.Find(".draft-ribbon [data-testid=commander-name]"));
     }
 }
 

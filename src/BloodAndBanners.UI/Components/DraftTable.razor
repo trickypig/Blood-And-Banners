@@ -10,6 +10,7 @@
         </div>
         <p data-testid="initiative" class="initiative">@InitiativeText</p>
         <p data-testid="draft-status" class="draft-status @(IsMyPick ? "my-pick" : null)">@StatusText</p>
+        <CommanderNameField Projection="Projection" IsBusy="IsBusy" OnCommand="OnCommand" />
     </header>
 
     @if (!string.IsNullOrEmpty(ErrorMessage))

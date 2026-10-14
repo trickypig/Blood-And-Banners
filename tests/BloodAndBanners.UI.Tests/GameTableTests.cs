@@ -795,6 +795,7 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("push-path", cut.Find("[data-hex='3,4']").ClassList);
         Assert.Contains("push-path", cut.Find("[data-hex='4,4']").ClassList);
     }
+
     [Fact]
     public void The_turn_banner_names_a_named_opponent()
     {

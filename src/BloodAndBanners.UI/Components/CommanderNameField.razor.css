@@ -1,0 +1,8 @@
+.commander-name { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; }
+.commander-name label { color: #c9b27a; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; }
+.commander-name input { flex: 1 1 10rem; min-width: 0; max-width: 16rem; min-height: 2.5rem; padding: .4rem .6rem; color: #f8f0dc; background: rgba(0, 0, 0, .3); border: 1px solid var(--brass, #b08b42); font: inherit; }
+.commander-name input::placeholder { color: #8f8777; }
+.commander-name button { min-height: 2.5rem; padding: .4rem .9rem; color: #f8f0dc; background: var(--oxblood, #681e24); border: 1px solid var(--brass, #b08b42); cursor: pointer; }
+.commander-name button:disabled { opacity: .5; cursor: not-allowed; color: #a9a190; background: #3a3a33; border-color: #6a6252; }
+.commander-name input:focus-visible,
+.commander-name button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }

@@ -1,0 +1,97 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@inject IServiceProvider ServiceProvider
+
+@if (CanRename)
+{
+    <form class="commander-name" data-testid="commander-name" @onsubmit="Save" @onsubmit:preventDefault>
+        <label for="commander-name-input">Commander name</label>
+        <input id="commander-name-input"
+               maxlength="24"
+               autocomplete="nickname"
+               placeholder="Name your commander"
+               @bind="_draft"
+               @bind:event="oninput" />
+        <button type="submit" data-action="setCommanderName" disabled="@(IsBusy || Unchanged)">Save</button>
+    </form>
+}
+
+@code {
+    /// <summary>Remembers the last saved name so the next match is prefilled; never sent without the player pressing Save.</summary>
+    public const string StorageKey = "bloodAndBanners.commanderName";
+
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
+    private string _draft = string.Empty;
+    private string? _syncedName;
+    private bool _initialised;
+
+    private string? CurrentName =>
+        Projection.Memberships.FirstOrDefault(member => member.SeatId == Projection.Viewer.SeatId)?.Name;
+
+    private bool CanRename =>
+        Projection.Viewer.CanCommand && Projection.LegalActions.Any(action => action.Kind == "setCommanderName");
+
+    private bool Unchanged => _draft.Trim() == (CurrentName ?? string.Empty);
+
+    // Optional so screens and tests without storage still work.
+    private IKeyValueStore? Store => ServiceProvider.GetService(typeof(IKeyValueStore)) as IKeyValueStore;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var current = CurrentName;
+        if (!_initialised)
+        {
+            _initialised = true;
+            _syncedName = current;
+            _draft = current ?? await Remembered() ?? string.Empty;
+            return;
+        }
+        if (current != _syncedName)
+        {
+            _syncedName = current;
+            _draft = current ?? string.Empty;
+            if (current is not null)
+            {
+                await Remember(current);
+            }
+        }
+    }
+
+    private Task Save() => OnCommand.InvokeAsync(new GameCommandRequest("setCommanderName", new { name = _draft }));
+
+    private async Task<string?> Remembered()
+    {
+        try
+        {
+            return Store is { } store ? await store.GetAsync(StorageKey) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private async Task Remember(string name)
+    {
+        try
+        {
+            if (Store is { } store)
+            {
+                await store.SetAsync(StorageKey, name);
+            }
+        }
+        catch (Exception)
+        {
+            // Remembering is a convenience; naming still works without storage.
+        }
+    }
+}
