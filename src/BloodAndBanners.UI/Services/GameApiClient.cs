@@ -30,6 +30,12 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return await ReadAsync<AuthSession>(response, cancellationToken);
     }
 
+    public async Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync($"api/v1/scenarios/{Uri.EscapeDataString(scenarioName)}/board", cancellationToken);
+        return await ReadAsync<BoardProjection>(response, cancellationToken);
+    }
+
     public async Task<GameSeatSession> CreateGameAsync(
         AuthSession session,
         GameMode mode,

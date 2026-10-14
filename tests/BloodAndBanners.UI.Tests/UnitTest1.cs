@@ -44,6 +44,33 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Quick_start_battlefield_cards_preview_each_map_and_survive_a_failed_load()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var requested = new List<string>();
+        var cut = Render<QuickStart>(parameters => parameters
+            .Add(component => component.LoadBoard, name =>
+            {
+                requested.Add(name);
+                return name == "Home Map"
+                    ? Task.FromException<BoardProjection>(new HttpRequestException("offline"))
+                    : Task.FromResult(MapPreviewFixtures.Board());
+            }));
+
+        Assert.Empty(requested);
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("button[data-scenario] svg.map-preview").Count));
+        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map" }, requested);
+        Assert.NotNull(cut.Find("button[data-scenario='Four Corners'] svg.map-preview"));
+        Assert.Empty(cut.FindAll("button[data-scenario='Home Map'] svg"));
+
+        cut.Find("button[data-action=back-modes]").Click();
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+        Assert.Equal(4, requested.Count);
+    }
+
+    [Fact]
     public void Quick_start_prefills_and_submits_an_invite_code()
     {
         string? joined = null;

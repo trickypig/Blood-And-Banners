@@ -279,6 +279,9 @@ public sealed class GameSessionCoordinatorTests
         public ((AuthSession Identity, string GameId, string SeatToken) Session, CommandEnvelope Command)? CommandRequest { get; private set; }
         public (AuthSession Identity, string GameId, string SeatToken)? StartRequest { get; private set; }
 
+        public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public EventPage? Events { get; init; }
         public (AuthSession Identity, string GameId, string SeatToken, long After)? EventsRequest { get; private set; }
 

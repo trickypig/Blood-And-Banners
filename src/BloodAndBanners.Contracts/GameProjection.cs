@@ -35,7 +35,10 @@ public sealed record HexProjection(
     string Terrain,
     int Elevation,
     bool SightBlocker,
-    string? OccupantId);
+    string? OccupantId)
+{
+    public int? PlayerStart { get; init; }
+}
 
 public sealed record TurnProjection(
     int Round,

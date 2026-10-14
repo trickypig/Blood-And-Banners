@@ -232,6 +232,21 @@ function api_tests(): array
             expect_same('spectatorReadOnly', $mutation->body['error']['code'], 'read-only error should be explicit');
         },
 
+        'scenario board preview is public and marks starting points' => static function (): void {
+            $app = test_application();
+            $board = $app->handle(new Request('GET', '/api/v1/scenarios/Four%20Corners/board'));
+            $missing = $app->handle(new Request('GET', '/api/v1/scenarios/Nowhere/board'));
+
+            expect_same(200, $board->status, 'built-in scenario boards should be readable without auth');
+            expect_same(13, $board->body['columns'], 'preview should carry the board width');
+            expect_same(143, count($board->body['hexes']), 'preview should carry every hex');
+            $starts = array_values(array_filter($board->body['hexes'], static fn(array $hex): bool => $hex['playerStart'] !== null));
+            expect_same(2, count($starts), 'preview should mark both starting points');
+            expect_same(null, $board->body['hexes'][0]['occupantId'], 'preview should not place any pieces');
+            expect_same(404, $missing->status, 'unknown scenarios should be not found');
+            expect_same('scenarioNotFound', $missing->body['error']['code'], 'missing scenario error should be explicit');
+        },
+
         'guest conversion carries match history to authenticated account endpoints' => static function (): void {
             $app = test_application();
             $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'conversion-api-device']));

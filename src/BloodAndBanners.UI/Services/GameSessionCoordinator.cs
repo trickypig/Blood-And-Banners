@@ -7,6 +7,9 @@ public sealed class GameSessionCoordinator(
     IGameApiClient api,
     IGameSessionStore store) : IGameSessionCoordinator
 {
+    public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
+        api.GetScenarioBoardAsync(scenarioName, cancellationToken);
+
     public async Task<GameProjection> CreateGuestGameAsync(
         string deviceId,
         GameMode mode,
