@@ -53,6 +53,12 @@ try {
     $index = $index.Replace($baseTag, '<base href="/play/" />')
     [IO.File]::WriteAllText($indexPath, $index, [Text.UTF8Encoding]::new($false))
 
+    $deploymentTemplate = Join-Path $repositoryRoot 'scripts\deployment\play'
+    Copy-Item -LiteralPath (Join-Path $deploymentTemplate '.htaccess') -Destination $playRoot -Force
+    $gatewayRoot = Join-Path $playRoot 'api'
+    New-Item -ItemType Directory -Path $gatewayRoot -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $deploymentTemplate 'api\index.php') -Destination $gatewayRoot -Force
+
     Write-Host "Game release staged at '$playRoot'."
 }
 finally {

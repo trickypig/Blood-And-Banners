@@ -51,6 +51,42 @@ try {
         throw 'service worker does not bypass the mounted API path'
     }
 
+    $htaccessPath = Join-Path $playRoot '.htaccess'
+    $gatewayPath = Join-Path $playRoot 'api\index.php'
+    if (-not (Test-Path -LiteralPath $htaccessPath -PathType Leaf)) {
+        throw 'Apache play rules were not staged'
+    }
+    if (-not (Test-Path -LiteralPath $gatewayPath -PathType Leaf)) {
+        throw 'public API gateway was not staged'
+    }
+    if (Test-Path -LiteralPath (Join-Path $playRoot 'api\src')) {
+        throw 'private API source leaked into the public tree'
+    }
+
+    $htaccess = Get-Content -Raw -LiteralPath $htaccessPath
+    foreach ($requiredRule in @(
+        'Options -Indexes',
+        'AddHandler x-mapp-php8.4 .php',
+        'LimitRequestBody 1048576',
+        'Cache-Control "no-cache"',
+        'Cache-Control "public, max-age=31536000, immutable"'
+    )) {
+        if (-not $htaccess.Contains($requiredRule)) {
+            throw "Apache rules are missing '$requiredRule'"
+        }
+    }
+
+    $apiRewrite = $htaccess.IndexOf('RewriteRule ^api(?:/|$) api/index.php')
+    $fileExclusion = $htaccess.IndexOf('RewriteCond %{REQUEST_FILENAME} -f')
+    $directoryExclusion = $htaccess.IndexOf('RewriteCond %{REQUEST_FILENAME} -d')
+    $spaFallback = $htaccess.IndexOf('RewriteRule ^ index.html')
+    if ($apiRewrite -lt 0 -or $fileExclusion -lt 0 -or $directoryExclusion -lt 0 -or $spaFallback -lt 0) {
+        throw 'Apache rewrite rules are incomplete'
+    }
+    if ($apiRewrite -ge $spaFallback -or $fileExclusion -ge $spaFallback -or $directoryExclusion -ge $spaFallback) {
+        throw 'API and real-path rules must precede the SPA fallback'
+    }
+
     Write-Host 'PASS: game release builder creates a clean /play/ package.'
 }
 finally {
