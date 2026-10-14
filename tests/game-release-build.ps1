@@ -11,8 +11,14 @@ $playRoot = Join-Path $destination 'public\play'
 try {
     New-Item -ItemType Directory -Path $publishedWebRoot -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'index.html') -Value '<base href="/" />'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'index.html.br') -Value 'compressed-root-base'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'index.html.gz') -Value 'compressed-root-base'
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'appsettings.Development.json') -Value '{"ApiBaseUrl":"http://localhost:8080"}'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'appsettings.Development.json.br') -Value 'compressed-development-settings'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'appsettings.Development.json.gz') -Value 'compressed-development-settings'
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'app.js.map') -Value '{}'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'app.js.map.br') -Value 'compressed-source-map'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'app.js.map.gz') -Value 'compressed-source-map'
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\BloodAndBanners.Web\wwwroot\manifest.webmanifest') -Destination $publishedWebRoot
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\BloodAndBanners.Web\wwwroot\service-worker.published.js') -Destination (Join-Path $publishedWebRoot 'service-worker.js')
 
@@ -25,10 +31,16 @@ try {
     if ($index -notmatch '<base href="/play/"') {
         throw 'base path is not /play/'
     }
-    if (Test-Path -LiteralPath (Join-Path $playRoot 'appsettings.Development.json')) {
+    if (Test-Path -LiteralPath (Join-Path $playRoot 'index.html.br')) {
+        throw 'stale compressed index leaked'
+    }
+    if (Test-Path -LiteralPath (Join-Path $playRoot 'index.html.gz')) {
+        throw 'stale compressed index leaked'
+    }
+    if (Get-ChildItem -LiteralPath $playRoot -Recurse -File | Where-Object { $_.Name -like 'appsettings.Development.json*' }) {
         throw 'development settings leaked'
     }
-    if (Get-ChildItem -LiteralPath $playRoot -Recurse -File -Filter '*.map') {
+    if (Get-ChildItem -LiteralPath $playRoot -Recurse -File | Where-Object { $_.Name -match '\.map(?:\.br|\.gz)?$' }) {
         throw 'source maps leaked'
     }
 
@@ -49,6 +61,9 @@ try {
     }
     if ($serviceWorker -notmatch '\$\{baseUrl\.pathname\}api/') {
         throw 'service worker does not bypass the mounted API path'
+    }
+    if ($serviceWorker -notmatch 'appsettings\\\.Development\\\.json') {
+        throw 'service worker does not exclude development settings from its offline cache'
     }
 
     $htaccessPath = Join-Path $playRoot '.htaccess'

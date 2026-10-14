@@ -47,7 +47,9 @@ try {
     New-Item -ItemType Directory -Path $publishedWebRoot -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'index.html') -Value '<base href="/" />'
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'appsettings.Development.json') -Value '{"ApiBaseUrl":"http://localhost:8080"}'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'appsettings.Development.json.br') -Value 'compressed-development-settings'
     Set-Content -LiteralPath (Join-Path $publishedWebRoot 'app.js.map') -Value '{}'
+    Set-Content -LiteralPath (Join-Path $publishedWebRoot 'app.js.map.gz') -Value 'compressed-source-map'
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\BloodAndBanners.Web\wwwroot\manifest.webmanifest') -Destination $publishedWebRoot
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\BloodAndBanners.Web\wwwroot\service-worker.published.js') -Destination (Join-Path $publishedWebRoot 'service-worker.js')
 
@@ -72,7 +74,9 @@ try {
     $forbidden = Get-ChildItem -LiteralPath (Join-Path $release 'public\play') -Recurse -Force |
         Where-Object {
             $_.Name -in @('.env', 'AppConfig.php', '001_initial.mysql.sql') -or
-            $_.Extension -in @('.sqlite', '.map')
+            $_.Name -like 'appsettings.Development.json*' -or
+            $_.Name -match '\.map(?:\.br|\.gz)?$' -or
+            $_.Extension -eq '.sqlite'
         }
     if ($forbidden) {
         throw "private files entered public: $($forbidden.FullName -join ', ')"

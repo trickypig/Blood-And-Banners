@@ -59,8 +59,12 @@ try {
     New-Item -ItemType Directory -Path $playRoot -Force | Out-Null
     Get-ChildItem -LiteralPath $sourceRoot -Force | Copy-Item -Destination $playRoot -Recurse -Force
 
-    Remove-Item -LiteralPath (Join-Path $playRoot 'appsettings.Development.json') -Force -ErrorAction SilentlyContinue
-    Get-ChildItem -LiteralPath $playRoot -Recurse -File -Filter '*.map' |
+    Get-ChildItem -LiteralPath $playRoot -Recurse -File |
+        Where-Object {
+            $_.Name -match '^appsettings\.Development\.json(?:\.br|\.gz)?$' -or
+            $_.Name -match '\.map(?:\.br|\.gz)?$' -or
+            $_.Name -match '^index\.html\.(?:br|gz)$'
+        } |
         Remove-Item -Force
 
     $indexPath = Join-Path $playRoot 'index.html'
