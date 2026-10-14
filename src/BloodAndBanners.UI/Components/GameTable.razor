@@ -47,7 +47,7 @@
                 <span>@MovementRisk(movement)</span>
             </div>
         }
-        @{ var board = BoardLayout.For(Projection.Board.Hexes); }
+        @{ var boardIndex = Index; _view = BuildView(); }
         <svg class="hex-board board-interaction-surface"
              @ref="_boardElement"
              role="group"
@@ -61,9 +61,9 @@
              @onpointercancel="EndBoardPointer"
              aria-label="Battlefield, @Projection.Board.Rows columns by @Projection.Board.Columns rows">
             <defs>
-                @foreach (var terrain in board.Tiles.Select(tile => tile.Hex).DistinctBy(TerrainPatternId))
+                @foreach (var (patternId, terrain) in boardIndex.TerrainPatterns)
                 {
-                    <pattern id="@TerrainPatternId(terrain)" patternContentUnits="objectBoundingBox" width="1" height="1">
+                    <pattern id="@patternId" patternContentUnits="objectBoundingBox" width="1" height="1">
                         <rect width="1" height="1" fill="@TerrainArt.Color(terrain.Biome)" />
                         @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(terrain.Biome, terrain.Terrain, TerrainArt.Variant(terrain.Q, terrain.R))) is { } terrainImage)
                         {
@@ -83,43 +83,44 @@
             </defs>
             @if (PreviewedMovement is { } preview)
             {
-                @for (var index = 0; index < preview.Path.Count - 1; index++)
+                @for (var step = 0; step < preview.Path.Count - 1; step++)
                 {
-                    var from = board.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == preview.Path[index]);
-                    var to = board.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == preview.Path[index + 1]);
+                    var from = boardIndex.TileByKey.GetValueOrDefault(preview.Path[step]);
+                    var to = boardIndex.TileByKey.GetValueOrDefault(preview.Path[step + 1]);
                     if (from is not null && to is not null)
                     {
                         <line class="movement-path-connector"
-                              data-path-connector="@(index + 1)"
+                              data-path-connector="@(step + 1)"
                               x1="@Num(from.X)" y1="@Num(from.Y)"
                               x2="@Num(to.X)" y2="@Num(to.Y)" />
                     }
                 }
             }
-            @foreach (var tile in board.Tiles)
+            @foreach (var boardTile in boardIndex.Tiles)
             {
+                var (tile, key, patternId) = (boardTile.Tile, boardTile.Key, boardTile.PatternId);
                 var hex = tile.Hex;
-                var key = HexKey(hex);
                 var unit = UnitById(hex.OccupantId);
+                @* Handlers and label are cached per projection: fresh closures would make Blazor re-bind every hex's events on each render *@
                 <g role="button"
                    tabindex="0"
-                   class="hex @TerrainClass(hex) @HexState(key) @(hex.OccupantId is null ? null : "occupied")"
+                   class="hex @boardTile.TerrainClass @HexState(key) @(hex.OccupantId is null ? null : "occupied")"
                    data-hex="@key"
-                   aria-label="@HexLabel(hex, unit)"
-                   @onclick="() => SelectHex(hex)"
-                   @onpointerdown="args => BeginBoardPointer(args, false)"
+                   aria-label="@(boardTile.Label ??= HexLabel(hex, unit))"
+                   @onclick="boardTile.Select"
+                   @onpointerdown="boardTile.PointerDown"
                    @onpointerdown:stopPropagation="true"
-                   @onkeydown="args => OnHexKey(args, hex)"
-                   @onmouseenter="() => Hover(hex)"
+                   @onkeydown="boardTile.KeyDown"
+                   @onmouseenter="boardTile.Hover"
                    @onmouseleave="Unhover"
-                   @onfocus="() => Hover(hex)"
+                   @onfocus="boardTile.Hover"
                    @onblur="Unhover">
                     @if (tile.Lift > 0)
                     {
                         <path class="hex-side" d="@tile.SidePath" />
                         <path class="hex-side-edges" d="@tile.SideEdges" />
                     }
-                    <polygon class="hex-top" points="@tile.TopPoints" fill="url(#@TerrainPatternId(hex))" />
+                    <polygon class="hex-top" points="@tile.TopPoints" fill="url(#@patternId)" />
                     @if (hex.Elevation != 0)
                     {
                         <polygon class="hex-shade" points="@tile.TopPoints"
@@ -153,7 +154,7 @@
                     {
                         <!text class="chain-mark" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@(link + 1)</!text>
                     }
-                    @if (PushPreview.Contains(key))
+                    @if (_view.Push.Contains(key))
                     {
                         <!text class="push-mark" x="@Num(tile.X)" y="@Num(tile.Y)">»</!text>
                     }
@@ -519,17 +520,13 @@
         {
             _followEvents = true;
         }
-        var layout = BoardLayout.For(Projection.Board.Hexes);
+        var layout = Index.Layout;
         _viewport.ResetForGame(
             Projection.GameId,
             new WorldRect(0, 0, layout.Width, layout.Height),
             _viewport.ContainerWidth,
             _viewport.ContainerHeight);
-        var focusPoints = FocusHexes
-            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
-            .Where(tile => tile is not null)
-            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
-            .ToList();
+        var focusPoints = FocusPoints();
         if (_followEvents)
         {
             _viewport.EnsureVisible(focusPoints);
@@ -567,10 +564,13 @@
 
     private UnitProjection? SelectedUnit => UnitById(_selectedUnitId);
 
-    private string? SelectedHex => Projection.Board.Hexes
-        .Where(hex => _selectedUnitId is not null && hex.OccupantId == _selectedUnitId)
-        .Select(HexKey)
-        .FirstOrDefault();
+    private string? SelectedHex => _selectedUnitId is null ? null : Index.OccupiedHex.GetValueOrDefault(_selectedUnitId);
+
+    private List<ViewportPoint> FocusPoints() => FocusHexes
+        .Select(key => Index.TileByKey.GetValueOrDefault(key))
+        .OfType<HexTile>()
+        .Select(tile => new ViewportPoint(tile.X, tile.Y))
+        .ToList();
 
     private IReadOnlyList<string> FocusHexes =>
         Events.Reverse().FirstOrDefault(gameEvent => gameEvent.FocusHexes.Count > 0)?.FocusHexes ?? [];
@@ -747,7 +747,7 @@
     private IReadOnlyList<string> TeleportDestinations(string unitId)
     {
         var origin = UnitById(unitId)?.Hex;
-        var start = Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == origin);
+        var start = origin is null ? null : Index.HexByKey.GetValueOrDefault(origin);
         if (origin is null || start is null)
         {
             return [];
@@ -769,11 +769,11 @@
                 return [];
             }
             var path = new List<string>();
-            var current = Projection.Board.Hexes.First(hex => HexKey(hex) == hovered);
+            var current = Index.HexByKey[hovered];
             for (var step = 0; step < 2; step++)
             {
                 var nextKey = HexMath.Step(HexKey(current), direction);
-                var next = Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == nextKey);
+                var next = Index.HexByKey.GetValueOrDefault(nextKey);
                 if (next is null || next.SightBlocker || next.OccupantId is not null || next.Elevation - current.Elevation >= 2)
                 {
                     break;
@@ -866,7 +866,7 @@
 
     private bool TargetsAlly(string key)
     {
-        var occupant = UnitById(Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == key)?.OccupantId);
+        var occupant = UnitById(Index.HexByKey.GetValueOrDefault(key)?.OccupantId);
         return IsCoop
             ? occupant is not null && SideOf(occupant) == ViewerSide
             : occupant?.SeatId == Projection.Viewer.SeatId;
@@ -916,7 +916,7 @@
         {
             classes.Add(interaction);
         }
-        if (PreviewedMovement?.Path.Contains(key) == true)
+        if (_view.PathSteps.ContainsKey(key))
         {
             classes.Add("movement-path");
         }
@@ -924,11 +924,11 @@
         {
             classes.Add("forced-slide");
         }
-        if (InSetup && Projection.Setup!.SpawnZoneHexes.Contains(key))
+        if (_view.Spawn.Contains(key))
         {
             classes.Add("spawn-zone");
         }
-        if (PlaceableHexes.Contains(key))
+        if (_view.Placeable.Contains(key))
         {
             classes.Add("placeable");
         }
@@ -941,32 +941,32 @@
         {
             return "swing-target";
         }
-        if (key == SelectedHex)
+        if (key == _view.SelectedHex)
         {
             return "selected";
         }
-        if (_targeting is { } aiming)
+        if (_targeting is not null)
         {
-            if (Teleporting && _teleportUnitId is { } traveller)
+            if (Teleporting && _teleportUnitId is not null)
             {
-                return TeleportDestinations(traveller).Contains(key) ? "destination" : null;
+                return _view.Destinations.Contains(key) ? "destination" : null;
             }
-            var state = (Chaining ? ChainCandidates() : aiming.TargetHexes).Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
-            if (PushPreview.Contains(key))
+            var state = _view.Aimed.Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
+            if (_view.Push.Contains(key))
             {
                 return $"{state} push-path".Trim();
             }
-            return SplashHexes.Contains(key) ? $"{state} splash".Trim() : state;
+            return _view.Splash.Contains(key) ? $"{state} splash".Trim() : state;
         }
-        if (Targets("attackUnit").Contains(key))
+        if (_view.Attacks.Contains(key))
         {
             return "attackable";
         }
-        if (Targets("moveUnit").Contains(key))
+        if (_view.Moves.Contains(key))
         {
             return "reachable";
         }
-        return FocusHexes.Contains(key) ? "focus" : null;
+        return _view.Focus.Contains(key) ? "focus" : null;
     }
 
     private MovementOptionProjection? PreviewedMovement => _confirmingMovement ?? _previewedMovement;
@@ -978,30 +978,11 @@
             .SelectMany(action => action.MovementOptions)
             .FirstOrDefault(option => option.Destination == destination);
 
-    private int? PathStep(string key)
-    {
-        var path = PreviewedMovement?.Path;
-        if (path is null)
-        {
-            return null;
-        }
-        for (var index = 0; index < path.Count; index++)
-        {
-            if (path[index] == key)
-            {
-                return index + 1;
-            }
-        }
-        return null;
-    }
+    private int? PathStep(string key) => _view.PathSteps.TryGetValue(key, out var step) ? step : null;
 
-    private MovementHazardProjection? HazardAt(string key) =>
-        PreviewedMovement?.Hazards.FirstOrDefault(hazard => hazard.Hex == key);
+    private MovementHazardProjection? HazardAt(string key) => _view.Hazards.GetValueOrDefault(key);
 
-    private MovementHazardProjection? ProjectedHazardAt(string key) => Projection.LegalActions
-        .SelectMany(action => action.MovementOptions)
-        .SelectMany(option => option.Hazards)
-        .FirstOrDefault(hazard => hazard.Hex == key);
+    private MovementHazardProjection? ProjectedHazardAt(string key) => Index.ProjectedHazards.GetValueOrDefault(key);
 
     private static bool RequiresConfirmation(MovementOptionProjection movement) =>
         movement.Hazards.Any(hazard => hazard.Dice > 0 || hazard.Forced || hazard.Stops);
@@ -1044,7 +1025,150 @@
     }
 
     private UnitProjection? UnitById(string? unitId) =>
-        unitId is null ? null : Projection.Units.FirstOrDefault(unit => unit.UnitId == unitId);
+        unitId is null ? null : Index.UnitById.GetValueOrDefault(unitId);
+
+    private GameProjection? _indexedProjection;
+    private BoardIndex? _index;
+    private BoardView _view = BoardView.Empty;
+
+    /// <summary>Lookups over the current projection, rebuilt only when a new projection arrives.</summary>
+    private BoardIndex Index
+    {
+        get
+        {
+            if (_index is null || !ReferenceEquals(_indexedProjection, Projection))
+            {
+                _index = BoardIndex.For(this);
+                _indexedProjection = Projection;
+            }
+            return _index;
+        }
+    }
+
+    /// <summary>
+    /// Hex sets for the current selection, aim and preview, built once per render so each hex on the
+    /// board is a constant-time lookup rather than a fresh scan of the legal actions and the board.
+    /// </summary>
+    private BoardView BuildView()
+    {
+        var preview = PreviewedMovement;
+        var pathSteps = new Dictionary<string, int>();
+        var hazards = new Dictionary<string, MovementHazardProjection>();
+        if (preview is not null)
+        {
+            for (var step = 0; step < preview.Path.Count; step++)
+            {
+                pathSteps.TryAdd(preview.Path[step], step + 1);
+            }
+            foreach (var hazard in preview.Hazards)
+            {
+                hazards.TryAdd(hazard.Hex, hazard);
+            }
+        }
+        IReadOnlyList<string> aimed = _targeting is null ? [] : Chaining ? ChainCandidates() : _targeting.TargetHexes;
+        return new BoardView(
+            SelectedHex,
+            Targets("moveUnit").ToHashSet(),
+            Targets("attackUnit").ToHashSet(),
+            FocusHexes.ToHashSet(),
+            PlaceableHexes.ToHashSet(),
+            InSetup ? Projection.Setup!.SpawnZoneHexes.ToHashSet() : [],
+            aimed.ToHashSet(),
+            Teleporting && _teleportUnitId is { } traveller ? TeleportDestinations(traveller).ToHashSet() : [],
+            PushPreview.ToHashSet(),
+            SplashHexes.ToHashSet(),
+            pathSteps,
+            hazards);
+    }
+
+    private sealed class BoardTile(GameTable owner, HexTile tile)
+    {
+        public HexTile Tile { get; } = tile;
+        public string Key { get; } = HexKey(tile.Hex);
+        public string PatternId { get; } = TerrainPatternId(tile.Hex);
+        public string TerrainClass { get; } = GameTable.TerrainClass(tile.Hex);
+        public string? Label { get; set; }
+        public Func<Task> Select { get; } = () => owner.SelectHex(tile.Hex);
+        public Func<PointerEventArgs, Task> PointerDown { get; } = args => owner.BeginBoardPointer(args, false);
+        public Func<KeyboardEventArgs, Task> KeyDown { get; } = args => owner.OnHexKey(args, tile.Hex);
+        public Action Hover { get; } = () => owner.Hover(tile.Hex);
+    }
+
+    private sealed class BoardIndex
+    {
+        public required BoardLayout Layout { get; init; }
+        public required IReadOnlyList<BoardTile> Tiles { get; init; }
+        public required IReadOnlyList<(string Id, HexProjection Hex)> TerrainPatterns { get; init; }
+        public required Dictionary<string, HexTile> TileByKey { get; init; }
+        public required Dictionary<string, HexProjection> HexByKey { get; init; }
+        public required Dictionary<string, string> OccupiedHex { get; init; }
+        public required Dictionary<string, UnitProjection> UnitById { get; init; }
+        public required Dictionary<string, MovementHazardProjection> ProjectedHazards { get; init; }
+
+        public static BoardIndex For(GameTable owner)
+        {
+            var projection = owner.Projection;
+            var layout = BoardLayout.For(projection.Board.Hexes);
+            var tiles = layout.Tiles
+                .Select(tile => new BoardTile(owner, tile))
+                .ToList();
+            var tileByKey = new Dictionary<string, HexTile>();
+            foreach (var tile in tiles)
+            {
+                tileByKey.TryAdd(tile.Key, tile.Tile);
+            }
+            // Board order rather than paint order, so the first match agrees with a scan of the projection
+            var hexByKey = new Dictionary<string, HexProjection>();
+            var occupiedHex = new Dictionary<string, string>();
+            foreach (var hex in projection.Board.Hexes)
+            {
+                var key = HexKey(hex);
+                hexByKey.TryAdd(key, hex);
+                if (hex.OccupantId is { } occupant)
+                {
+                    occupiedHex.TryAdd(occupant, key);
+                }
+            }
+            var unitById = new Dictionary<string, UnitProjection>();
+            foreach (var unit in projection.Units)
+            {
+                unitById.TryAdd(unit.UnitId, unit);
+            }
+            var projectedHazards = new Dictionary<string, MovementHazardProjection>();
+            foreach (var hazard in projection.LegalActions.SelectMany(action => action.MovementOptions).SelectMany(option => option.Hazards))
+            {
+                projectedHazards.TryAdd(hazard.Hex, hazard);
+            }
+            return new BoardIndex
+            {
+                Layout = layout,
+                Tiles = tiles,
+                TerrainPatterns = tiles.DistinctBy(tile => tile.PatternId).Select(tile => (tile.PatternId, tile.Tile.Hex)).ToList(),
+                TileByKey = tileByKey,
+                HexByKey = hexByKey,
+                OccupiedHex = occupiedHex,
+                UnitById = unitById,
+                ProjectedHazards = projectedHazards,
+            };
+        }
+    }
+
+    private sealed record BoardView(
+        string? SelectedHex,
+        HashSet<string> Moves,
+        HashSet<string> Attacks,
+        HashSet<string> Focus,
+        HashSet<string> Placeable,
+        HashSet<string> Spawn,
+        HashSet<string> Aimed,
+        HashSet<string> Destinations,
+        HashSet<string> Push,
+        HashSet<string> Splash,
+        Dictionary<string, int> PathSteps,
+        Dictionary<string, MovementHazardProjection> Hazards)
+    {
+        public static readonly BoardView Empty = new(null, [], [], [], [], [], [], [], [], [], [], []);
+    }
 
     private bool IsCoop => Projection.Mode == GameMode.Coop;
 
@@ -1190,12 +1314,7 @@
     private async Task ResumeFollowing()
     {
         _followEvents = true;
-        var layout = BoardLayout.For(Projection.Board.Hexes);
-        var focusPoints = FocusHexes
-            .Select(key => layout.Tiles.FirstOrDefault(tile => HexKey(tile.Hex) == key))
-            .Where(tile => tile is not null)
-            .Select(tile => new ViewportPoint(tile!.X, tile.Y))
-            .ToList();
+        var focusPoints = FocusPoints();
         _viewport.EnsureVisible(focusPoints);
         await OnFollowEvents.InvokeAsync();
     }
