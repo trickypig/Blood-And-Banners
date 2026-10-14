@@ -335,7 +335,7 @@ final class BattleRules
             self::fail('noAttacksLeft');
         }
         $target = $state['units'][$targetId] ?? null;
-        if ($target === null || $target['hex'] === null || $target['seatId'] === $seatId) {
+        if ($target === null || $target['hex'] === null || !Sides::enemies($state, $unitId, $targetId)) {
             self::fail('unknownUnit');
         }
         $blocked = Combat::targetError($state, $unitId, $targetId);

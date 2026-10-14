@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
 use BloodAndBanners\Rules\Vanilla\Hex;
+use BloodAndBanners\Rules\Vanilla\Sides;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
 use BloodAndBanners\Rules\Vanilla\Targeting;
 
@@ -28,12 +29,11 @@ final class ChainLightning extends SpecialAttack
         if (!in_array($targetIds[0], $this->targets($state, $unitId), true)) {
             return 'invalidAbilityTarget';
         }
-        $seatId = $state['units'][$unitId]['seatId'];
         $from = $state['units'][$unitId]['hex'];
         $total = 0;
         foreach ($targetIds as $targetId) {
             $target = $state['units'][$targetId] ?? null;
-            if ($target === null || $target['hex'] === null || $target['seatId'] === $seatId) {
+            if ($target === null || $target['hex'] === null || !Sides::enemies($state, $unitId, $targetId)) {
                 return 'invalidAbilityTarget';
             }
             $total += Hex::distance($from, $target['hex']);

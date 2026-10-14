@@ -11,17 +11,16 @@ final class Targeting
         $self = $state['units'][$unitId];
         return array_values(array_filter(
             self::unitsWithin($state, $unitId, $range, false),
-            static fn(string $id): bool => $state['units'][$id]['seatId'] !== $self['seatId']
+            static fn(string $id): bool => Sides::enemies($state, $unitId, $id)
                 && Combat::visible($state, $self['hex'], $state['units'][$id]['hex'])
         ));
     }
 
     public static function alliesWithin(array $state, string $unitId, int $range, bool $includeSelf): array
     {
-        $seatId = $state['units'][$unitId]['seatId'];
         return array_values(array_filter(
             self::unitsWithin($state, $unitId, $range, $includeSelf),
-            static fn(string $id): bool => $state['units'][$id]['seatId'] === $seatId
+            static fn(string $id): bool => Sides::allies($state, $unitId, $id)
         ));
     }
 

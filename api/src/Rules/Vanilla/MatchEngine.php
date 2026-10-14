@@ -87,12 +87,13 @@ final class MatchEngine
         $state['effects'] ??= [];
         $state['conditions'] ??= [];
         $state['pending'] ??= null;
+        $state['sides'] ??= Sides::perSeat($state['seats'] ?? []);
         $state['turn'] = Turn::normalize($state['turn'] ?? Turn::idle());
         foreach ($state['board'] ?? [] as $key => $hex) {
             $state['board'][$key] = $hex + ['biome' => 'plains', 'terrain' => 'grass'];
         }
         foreach ($state['units'] ?? [] as $unitId => $unit) {
-            $state['units'][$unitId] = $unit + ['abilities' => [], 'flags' => []];
+            $state['units'][$unitId] = $unit + ['abilities' => [], 'flags' => [], 'side' => $unit['seatId']];
         }
         return $state;
     }
