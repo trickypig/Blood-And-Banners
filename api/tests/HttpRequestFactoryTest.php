@@ -46,5 +46,19 @@ function http_request_factory_tests(): array
             $request = RequestFactory::fromHttp('POST', '/play/api/v1/games', [], 'null', [], '/play');
             expect_same([], $request->body, 'non-object JSON should not become a request body');
         },
+
+        'redirected CGI authorization is restored for the application' => static function (): void {
+            $request = RequestFactory::fromHttp(
+                'POST',
+                '/play/api/v1/games',
+                [],
+                '{}',
+                [],
+                '/play',
+                ['REDIRECT_HTTP_AUTHORIZATION' => 'Bearer recovered-token']
+            );
+
+            expect_same('recovered-token', $request->bearerToken(), 'redirected bearer token was not restored');
+        },
     ];
 }

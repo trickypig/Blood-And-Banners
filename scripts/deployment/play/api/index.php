@@ -27,13 +27,18 @@ try {
             new AuthService($connection, $config->signingKey),
             new GameService($connection),
         );
+        $httpHeaders = function_exists('getallheaders') ? getallheaders() : [];
+        if (!is_array($httpHeaders)) {
+            $httpHeaders = [];
+        }
         $request = RequestFactory::fromHttp(
             $_SERVER['REQUEST_METHOD'] ?? 'GET',
             $_SERVER['REQUEST_URI'] ?? '/',
-            function_exists('getallheaders') ? getallheaders() : [],
+            $httpHeaders,
             (string)file_get_contents('php://input'),
             $_GET,
             '/play',
+            $_SERVER,
         );
         $response = $application->handle($request);
     }

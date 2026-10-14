@@ -1,5 +1,5 @@
 Options -Indexes
-CGIPassAuth On
+SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 LimitRequestBody 1048576
 
 RewriteEngine On

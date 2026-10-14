@@ -81,7 +81,7 @@ try {
     $htaccess = Get-Content -Raw -LiteralPath $htaccessPath
     foreach ($requiredRule in @(
         'Options -Indexes',
-        'CGIPassAuth On',
+        'SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1',
         'RewriteBase /play/',
         'LimitRequestBody 1048576',
         'Cache-Control "no-cache"',
