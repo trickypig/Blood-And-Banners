@@ -119,6 +119,16 @@ public sealed class CommanderNameFieldTests : BunitContext
     }
 
     [Fact]
+    public void Respacing_the_current_name_is_not_a_change()
+    {
+        var cut = Render<CommanderNameField>(parameters => parameters.Add(c => c.Projection, Draft(myName: "Lord Ash")));
+
+        cut.Find("input").Input("  Lord   Ash ");
+
+        Assert.True(cut.Find("button[data-action=setCommanderName]").HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void Saving_is_disabled_while_busy()
     {
         var cut = Render<CommanderNameField>(parameters => parameters

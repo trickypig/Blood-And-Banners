@@ -301,7 +301,7 @@ final class GameService
         if (!in_array($game['lifecycle'], self::NAMING_LIFECYCLES, true)) {
             throw new GameServiceException('illegalLifecycle', 'Commander names are locked once battle begins.', $currentVersion);
         }
-        $name = trim((string)preg_replace('/\p{Cc}/u', '', $collapsed));
+        $name = trim((string)preg_replace('/[\p{Cc}\p{Cf}]/u', '', $collapsed));
         $name = $name === '' ? null : $name;
         if ($name !== null && preg_match_all('/./su', $name) > 24) {
             throw new GameServiceException('nameTooLong', 'Names can be at most 24 characters.', $currentVersion);

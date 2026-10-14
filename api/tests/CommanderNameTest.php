@@ -61,6 +61,16 @@ function commander_name_tests(): array
             expect_same('Lord Ashfang', commander_names($resaved)[$match['host']['seat']], 're-saving your own name is allowed');
         },
 
+        'invisible format characters cannot disguise a taken name' => static function (): void {
+            $match = vanilla_service_match();
+            vanilla_submit($match, 'host', 'setCommanderName', ['name' => 'Ash']);
+
+            expect_game_error('nameTaken', static fn() => vanilla_submit($match, 'rival', 'setCommanderName', ['name' => "A\u{200B}sh\u{202E}"]));
+            $named = vanilla_submit($match, 'rival', 'setCommanderName', ['name' => "Iron\u{2066} Vow\u{FEFF}"]);
+
+            expect_same('Iron Vow', commander_names($named)[$match['rival']['seat']], 'format characters are stripped before storing');
+        },
+
         'names stay editable through the draft and lock when battle begins' => static function (): void {
             $match = vanilla_service_match();
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);

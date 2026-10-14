@@ -40,7 +40,9 @@
     private bool CanRename =>
         Projection.Viewer.CanCommand && Projection.LegalActions.Any(action => action.Kind == "setCommanderName");
 
-    private bool Unchanged => _draft.Trim() == (CurrentName ?? string.Empty);
+    // Mirrors the server's whitespace collapsing, so a respaced copy of the saved name is not a change.
+    private bool Unchanged =>
+        string.Join(' ', _draft.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)) == (CurrentName ?? string.Empty);
 
     // Optional so screens and tests without storage still work.
     private IKeyValueStore? Store => ServiceProvider.GetService(typeof(IKeyValueStore)) as IKeyValueStore;
