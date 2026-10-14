@@ -52,7 +52,7 @@
                     else
                     {
                         <div>
-                            <strong>Commander @seat.SeatIndex @ViewerLabel(seat)</strong>
+                            <strong>@(string.IsNullOrEmpty(seat.Name) ? $"Commander {seat.SeatIndex}" : seat.Name) @ViewerLabel(seat)</strong>
                             <span>@(seat.IsHost ? "Host" : "Player")</span>
                             @if (SeatNames.IsVoidLord(Projection, seat.SeatId))
                             {

@@ -207,23 +207,7 @@ public static class CombatLogFormatter
         };
     }
 
-    private static string Seat(GameProjection projection, string seatId)
-    {
-        if (projection.Mode == GameMode.Coop)
-        {
-            return SeatNames.Coop(projection, seatId);
-        }
-        if (seatId == projection.Viewer.SeatId)
-        {
-            return "You";
-        }
-        if (projection.Viewer.Role == "player")
-        {
-            return "Rival";
-        }
-        var seat = projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
-        return seat is null ? "A commander" : $"Commander {seat.SeatIndex}";
-    }
+    private static string Seat(GameProjection projection, string seatId) => SeatNames.Display(projection, seatId);
 
 
     private static string Pushed(GameProjection projection, JsonElement payload)

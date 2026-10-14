@@ -795,6 +795,25 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("push-path", cut.Find("[data-hex='3,4']").ClassList);
         Assert.Contains("push-path", cut.Find("[data-hex='4,4']").ClassList);
     }
+    [Fact]
+    public void The_turn_banner_names_a_named_opponent()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Turn = new TurnProjection(2, "seat-blue", 3),
+            LegalActions = [],
+            Memberships =
+            [
+                new MembershipProjection("seat-red", 1, true, true),
+                new MembershipProjection("seat-blue", 2, true, false) { Name = "Lord Ashfang" },
+            ],
+        };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("Lord Ashfang's turn", cut.Find("[data-testid=turn-status]").TextContent);
+        Assert.Contains("Lord Ashfang's army", cut.Markup);
+    }
 }
 
 internal static class BattleFixtures

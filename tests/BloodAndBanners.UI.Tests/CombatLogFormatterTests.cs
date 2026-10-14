@@ -150,4 +150,20 @@ public sealed class CombatLogFormatterTests
         Assert.Equal("The heroes have destroyed every monster.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"monstersDefeated","winningSeatId":null,"winningSide":"heroes"}"""), projection));
         Assert.Equal("The Void Lord has slain every hero.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"heroesDefeated","winningSeatId":"seat-void","winningSide":"void"}"""), projection));
     }
+    [Fact]
+    public void Turn_lines_use_the_chosen_name()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Memberships =
+            [
+                new MembershipProjection("seat-red", 1, true, true),
+                new MembershipProjection("seat-blue", 2, true, false) { Name = "Lord Ashfang" },
+            ],
+        };
+
+        Assert.Equal(
+            "Round 3: Lord Ashfang's turn.",
+            CombatLogFormatter.Describe(Event("turnEnded", """{"seatId":"seat-red","nextSeatId":"seat-blue","round":3}"""), projection));
+    }
 }

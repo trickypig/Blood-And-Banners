@@ -68,8 +68,25 @@ public sealed class WarRoomLobbyTests : BunitContext
     public void Seat_names_call_the_void_lord_by_role()
     {
         var projection = CoopLobby("seat-1", true, "seat-2");
-        Assert.Equal("You", SeatNames.Coop(projection, "seat-1"));
-        Assert.Equal("Void Lord", SeatNames.Coop(projection, "seat-2"));
+        Assert.Equal("You", SeatNames.Display(projection, "seat-1"));
+        Assert.Equal("Void Lord", SeatNames.Display(projection, "seat-2"));
         Assert.True(SeatNames.IsVoidLord(projection, "seat-2"));
+    }
+    [Fact]
+    public void Named_seats_show_their_name_in_the_muster()
+    {
+        var projection = CoopLobby("seat-1", true, null) with
+        {
+            Memberships =
+            [
+                new MembershipProjection("seat-1", 1, true, true) { Name = "Seris" },
+                new MembershipProjection("seat-2", 2, true, false),
+            ],
+        };
+
+        var cut = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, projection));
+
+        Assert.Contains("Seris (You)", cut.Find("li[data-seat='1'] strong").TextContent);
+        Assert.Contains("Commander 2", cut.Find("li[data-seat='2'] strong").TextContent);
     }
 }

@@ -100,6 +100,41 @@ public sealed class DraftTableTests : BunitContext
 
         Assert.Contains("Shield Wall", cut.Find("button[data-hero='Thorgrim Shattershield'] li[data-ability='Shield Wall']").TextContent);
     }
+    [Fact]
+    public void Chosen_names_appear_in_claims_and_initiative()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red") with
+        {
+            Memberships =
+            [
+                new MembershipProjection("seat-red", 1, true, true),
+                new MembershipProjection("seat-blue", 2, true, false) { Name = "Lord Ashfang" },
+            ],
+        };
+
+        var cut = Render<DraftTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("Claimed by Lord Ashfang", cut.Find("button[data-hero='Malachar the Voidcaller']").TextContent);
+        Assert.Contains("Lord Ashfang rolled 4", cut.Find("[data-testid=initiative]").TextContent);
+    }
+
+    [Fact]
+    public void Names_with_markup_render_as_plain_text()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red") with
+        {
+            Memberships =
+            [
+                new MembershipProjection("seat-red", 1, true, true),
+                new MembershipProjection("seat-blue", 2, true, false) { Name = "<b>Ash</b>" },
+            ],
+        };
+
+        var cut = Render<DraftTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("Claimed by <b>Ash</b>", cut.Find("button[data-hero='Malachar the Voidcaller']").TextContent);
+        Assert.Empty(cut.FindAll(".taken-by b"));
+    }
 }
 
 internal static class DraftFixtures

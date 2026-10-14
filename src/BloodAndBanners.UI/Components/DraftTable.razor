@@ -190,23 +190,7 @@
         }
     }
 
-    private string SeatName(string seatId)
-    {
-        if (IsCoop)
-        {
-            return SeatNames.Coop(Projection, seatId);
-        }
-        if (seatId == ViewerSeat)
-        {
-            return "You";
-        }
-        if (Projection.Viewer.Role == "player")
-        {
-            return "Rival";
-        }
-        var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
-        return seat is null ? "Commander" : $"Commander {seat.SeatIndex}";
-    }
+    private string SeatName(string seatId) => SeatNames.Display(Projection, seatId);
 
     private string ClaimText(string seatId) => seatId == ViewerSeat ? "Yours" : $"Claimed by {SeatName(seatId)}";
 

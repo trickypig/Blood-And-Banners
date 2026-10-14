@@ -608,12 +608,15 @@
             }
             if (IsCoop)
             {
-                var actor = SeatNames.Coop(Projection, Projection.Turn.ActiveSeatId);
+                var actor = SeatNames.Display(Projection, Projection.Turn.ActiveSeatId);
                 return Projection.Turn.RespondingToSeatId is { } answering
-                    ? $"{round} · {actor}'s turn — answering {SeatNames.Coop(Projection, answering)}"
+                    ? $"{round} · {actor}'s turn — answering {SeatNames.Display(Projection, answering)}"
                     : $"{round} · {actor}'s turn";
             }
-            return Projection.Viewer.CanCommand ? $"{round} · Opponent's turn" : $"{round} · {SeatName(Projection.Turn.ActiveSeatId)}'s turn";
+            var opponent = Projection.Memberships.FirstOrDefault(member => member.SeatId == Projection.Turn.ActiveSeatId)?.Name;
+            return Projection.Viewer.CanCommand
+                ? $"{round} · {(string.IsNullOrEmpty(opponent) ? "Opponent" : opponent)}'s turn"
+                : $"{round} · {SeatName(Projection.Turn.ActiveSeatId)}'s turn";
         }
     }
 
@@ -1186,31 +1189,16 @@
         return seat is null ? null : $"seat-{seat.SeatIndex}";
     }
 
-    private string SeatName(string seatId)
-    {
-        if (IsCoop)
-        {
-            return SeatNames.Coop(Projection, seatId);
-        }
-        if (seatId == Projection.Viewer.SeatId)
-        {
-            return "You";
-        }
-        if (Projection.Viewer.Role == "player")
-        {
-            return "Rival";
-        }
-        var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
-        return seat is null ? "Commander" : $"Commander {seat.SeatIndex}";
-    }
+    private string SeatName(string seatId) => SeatNames.Display(Projection, seatId);
 
     private string RosterTitle(MembershipProjection seat) =>
         IsCoop
             ? seat.SeatId == Projection.Viewer.SeatId ? "Your army"
                 : SeatNames.IsVoidLord(Projection, seat.SeatId) ? "Void Lord's horde"
-                : $"{SeatNames.Coop(Projection, seat.SeatId)}'s army"
+                : $"{SeatNames.Display(Projection, seat.SeatId)}'s army"
         : seat.SeatId == Projection.Viewer.SeatId
             ? "Your army"
+            : !string.IsNullOrEmpty(seat.Name) ? $"{seat.Name}'s army"
             : Projection.Viewer.Role == "player" ? "Rival army" : $"Commander {seat.SeatIndex}";
 
     private string ResultTitle(GameResult result) =>
