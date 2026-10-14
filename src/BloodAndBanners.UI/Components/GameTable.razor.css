@@ -162,3 +162,6 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .hex.destination .hex-outline { fill: rgba(120, 170, 255, .3); stroke: #7aa8ff; stroke-width: 3; }
 .hex.push-path .hex-outline { fill: rgba(156, 195, 223, .25); stroke: #9cc3df; stroke-dasharray: 4 3; stroke-width: 2.5; }
 .push-mark { fill: #e8f2fa; font: 700 20px Georgia, serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
+
+.hex.spawn-zone .hex-outline { stroke: #b48cff; stroke-width: 2; stroke-dasharray: 4 3; }
+.hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }

@@ -242,6 +242,19 @@
             <p class="rail-error" role="alert">@ErrorMessage</p>
         }
 
+        @if (InSetup)
+        {
+            <VoidLordSetup Setup="Projection.Setup!"
+                           IsVoidLord="SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId)"
+                           SelectedMonster="@_selectedMonster"
+                           CanConfirm='Projection.LegalActions.Any(action => action.Kind == "confirmSetup")'
+                           IsBusy="IsBusy"
+                           ImageBaseUrl="@ImageBaseUrl"
+                           MonstersPlaced="Projection.Units.Count"
+                           OnSelectMonster="SelectMonster"
+                           OnConfirm='() => Send("confirmSetup", new { })' />
+        }
+
         @if (Projection.PendingChoice is { Kind: "moonlightGlare" } glare && glare.SeatId == Projection.Viewer.SeatId)
         {
             <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title" data-testid="glare-prompt">
@@ -558,10 +571,24 @@
     private IReadOnlyList<string> FocusHexes =>
         Events.Reverse().FirstOrDefault(gameEvent => gameEvent.FocusHexes.Count > 0)?.FocusHexes ?? [];
 
+    private string? _selectedMonster;
+
+    private bool InSetup => Projection.Lifecycle == GameLifecycle.Setup && Projection.Setup is not null;
+
+    private IReadOnlyList<string> PlaceableHexes => !InSetup || _selectedMonster is null
+        ? []
+        : Projection.LegalActions.Where(action => action.Kind == "placeMonster").SelectMany(action => action.TargetHexes).ToList();
+
+    private void SelectMonster(string name) => _selectedMonster = _selectedMonster == name ? null : name;
+
     private string TurnStatus
     {
         get
         {
+            if (InSetup)
+            {
+                return "Setup · The Void Lord summons the horde";
+            }
             var round = $"Round {Projection.Turn.Round}";
             if (Projection.Result is not null)
             {
@@ -601,6 +628,19 @@
             return;
         }
         var key = HexKey(hex);
+        if (InSetup)
+        {
+            var removal = Projection.LegalActions.FirstOrDefault(action => action.Kind == "removeMonster" && action.TargetHexes.Contains(key));
+            if (removal is not null)
+            {
+                await Send("removeMonster", new { unitId = removal.UnitId });
+            }
+            else if (_selectedMonster is { } monster && PlaceableHexes.Contains(key))
+            {
+                await Send("placeMonster", new { monster, hex = key });
+            }
+            return;
+        }
         if (Projection.PendingChoice is { Kind: "iceCollision" } ice)
         {
             if (_swingChoice && ice.TargetHexes.Contains(key) && ice.Options.Contains($"swing:{key}"))
@@ -867,6 +907,14 @@
         if (HazardAt(key)?.Forced == true)
         {
             classes.Add("forced-slide");
+        }
+        if (InSetup && Projection.Setup!.SpawnZoneHexes.Contains(key))
+        {
+            classes.Add("spawn-zone");
+        }
+        if (PlaceableHexes.Contains(key))
+        {
+            classes.Add("placeable");
         }
         return classes.Count == 0 ? null : string.Join(' ', classes);
     }

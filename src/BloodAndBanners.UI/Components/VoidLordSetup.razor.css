@@ -1,0 +1,8 @@
+.void-setup { display: grid; gap: .5rem; }
+.void-setup meter { width: 100%; }
+.void-setup__roster { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.void-setup__roster button { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: .1rem .5rem; text-align: left; font: inherit; }
+.void-setup__roster button[aria-pressed="true"] { outline: 2px solid #b48cff; }
+.void-setup__roster img { grid-row: span 3; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.tier--boss { color: #ff9a6b; }
+.tier--elite { color: #9cc3df; }
