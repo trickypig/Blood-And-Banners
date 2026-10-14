@@ -11,6 +11,37 @@ public sealed partial class GameTableTests : BunitContext
 {
     public GameTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
+    [Theory]
+    [InlineData("seat-red", "s1-u3", "s2-u1")]
+    [InlineData("seat-blue", "s2-u1", "s1-u3")]
+    public void The_viewers_army_is_displayed_before_the_opponents(string seatId, string ownUnit, string rivalUnit)
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Viewer = new ViewerPermissions("player", seatId, true, true),
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        var rosters = cut.FindAll(".roster");
+        Assert.Equal("Your army", rosters[0].QuerySelector("h2")!.TextContent);
+        Assert.NotNull(rosters[0].QuerySelector($"[data-roster-unit='{ownUnit}']"));
+        Assert.NotNull(rosters[1].QuerySelector($"[data-roster-unit='{rivalUnit}']"));
+    }
+
+    [Fact]
+    public void Spectators_see_armies_in_membership_order()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Viewer = new ViewerPermissions("spectator", null, false, false),
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        var rosters = cut.FindAll(".roster");
+        Assert.NotNull(rosters[0].QuerySelector("[data-roster-unit='s1-u3']"));
+        Assert.NotNull(rosters[1].QuerySelector("[data-roster-unit='s2-u1']"));
+    }
+
     [Fact]
     public void Selecting_a_unit_highlights_its_legal_moves_and_attacks_and_sends_them()
     {

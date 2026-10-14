@@ -392,7 +392,7 @@
         }
 
         <section class="rosters" aria-label="Armies">
-            @foreach (var seat in Projection.Memberships)
+            @foreach (var seat in Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId))
             {
                 <div class="roster @SeatClass(seat.SeatId)">
                     <h2>@RosterTitle(seat)</h2>
