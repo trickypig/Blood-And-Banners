@@ -29,7 +29,7 @@ if (!is_file($homeSource) || !is_dir($scenarioDirectory)) {
 }
 
 /** @return array<string, mixed> */
-function scenario_hex(int $q, int $r, string $biome, string $terrain, int $elevation = 0, ?int $playerStart = null, bool $sightBlocker = false, ?string $object = null): array
+function scenario_hex(int $q, int $r, string $biome, string $terrain, int $elevation = 0, ?int $playerStart = null, bool $sightBlocker = false, ?string $object = null, ?string $spawnZone = null): array
 {
     return [
         'q' => $q,
@@ -39,7 +39,7 @@ function scenario_hex(int $q, int $r, string $biome, string $terrain, int $eleva
         'elevation' => $elevation,
         'playerStart' => $playerStart,
         'portal' => $playerStart !== null,
-        'spawnZone' => null,
+        'spawnZone' => $spawnZone,
         'piece' => null,
         'object' => $object,
         'fountain' => false,
@@ -48,7 +48,7 @@ function scenario_hex(int $q, int $r, string $biome, string $terrain, int $eleva
 }
 
 /** @return array<string, mixed> */
-function scenario_hex_from_offset(int $column, int $row, string $biome, string $terrain, int $elevation = 0, ?int $playerStart = null, bool $sightBlocker = false, ?string $object = null): array
+function scenario_hex_from_offset(int $column, int $row, string $biome, string $terrain, int $elevation = 0, ?int $playerStart = null, bool $sightBlocker = false, ?string $object = null, ?string $spawnZone = null): array
 {
     $coordinates = AxialCoordinates::fromOddColumnOffset($column, $row);
     return scenario_hex(
@@ -59,7 +59,8 @@ function scenario_hex_from_offset(int $column, int $row, string $biome, string $
         $elevation,
         $playerStart,
         $sightBlocker,
-        $object
+        $object,
+        $spawnZone
     );
 }
 
@@ -198,6 +199,77 @@ foreach ($homeMap['map']['hexes'] as &$hex) {
 }
 unset($hex);
 
+$voidReachesHexes = [];
+for ($row = 0; $row < 25; $row++) {
+    for ($column = 0; $column < 25; $column++) {
+        $biome = 'plains';
+        $terrain = 'grass';
+        $elevation = 0;
+        $sightBlocker = false;
+        $spawn = false;
+
+        if ($row <= 8) {
+            if ($column === 8 || $column === 16) {
+                if ($row === 3 || $row === 7) {
+                    [$biome, $terrain, $elevation] = ['stone', 'stone-path', 1];
+                } else {
+                    [$biome, $terrain, $elevation, $sightBlocker] = ['stone', 'crags', 3, true];
+                }
+            } elseif ($column <= 7) {
+                $lake = $column >= 2 && $column <= 4 && $row >= 3 && $row <= 5;
+                [$biome, $terrain] = ['ice', $lake ? 'ice' : 'snow'];
+                $spawn = !$lake && $column <= 6 && $row <= 4;
+            } elseif ($column <= 15) {
+                $pit = in_array($column, [10, 11, 13, 14], true) && ($row === 6 || $row === 7);
+                [$biome, $terrain, $elevation] = ['darkness', $pit ? 'poison-pits' : 'darkness', $row <= 4 ? 2 : 1];
+                $spawn = !$pit && $row <= 5;
+            } else {
+                $lava = ($column === 20 && $row <= 3) || (($column === 18 || $column === 19) && $row === 5);
+                [$biome, $terrain] = ['lava', $lava ? 'lava' : 'basalt'];
+                $spawn = !$lava && $row <= 3;
+            }
+        } elseif ($row === 11 || $row === 12) {
+            if ($column === 12) {
+                [$biome, $terrain] = ['stone', 'stone-path'];
+            } elseif (in_array($column, [3, 8, 21], true)) {
+                [$biome, $terrain] = ['water', 'shallow-water'];
+            } else {
+                [$biome, $terrain, $elevation] = ['water', 'open-water', -1];
+            }
+        } elseif ($row >= 15) {
+            if ($column <= 7) {
+                $swamp = $column >= 2 && $column <= 4 && $row >= 18 && $row <= 20;
+                [$biome, $terrain] = ['jungle', $swamp ? 'swamp' : 'jungle'];
+                $spawn = $column <= 3 && $row >= 17;
+            } elseif ($column >= 17) {
+                [$biome, $terrain] = ['sand', $column % 2 === 0 ? 'desert' : 'dunes'];
+                $spawn = $column >= 21 && $row >= 17;
+            } elseif (($column === 9 || $column === 15) && $row === 17) {
+                [$biome, $terrain, $elevation, $sightBlocker] = ['stone', 'crags', 2, true];
+            } elseif ($column === 12 || $row === 20) {
+                $terrain = 'roads';
+            }
+        } elseif ($row >= 13 && $column === 12) {
+            $terrain = 'roads';
+        }
+
+        $start = $column === 12 && $row === 22 ? 1 : null;
+        $voidReachesHexes[] = scenario_hex_from_offset($column, $row, $biome, $terrain, $elevation, $start, $sightBlocker, null, $spawn ? 'void' : null);
+    }
+}
+
+$voidReaches = [
+    'schemaVersion' => 1,
+    'name' => 'Void Reaches',
+    'modeCompatibility' => ['coop'],
+    'map' => ['columns' => 25, 'rows' => 25, 'hexes' => $voidReachesHexes],
+    'placements' => [],
+    'objectives' => [['kind' => 'defeatAllMonsters']],
+    'scoring' => ['target' => 10, 'enemyHero' => 3, 'boss' => 2, 'terrainObject' => 1, 'completeObjectSetBonus' => 2],
+    'coop' => ['basePoints' => 4, 'pointsPerHeroPlayer' => 8],
+];
+
 write_scenario($scenarioDirectory . DIRECTORY_SEPARATOR . 'four-corners.json', $fourCorners);
 write_scenario($scenarioDirectory . DIRECTORY_SEPARATOR . 'home-map.json', $homeMap);
 write_scenario($scenarioDirectory . DIRECTORY_SEPARATOR . 'proving-field.json', $provingField);
+write_scenario($scenarioDirectory . DIRECTORY_SEPARATOR . 'void-reaches.json', $voidReaches);

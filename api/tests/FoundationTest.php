@@ -124,7 +124,7 @@ function foundation_tests(): array
         'commands are idempotent and stale versions do not mutate the game' => static function (): void {
             [$db, $auth, $games] = test_services_with_games();
             $host = $auth->createGuest('host-device');
-            $created = $games->createGame($host['identityId'], 'coop', 'Portal Watch');
+            $created = $games->createGame($host['identityId'], 'coop', 'Void Reaches');
 
             $command = [
                 'commandId' => '018f2ec5-bf4c-7000-8000-000000000021',
@@ -258,7 +258,7 @@ function foundation_tests(): array
         'guest conversion preserves game membership and enables account login' => static function (): void {
             [$db, $auth, $games] = test_services_with_games();
             $guest = $auth->createGuest('convert-device');
-            $game = $games->createGame($guest['identityId'], 'coop', 'Portal Watch');
+            $game = $games->createGame($guest['identityId'], 'coop', 'Void Reaches');
 
             $account = $auth->convertGuest(
                 $guest['identityId'],
@@ -338,7 +338,7 @@ function foundation_tests(): array
 
             foreach ([
                 ['Missing Battlefield', 'scenarioNotFound'],
-                ['Portal Watch', 'scenarioModeIncompatible'],
+                ['Void Reaches', 'scenarioModeIncompatible'],
             ] as [$scenarioName, $expectedCode]) {
                 try {
                     $games->createGame($host['identityId'], 'vanillaPvp', $scenarioName);

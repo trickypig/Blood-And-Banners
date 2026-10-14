@@ -88,7 +88,7 @@ function vanilla_match_service_tests(): array
         },
 
         'only vanilla duels on a large enough map can start' => static function (): void {
-            $coop = vanilla_service_match('Portal Watch', 'coop');
+            $coop = vanilla_service_match('Void Reaches', 'coop');
             expect_game_error('modeNotPlayable', static fn() => $coop['games']->startGame($coop['gameId'], $coop['host']['identity'], $coop['host']['token']));
             expect_same('lobby', $coop['games']->getGame($coop['gameId'], $coop['host']['identity'])['lifecycle'], 'a refused start leaves the lobby intact');
 
