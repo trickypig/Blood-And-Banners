@@ -445,6 +445,23 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Hovering_a_destination_keeps_every_hex_handler_bound()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+        cut.Find("[data-hex='0,0']").Click();
+        string[] Handlers() => cut.FindAll("[data-hex]")
+            .SelectMany(hex => hex.Attributes.Where(attribute => attribute.Name.StartsWith("blazor:on", StringComparison.Ordinal)))
+            .Select(attribute => $"{attribute.Name}={attribute.Value}")
+            .ToArray();
+        var before = Handlers();
+
+        cut.Find("[data-hex='3,0']").MouseEnter();
+
+        Assert.NotEmpty(before);
+        Assert.Equal(before, Handlers());
+    }
+
+    [Fact]
     public void Safe_movement_sends_the_projected_path_immediately()
     {
         var sent = new List<GameCommandRequest>();
