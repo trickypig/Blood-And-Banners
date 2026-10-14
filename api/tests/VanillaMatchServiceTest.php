@@ -135,11 +135,11 @@ function vanilla_match_service_tests(): array
             expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
                 ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn',
-                    'abilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
+                    'abilities', 'side', 'tier', 'inactiveAbilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
                 array_keys($projection['units'][0]),
                 'unit projections match the shared contract'
             );
-            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null], $projection['turn'], 'the host opens round one');
+            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null, 'respondingToSeatId' => null], $projection['turn'], 'the host opens round one');
             $captain = array_values(array_filter($projection['units'], static fn(array $unit): bool => $unit['name'] === 'Test Captain'))[0];
             expect_same(
                 [['name' => 'Shield Wall', 'type' => 'Ability', 'description' => 'Grant one adjacent unit +1 Defense until the start of your next turn', 'playable' => true, 'usedThisTurn' => false]],

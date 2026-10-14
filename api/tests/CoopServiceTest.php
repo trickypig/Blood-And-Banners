@@ -77,5 +77,45 @@ function coop_service_tests(): array
             vanilla_submit($solo, 'host', 'setReady', ['ready' => true]);
             expect_game_error('playersNotReady', static fn() => $solo['games']->startGame($solo['gameId'], $solo['host']['identity'], $solo['host']['token']));
         },
+
+        'a scripted co-op match runs from setup through draft to a hero victory' => static function (): void {
+            $match = coop_service_match(1);
+            vanilla_submit($match, 'host', 'claimVoidLord', []);
+            coop_ready_all($match);
+            $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            expect_same(12, $started['setup']['budget'], 'one hero player: 4 + 8');
+            expect_same(['Test Wolf', 'Test Golem', 'Test Wyrm'], array_column($started['setup']['roster'], 'name'), 'the roster lists visible monsters');
+            expect_same([1, 2, 4], array_column($started['setup']['roster'], 'cost'), 'tier costs are projected');
+            expect_true(count($started['setup']['spawnZoneHexes']) >= 100, 'spawn hexes are projected');
+            expect_same(['heroes', 'void'], array_keys((array)$started['sides']), 'both sides are projected');
+
+            $spawnHex = $started['setup']['spawnZoneHexes'][0];
+            $placed = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => $spawnHex]);
+            $wolf = array_values(array_filter($placed['units'], static fn(array $unit): bool => $unit['unitId'] === 'v-m1'))[0];
+            expect_same(['void', 'common'], [$wolf['side'], $wolf['tier']], 'monster side and tier are projected');
+            expect_same('Pack Tactics', $wolf['inactiveAbilities'][0]['name'], 'printed monster abilities are projected');
+            expect_same(false, $wolf['inactiveAbilities'][0]['playable'], 'and marked not yet in play');
+
+            $drafting = vanilla_submit($match, 'host', 'confirmSetup', []);
+            expect_same('draft', $drafting['lifecycle'], 'the draft opens');
+            expect_same([$match['hero1']['seat'] => []], $drafting['draft']['heroesBySeat'], 'co-op draft lists heroes per seat');
+            vanilla_submit($match, 'hero1', 'pickHero', ['hero' => 'Test Captain']);
+            vanilla_submit($match, 'hero1', 'pickHero', ['hero' => 'Test Marshal']);
+            $active = vanilla_submit($match, 'hero1', 'pickArmy', ['army' => 'Red Company']);
+            expect_same('active', $active['lifecycle'], 'the battle begins');
+            expect_same($match['hero1']['seat'], $active['turn']['activeSeatId'], 'the hero player acts first');
+            expect_same(null, $active['turn']['respondingToSeatId'], 'nobody is being answered on a hero turn');
+
+            $voidTurn = vanilla_submit($match, 'hero1', 'endTurn', []);
+            expect_same($match['host']['seat'], $voidTurn['turn']['activeSeatId'], 'the void lord answers');
+            expect_same($match['hero1']['seat'], $voidTurn['turn']['respondingToSeatId'], 'the projection names who is being answered');
+        },
+
+        'duel projections gain winning side and keep their draft shape' => static function (): void {
+            $match = vanilla_service_match();
+            $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            expect_true(!array_key_exists('heroesBySeat', $started['draft']), 'duels keep the single-hero draft');
+            expect_same(null, $started['setup'], 'duels have no setup');
+        },
     ];
 }

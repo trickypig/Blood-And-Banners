@@ -11,6 +11,7 @@ use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Modes\CoopSetup;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
 use BloodAndBanners\Rules\Vanilla\UnitConditions;
@@ -601,17 +602,25 @@ final class GameService
             'scenarioName' => $game['scenario_name'],
             'viewer' => $viewer,
             'board' => $this->boardProjection($game, $state),
+            'sides' => $state === null ? null : (object)$state['sides'],
+            'setup' => $state !== null && ($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->setupProjection($state) : null,
             'turn' => [
                 'round' => $state['turn']['round'] ?? 0,
                 'activeSeatId' => $state['turn']['activeSeatId'] ?? null,
                 'activationsRemaining' => $state === null ? 0 : Turn::activationsRemaining($state),
                 'activeUnitId' => $state['turn']['activeUnitId'] ?? null,
+                'respondingToSeatId' => $state !== null && ($state['mode'] ?? null) === 'coop' && $state['phase'] === 'active' && $state['turn']['slot'] % 2 === 1
+                    ? $state['initiative']['order'][intdiv($state['turn']['slot'], 2)]
+                    : null,
             ],
             'pendingChoice' => $this->pendingChoiceProjection($state, $viewer['seatId']),
             'pendingChoiceSummary' => $this->pendingChoiceSummary($state),
             'legalActions' => $legalActions,
             'scores' => $scores,
-            'result' => ($state['result'] ?? null) === null ? null : $state['result'] + ['finalScores' => $scores],
+            'result' => ($state['result'] ?? null) === null ? null : $state['result'] + [
+                'winningSide' => $state['result']['winningSide'] ?? $state['result']['winningSeatId'],
+                'finalScores' => $scores,
+            ],
             'memberships' => array_map(static fn(array $seat): array => [
                 'seatId' => $seat['id'],
                 'seatIndex' => (int)$seat['seat_index'],
@@ -619,7 +628,7 @@ final class GameService
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
             ], $memberships),
-            'draft' => $state !== null && $state['phase'] === 'draft' ? $this->draftProjection($state) : null,
+            'draft' => $state !== null && $state['phase'] === 'draft' ? (($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->coopDraftProjection($state) : $this->draftProjection($state)) : null,
             'units' => $state === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($state, $unit), self::orderedUnits($state))),
         ];
     }
@@ -644,6 +653,12 @@ final class GameService
             'hex' => $unit['hex'],
             'activatedThisTurn' => in_array($id, $state['turn']['activated'], true),
             'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? []),
+            'side' => $unit['side'] ?? $unit['seatId'],
+            'tier' => $unit['tier'] ?? null,
+            'inactiveAbilities' => array_map(
+                static fn(array $card): array => array_merge($card, ['playable' => false]),
+                self::abilityCards($unit['inactiveAbilities'] ?? [])
+            ),
             'effects' => array_map(static fn(array $effect): array => [
                 'name' => $effect['name'],
                 'stat' => $effect['stat'],
@@ -721,10 +736,79 @@ final class GameService
     {
         $units = array_values($state['units']);
         usort($units, static function (array $a, array $b) use ($state): int {
-            return [array_search($a['seatId'], $state['seats'], true), $a['isHero'] ? 0 : 1, (int)substr((string)strrchr($a['unitId'], 'u'), 1)]
-                <=> [array_search($b['seatId'], $state['seats'], true), $b['isHero'] ? 0 : 1, (int)substr((string)strrchr($b['unitId'], 'u'), 1)];
+            return [array_search($a['seatId'], $state['seats'], true), $a['isHero'] ? 0 : 1, self::unitNumber($a['unitId'])]
+                <=> [array_search($b['seatId'], $state['seats'], true), $b['isHero'] ? 0 : 1, self::unitNumber($b['unitId'])];
         });
         return $units;
+    }
+
+    private static function unitNumber(string $unitId): int
+    {
+        return preg_match('/(\d+)$/', $unitId, $match) === 1 ? (int)$match[1] : 0;
+    }
+
+    private function setupProjection(array $state): array
+    {
+        $spawn = [];
+        foreach ($state['board'] as $key => $hex) {
+            if (($hex['spawnZone'] ?? null) === 'void') {
+                $spawn[] = (string)$key;
+            }
+        }
+        sort($spawn, SORT_STRING);
+        return [
+            'budget' => $state['setup']['budget'],
+            'spent' => $state['setup']['spent'],
+            'confirmed' => $state['setup']['confirmed'],
+            'spawnZoneHexes' => $spawn,
+            'roster' => array_map(static fn(array $monster): array => [
+                'name' => $monster['name'],
+                'biome' => $monster['biome'],
+                'tier' => $monster['tier'],
+                'cost' => CoopSetup::cost($monster),
+                'image' => $monster['image'],
+                'move' => $monster['move'],
+                'range' => $monster['range'],
+                'power' => $monster['power'],
+                'defense' => $monster['defense'],
+                'hp' => $monster['hp'],
+                'abilities' => self::abilityCards($monster['abilities']),
+            ], $this->engine->catalog()->monsters()),
+        ];
+    }
+
+    private function coopDraftProjection(array $state): array
+    {
+        $draft = $state['draft'];
+        $heroOwner = static function (string $name) use ($draft): ?string {
+            foreach ($draft['heroesBySeat'] as $seatId => $heroes) {
+                if (in_array($name, $heroes, true)) {
+                    return (string)$seatId;
+                }
+            }
+            return null;
+        };
+        $catalog = $this->engine->catalog();
+        return [
+            'initiativeRolls' => $state['initiative']['rolls'],
+            'pickingSeatId' => $draft['pickingSeatId'],
+            'firstSeatId' => null,
+            'startBySeat' => (object)[],
+            'heroBySeat' => (object)[],
+            'armyBySeat' => $draft['armyBySeat'],
+            'heroesBySeat' => $draft['heroesBySeat'],
+            'availableHeroes' => array_map(
+                static fn(array $hero): array => ['abilities' => self::abilityCards($hero['abilities'])] + $hero + ['takenBySeatId' => $heroOwner($hero['name'])],
+                $catalog->heroes()
+            ),
+            'availableArmies' => array_map(
+                static fn(array $army): array => ['units' => array_map(
+                    static fn(array $unit): array => ['abilities' => self::abilityCards($unit['abilities'])] + $unit,
+                    $army['units']
+                )] + $army + ['takenBySeatId' => ($seat = array_search($army['name'], $draft['armyBySeat'], true)) === false ? null : (string)$seat],
+                $catalog->armies()
+            ),
+        ];
     }
 
     private function draftProjection(array $state): array
