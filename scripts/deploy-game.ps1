@@ -161,17 +161,21 @@ try {
     $activateCommand = "sh '$($layout.Stage)/activate-game-release.sh' activate '$($layout.Root)' '$releaseId'"
     Assert-CommandSuccess (Invoke-Wsl (@('ssh') + $sshOptions + @($remote, $activateCommand))) 'Release activation'
 
-    $healthUrls = @(
+    $staticHealthUrls = @(
         'https://blood.trickypig.com/play/',
         'https://blood.trickypig.com/play/service-worker.js',
-        'https://blood.trickypig.com/play/smoke/deep-link',
-        'https://blood.trickypig.com/play/api/v1/compatibility'
+        'https://blood.trickypig.com/play/smoke/deep-link'
     )
     try {
-        foreach ($url in $healthUrls) {
+        foreach ($url in $staticHealthUrls) {
             & curl.exe --fail-with-body --silent --show-error --output NUL $url
             if ($LASTEXITCODE -ne 0) { throw "HTTPS verification failed for $url" }
         }
+
+        $compatibilityUrl = 'https://blood.trickypig.com/play/api/v1/compatibility'
+        $compatibilityJson = & curl.exe --fail-with-body --silent --show-error $compatibilityUrl
+        if ($LASTEXITCODE -ne 0) { throw "HTTPS verification failed for $compatibilityUrl" }
+        Assert-CompatibilityPayload ($compatibilityJson -join "`n") | Out-Null
     }
     catch {
         $rollbackCommand = "sh '$($layout.Stage)/activate-game-release.sh' rollback '$($layout.Root)' '$releaseId'"

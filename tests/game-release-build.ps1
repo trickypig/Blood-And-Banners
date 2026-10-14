@@ -81,7 +81,7 @@ try {
     $htaccess = Get-Content -Raw -LiteralPath $htaccessPath
     foreach ($requiredRule in @(
         'Options -Indexes',
-        'AddHandler x-mapp-php8.4 .php',
+        'RewriteBase /play/',
         'LimitRequestBody 1048576',
         'Cache-Control "no-cache"',
         'Cache-Control "public, max-age=31536000, immutable"'
@@ -91,10 +91,14 @@ try {
         }
     }
 
-    $apiRewrite = $htaccess.IndexOf('RewriteRule ^api(?:/|$) api/index.php')
+    if ($htaccess -match '(?im)^\s*AddHandler\b') {
+        throw 'Apache rules override the PHP handler managed by IONOS'
+    }
+
+    $apiRewrite = $htaccess.IndexOf('RewriteRule ^api(?:/|$) /play/api/index.php')
     $fileExclusion = $htaccess.IndexOf('RewriteCond %{REQUEST_FILENAME} -f')
     $directoryExclusion = $htaccess.IndexOf('RewriteCond %{REQUEST_FILENAME} -d')
-    $spaFallback = $htaccess.IndexOf('RewriteRule ^ index.html')
+    $spaFallback = $htaccess.IndexOf('RewriteRule ^ /play/index.html')
     if ($apiRewrite -lt 0 -or $fileExclusion -lt 0 -or $directoryExclusion -lt 0 -or $spaFallback -lt 0) {
         throw 'Apache rewrite rules are incomplete'
     }

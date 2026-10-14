@@ -1,15 +1,15 @@
 Options -Indexes
-AddHandler x-mapp-php8.4 .php
 LimitRequestBody 1048576
 
 RewriteEngine On
-RewriteRule ^api(?:/|$) api/index.php [END,QSA]
+RewriteBase /play/
+RewriteRule ^api(?:/|$) /play/api/index.php [END,QSA]
 
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [END]
 
-RewriteRule ^ index.html [END]
+RewriteRule ^ /play/index.html [END]
 
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"

@@ -64,4 +64,35 @@ function New-GameRemoteLayout {
     }
 }
 
-Export-ModuleMember -Function Get-LegacyRsyncProtection, Assert-SafeDeploymentPath, New-GameRemoteLayout
+function Assert-CompatibilityPayload {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Json
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Json)) {
+        throw 'Compatibility endpoint returned an empty response.'
+    }
+
+    try {
+        $payload = $Json | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw 'Compatibility endpoint did not return JSON.'
+    }
+
+    if (
+        ($null -eq $payload) -or
+        ($payload -is [array]) -or
+        (-not $payload.PSObject.Properties.Name.Contains('apiVersion')) -or
+        (-not $payload.PSObject.Properties.Name.Contains('minimumMauiVersion')) -or
+        (([string]$payload.apiVersion) -ne '1.0') -or
+        (([string]$payload.minimumMauiVersion) -ne '1.0')
+    ) {
+        throw 'Compatibility endpoint returned an unexpected contract.'
+    }
+
+    return $payload
+}
+
+Export-ModuleMember -Function Get-LegacyRsyncProtection, Assert-SafeDeploymentPath, New-GameRemoteLayout, Assert-CompatibilityPayload
