@@ -39,14 +39,14 @@ try {
         if (-not $rejected) { throw "invalid layout input was accepted: $($invalid -join ' ')" }
     }
 
-    $compatibility = Assert-CompatibilityPayload '{"apiVersion":"1.0","minimumMauiVersion":"1.0"}'
-    if ($compatibility.apiVersion -ne '1.0' -or $compatibility.minimumMauiVersion -ne '1.0') {
+    $compatibility = Assert-CompatibilityPayload '{"apiVersion":"1.0","minimumMauiVersion":"1.0.0"}'
+    if ($compatibility.apiVersion -ne '1.0' -or $compatibility.minimumMauiVersion -ne '1.0.0') {
         throw 'valid compatibility JSON was not returned intact'
     }
     foreach ($invalidPayload in @(
         '<?php declare(strict_types=1);',
         '<!doctype html><title>Not JSON</title>',
-        '{"apiVersion":"2.0","minimumMauiVersion":"1.0"}',
+        '{"apiVersion":"2.0","minimumMauiVersion":"1.0.0"}',
         '{"apiVersion":"1.0"}'
     )) {
         $rejected = $false

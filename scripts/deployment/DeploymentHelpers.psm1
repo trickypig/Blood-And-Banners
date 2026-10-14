@@ -87,7 +87,7 @@ function Assert-CompatibilityPayload {
         (-not $payload.PSObject.Properties.Name.Contains('apiVersion')) -or
         (-not $payload.PSObject.Properties.Name.Contains('minimumMauiVersion')) -or
         (([string]$payload.apiVersion) -ne '1.0') -or
-        (([string]$payload.minimumMauiVersion) -ne '1.0')
+        (([string]$payload.minimumMauiVersion) -ne '1.0.0')
     ) {
         throw 'Compatibility endpoint returned an unexpected contract.'
     }
