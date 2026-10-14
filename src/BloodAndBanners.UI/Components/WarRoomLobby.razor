@@ -16,7 +16,7 @@
 
     <section class="war-room__briefing" aria-labelledby="invite-heading">
         <div>
-            <h2 id="invite-heading">Call your rival</h2>
+            <h2 id="invite-heading">@(IsCoop ? "Gather your allies" : "Call your rival")</h2>
             <p>@(IsCoop ? "Send this link to up to four allies and the commander who will play the Void Lord. This room admits five players." : "Send this link to the second commander. This room admits two players.")</p>
         </div>
         <div class="invite-card">
@@ -102,7 +102,7 @@
         }
         else
         {
-            <p class="host-note">Waiting for the host to begin the draft.</p>
+            <p class="host-note">@(IsCoop ? "Waiting for the host to begin the incursion." : "Waiting for the host to begin the draft.")</p>
         }
 
         @if (!string.IsNullOrWhiteSpace(StatusMessage))

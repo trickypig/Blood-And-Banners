@@ -252,7 +252,10 @@ final class GameService
             }
         }
         if ($kind === 'claimVoidLord') {
-            if ($current !== null && $current !== (string)$membership['id']) {
+            if ($current === (string)$membership['id']) {
+                throw new GameServiceException('voidLordTaken', 'You are already the Void Lord.', $currentVersion);
+            }
+            if ($current !== null) {
                 throw new GameServiceException('voidLordTaken', 'Another commander is already the Void Lord.', $currentVersion);
             }
             $target = (string)$membership['id'];

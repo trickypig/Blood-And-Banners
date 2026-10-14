@@ -22,16 +22,6 @@ final class Sides
         return (string)($unit['side'] ?? $unit['seatId']);
     }
 
-    public static function ofSeat(array $state, string $seatId): string
-    {
-        foreach ($state['sides'] ?? [] as $sideId => $side) {
-            if (in_array($seatId, $side['seatIds'], true)) {
-                return (string)$sideId;
-            }
-        }
-        return $seatId;
-    }
-
     public static function enemies(array $state, string $unitId, string $otherId): bool
     {
         return self::ofUnit($state, $unitId) !== self::ofUnit($state, $otherId);

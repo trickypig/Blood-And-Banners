@@ -174,7 +174,7 @@
         ? "Your pick"
         : Draft.PickingSeatId is null
             ? "The armies are taking the field"
-            : Projection.Viewer.Role == "player"
+            : Projection.Viewer.Role == "player" && !IsCoop
                 ? "Waiting for the opposing commander"
                 : $"{SeatName(Draft.PickingSeatId)} is choosing";
 

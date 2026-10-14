@@ -43,6 +43,12 @@ function coop_service_tests(): array
             expect_same('player', $roles[$match['hero1']['seat']], 'others are hero players');
             expect_same([false, false], array_column($claimed['memberships'], 'ready'), 'claiming clears readiness');
             expect_game_error('voidLordTaken', static fn() => vanilla_submit($match, 'hero1', 'claimVoidLord', []));
+            vanilla_submit($match, 'hero1', 'setReady', ['ready' => true]);
+            expect_game_error('voidLordTaken', static fn() => vanilla_submit($match, 'host', 'claimVoidLord', []));
+            $after = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same(['voidLord', 'player'], array_column($after['memberships'], 'role'), 'roles are untouched');
+            expect_same([false, true], array_column($after['memberships'], 'ready'), 'readiness is untouched by a repeat claim');
+            vanilla_submit($match, 'hero1', 'setReady', ['ready' => false]);
             expect_game_error('notVoidLord', static fn() => vanilla_submit($match, 'hero1', 'releaseVoidLord', []));
             $released = vanilla_submit($match, 'host', 'releaseVoidLord', []);
             expect_same(['player', 'player'], array_column($released['memberships'], 'role'), 'releasing frees the role');
@@ -109,6 +115,31 @@ function coop_service_tests(): array
             $voidTurn = vanilla_submit($match, 'hero1', 'endTurn', []);
             expect_same($match['host']['seat'], $voidTurn['turn']['activeSeatId'], 'the void lord answers');
             expect_same($match['hero1']['seat'], $voidTurn['turn']['respondingToSeatId'], 'the projection names who is being answered');
+
+            vanilla_submit($match, 'host', 'endTurn', []);
+            $statement = $match['db']->prepare('SELECT state_json FROM game_states WHERE game_id = :game');
+            $statement->execute(['game' => $match['gameId']]);
+            $state = json_decode((string)$statement->fetchColumn(), true, flags: JSON_THROW_ON_ERROR);
+            $heroUnitId = array_values(array_filter(
+                $state['units'],
+                static fn(array $unit): bool => $unit['seatId'] === $match['hero1']['seat'] && $unit['hex'] !== null
+            ))[0]['unitId'];
+            $occupied = array_filter(array_column($state['units'], 'hex'));
+            $free = array_values(array_filter(
+                \BloodAndBanners\Rules\Vanilla\Hex::neighbors($state['units'][$heroUnitId]['hex'], $state['board']),
+                static fn(string $hex): bool => !in_array($hex, $occupied, true)
+            ));
+            $state['units']['v-m1'] = array_merge($state['units']['v-m1'], ['hex' => $free[0], 'hp' => 1, 'wounds' => 0, 'defense' => 0]);
+            $state['units'][$heroUnitId]['power'] = 6;
+            $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+
+            $won = vanilla_submit($match, 'hero1', 'attackUnit', ['unitId' => $heroUnitId, 'targetUnitId' => 'v-m1']);
+            expect_same('completed', $won['lifecycle'], 'the match ends');
+            expect_same('monstersDefeated', $won['result']['reason'], 'the last monster fell');
+            expect_same('heroes', $won['result']['winningSide'], 'the heroes win');
+            expect_same(null, $won['result']['winningSeatId'], 'no single seat wins a co-op match');
+            expect_true(in_array('matchCompleted', array_column($match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0)['events'], 'kind'), true), 'the completion is in the event log');
         },
 
         'duel projections gain winning side and keep their draft shape' => static function (): void {

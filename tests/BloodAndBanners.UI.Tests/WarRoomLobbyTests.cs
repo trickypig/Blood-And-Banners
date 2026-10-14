@@ -39,6 +39,17 @@ public sealed class WarRoomLobbyTests : BunitContext
     }
 
     [Fact]
+    public void Coop_lobby_uses_ally_wording()
+    {
+        var host = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null)));
+        Assert.Contains("Gather your allies", host.Markup);
+        Assert.DoesNotContain("Call your rival", host.Markup);
+
+        var guest = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-2", false, null)));
+        Assert.Contains("Waiting for the host to begin the incursion.", guest.Markup);
+    }
+
+    [Fact]
     public void The_void_lord_is_badged_and_the_host_can_reassign_the_role()
     {
         var sent = new List<GameCommandRequest>();
