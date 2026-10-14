@@ -18,6 +18,7 @@ final class BattleRules
 
     private const KINDS = ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
+        'heroesActivationRequired' => 'While your heroes live, only three other units may activate each turn.',
         'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',

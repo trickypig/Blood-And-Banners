@@ -74,3 +74,39 @@ function coop_draft_picks(): array
         ['hero-b', 'pickArmy', ['army' => 'Blue Company']],
     ];
 }
+
+/** An active co-op battle on a 9-hex line; hero seats a then b, void-lord the Void. */
+function coop_battle(array $units, string $active = 'hero-a', ?int $slot = null): array
+{
+    $state = [
+        'mode' => 'coop',
+        'phase' => 'active',
+        'seats' => ['hero-a', 'hero-b', 'void-lord'],
+        'voidLordSeatId' => 'void-lord',
+        'sides' => [
+            'heroes' => ['kind' => 'heroes', 'seatIds' => ['hero-a', 'hero-b']],
+            'void' => ['kind' => 'void', 'seatIds' => ['void-lord']],
+        ],
+        'board' => vanilla_board(vanilla_line(9)),
+        'initiative' => ['rolls' => ['hero-a' => [15], 'hero-b' => [5]], 'order' => ['hero-a', 'hero-b']],
+        'setup' => ['budget' => 20, 'spent' => 0, 'nextMonster' => 1, 'confirmed' => true],
+        'draft' => ['pickingSeatId' => null, 'pickIndex' => 0, 'firstSeatId' => null, 'heroesBySeat' => [], 'armyBySeat' => []],
+        'units' => [],
+        'effects' => [],
+        'conditions' => [],
+        'pending' => null,
+        'turn' => Turn::idle(),
+        'result' => null,
+    ];
+    foreach ($units as $unit) {
+        $unit['side'] ??= $unit['seatId'] === 'void-lord' ? 'void' : 'heroes';
+        $state['units'][$unit['unitId']] = $unit;
+    }
+    $state['turn'] = Turn::fresh($state, $active, 1, $slot);
+    return $state;
+}
+
+function coop_hero(string $unitId, string $seatId, ?string $hex, array $stats = []): array
+{
+    return vanilla_unit($unitId, $seatId, $hex, $stats + ['isHero' => true]);
+}

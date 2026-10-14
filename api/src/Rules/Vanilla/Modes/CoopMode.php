@@ -11,7 +11,9 @@ use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\Hex;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Placement;
+use BloodAndBanners\Rules\Vanilla\Sides;
 use BloodAndBanners\Rules\Vanilla\Turn;
+use BloodAndBanners\Rules\Vanilla\Wounds;
 use LogicException;
 
 /** One human Void Lord against 1–4 hero players who share a start. */
@@ -104,22 +106,43 @@ final class CoopMode implements ModeRules
 
     public function slotLive(array $state, int $slot): bool
     {
-        return true;
+        return Wounds::anyAlive($state, $state['initiative']['order'][intdiv($slot, 2)]);
     }
 
     public function allowance(array $state, string $seatId): int
     {
-        return 5;
+        $alive = count(array_filter(
+            $state['units'],
+            static fn(array $unit): bool => $unit['seatId'] === $seatId && $unit['hex'] !== null
+        ));
+        return min(5, $alive);
     }
 
     public function activationError(array $state, string $unitId): ?string
     {
-        return null;
+        $unit = $state['units'][$unitId];
+        if ($unit['seatId'] === $state['voidLordSeatId'] || $unit['isHero']) {
+            return null;
+        }
+        $fallen = count(array_filter(
+            $state['units'],
+            static fn(array $other): bool => $other['seatId'] === $unit['seatId'] && $other['isHero'] && $other['hex'] === null
+        ));
+        $others = count(array_filter($state['turn']['activated'], static fn(string $id): bool => !$state['units'][$id]['isHero']));
+        return $others >= 3 + $fallen ? 'heroesActivationRequired' : null;
     }
 
     public function victory(array $state): ?array
     {
-        return null;
+        if (!Sides::anyAlive($state, 'void')) {
+            return ['reason' => 'monstersDefeated', 'winningSeatId' => null, 'winningSide' => 'heroes'];
+        }
+        foreach ($state['units'] as $unitId => $unit) {
+            if ($unit['isHero'] && $unit['hex'] !== null && Sides::ofUnit($state, (string)$unitId) === 'heroes') {
+                return null;
+            }
+        }
+        return ['reason' => 'heroesDefeated', 'winningSeatId' => $state['voidLordSeatId'], 'winningSide' => 'void'];
     }
 
     /** The shared hero start, the spawn hex the heroes face, and every spawn hex. */
