@@ -32,7 +32,7 @@
         <ApplicationTitle>Blood &amp; Banners</ApplicationTitle>
 
         <!-- App Identifier -->
-        <ApplicationId>com.bloodandbanners.game</ApplicationId>
+        <ApplicationId>com.trickypig.bloodandbanners.game</ApplicationId>
 
         <!-- Versions -->
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>

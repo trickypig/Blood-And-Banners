@@ -78,6 +78,82 @@ Game creation and joining return a `{ game, seatToken }` session envelope. Playe
 
 The web client persists the session in origin-scoped browser storage so a refresh can reconnect. MAUI uses the platform secure-storage provider. If the 15-minute access token expires, the client rotates its refresh token, saves the new identity session, and retries reconnecting with the unchanged seat token. Host reassignment rotates the affected seat token immediately, invalidating the previous controller.
 
+## Deploy the Android MAUI app
+
+Run these PowerShell commands from the repository root. Install the .NET 10 SDK and MAUI Android tooling, including the Android SDK, platform tools, and supported JDK. The Visual Studio **.NET Multi-platform App UI development** workload provides these. Add `keytool` and `adb` to PATH, or use their full paths. The app requires Android 7.0 (API 24) or newer.
+
+### Run on a device or emulator
+
+Enable USB debugging and accept the debugging authorization on a physical device, or start an Android emulator. Check that `adb devices` lists the target, then deploy a debug build:
+
+```powershell
+dotnet workload install maui-android
+dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -f net10.0-android -t:Run
+```
+
+Use `-f net10.0-android` to select Android for the MAUI build. Do not pass a global `TargetFrameworks` override: it also affects the shared libraries, which target `net10.0`. Debug and Release both use the production API by default; change the URLs described below before testing against staging.
+
+### Build a standalone test APK
+
+For an APK you can copy to a phone without a debugger or release keystore, explicitly embed the .NET assemblies:
+
+```powershell
+dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj `
+  -t:Rebuild -f net10.0-android -c Debug `
+  -p:AndroidPackageFormats=apk `
+  -p:EmbedAssembliesIntoApk=true -p:AndroidEnableFastDeployment=false
+```
+
+Install `src/BloodAndBanners.Maui/bin/Debug/net10.0-android/com.trickypig.bloodandbanners.game-Signed.apk`. The SDK signs this with its debug key automatically. A Debug APK built for fast deployment can omit assemblies and close immediately when installed manually; the explicit embedding option above avoids that.
+
+If startup fails, reproduce the crash, then capture the Android crash buffer:
+
+```powershell
+adb logcat -b crash -d > android-crash.txt
+```
+
+For managed breakpoints, select the connected phone as the Android debug target in Visual Studio and press F5.
+
+
+### Publish a signed release
+
+The package ID is `com.trickypig.bloodandbanners.game`. Before each update, increase `ApplicationVersion` (currently `1`) in `BloodAndBanners.Maui.csproj` and set the user-visible `ApplicationDisplayVersion` (currently `1.0`). Keep the package ID and signing identity consistent for updates.
+
+Create a release keystore once, outside the repository. Replace these example paths with a private directory that already exists:
+
+```powershell
+keytool -genkeypair -v -keystore C:\AndroidSigning\blood-and-banners.keystore -alias blood-and-banners -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Back up the keystore and password securely. Save the password in `C:\AndroidSigning\password.txt`, restricting access to your account. Use the same key and store password for this example. Keep these files out of source control.
+
+Publish a signed APK for direct installation:
+
+```powershell
+dotnet publish src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj `
+  -f net10.0-android -c Release `
+  -p:AndroidPackageFormats=apk -p:AndroidKeyStore=true `
+  -p:AndroidSigningKeyStore=C:\AndroidSigning\blood-and-banners.keystore `
+  -p:AndroidSigningKeyAlias=blood-and-banners `
+  -p:AndroidSigningKeyPass=file:C:\AndroidSigning\password.txt `
+  -p:AndroidSigningStorePass=file:C:\AndroidSigning\password.txt
+```
+
+Find the signed APK in `src/BloodAndBanners.Maui/bin/Release/net10.0-android/publish/`. With one device connected, install it using its actual filename:
+
+```powershell
+adb install -r "src/BloodAndBanners.Maui/bin/Release/net10.0-android/publish/com.trickypig.bloodandbanners.game-Signed.apk"
+```
+
+A previously installed debug build uses a different signing key and cannot be upgraded with this release APK. Uninstall that debug build first if necessary; uninstalling removes its saved app data. Alternatively, transfer the signed APK to the device and allow installation from the app used to open it.
+
+For Google Play, rerun the publish command with `-p:AndroidPackageFormats=aab`. Upload the signed AAB from the same publish directory to a Play Console internal testing track, configure Play App Signing, and test before promoting the release. An AAB cannot be installed with `adb install`. See [Microsoft's Android publishing guide](https://learn.microsoft.com/en-us/dotnet/maui/android/deployment/publish-cli?view=net-maui-10.0) for signing and distribution details.
+
+After installation, load each battlefield, create or join a war room, check hero/unit artwork, and verify reconnect after restarting the app. Confirm a copied invite opens `https://blood.trickypig.com/play/?join=...`.
+
+The `quality-and-android` workflow in `codemagic.yaml` builds Release Android APK artifacts. It does not configure a private release keystore or upload to Google Play; use the signed publish procedure above for distribution.
+
+
 ## Verify
 
 ```powershell
@@ -117,4 +193,4 @@ Review the dry run before changing anything remotely. Before `-Push`, set only `
 
 The older static-site publisher remains separate: `scripts/deploy.ps1` publishes the root HTML, `data/`, and `images/` at <https://trickypig.com/blood/public/>. Its rsync rules protect `/play/`, including prune runs.
 
-The MAUI host currently targets `https://api.bloodandbanners.com/` in `MauiProgram.cs`; change that URI for staging or alternate production hosting. Never embed database or signing credentials in either client.
+The MAUI host uses `https://blood.trickypig.com/play/` as its HTTP base address in `src/BloodAndBanners.Maui/MauiProgram.cs`. The shared client appends `api/v1/...`, producing `https://blood.trickypig.com/play/api/v1/...`. Keep the trailing slash and do not append `/api/` to the base address. `Components/Pages/Home.razor` uses `https://blood.trickypig.com/play/` for public invite links and `https://blood.trickypig.com/` for artwork. For staging, update these URLs together to match that deployment. Never embed database or signing credentials in either client.

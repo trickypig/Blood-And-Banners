@@ -17,7 +17,7 @@ public static class MauiProgram
 		builder.Services.AddMauiBlazorWebView();
 		builder.Services.AddSingleton(new HttpClient
 		{
-			BaseAddress = new Uri("https://api.bloodandbanners.com/")
+			BaseAddress = new Uri("https://blood.trickypig.com/play/")
 		});
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IGameApiClient, BloodAndBanners.UI.Services.GameApiClient>();
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IKeyValueStore>(_ =>
