@@ -1,5 +1,6 @@
 @namespace BloodAndBanners.UI.Components
 @using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
 
 <main class="war-room">
     <header class="war-room__banner">
@@ -15,8 +16,8 @@
 
     <section class="war-room__briefing" aria-labelledby="invite-heading">
         <div>
-            <h2 id="invite-heading">Call your rival</h2>
-            <p>Send this link to the second commander. This room admits two players.</p>
+            <h2 id="invite-heading">@(IsCoop ? "Gather your allies" : "Call your rival")</h2>
+            <p>@(IsCoop ? "Send this link to up to four allies and the commander who will play the Void Lord. This room admits five players." : "Send this link to the second commander. This room admits two players.")</p>
         </div>
         <div class="invite-card">
             <span>Game code</span>
@@ -53,6 +54,15 @@
                         <div>
                             <strong>Commander @seat.SeatIndex @ViewerLabel(seat)</strong>
                             <span>@(seat.IsHost ? "Host" : "Player")</span>
+                            @if (SeatNames.IsVoidLord(Projection, seat.SeatId))
+                            {
+                                <span class="seat__role">Void Lord</span>
+                            }
+                            else if (IsCoop && Can("assignVoidLord"))
+                            {
+                                <button type="button" class="seat__assign" data-assign-seat="@seat.SeatId" disabled="@IsBusy"
+                                        @onclick='() => Send("assignVoidLord", new { seatId = seat.SeatId })'>Make Void Lord</button>
+                            }
                         </div>
                         <span class="seat__state @(seat.Ready ? "seat__state--ready" : null)">
                             @(seat.Ready ? "Ready" : "Not ready")
@@ -64,6 +74,14 @@
     </section>
 
     <footer class="war-room__orders">
+        @if (Can("claimVoidLord"))
+        {
+            <button type="button" class="role-order" data-action="claimVoidLord" disabled="@IsBusy" @onclick='() => Send("claimVoidLord", new { })'>Claim the Void Lord</button>
+        }
+        @if (Can("releaseVoidLord"))
+        {
+            <button type="button" class="role-order" data-action="releaseVoidLord" disabled="@IsBusy" @onclick='() => Send("releaseVoidLord", new { })'>Release the Void Lord</button>
+        }
         <button type="button"
                 class="ready-order"
                 data-action="toggle-ready"
@@ -79,12 +97,12 @@
                     data-action="start-game"
                     disabled="@(!CanStart || IsBusy)"
                     @onclick="OnStart">
-                Begin the draft
+                @(IsCoop ? "Begin the incursion" : "Begin the draft")
             </button>
         }
         else
         {
-            <p class="host-note">Waiting for the host to begin the draft.</p>
+            <p class="host-note">@(IsCoop ? "Waiting for the host to begin the incursion." : "Waiting for the host to begin the draft.")</p>
         }
 
         @if (!string.IsNullOrWhiteSpace(StatusMessage))
@@ -123,6 +141,9 @@
     [Parameter]
     public EventCallback OnCopyInvite { get; set; }
 
+    [Parameter]
+    public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
     private int SeatLimit => Projection.Mode == GameMode.VanillaPvp ? 2 : 5;
 
     private MembershipProjection? ViewerMembership =>
@@ -130,11 +151,34 @@
 
     private bool ViewerReady => ViewerMembership?.Ready ?? false;
 
-    private bool CanStart =>
-        Projection.Memberships.Count >= 2 && Projection.Memberships.All(seat => seat.Ready);
+    private bool IsCoop => Projection.Mode == GameMode.Coop;
 
-    private string ReadySummary =>
-        $"{Projection.Memberships.Count(seat => seat.Ready)} of {Projection.Memberships.Count} commanders ready";
+    private int VoidLordCount => Projection.Memberships.Count(seat => seat.Role == "voidLord");
+
+    private bool CanStart =>
+        Projection.Memberships.Count >= 2 && Projection.Memberships.All(seat => seat.Ready)
+        && (!IsCoop || (VoidLordCount == 1 && Projection.Memberships.Count - VoidLordCount >= 1));
+
+    private string ReadySummary
+    {
+        get
+        {
+            var ready = $"{Projection.Memberships.Count(seat => seat.Ready)} of {Projection.Memberships.Count} commanders ready";
+            if (!IsCoop)
+            {
+                return ready;
+            }
+            if (VoidLordCount == 0)
+            {
+                return $"{ready} · Needs a Void Lord";
+            }
+            return Projection.Memberships.Count - VoidLordCount < 1 ? $"{ready} · Needs a hero player" : ready;
+        }
+    }
+
+    private bool Can(string kind) => Projection.LegalActions.Any(action => action.Kind == kind);
+
+    private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
 
     private Task ToggleReady() => OnReadyChanged.InvokeAsync(!ViewerReady);
 

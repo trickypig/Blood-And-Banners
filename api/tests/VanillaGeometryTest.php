@@ -30,7 +30,7 @@ function vanilla_geometry_tests(): array
             expect_same('Blue', $army['color'], 'army colour should be kept');
             expect_same(6, count($army['units']), 'armies carry six units');
             expect_same('Blue Bow', $army['units'][2]['name'], 'army units keep catalog order');
-            expect_same(3, count($catalog->heroes()), 'all heroes are listed');
+            expect_same(5, count($catalog->heroes()), 'all heroes are listed');
         },
 
         'the shipped catalog loads every hero and army' => static function (): void {
@@ -67,8 +67,8 @@ function vanilla_geometry_tests(): array
         'engine board keeps elevation sight blockers and homes' => static function (): void {
             $board = proving_field_board();
             expect_same(99, count($board), 'every scenario hex becomes a board hex');
-            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'stone', 'terrain' => 'crags'], $board['-1,5'], 'tall crags retain their paint and block sight');
-            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'plains', 'terrain' => 'grass'], $board['0,3'], 'statues retain ground paint and block sight');
+            expect_same(['elevation' => 2, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'stone', 'terrain' => 'crags', 'spawnZone' => null], $board['-1,5'], 'tall crags retain their paint and block sight');
+            expect_same(['elevation' => 0, 'sightBlocker' => true, 'playerStart' => null, 'biome' => 'plains', 'terrain' => 'grass', 'spawnZone' => null], $board['0,3'], 'statues retain ground paint and block sight');
             expect_same([1 => '4,1', 2 => '0,9'], Board::homes($board), 'homes are keyed by start number');
         },
     ];

@@ -80,17 +80,17 @@ function vanilla_match_service_tests(): array
                 'undecided maps always carry both seats'
             );
             expect_same(['chooseFirstPlayer', 'chooseStartPosition', 'pickHero', 'pickArmy'], array_column($started['legalActions'], 'kind'), 'the picker sees every open decision');
-            expect_same(3, count($started['draft']['availableHeroes']), 'the catalog heroes are offered');
+            expect_same(5, count($started['draft']['availableHeroes']), 'the catalog heroes are offered');
             expect_same(null, $started['draft']['availableHeroes'][0]['takenBySeatId'], 'no hero is taken yet');
             expect_same([], $match['games']->getGame($match['gameId'], $match['rival']['identity'])['legalActions'], 'the rival waits');
             $events = $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0)['events'];
             expect_same(['gameStarted', 'initiativeRolled'], array_slice(array_column($events, 'kind'), -2), 'start and initiative are logged');
         },
 
-        'only vanilla duels on a large enough map can start' => static function (): void {
-            $coop = vanilla_service_match('Portal Watch', 'coop');
-            expect_game_error('modeNotPlayable', static fn() => $coop['games']->startGame($coop['gameId'], $coop['host']['identity'], $coop['host']['token']));
-            expect_same('lobby', $coop['games']->getGame($coop['gameId'], $coop['host']['identity'])['lifecycle'], 'a refused start leaves the lobby intact');
+        'battle royale cannot start yet and small duel maps are refused' => static function (): void {
+            $royale = vanilla_service_match('Last Banner', 'battleRoyale');
+            expect_game_error('modeNotPlayable', static fn() => $royale['games']->startGame($royale['gameId'], $royale['host']['identity'], $royale['host']['token']));
+            expect_same('lobby', $royale['games']->getGame($royale['gameId'], $royale['host']['identity'])['lifecycle'], 'a refused start leaves the lobby intact');
 
             $small = vanilla_service_match('Training Grounds');
             expect_game_error('scenarioTooSmall', static fn() => $small['games']->startGame($small['gameId'], $small['host']['identity'], $small['host']['token']));
@@ -135,11 +135,11 @@ function vanilla_match_service_tests(): array
             expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
                 ['unitId', 'seatId', 'isHero', 'name', 'image', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn',
-                    'abilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
+                    'abilities', 'side', 'tier', 'inactiveAbilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
                 array_keys($projection['units'][0]),
                 'unit projections match the shared contract'
             );
-            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null], $projection['turn'], 'the host opens round one');
+            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null, 'respondingToSeatId' => null], $projection['turn'], 'the host opens round one');
             $captain = array_values(array_filter($projection['units'], static fn(array $unit): bool => $unit['name'] === 'Test Captain'))[0];
             expect_same(
                 [['name' => 'Shield Wall', 'type' => 'Ability', 'description' => 'Grant one adjacent unit +1 Defense until the start of your next turn', 'playable' => true, 'usedThisTurn' => false]],

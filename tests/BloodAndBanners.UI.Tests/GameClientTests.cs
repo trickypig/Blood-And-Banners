@@ -65,7 +65,7 @@ public sealed class GameClientTests
         var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
 
         var session = await client.CreateGuestAsync("device-1");
-        var gameSession = await client.CreateGameAsync(session, GameMode.Coop, "Portal Watch");
+        var gameSession = await client.CreateGameAsync(session, GameMode.Coop, "Void Reaches");
 
         Assert.Equal("guest-1", session.IdentityId);
         Assert.Equal("game-1", gameSession.Game.GameId);
@@ -73,7 +73,7 @@ public sealed class GameClientTests
         Assert.Equal("seat-secret", gameSession.SeatToken);
         Assert.Equal("Bearer", handler.Requests[1].Headers.Authorization?.Scheme);
         Assert.Equal("access-1", handler.Requests[1].Headers.Authorization?.Parameter);
-        Assert.Contains("\"scenarioName\":\"Portal Watch\"", handler.Bodies[1]);
+        Assert.Contains("\"scenarioName\":\"Void Reaches\"", handler.Bodies[1]);
     }
 
     [Fact]

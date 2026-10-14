@@ -39,7 +39,7 @@ function api_tests(): array
             $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
             $created = $app->handle(new Request('POST', '/api/v1/games', $authorization, [
                 'mode' => 'coop',
-                'scenarioName' => 'Portal Watch',
+                'scenarioName' => 'Void Reaches',
             ]));
             expect_same(201, $created->status, 'game creation should return 201');
             expect_true(array_key_exists('game', $created->body), 'game creation should return a seat session envelope');
@@ -126,7 +126,7 @@ function api_tests(): array
             $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
             $created = $app->handle(new Request('POST', '/api/v1/games', $authorization, [
                 'mode' => 'coop',
-                'scenarioName' => 'Portal Watch',
+                'scenarioName' => 'Void Reaches',
             ]));
             $gameId = $created->body['game']['gameId'];
 
@@ -213,7 +213,7 @@ function api_tests(): array
             $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
             $created = $app->handle(new Request('POST', '/api/v1/games', $authorization, [
                 'mode' => 'coop',
-                'scenarioName' => 'Portal Watch',
+                'scenarioName' => 'Void Reaches',
             ]));
             $link = $app->handle(new Request(
                 'POST',
@@ -238,7 +238,7 @@ function api_tests(): array
             $guestAuthorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
             $game = $app->handle(new Request('POST', '/api/v1/games', $guestAuthorization, [
                 'mode' => 'coop',
-                'scenarioName' => 'Portal Watch',
+                'scenarioName' => 'Void Reaches',
             ]));
 
             $converted = $app->handle(new Request('POST', '/api/v1/auth/convert', $guestAuthorization, [
@@ -266,7 +266,7 @@ function api_tests(): array
             $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
             $app->handle(new Request('POST', '/api/v1/games', $authorization, [
                 'mode' => 'coop',
-                'scenarioName' => 'Portal Watch',
+                'scenarioName' => 'Void Reaches',
             ]));
             $db->exec("CREATE TRIGGER reject_identity_transfer BEFORE UPDATE ON game_memberships BEGIN SELECT RAISE(ABORT, 'forced failure'); END");
 

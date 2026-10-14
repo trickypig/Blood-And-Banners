@@ -11,6 +11,7 @@ use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Modes\CoopSetup;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
 use BloodAndBanners\Rules\Vanilla\UnitConditions;
@@ -127,14 +128,25 @@ final class GameService
             if (count($memberships) < $minimum || $readyCount !== count($memberships)) {
                 throw new GameServiceException('playersNotReady', 'All required players must be ready.', (int)$game['version']);
             }
-            if ($game['mode'] !== 'vanillaPvp') {
-                throw new GameServiceException('modeNotPlayable', 'Only Vanilla duels can be played in this version.', (int)$game['version']);
+            if ($game['mode'] === 'battleRoyale') {
+                throw new GameServiceException('modeNotPlayable', 'Battle Royale cannot be played in this version yet.', (int)$game['version']);
+            }
+            $definition = $this->scenarioDefinition($game);
+            $options = [];
+            if ($game['mode'] === 'coop') {
+                $voidLords = array_values(array_filter($memberships, static fn(array $seat): bool => $seat['role'] === 'voidLord'));
+                if (count($voidLords) !== 1) {
+                    throw new GameServiceException('voidLordRequired', 'A Co-op match needs a Void Lord.', (int)$game['version']);
+                }
+                $options = ['voidLordSeatId' => (string)$voidLords[0]['id'], 'coop' => $definition['coop'] ?? []];
             }
             try {
                 $started = $this->engine->start(
                     array_column($memberships, 'id'),
-                    Board::fromScenario($this->scenarioDefinition($game)),
-                    $this->random
+                    Board::fromScenario($definition),
+                    $this->random,
+                    (string)$game['mode'],
+                    $options
                 );
             } catch (GameServiceException $error) {
                 throw new GameServiceException($error->errorCode, $error->getMessage(), (int)$game['version']);
@@ -142,10 +154,10 @@ final class GameService
             $version = (int)$game['version'] + 1;
             $this->connection->prepare(
                 'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
-            )->execute(['lifecycle' => 'draft', 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+            )->execute(['lifecycle' => $started['state']['phase'], 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
             $this->saveState($gameId, $version, $started['state']);
             $projection = $this->projection($gameId, $identityId);
-            $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => 'draft']);
+            $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => $started['state']['phase']]);
             foreach ($started['events'] as $event) {
                 $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
             }
@@ -186,24 +198,8 @@ final class GameService
                 throw self::versionConflict($currentVersion);
             }
             $newVersion = $currentVersion + 1;
-            if ($command['kind'] === 'setReady') {
-                if (!is_bool($command['payload']['ready'] ?? null)) {
-                    throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
-                }
-                if ($game['lifecycle'] !== 'lobby') {
-                    throw new GameServiceException('illegalLifecycle', 'Readiness can only change in the lobby.', $currentVersion);
-                }
-                $this->connection->prepare(
-                    'UPDATE game_memberships SET ready = :ready WHERE game_id = :game AND identity_id = :identity'
-                )->execute(['ready' => $command['payload']['ready'] ? 1 : 0, 'game' => $gameId, 'identity' => $identityId]);
-                $bump = $this->connection->prepare(
-                    'UPDATE games SET version = :version, updated_at = :updated WHERE id = :id AND version = :expected'
-                );
-                $bump->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId, 'expected' => $currentVersion]);
-                if ($bump->rowCount() === 0) {
-                    throw self::versionConflict($currentVersion);
-                }
-                $this->appendEvent($gameId, $newVersion, 'readinessChanged', $identityId, ['ready' => $command['payload']['ready']]);
+            if (in_array($command['kind'], self::LOBBY_COMMANDS, true)) {
+                $this->applyLobbyCommand($game, $membership, $identityId, $command, $newVersion);
             } else {
                 $this->applyMatchCommand($game, (string)$membership['id'], $identityId, $command, $newVersion);
             }
@@ -224,6 +220,99 @@ final class GameService
         }
     }
 
+    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord'];
+
+    private function applyLobbyCommand(array $game, array $membership, string $identityId, array $command, int $newVersion): void
+    {
+        $currentVersion = (int)$game['version'];
+        $kind = (string)$command['kind'];
+        $payload = is_array($command['payload']) ? $command['payload'] : [];
+        if ($kind === 'setReady') {
+            if (!is_bool($payload['ready'] ?? null)) {
+                throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
+            }
+            if ($game['lifecycle'] !== 'lobby') {
+                throw new GameServiceException('illegalLifecycle', 'Readiness can only change in the lobby.', $currentVersion);
+            }
+            $this->connection->prepare(
+                'UPDATE game_memberships SET ready = :ready WHERE game_id = :game AND identity_id = :identity'
+            )->execute(['ready' => $payload['ready'] ? 1 : 0, 'game' => $game['id'], 'identity' => $identityId]);
+            $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+            $this->appendEvent($game['id'], $newVersion, 'readinessChanged', $identityId, ['ready' => $payload['ready']]);
+            return;
+        }
+        if ($game['mode'] !== 'coop' || $game['lifecycle'] !== 'lobby') {
+            throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
+        }
+        $memberships = $this->memberships($game['id']);
+        $current = null;
+        foreach ($memberships as $seat) {
+            if ($seat['role'] === 'voidLord') {
+                $current = (string)$seat['id'];
+            }
+        }
+        if ($kind === 'claimVoidLord') {
+            if ($current === (string)$membership['id']) {
+                throw new GameServiceException('voidLordTaken', 'You are already the Void Lord.', $currentVersion);
+            }
+            if ($current !== null) {
+                throw new GameServiceException('voidLordTaken', 'Another commander is already the Void Lord.', $currentVersion);
+            }
+            $target = (string)$membership['id'];
+        } elseif ($kind === 'releaseVoidLord') {
+            if ($current !== (string)$membership['id']) {
+                throw new GameServiceException('notVoidLord', 'You are not the Void Lord.', $currentVersion);
+            }
+            $target = null;
+        } else {
+            if ($game['host_identity_id'] !== $identityId) {
+                throw new GameServiceException('hostRequired', 'Only the host can choose the Void Lord.', $currentVersion);
+            }
+            $target = $payload['seatId'] ?? null;
+            if (!is_string($target) || !in_array($target, array_map('strval', array_column($memberships, 'id')), true)) {
+                throw new GameServiceException('seatNotFound', 'The requested seat does not exist.', $currentVersion);
+            }
+        }
+        $this->connection->prepare("UPDATE game_memberships SET role = 'player', ready = 0 WHERE game_id = :game")
+            ->execute(['game' => $game['id']]);
+        if ($target !== null) {
+            $this->connection->prepare("UPDATE game_memberships SET role = 'voidLord' WHERE game_id = :game AND id = :seat")
+                ->execute(['game' => $game['id'], 'seat' => $target]);
+        }
+        $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+        $this->appendEvent($game['id'], $newVersion, 'voidLordChanged', $identityId, ['seatId' => $target]);
+    }
+
+    private function bumpVersion(string $gameId, int $currentVersion, int $newVersion): void
+    {
+        $bump = $this->connection->prepare(
+            'UPDATE games SET version = :version, updated_at = :updated WHERE id = :id AND version = :expected'
+        );
+        $bump->execute(['version' => $newVersion, 'updated' => self::now(), 'id' => $gameId, 'expected' => $currentVersion]);
+        if ($bump->rowCount() === 0) {
+            throw self::versionConflict($currentVersion);
+        }
+    }
+
+    private function lobbyActions(array $game, array $memberships, array $viewer): array
+    {
+        $actions = [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]];
+        if ($game['mode'] !== 'coop') {
+            return $actions;
+        }
+        $roles = array_column($memberships, 'role', 'id');
+        $voidLord = array_search('voidLord', $roles, true);
+        if ($voidLord === false) {
+            $actions[] = ['kind' => 'claimVoidLord', 'unitId' => null, 'targetHexes' => []];
+        } elseif ((string)$voidLord === $viewer['seatId']) {
+            $actions[] = ['kind' => 'releaseVoidLord', 'unitId' => null, 'targetHexes' => []];
+        }
+        if ($viewer['isHost']) {
+            $actions[] = ['kind' => 'assignVoidLord', 'unitId' => null, 'targetHexes' => []];
+        }
+        return $actions;
+    }
+
     private static function versionConflict(int $currentVersion): GameServiceException
     {
         return new GameServiceException(
@@ -238,7 +327,7 @@ final class GameService
     {
         $currentVersion = (int)$game['version'];
         $state = $this->loadState($game['id']);
-        if ($state === null || !in_array($game['lifecycle'], ['draft', 'active', 'completed'], true)) {
+        if ($state === null || !in_array($game['lifecycle'], ['setup', 'draft', 'active', 'completed'], true)) {
             throw new GameServiceException('illegalLifecycle', 'This command is not legal in the current game phase.', $currentVersion);
         }
         try {
@@ -500,7 +589,7 @@ final class GameService
         }
         $legalActions = match (true) {
             $viewer['role'] !== 'player' => [],
-            $game['lifecycle'] === 'lobby' => [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]],
+            $game['lifecycle'] === 'lobby' => $this->lobbyActions($game, $memberships, $viewer),
             $state !== null => $this->engine->legalActions($state, $viewer['seatId']),
             default => [],
         };
@@ -516,24 +605,33 @@ final class GameService
             'scenarioName' => $game['scenario_name'],
             'viewer' => $viewer,
             'board' => $this->boardProjection($game, $state),
+            'sides' => $state === null ? null : (object)$state['sides'],
+            'setup' => $state !== null && ($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->setupProjection($state) : null,
             'turn' => [
                 'round' => $state['turn']['round'] ?? 0,
                 'activeSeatId' => $state['turn']['activeSeatId'] ?? null,
                 'activationsRemaining' => $state === null ? 0 : Turn::activationsRemaining($state),
                 'activeUnitId' => $state['turn']['activeUnitId'] ?? null,
+                'respondingToSeatId' => $state !== null && ($state['mode'] ?? null) === 'coop' && $state['phase'] === 'active' && $state['turn']['slot'] % 2 === 1
+                    ? $state['initiative']['order'][intdiv($state['turn']['slot'], 2)]
+                    : null,
             ],
             'pendingChoice' => $this->pendingChoiceProjection($state, $viewer['seatId']),
             'pendingChoiceSummary' => $this->pendingChoiceSummary($state),
             'legalActions' => $legalActions,
             'scores' => $scores,
-            'result' => ($state['result'] ?? null) === null ? null : $state['result'] + ['finalScores' => $scores],
+            'result' => ($state['result'] ?? null) === null ? null : $state['result'] + [
+                'winningSide' => $state['result']['winningSide'] ?? $state['result']['winningSeatId'],
+                'finalScores' => $scores,
+            ],
             'memberships' => array_map(static fn(array $seat): array => [
                 'seatId' => $seat['id'],
                 'seatIndex' => (int)$seat['seat_index'],
+                'role' => (string)$seat['role'],
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
             ], $memberships),
-            'draft' => $state !== null && $state['phase'] === 'draft' ? $this->draftProjection($state) : null,
+            'draft' => $state !== null && $state['phase'] === 'draft' ? (($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->coopDraftProjection($state) : $this->draftProjection($state)) : null,
             'units' => $state === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($state, $unit), self::orderedUnits($state))),
         ];
     }
@@ -558,6 +656,12 @@ final class GameService
             'hex' => $unit['hex'],
             'activatedThisTurn' => in_array($id, $state['turn']['activated'], true),
             'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? []),
+            'side' => $unit['side'] ?? $unit['seatId'],
+            'tier' => $unit['tier'] ?? null,
+            'inactiveAbilities' => array_map(
+                static fn(array $card): array => array_merge($card, ['playable' => false]),
+                self::abilityCards($unit['inactiveAbilities'] ?? [])
+            ),
             'effects' => array_map(static fn(array $effect): array => [
                 'name' => $effect['name'],
                 'stat' => $effect['stat'],
@@ -635,10 +739,79 @@ final class GameService
     {
         $units = array_values($state['units']);
         usort($units, static function (array $a, array $b) use ($state): int {
-            return [array_search($a['seatId'], $state['seats'], true), $a['isHero'] ? 0 : 1, (int)substr((string)strrchr($a['unitId'], 'u'), 1)]
-                <=> [array_search($b['seatId'], $state['seats'], true), $b['isHero'] ? 0 : 1, (int)substr((string)strrchr($b['unitId'], 'u'), 1)];
+            return [array_search($a['seatId'], $state['seats'], true), $a['isHero'] ? 0 : 1, self::unitNumber($a['unitId'])]
+                <=> [array_search($b['seatId'], $state['seats'], true), $b['isHero'] ? 0 : 1, self::unitNumber($b['unitId'])];
         });
         return $units;
+    }
+
+    private static function unitNumber(string $unitId): int
+    {
+        return preg_match('/(\d+)$/', $unitId, $match) === 1 ? (int)$match[1] : 0;
+    }
+
+    private function setupProjection(array $state): array
+    {
+        $spawn = [];
+        foreach ($state['board'] as $key => $hex) {
+            if (($hex['spawnZone'] ?? null) === 'void') {
+                $spawn[] = (string)$key;
+            }
+        }
+        sort($spawn, SORT_STRING);
+        return [
+            'budget' => $state['setup']['budget'],
+            'spent' => $state['setup']['spent'],
+            'confirmed' => $state['setup']['confirmed'],
+            'spawnZoneHexes' => $spawn,
+            'roster' => array_map(static fn(array $monster): array => [
+                'name' => $monster['name'],
+                'biome' => $monster['biome'],
+                'tier' => $monster['tier'],
+                'cost' => CoopSetup::cost($monster),
+                'image' => $monster['image'],
+                'move' => $monster['move'],
+                'range' => $monster['range'],
+                'power' => $monster['power'],
+                'defense' => $monster['defense'],
+                'hp' => $monster['hp'],
+                'abilities' => self::abilityCards($monster['abilities']),
+            ], $this->engine->catalog()->monsters()),
+        ];
+    }
+
+    private function coopDraftProjection(array $state): array
+    {
+        $draft = $state['draft'];
+        $heroOwner = static function (string $name) use ($draft): ?string {
+            foreach ($draft['heroesBySeat'] as $seatId => $heroes) {
+                if (in_array($name, $heroes, true)) {
+                    return (string)$seatId;
+                }
+            }
+            return null;
+        };
+        $catalog = $this->engine->catalog();
+        return [
+            'initiativeRolls' => $state['initiative']['rolls'],
+            'pickingSeatId' => $draft['pickingSeatId'],
+            'firstSeatId' => null,
+            'startBySeat' => (object)[],
+            'heroBySeat' => (object)[],
+            'armyBySeat' => $draft['armyBySeat'],
+            'heroesBySeat' => $draft['heroesBySeat'],
+            'availableHeroes' => array_map(
+                static fn(array $hero): array => ['abilities' => self::abilityCards($hero['abilities'])] + $hero + ['takenBySeatId' => $heroOwner($hero['name'])],
+                $catalog->heroes()
+            ),
+            'availableArmies' => array_map(
+                static fn(array $army): array => ['units' => array_map(
+                    static fn(array $unit): array => ['abilities' => self::abilityCards($unit['abilities'])] + $unit,
+                    $army['units']
+                )] + $army + ['takenBySeatId' => ($seat = array_search($army['name'], $draft['armyBySeat'], true)) === false ? null : (string)$seat],
+                $catalog->armies()
+            ),
+        ];
     }
 
     private function draftProjection(array $state): array
@@ -723,7 +896,7 @@ final class GameService
     private function memberships(string $gameId): array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, identity_id, seat_index, is_host, ready FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
+            'SELECT id, identity_id, seat_index, role, is_host, ready FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
         );
         $statement->execute(['game' => $gameId]);
         return $statement->fetchAll();

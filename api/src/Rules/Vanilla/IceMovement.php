@@ -39,7 +39,7 @@ final class IceMovement
             }
             $occupantId = self::occupantAt($state, $next);
             if ($occupantId !== null) {
-                if ($state['units'][$occupantId]['seatId'] !== $state['units'][$unitId]['seatId']) {
+                if (Sides::enemies($state, $unitId, $occupantId)) {
                     return self::enemyCollision(
                         $state, $unitId, $occupantId, $from, $path, $direction, $remainingMove,
                         $random, $events, $damageEvents, $consequences
@@ -148,7 +148,7 @@ final class IceMovement
         }
         $blockerHex = self::forwardHex($current, $direction);
         if ($state['units'][$blockerId]['hex'] !== $blockerHex
-            || $state['units'][$blockerId]['seatId'] !== $state['units'][$unitId]['seatId']) {
+            || Sides::enemies($state, $unitId, $blockerId)) {
             self::invalidChoice();
         }
 

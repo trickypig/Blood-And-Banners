@@ -124,6 +124,20 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .match-end h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(2.5rem, 9vw, 5rem); color: #f0cf7a; }
 .match-end button { justify-self: center; min-height: 3rem; padding: .6rem 1.4rem; color: #f8f0dc; background: var(--oxblood); border: 1px solid #b18b48; }
 
+@media (min-width: 761px) {
+    /* Cap the table at the viewport so a long rail scrolls internally instead of growing the
+       board row (the board viewport measures its panel, so a growing row feeds back into the SVG size). */
+    .game-table {
+        height: 100vh;
+        height: 100dvh;
+        grid-template: auto minmax(0, 1fr) / minmax(0, 1fr) 18rem;
+        overflow: hidden;
+    }
+    .battlefield-panel { min-height: 0; }
+    .hex-board { min-height: 0; }
+    .command-rail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
+
 @media (max-width: 760px) {
     .game-table { grid-template: auto minmax(25rem, 1fr) auto / 1fr; }
     .turn-ribbon { grid-template-columns: 1fr auto; row-gap: .15rem; }
@@ -162,3 +176,21 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .hex.destination .hex-outline { fill: rgba(120, 170, 255, .3); stroke: #7aa8ff; stroke-width: 3; }
 .hex.push-path .hex-outline { fill: rgba(156, 195, 223, .25); stroke: #9cc3df; stroke-dasharray: 4 3; stroke-width: 2.5; }
 .push-mark { fill: #e8f2fa; font: 700 20px Georgia, serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
+
+.hex.spawn-zone .hex-outline { stroke: #b48cff; stroke-width: 2; stroke-dasharray: 4 3; }
+.hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }
+
+.unit-token.seat-3 .token-base { fill: #2f5b2a; }
+.unit-token.seat-3 .token-ring { stroke: #a8d79b; }
+.unit-token.seat-4 .token-base { fill: #6b5a1f; }
+.unit-token.seat-4 .token-ring { stroke: #e6cf7c; }
+.unit-token.seat-5 .token-base { fill: #5a2f5b; }
+.unit-token.seat-5 .token-ring { stroke: #e0a8e2; }
+.unit-token.seat-void .token-base { fill: #1b1030; }
+.unit-token.seat-void .token-ring { stroke: #b48cff; }
+.unit-token.ally .token-ring { stroke-dasharray: 3 2; }
+.roster.seat-3 h2 { color: #a8d79b; }
+.roster.seat-4 h2 { color: #e6cf7c; }
+.roster.seat-5 h2 { color: #e0a8e2; }
+.roster.seat-void h2 { color: #b48cff; }
+.inactive-abilities { opacity: .7; font-style: italic; }

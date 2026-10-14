@@ -28,7 +28,7 @@ final class Movement
                     continue;
                 }
                 $occupant = $occupants[$next] ?? null;
-                if ($occupant !== null && $occupant['seatId'] !== $unit['seatId']) {
+                if ($occupant !== null && Sides::enemies($state, $unitId, $occupant['unitId'])) {
                     continue;
                 }
                 if (!Terrain::canEnter($state, $unitId, $current['hex'], $next, 'voluntary')) {
@@ -107,7 +107,7 @@ final class Movement
         $board = $state['board'];
         $enemies = [];
         foreach ($state['units'] as $other) {
-            if ($other['hex'] === null || $other['seatId'] === $unit['seatId']) {
+            if ($other['hex'] === null || Sides::allies($state, $unitId, $other['unitId'])) {
                 continue;
             }
             if (UnitConditions::any($state, $other['unitId'], static fn(Condition $condition): bool => $condition->blocksDisengagementStrike())) {
@@ -146,7 +146,7 @@ final class Movement
                 break;
             }
             if (isset($occupants[$next])) {
-                $enemy = $occupants[$next]['seatId'] !== $state['units'][$unitId]['seatId'];
+                $enemy = Sides::enemies($state, $unitId, $occupants[$next]['unitId']);
                 $hazard = [
                     'kind' => $enemy ? 'collision' : 'choice',
                     'terrain' => 'ice',

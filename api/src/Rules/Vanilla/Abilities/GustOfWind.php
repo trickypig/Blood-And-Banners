@@ -6,6 +6,7 @@ namespace BloodAndBanners\Rules\Vanilla\Abilities;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
 use BloodAndBanners\Rules\Vanilla\Forced;
+use BloodAndBanners\Rules\Vanilla\Sides;
 use BloodAndBanners\Rules\Vanilla\Targeting;
 use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
@@ -29,10 +30,9 @@ final class GustOfWind extends TargetedAbility
 
     public function targets(array $state, string $unitId): array
     {
-        $seatId = $state['units'][$unitId]['seatId'];
         return array_values(array_filter(
             Targeting::unitsWithin($state, $unitId, 1, false),
-            static fn(string $id): bool => $state['units'][$id]['seatId'] !== $seatId && (int)$state['units'][$id]['move'] > 2
+            static fn(string $id): bool => Sides::enemies($state, $unitId, $id) && (int)$state['units'][$id]['move'] > 2
         ));
     }
 

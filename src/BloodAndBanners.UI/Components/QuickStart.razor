@@ -156,7 +156,7 @@
             _focusPicker = true;
             return Task.CompletedTask;
         }
-        var scenario = mode == GameMode.Coop ? "Portal Watch" : "Last Banner";
+        var scenario = mode == GameMode.Coop ? "Void Reaches" : "Last Banner";
         return OnCreate.InvokeAsync(new GameSetupSelection(mode, scenario));
     }
 

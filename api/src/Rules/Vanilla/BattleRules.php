@@ -10,6 +10,7 @@ use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 use BloodAndBanners\Rules\Vanilla\Abilities\TargetedAbility;
 use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
+use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 
 final class BattleRules
 {
@@ -17,6 +18,7 @@ final class BattleRules
 
     private const KINDS = ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
+        'heroesActivationRequired' => 'While your heroes live, your other units are limited this turn; activate a hero.',
         'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
@@ -335,7 +337,7 @@ final class BattleRules
             self::fail('noAttacksLeft');
         }
         $target = $state['units'][$targetId] ?? null;
-        if ($target === null || $target['hex'] === null || $target['seatId'] === $seatId) {
+        if ($target === null || $target['hex'] === null || !Sides::enemies($state, $unitId, $targetId)) {
             self::fail('unknownUnit');
         }
         $blocked = Combat::targetError($state, $unitId, $targetId);
@@ -583,21 +585,13 @@ final class BattleRules
 
     private function activationError(array $state, string $unitId): ?string
     {
-        $activated = $state['turn']['activated'];
-        if (in_array($unitId, $activated, true)) {
+        if (in_array($unitId, $state['turn']['activated'], true)) {
             return 'unitAlreadyActivated';
         }
         if (Turn::activationsRemaining($state) <= 0) {
             return 'noActivationsRemaining';
         }
-        $unit = $state['units'][$unitId];
-        if (!$unit['isHero'] && self::heroAlive($state, $unit['seatId'])) {
-            $others = count(array_filter($activated, static fn(string $id): bool => !$state['units'][$id]['isHero']));
-            if ($others >= 3) {
-                return 'heroActivationRequired';
-            }
-        }
-        return null;
+        return Modes::ofState($state)->activationError($state, $unitId);
     }
 
     private function canAct(array $state, string $seatId): bool
@@ -613,7 +607,6 @@ final class BattleRules
     private static function passTurn(array $state, RandomSource $random): array
     {
         $current = $state['turn']['activeSeatId'];
-        $next = MatchEngine::otherSeat($state, $current);
         $events = [];
         $state = Effects::expire($state, $current, Effects::UNTIL_END_OF_TURN, $events);
         $state = TerrainResolver::atTurnEnd($state, $current, $random, $events);
@@ -621,22 +614,15 @@ final class BattleRules
             return [$state, $events];
         }
         $state = UnitConditions::atTurnEnd($state, $events);
-        $round = $state['turn']['round'] + ($next === $state['draft']['firstSeatId'] ? 1 : 0);
-        $state['turn'] = Turn::fresh($state, $next, $round);
+        $slot = (int)$state['turn']['slot'];
+        $nextSlot = Schedule::after($state, $slot);
+        $next = Modes::ofState($state)->seatAtSlot($state, $nextSlot);
+        $round = $state['turn']['round'] + ($nextSlot <= $slot ? 1 : 0);
+        $state['turn'] = Turn::fresh($state, $next, $round, $nextSlot);
         $events[] = MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round]);
         $state = Effects::expire($state, $next, Effects::UNTIL_NEXT_TURN, $events);
         $state = UnitConditions::atTurnStart($state, $events);
         return [$state, $events];
-    }
-
-    private static function heroAlive(array $state, string $seatId): bool
-    {
-        foreach ($state['units'] as $unit) {
-            if ($unit['seatId'] === $seatId && $unit['isHero'] && $unit['hex'] !== null) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static function text(array $payload, string $key): string

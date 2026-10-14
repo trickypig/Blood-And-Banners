@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla;
 
+use BloodAndBanners\Rules\Vanilla\Modes\Modes;
+
 final class Turn
 {
     /** Per-turn bookkeeping that every fresh turn resets. */
@@ -10,36 +12,33 @@ final class Turn
 
     public static function idle(): array
     {
-        return ['round' => 0, 'number' => 0, 'activeSeatId' => null, 'activeUnitId' => null, 'activated' => [], 'moved' => false, 'allowance' => 0] + self::USAGE;
+        return ['round' => 0, 'number' => 0, 'slot' => 0, 'activeSeatId' => null, 'activeUnitId' => null, 'activated' => [], 'moved' => false, 'allowance' => 0] + self::USAGE;
     }
 
-    public static function fresh(array $state, string $seatId, int $round): array
+    public static function fresh(array $state, string $seatId, int $round, ?int $slot = null): array
     {
-        $alive = count(array_filter(
-            $state['units'],
-            static fn(array $unit): bool => $unit['seatId'] === $seatId && $unit['hex'] !== null
-        ));
         return [
             'round' => $round,
             'number' => (int)($state['turn']['number'] ?? 0) + 1,
+            'slot' => $slot ?? Schedule::slotOf($state, $seatId),
             'activeSeatId' => $seatId,
             'activeUnitId' => null,
             'activated' => [],
             'moved' => false,
-            'allowance' => min(4, $alive),
+            'allowance' => Modes::ofState($state)->allowance($state, $seatId),
         ] + self::USAGE;
     }
 
-    /** Fill fields that turns saved before abilities existed are missing. */
+    /** Fill fields that turns saved before abilities and slots existed are missing. */
     public static function normalize(array $turn): array
     {
-        return $turn + ['number' => 1] + self::USAGE;
+        return $turn + ['number' => 1, 'slot' => null] + self::USAGE;
     }
 
     /** The turn number on which the given seat next starts a turn. */
     public static function nextTurnNumberOf(array $state, string $seatId): int
     {
-        return $state['turn']['number'] + ($state['turn']['activeSeatId'] === $seatId ? 2 : 1);
+        return Schedule::nextTurnNumberOf($state, $seatId);
     }
 
     public static function activationsRemaining(array $state): int

@@ -1,0 +1,59 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<section class="void-setup" aria-labelledby="void-setup-title">
+    <h2 id="void-setup-title">@(IsVoidLord ? "Summon your horde" : "The Void stirs")</h2>
+    @if (!IsVoidLord)
+    {
+        <p role="status">The Void Lord is placing monsters · @MonstersPlaced @(MonstersPlaced == 1 ? "monster" : "monsters") placed</p>
+    }
+    else
+    {
+        <p class="void-setup__budget" data-testid="setup-budget" role="status">Budget @Setup.Spent / @Setup.Budget</p>
+        <meter min="0" max="@Setup.Budget" value="@Setup.Spent" aria-label="Budget spent"></meter>
+        <p class="void-setup__hint">Choose a monster, then a glowing spawn hex. Click a placed monster to remove it.</p>
+        @foreach (var biome in Setup.Roster.GroupBy(monster => monster.Biome))
+        {
+            <h3>@biome.Key</h3>
+            <ul class="void-setup__roster">
+                @foreach (var monster in biome.OrderBy(monster => TierOrder(monster.Tier)).ThenBy(monster => monster.Name))
+                {
+                    var affordable = monster.Cost <= Setup.Budget - Setup.Spent;
+                    <li>
+                        <button type="button"
+                                data-monster="@monster.Name"
+                                aria-pressed="@(monster.Name == SelectedMonster ? "true" : "false")"
+                                disabled="@(!affordable || IsBusy)"
+                                @onclick="() => OnSelectMonster.InvokeAsync(monster.Name)">
+                            @if (CatalogImages.Resolve(ImageBaseUrl, monster.Image) is { } art)
+                            {
+                                <img src="@art" alt="" loading="lazy" />
+                            }
+                            <strong>@monster.Name</strong>
+                            <span class="tier tier--@monster.Tier">@monster.Tier · @monster.Cost pt</span>
+                            <small>M@(monster.Move) R@(monster.Range) P@(monster.Power) D@(monster.Defense) HP@(monster.Hp)</small>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+        <button type="button" class="action-button" data-action="confirmSetup" disabled="@(!CanConfirm || IsBusy)" @onclick="() => OnConfirm.InvokeAsync()">
+            Unleash the horde
+        </button>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SetupProjection Setup { get; set; } = default!;
+    [Parameter] public bool IsVoidLord { get; set; }
+    [Parameter] public string? SelectedMonster { get; set; }
+    [Parameter] public bool CanConfirm { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string? ImageBaseUrl { get; set; }
+    [Parameter] public int MonstersPlaced { get; set; }
+    [Parameter] public EventCallback<string> OnSelectMonster { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+
+    private static int TierOrder(string tier) => tier switch { "common" => 0, "elite" => 1, "boss" => 2, _ => 3 };
+}

@@ -15,6 +15,7 @@ final class Board
                 'playerStart' => isset($hex['playerStart']) ? (int)$hex['playerStart'] : null,
                 'biome' => (string)($hex['biome'] ?? 'plains'),
                 'terrain' => (string)($hex['terrain'] ?? 'grass'),
+                'spawnZone' => isset($hex['spawnZone']) ? (string)$hex['spawnZone'] : null,
             ];
         }
         return $board;

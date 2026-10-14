@@ -57,7 +57,11 @@ public sealed record DraftProjection(
     IReadOnlyDictionary<string, string?> HeroBySeat,
     IReadOnlyDictionary<string, string?> ArmyBySeat,
     IReadOnlyList<HeroCard> AvailableHeroes,
-    IReadOnlyList<ArmyCard> AvailableArmies);
+    IReadOnlyList<ArmyCard> AvailableArmies)
+{
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> HeroesBySeat { get; init; } =
+        new Dictionary<string, IReadOnlyList<string>>();
+}
 
 public sealed record UnitProjection(
     string UnitId,
@@ -81,4 +85,7 @@ public sealed record UnitProjection(
     public int? EffectiveRange { get; init; }
     public int? EffectivePower { get; init; }
     public int? EffectiveDefense { get; init; }
+    public string? Side { get; init; }
+    public string? Tier { get; init; }
+    public IReadOnlyList<AbilityProjection> InactiveAbilities { get; init; } = [];
 }

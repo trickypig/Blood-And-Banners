@@ -144,6 +144,89 @@ function scenario_tests(): array
             }
         },
 
+        'void reaches is a 25 by 25 co-op map with safe spawn zones and two routes to every zone' => static function (): void {
+            $scenario = built_in_scenario('void-reaches');
+            expect_same('Void Reaches', $scenario['name'], 'the map uses its approved name');
+            expect_same(['coop'], $scenario['modeCompatibility'], 'the map is Co-op only');
+            expect_same(['basePoints' => 4, 'pointsPerHeroPlayer' => 8], $scenario['coop'], 'the budget is set by the scenario');
+            expect_canonical_rectangle($scenario, 'void reaches');
+            expect_same(625, count($scenario['map']['hexes']), 'every hex exists');
+
+            $board = \BloodAndBanners\Rules\Vanilla\Board::fromScenario($scenario);
+            $starts = array_keys(array_filter($board, static fn(array $hex): bool => $hex['playerStart'] !== null));
+            expect_same(1, count($starts), 'there is one shared hero start');
+            $start = $starts[0];
+            $spawn = array_keys(array_filter($board, static fn(array $hex): bool => $hex['spawnZone'] === 'void'));
+            expect_true(count($spawn) >= 100 && count($spawn) <= 170, 'spawn zones hold about 150 hexes');
+            foreach ($spawn as $key) {
+                expect_true(\BloodAndBanners\Rules\Vanilla\Hex::distance($start, $key) >= 7, "spawn hex {$key} is at least 7 from the start");
+                expect_same(null, \BloodAndBanners\Rules\Vanilla\Terrain::type($board[$key]), "spawn hex {$key} is not hazardous");
+                expect_true(!$board[$key]['sightBlocker'], "spawn hex {$key} is enterable");
+            }
+
+            $probe = array_map(static fn(int $i): string => "probe-{$i}", range(1, 32));
+            $placed = \BloodAndBanners\Rules\Vanilla\Placement::place($board, $start, $spawn[0], $probe, array_fill_keys($spawn, true));
+            expect_same(32, count($placed), 'four full hero players fit around the start');
+
+            $offsets = [[3, 7], [12, 6], [22, 7]];
+            foreach ($offsets as [$column, $row]) {
+                $axial = \BloodAndBanners\Scenario\AxialCoordinates::fromOddColumnOffset($column, $row);
+                $key = "{$axial['q']},{$axial['r']}";
+                expect_same(null, \BloodAndBanners\Rules\Vanilla\Terrain::type($board[$key]), "fountain site {$key} is neutral");
+                expect_same(null, $board[$key]['spawnZone'], "fountain site {$key} is not a spawn hex");
+                expect_true(!$board[$key]['sightBlocker'], "fountain site {$key} is enterable");
+            }
+
+            // Neutral walking reachability: step to a neighbour within 1 level, never into hazards or blockers.
+            $reach = static function (array $blocked) use ($board, $start): array {
+                $seen = [$start => true];
+                $queue = [$start];
+                while ($queue !== []) {
+                    $hex = array_shift($queue);
+                    foreach (\BloodAndBanners\Rules\Vanilla\Hex::neighbors($hex, $board) as $next) {
+                        if (isset($seen[$next]) || isset($blocked[$next]) || $board[$next]['sightBlocker']
+                            || \BloodAndBanners\Rules\Vanilla\Terrain::type($board[$next]) !== null
+                            || abs($board[$next]['elevation'] - $board[$hex]['elevation']) > 1) {
+                            continue;
+                        }
+                        $seen[$next] = true;
+                        $queue[] = $next;
+                    }
+                }
+                return $seen;
+            };
+            $zones = [
+                'Frost Reach' => [[0, 6], [0, 4]], 'The Hollow' => [[9, 15], [0, 5]], 'Ember Wastes' => [[17, 24], [0, 3]],
+                'Thornwild' => [[0, 3], [17, 24]], 'Shifting Dunes' => [[21, 24], [17, 24]],
+            ];
+            $crossings = [];
+            foreach ([3, 8, 12, 21] as $column) {
+                $crossing = [];
+                foreach ([11, 12] as $row) {
+                    $axial = \BloodAndBanners\Scenario\AxialCoordinates::fromOddColumnOffset($column, $row);
+                    $crossing["{$axial['q']},{$axial['r']}"] = true;
+                }
+                $crossings[] = $crossing;
+            }
+            foreach ($zones as $zone => [[$c0, $c1], [$r0, $r1]]) {
+                $zoneSpawn = [];
+                for ($column = $c0; $column <= $c1; $column++) {
+                    for ($row = $r0; $row <= $r1; $row++) {
+                        $axial = \BloodAndBanners\Scenario\AxialCoordinates::fromOddColumnOffset($column, $row);
+                        $key = "{$axial['q']},{$axial['r']}";
+                        if ($board[$key]['spawnZone'] === 'void') {
+                            $zoneSpawn[] = $key;
+                        }
+                    }
+                }
+                expect_true($zoneSpawn !== [], "{$zone} has spawn hexes");
+                foreach (array_merge([[]], $crossings) as $blocked) {
+                    $seen = $reach($blocked);
+                    expect_true(array_filter($zoneSpawn, static fn(string $key): bool => isset($seen[$key])) !== [], "{$zone} stays reachable with any one crossing closed");
+                }
+            }
+        },
+
         'built in scenarios cover every game mode with valid maps' => static function (): void {
             $files = glob(dirname(__DIR__) . '/scenarios/*.json') ?: [];
             expect_same(6, count($files), 'six curated scenarios should ship');

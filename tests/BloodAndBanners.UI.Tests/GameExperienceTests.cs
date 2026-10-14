@@ -65,7 +65,7 @@ public sealed class GameExperienceTests : BunitContext
     }
 
     [Theory]
-    [InlineData(GameMode.Coop, "coop", "Portal Watch")]
+    [InlineData(GameMode.Coop, "coop", "Void Reaches")]
     [InlineData(GameMode.BattleRoyale, "battleRoyale", "Last Banner")]
     public void Non_vanilla_modes_create_directly_with_their_existing_scenarios(GameMode mode, string selector, string scenario)
     {

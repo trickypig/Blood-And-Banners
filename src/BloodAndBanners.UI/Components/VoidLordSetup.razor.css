@@ -1,0 +1,11 @@
+.void-setup { display: grid; gap: .5rem; }
+.void-setup meter { width: 100%; }
+.void-setup__roster { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.void-setup__roster button { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: .1rem .5rem; align-items: center; text-align: left; font: inherit; color: #ede8da; background: #1f201d; border: 1px solid #5a5548; border-left: .25rem solid #66604f; padding: .4rem .55rem; cursor: pointer; }
+.void-setup__roster button:hover:not(:disabled) { background: #34332c; border-color: #b18b48; border-left-color: #d2ae66; }
+.void-setup__roster button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .12rem; }
+.void-setup__roster button[aria-pressed="true"] { color: #fff3c4; background: #3b2a45; border-color: #b48cff; border-left-color: #d2ae66; box-shadow: inset 0 0 0 1px #b48cff; }
+.void-setup__roster button:disabled { color: #8b8578; background: #252622; border-color: #3c3a33; border-left-color: #3c3a33; cursor: not-allowed; opacity: .75; }
+.void-setup__roster img { grid-row: span 3; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.tier--boss { color: #ff9a6b; }
+.tier--elite { color: #9cc3df; }
