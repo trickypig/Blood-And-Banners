@@ -132,4 +132,22 @@ public sealed class CombatLogFormatterTests
     {
         Assert.Equal(expected, CombatLogFormatter.Describe(Event(kind, payload), BattleFixtures.Projection()));
     }
+
+    [Fact]
+    public void Co_op_events_name_the_void_lord_and_the_winning_side()
+    {
+        var projection = new GameProjection("g", 1, GameLifecycle.Active, GameMode.Coop,
+            new ViewerPermissions("player", "seat-a", true, false), new BoardProjection(0, 0, []), new TurnProjection(1, "seat-a", 5),
+            null, [], new Dictionary<string, int>(), null)
+        {
+            Memberships = [new MembershipProjection("seat-void", 1, true, true) { Role = "voidLord" }, new MembershipProjection("seat-a", 2, true, false)],
+        };
+
+        Assert.Equal("The Void Lord placed Ice Wolf.", CombatLogFormatter.Describe(Event("monsterPlaced", """{"unitId":"v-m1","monster":"Ice Wolf","hex":"5,0","cost":1}"""), projection));
+        Assert.Equal("The Void Lord withdrew Ice Wolf.", CombatLogFormatter.Describe(Event("monsterRemoved", """{"unitId":"v-m1","monster":"Ice Wolf","hex":"5,0","cost":1}"""), projection));
+        Assert.Equal("The Void Lord unleashed 4 monsters. The heroes draft.", CombatLogFormatter.Describe(Event("setupConfirmed", """{"monsters":4}"""), projection));
+        Assert.Equal("Round 2: Void Lord's turn.", CombatLogFormatter.Describe(Event("turnEnded", """{"seatId":"seat-a","nextSeatId":"seat-void","round":2}"""), projection));
+        Assert.Equal("The heroes have destroyed every monster.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"monstersDefeated","winningSeatId":null,"winningSide":"heroes"}"""), projection));
+        Assert.Equal("The Void Lord has slain every hero.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"heroesDefeated","winningSeatId":"seat-void","winningSide":"void"}"""), projection));
+    }
 }

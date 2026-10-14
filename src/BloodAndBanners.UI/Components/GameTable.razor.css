@@ -165,3 +165,18 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 
 .hex.spawn-zone .hex-outline { stroke: #b48cff; stroke-width: 2; stroke-dasharray: 4 3; }
 .hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }
+
+.unit-token.seat-3 .token-base { fill: #2f5b2a; }
+.unit-token.seat-3 .token-ring { stroke: #a8d79b; }
+.unit-token.seat-4 .token-base { fill: #6b5a1f; }
+.unit-token.seat-4 .token-ring { stroke: #e6cf7c; }
+.unit-token.seat-5 .token-base { fill: #5a2f5b; }
+.unit-token.seat-5 .token-ring { stroke: #e0a8e2; }
+.unit-token.seat-void .token-base { fill: #1b1030; }
+.unit-token.seat-void .token-ring { stroke: #b48cff; }
+.unit-token.ally .token-ring { stroke-dasharray: 3 2; }
+.roster.seat-3 h2 { color: #a8d79b; }
+.roster.seat-4 h2 { color: #e6cf7c; }
+.roster.seat-5 h2 { color: #e0a8e2; }
+.roster.seat-void h2 { color: #b48cff; }
+.inactive-abilities { opacity: .7; font-style: italic; }

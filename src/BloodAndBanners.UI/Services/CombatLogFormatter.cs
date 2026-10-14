@@ -42,7 +42,15 @@ public static class CombatLogFormatter
             "choiceResolved" => Text(payload, "option") == "keep" ? "The roll stands." : null,
             "unitDefeated" => $"{Unit(projection, Text(payload, "unitId"))} is defeated.",
             "turnEnded" => $"Round {payload.GetProperty("round").GetInt32()}: {Possessive(Seat(projection, Text(payload, "nextSeatId")))} turn.",
-            "matchCompleted" => $"{Seat(projection, Text(payload, "winningSeatId"))} won by annihilation.",
+            "matchCompleted" => Text(payload, "reason") switch
+            {
+                "monstersDefeated" => "The heroes have destroyed every monster.",
+                "heroesDefeated" => "The Void Lord has slain every hero.",
+                _ => $"{Seat(projection, Text(payload, "winningSeatId"))} won by annihilation.",
+            },
+            "monsterPlaced" => $"The Void Lord placed {Text(payload, "monster")}.",
+            "monsterRemoved" => $"The Void Lord withdrew {Text(payload, "monster")}.",
+            "setupConfirmed" => $"The Void Lord unleashed {payload.GetProperty("monsters").GetInt32()} monsters. The heroes draft.",
             "saveRolled" => payload.GetProperty("saved").GetBoolean()
                 ? $"{Unit(projection, Text(payload, "unitId"))} resists {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()})."
                 : $"{Unit(projection, Text(payload, "unitId"))} fails to resist {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()}).",
@@ -201,6 +209,10 @@ public static class CombatLogFormatter
 
     private static string Seat(GameProjection projection, string seatId)
     {
+        if (projection.Mode == GameMode.Coop)
+        {
+            return SeatNames.Coop(projection, seatId);
+        }
         if (seatId == projection.Viewer.SeatId)
         {
             return "You";
@@ -256,5 +268,5 @@ public static class CombatLogFormatter
     private static string Wounds(int wounds) => wounds == 1 ? "1 wound" : $"{wounds} wounds";
 
     private static string Text(JsonElement element, string property) =>
-        element.GetProperty(property).GetString() ?? string.Empty;
+        element.GetProperty(property) is { ValueKind: not JsonValueKind.Null } value ? value.GetString() ?? string.Empty : string.Empty;
 }

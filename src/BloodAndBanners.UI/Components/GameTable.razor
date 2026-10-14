@@ -162,7 +162,7 @@
                         var tokenY = tile.Y + BoardLayout.Size * .1;
                         var radius = BoardLayout.Size * .42;
                         var portrait = unit is not null && CatalogImages.Resolve(ImageBaseUrl, unit.Image) is not null;
-                        <g class="unit-token @SeatClass(unit?.SeatId) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
+                        <g class="unit-token @SeatClass(unit?.SeatId) @(unit is not null && IsCoop && unit.SeatId != Projection.Viewer.SeatId && SideOf(unit) == ViewerSide ? "ally" : null) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
                             <g class="token-face">
                             <circle class="token-base" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
                             @if (portrait)
@@ -352,6 +352,10 @@
                                      ActiveAbility="@_targeting?.Ability"
                                      IsBusy="IsBusy"
                                      OnChoose="StartTargeting" />
+                        @if (selected.InactiveAbilities.Count > 0)
+                        {
+                            <p class="inactive-abilities" data-testid="inactive-abilities">Not yet in play: @string.Join(", ", selected.InactiveAbilities.Select(ability => ability.Name))</p>
+                        }
                     </article>
                 }
                 else if (IsMyTurn)
@@ -602,6 +606,13 @@
             {
                 return $"{round} · Your turn · {Projection.Turn.ActivationsRemaining} {(Projection.Turn.ActivationsRemaining == 1 ? "activation" : "activations")}";
             }
+            if (IsCoop)
+            {
+                var actor = SeatNames.Coop(Projection, Projection.Turn.ActiveSeatId);
+                return Projection.Turn.RespondingToSeatId is { } answering
+                    ? $"{round} · {actor}'s turn — answering {SeatNames.Coop(Projection, answering)}"
+                    : $"{round} · {actor}'s turn";
+            }
             return Projection.Viewer.CanCommand ? $"{round} · Opponent's turn" : $"{round} · {SeatName(Projection.Turn.ActiveSeatId)}'s turn";
         }
     }
@@ -796,7 +807,7 @@
         var spent = path.Zip(path.Skip(1), HexMath.Distance).Sum();
         var last = path[^1];
         return Projection.Units
-            .Where(unit => unit.Hex is not null && unit.SeatId != caster.SeatId && !_chain.Contains(unit.UnitId))
+            .Where(unit => unit.Hex is not null && SideOf(unit) != SideOf(caster) && !_chain.Contains(unit.UnitId))
             .Where(unit => spent + HexMath.Distance(last, unit.Hex!) <= ChainReach)
             .Select(unit => unit.Hex!)
             .ToList();
@@ -853,8 +864,13 @@
         }
     }
 
-    private bool TargetsAlly(string key) =>
-        UnitById(Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == key)?.OccupantId)?.SeatId == Projection.Viewer.SeatId;
+    private bool TargetsAlly(string key)
+    {
+        var occupant = UnitById(Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == key)?.OccupantId);
+        return IsCoop
+            ? occupant is not null && SideOf(occupant) == ViewerSide
+            : occupant?.SeatId == Projection.Viewer.SeatId;
+    }
 
     private IReadOnlyList<string> SplashHexes =>
         _targeting?.Ability == "Fireball" && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
@@ -1030,14 +1046,28 @@
     private UnitProjection? UnitById(string? unitId) =>
         unitId is null ? null : Projection.Units.FirstOrDefault(unit => unit.UnitId == unitId);
 
+    private bool IsCoop => Projection.Mode == GameMode.Coop;
+
+    private string? ViewerSide => SeatNames.SideOf(Projection, Projection.Viewer.SeatId);
+
+    private static string SideOf(UnitProjection unit) => unit.Side ?? unit.SeatId;
+
     private string? SeatClass(string? seatId)
     {
+        if (SeatNames.IsVoidLord(Projection, seatId))
+        {
+            return "seat-void";
+        }
         var seat = Projection.Memberships.FirstOrDefault(member => member.SeatId == seatId);
         return seat is null ? null : $"seat-{seat.SeatIndex}";
     }
 
     private string SeatName(string seatId)
     {
+        if (IsCoop)
+        {
+            return SeatNames.Coop(Projection, seatId);
+        }
         if (seatId == Projection.Viewer.SeatId)
         {
             return "You";
@@ -1051,17 +1081,27 @@
     }
 
     private string RosterTitle(MembershipProjection seat) =>
-        seat.SeatId == Projection.Viewer.SeatId
+        IsCoop
+            ? seat.SeatId == Projection.Viewer.SeatId ? "Your army"
+                : SeatNames.IsVoidLord(Projection, seat.SeatId) ? "Void Lord's horde"
+                : $"{SeatNames.Coop(Projection, seat.SeatId)}'s army"
+        : seat.SeatId == Projection.Viewer.SeatId
             ? "Your army"
             : Projection.Viewer.Role == "player" ? "Rival army" : $"Commander {seat.SeatIndex}";
 
     private string ResultTitle(GameResult result) =>
-        result.WinningSeatId == Projection.Viewer.SeatId
+        IsCoop && result.WinningSide is { } side
+            ? side == ViewerSide ? "Victory"
+                : Projection.Viewer.Role == "player" ? "Defeat"
+                : side == "heroes" ? "The heroes win" : "The Void Lord wins"
+        : result.WinningSeatId == Projection.Viewer.SeatId
             ? "Victory"
             : Projection.Viewer.Role == "player" ? "Defeat" : $"{SeatName(result.WinningSeatId ?? string.Empty)} wins";
 
     private string ResultSummary(GameResult result) =>
-        !Projection.Viewer.CanCommand
+        IsCoop
+            ? result.WinningSide == "heroes" ? "Every monster has fallen." : "Every hero has fallen."
+        : !Projection.Viewer.CanCommand
             ? "The losing army has fallen."
             : result.WinningSeatId == Projection.Viewer.SeatId ? "Every enemy unit has fallen." : "Your army has fallen.";
 
