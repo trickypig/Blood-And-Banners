@@ -205,7 +205,7 @@ Built by `api/tools/build-terrain-scenarios.php` as `api/scenarios/void-reaches.
   - **The Hollow (north centre):** darkness and poison pits on high ground. It is the largest spawn zone.
   - **Thornwild (south-west):** jungle and swamp.
   - **Shifting Dunes (south-east):** dunes and desert.
-- **Spawn zones:** about 120 hexes total, none on open water, ice, poison or lava.
+- **Spawn zones:** about 150 hexes total (The Hollow the largest), none on open water, ice, poison or lava.
 - **Elevation:** crag ridges and stone outcrops separate zones and break sight lines. Every zone is reachable from the start by at least two disjoint routes.
 - **Reserved fountain sites:** one each in Frost Reach, Ember Wastes and The Hollow, kept clear but not flagged `fountain: true` until slice 2.
 - **Scenario `coop` block:** `{ "basePoints": 4, "pointsPerHeroPlayer": 8 }`.
