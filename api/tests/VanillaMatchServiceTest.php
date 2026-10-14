@@ -79,10 +79,10 @@ function vanilla_match_service_tests(): array
                 $started['draft']['heroBySeat'],
                 'undecided maps always carry both seats'
             );
-            expect_same(['chooseFirstPlayer', 'chooseStartPosition', 'pickHero', 'pickArmy'], array_column($started['legalActions'], 'kind'), 'the picker sees every open decision');
+            expect_same(['chooseFirstPlayer', 'chooseStartPosition', 'pickHero', 'pickArmy', 'setCommanderName'], array_column($started['legalActions'], 'kind'), 'the picker sees every open decision');
             expect_same(5, count($started['draft']['availableHeroes']), 'the catalog heroes are offered');
             expect_same(null, $started['draft']['availableHeroes'][0]['takenBySeatId'], 'no hero is taken yet');
-            expect_same([], $match['games']->getGame($match['gameId'], $match['rival']['identity'])['legalActions'], 'the rival waits');
+            expect_same(['setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['rival']['identity'])['legalActions'], 'kind'), 'the rival waits but may rename');
             $events = $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0)['events'];
             expect_same(['gameStarted', 'initiativeRolled'], array_slice(array_column($events, 'kind'), -2), 'start and initiative are logged');
         },

@@ -220,13 +220,19 @@ final class GameService
         }
     }
 
-    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord'];
+    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
+
+    private const NAMING_LIFECYCLES = ['lobby', 'setup', 'draft'];
 
     private function applyLobbyCommand(array $game, array $membership, string $identityId, array $command, int $newVersion): void
     {
         $currentVersion = (int)$game['version'];
         $kind = (string)$command['kind'];
         $payload = is_array($command['payload']) ? $command['payload'] : [];
+        if ($kind === 'setCommanderName') {
+            $this->setCommanderName($game, $membership, $payload, $newVersion);
+            return;
+        }
         if ($kind === 'setReady') {
             if (!is_bool($payload['ready'] ?? null)) {
                 throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
@@ -283,6 +289,37 @@ final class GameService
         $this->appendEvent($game['id'], $newVersion, 'voidLordChanged', $identityId, ['seatId' => $target]);
     }
 
+    /** Seat metadata, not game state: no rules engine, no event, and locked once battle begins. */
+    private function setCommanderName(array $game, array $membership, array $payload, int $newVersion): void
+    {
+        $currentVersion = (int)$game['version'];
+        $raw = $payload['name'] ?? null;
+        $collapsed = is_string($raw) ? preg_replace('/\s+/u', ' ', $raw) : null;
+        if ($collapsed === null) {
+            throw new GameServiceException('unsupportedCommand', 'Commander names must be text.', $currentVersion);
+        }
+        if (!in_array($game['lifecycle'], self::NAMING_LIFECYCLES, true)) {
+            throw new GameServiceException('illegalLifecycle', 'Commander names are locked once battle begins.', $currentVersion);
+        }
+        $name = trim((string)preg_replace('/\p{Cc}/u', '', $collapsed));
+        $name = $name === '' ? null : $name;
+        if ($name !== null && preg_match_all('/./su', $name) > 24) {
+            throw new GameServiceException('nameTooLong', 'Names can be at most 24 characters.', $currentVersion);
+        }
+        if ($name !== null) {
+            foreach ($this->memberships($game['id']) as $seat) {
+                if ((string)$seat['id'] !== (string)$membership['id']
+                    && $seat['commander_name'] !== null
+                    && preg_match('/^' . preg_quote((string)$seat['commander_name'], '/') . '$/iu', $name) === 1) {
+                    throw new GameServiceException('nameTaken', 'Another commander already uses that name.', $currentVersion);
+                }
+            }
+        }
+        $this->connection->prepare('UPDATE game_memberships SET commander_name = :name WHERE game_id = :game AND id = :seat')
+            ->execute(['name' => $name, 'game' => $game['id'], 'seat' => $membership['id']]);
+        $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+    }
+
     private function bumpVersion(string $gameId, int $currentVersion, int $newVersion): void
     {
         $bump = $this->connection->prepare(
@@ -296,7 +333,7 @@ final class GameService
 
     private function lobbyActions(array $game, array $memberships, array $viewer): array
     {
-        $actions = [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []]];
+        $actions = [['kind' => 'setReady', 'unitId' => null, 'targetHexes' => []], ['kind' => 'setCommanderName', 'unitId' => null, 'targetHexes' => []]];
         if ($game['mode'] !== 'coop') {
             return $actions;
         }
@@ -593,6 +630,9 @@ final class GameService
             $state !== null => $this->engine->legalActions($state, $viewer['seatId']),
             default => [],
         };
+        if ($viewer['role'] === 'player' && in_array($game['lifecycle'], ['setup', 'draft'], true)) {
+            $legalActions[] = ['kind' => 'setCommanderName', 'unitId' => null, 'targetHexes' => []];
+        }
         $legalActions = array_map(
             static fn(array $action): array => $action + ['ability' => null],
             $legalActions

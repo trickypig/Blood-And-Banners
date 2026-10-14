@@ -75,8 +75,8 @@ function coop_service_tests(): array
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             expect_same('setup', $started['lifecycle'], 'the match opens in setup');
-            expect_same(['placeMonster'], array_column($started['legalActions'], 'kind'), 'the void lord may place monsters');
-            expect_same([], $match['games']->getGame($match['gameId'], $match['hero1']['identity'])['legalActions'], 'the hero player waits');
+            expect_same(['placeMonster', 'setCommanderName'], array_column($started['legalActions'], 'kind'), 'the void lord may place monsters');
+            expect_same(['setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['hero1']['identity'])['legalActions'], 'kind'), 'the hero player waits but may rename');
 
             $solo = coop_service_match(0);
             vanilla_submit($solo, 'host', 'claimVoidLord', []);
