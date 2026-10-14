@@ -94,6 +94,7 @@ try {
 
     $apiSourceRoot = Join-Path $repositoryRoot 'api'
     Copy-ReleaseFile -Source (Join-Path $apiSourceRoot 'autoload.php') -Destination (Join-Path $privateRoot 'autoload.php')
+    Copy-ReleaseFile -Source (Join-Path $repositoryRoot 'data\gameData.json') -Destination (Join-Path $privateRoot 'data\gameData.json')
 
     $sourceCodeRoot = Join-Path $apiSourceRoot 'src'
     Get-ChildItem -LiteralPath $sourceCodeRoot -Recurse -File -Filter '*.php' |

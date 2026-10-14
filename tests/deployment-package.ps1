@@ -60,6 +60,7 @@ try {
 
     $requiredPrivate = @(
         'server/api/autoload.php',
+        'server/api/data/gameData.json',
         'server/api/src/Config/AppConfig.php',
         'server/api/migrations/001_initial.mysql.sql',
         'server/api/scenarios/proving-field.json',
@@ -69,6 +70,13 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $release $relative) -PathType Leaf)) {
             throw "missing $relative"
         }
+    }
+
+    $packagedAutoload = Join-Path $release 'server\api\autoload.php'
+    $catalogCheck = 'require $argv[1]; $catalog = new BloodAndBanners\Rules\Vanilla\Catalog(); if (count($catalog->heroes()) === 0 || count($catalog->armies()) === 0) { exit(1); }'
+    & php -r $catalogCheck $packagedAutoload
+    if ($LASTEXITCODE -ne 0) {
+        throw 'packaged API cannot load its default game catalog'
     }
 
     $forbidden = Get-ChildItem -LiteralPath (Join-Path $release 'public\play') -Recurse -Force |
