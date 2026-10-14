@@ -1,0 +1,33 @@
+{
+  "gameId": "coop-fixture",
+  "version": 9,
+  "lifecycle": "setup",
+  "mode": "coop",
+  "scenarioName": "Void Reaches",
+  "viewer": { "role": "player", "seatId": "seat-void", "canCommand": true, "isHost": true },
+  "board": { "columns": 1, "rows": 1, "hexes": [ { "q": 0, "r": 0, "biome": "ice", "terrain": "snow", "elevation": 0, "sightBlocker": false, "occupantId": "v-m1" } ] },
+  "turn": { "round": 0, "activeSeatId": null, "activationsRemaining": 0, "activeUnitId": null, "respondingToSeatId": "seat-hero" },
+  "pendingChoice": null,
+  "pendingChoiceSummary": null,
+  "legalActions": [ { "kind": "placeMonster", "unitId": null, "targetHexes": ["0,0"], "ability": null } ],
+  "scores": {},
+  "result": { "reason": "monstersDefeated", "winningSeatId": null, "winningSide": "heroes", "finalScores": {} },
+  "memberships": [
+    { "seatId": "seat-void", "seatIndex": 1, "ready": true, "isHost": true, "role": "voidLord" },
+    { "seatId": "seat-hero", "seatIndex": 2, "ready": true, "isHost": false, "role": "player" }
+  ],
+  "sides": {
+    "heroes": { "kind": "heroes", "seatIds": ["seat-hero"] },
+    "void": { "kind": "void", "seatIds": ["seat-void"] }
+  },
+  "setup": {
+    "budget": 12, "spent": 1, "confirmed": false, "spawnZoneHexes": ["0,0"],
+    "roster": [ { "name": "Ice Wolf", "biome": "Ice", "tier": "common", "cost": 1, "image": "/images/monsters/ice_wolf_card.png", "move": 4, "range": 1, "power": 2, "defense": 2, "hp": 2, "abilities": [ { "name": "Pack Tactics", "type": "Essence", "description": "", "playable": false, "usedThisTurn": false } ] } ]
+  },
+  "draft": null,
+  "units": [
+    { "unitId": "v-m1", "seatId": "seat-void", "isHero": false, "name": "Ice Wolf", "image": "", "move": 4, "range": 1, "power": 2, "defense": 2, "hp": 2, "wounds": 0, "hex": "0,0", "activatedThisTurn": false,
+      "side": "void", "tier": "common", "abilities": [], "effects": [], "conditions": [],
+      "inactiveAbilities": [ { "name": "Pack Tactics", "type": "Essence", "description": "", "playable": false, "usedThisTurn": false } ] }
+  ]
+}

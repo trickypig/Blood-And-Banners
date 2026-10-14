@@ -43,6 +43,7 @@ public sealed record TurnProjection(
     int ActivationsRemaining)
 {
     public string? ActiveUnitId { get; init; }
+    public string? RespondingToSeatId { get; init; }
 }
 
 public sealed record PendingChoiceProjection(
@@ -89,13 +90,43 @@ public sealed record LegalAction(
 public sealed record GameResult(
     string Reason,
     string? WinningSeatId,
-    IReadOnlyDictionary<string, int> FinalScores);
+    IReadOnlyDictionary<string, int> FinalScores)
+{
+    public string? WinningSide { get; init; }
+}
 
 public sealed record MembershipProjection(
     string SeatId,
     int SeatIndex,
     bool Ready,
-    bool IsHost);
+    bool IsHost)
+{
+    public string Role { get; init; } = "player";
+}
+
+public sealed record SideProjection(string Kind, IReadOnlyList<string> SeatIds);
+
+public sealed record MonsterCard(
+    string Name,
+    string Biome,
+    string Tier,
+    int Cost,
+    string Image,
+    int Move,
+    int Range,
+    int Power,
+    int Defense,
+    int Hp)
+{
+    public IReadOnlyList<AbilityProjection> Abilities { get; init; } = [];
+}
+
+public sealed record SetupProjection(
+    int Budget,
+    int Spent,
+    bool Confirmed,
+    IReadOnlyList<string> SpawnZoneHexes,
+    IReadOnlyList<MonsterCard> Roster);
 
 public sealed record GameProjection(
     string GameId,
@@ -115,4 +146,6 @@ public sealed record GameProjection(
     public DraftProjection? Draft { get; init; }
     public IReadOnlyList<UnitProjection> Units { get; init; } = [];
     public PendingChoiceSummary? PendingChoiceSummary { get; init; }
+    public IReadOnlyDictionary<string, SideProjection>? Sides { get; init; }
+    public SetupProjection? Setup { get; init; }
 }

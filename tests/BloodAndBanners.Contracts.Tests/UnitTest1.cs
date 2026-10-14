@@ -183,6 +183,40 @@ public sealed class ContractFixtureTests
         Assert.True(unit.ActivatedThisTurn);
     }
 
+    [Fact]
+    public void Coop_projection_fixture_deserializes_sides_setup_roles_and_monsters()
+    {
+        var json = File.ReadAllText(FixturePath("coop-projection.json"));
+        var projection = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.GameProjection>(
+            json, global::BloodAndBanners.Contracts.ContractJson.Options)!;
+
+        Assert.Equal(global::BloodAndBanners.Contracts.GameLifecycle.Setup, projection.Lifecycle);
+        Assert.Equal(global::BloodAndBanners.Contracts.GameMode.Coop, projection.Mode);
+        Assert.Equal("voidLord", projection.Memberships[0].Role);
+        Assert.Equal(new[] { "seat-void" }, projection.Sides!["void"].SeatIds);
+        Assert.Equal(12, projection.Setup!.Budget);
+        Assert.Equal(1, projection.Setup.Roster.Single().Cost);
+        Assert.Equal("seat-hero", projection.Turn.RespondingToSeatId);
+        var wolf = projection.Units.Single();
+        Assert.Equal("void", wolf.Side);
+        Assert.Equal("common", wolf.Tier);
+        Assert.False(wolf.InactiveAbilities.Single().Playable);
+        Assert.Equal("heroes", projection.Result!.WinningSide);
+    }
+
+    [Fact]
+    public void Duel_fixture_defaults_the_new_coop_fields()
+    {
+        var projection = System.Text.Json.JsonSerializer.Deserialize<global::BloodAndBanners.Contracts.GameProjection>(
+            File.ReadAllText(FixturePath("game-projection.json")), global::BloodAndBanners.Contracts.ContractJson.Options)!;
+
+        Assert.Null(projection.Sides);
+        Assert.Null(projection.Setup);
+        Assert.Equal("player", projection.Memberships[0].Role);
+        Assert.Empty(projection.Units.Single().InactiveAbilities);
+        Assert.Null(projection.Turn.RespondingToSeatId);
+    }
+
     private static string FixturePath(string name) =>
         Path.Combine(AppContext.BaseDirectory, "fixtures", name);
 }
