@@ -9,6 +9,7 @@ final class Catalog
 {
     private array $heroes = [];
     private array $armies = [];
+    private array $monsters = [];
 
     public function __construct(?string $path = null)
     {
@@ -28,6 +29,27 @@ final class Catalog
                 'units' => array_map(self::stats(...), $army['units']),
             ];
         }
+        foreach ($data['monsters'] ?? [] as $biome) {
+            foreach ($biome['creatures'] ?? [] as $creature) {
+                if (!empty($creature['hidden'])) {
+                    continue;
+                }
+                $this->monsters[(string)$creature['name']] = self::stats($creature) + [
+                    'biome' => (string)($biome['biome'] ?? ''),
+                    'tier' => (string)($creature['tier'] ?? 'common'),
+                ];
+            }
+        }
+    }
+
+    public function monsters(): array
+    {
+        return array_values($this->monsters);
+    }
+
+    public function monster(string $name): ?array
+    {
+        return $this->monsters[$name] ?? null;
     }
 
     public function heroes(): array
@@ -62,7 +84,7 @@ final class Catalog
             'hp' => (int)$card['hp'],
             'abilities' => array_map(static fn(array $ability): array => [
                 'name' => (string)$ability['name'],
-                'type' => (string)$ability['type'],
+                'type' => (string)($ability['type'] ?? ''),
                 'description' => (string)($ability['description'] ?? ''),
             ], $card['abilities'] ?? []),
         ];

@@ -2,7 +2,9 @@
   "heroes": [
     {"name": "Test Captain", "image": "/images/heroes/captain.png", "move": 3, "range": 1, "power": 4, "defense": 3, "hp": 6, "abilities": [{"name": "Shield Wall", "type": "Ability", "description": "Grant one adjacent unit +1 Defense until the start of your next turn"}]},
     {"name": "Test Marshal", "image": "/images/heroes/marshal.png", "move": 4, "range": 2, "power": 3, "defense": 3, "hp": 5, "abilities": []},
-    {"name": "Test Warden", "image": "/images/heroes/warden.png", "move": 2, "range": 1, "power": 5, "defense": 4, "hp": 7, "abilities": []}
+    {"name": "Test Warden", "image": "/images/heroes/warden.png", "move": 2, "range": 1, "power": 5, "defense": 4, "hp": 7, "abilities": []},
+    {"name": "Test Ranger", "image": "/images/heroes/ranger.png", "move": 3, "range": 4, "power": 3, "defense": 2, "hp": 5, "abilities": []},
+    {"name": "Test Sage", "image": "/images/heroes/sage.png", "move": 2, "range": 3, "power": 4, "defense": 2, "hp": 5, "abilities": []}
   ],
   "armies": [
     {"name": "Red Company", "color": "Red", "units": [
@@ -30,6 +32,13 @@
       {"name": "Green Mage", "image": "/images/units/green_mage.png", "move": 3, "range": 4, "power": 3, "defense": 1, "hp": 3, "abilities": []}
     ]}
   ],
-  "monsters": [],
+  "monsters": [
+    {"biome": "Ice", "color": "White", "creatures": [
+      {"name": "Test Wolf", "tier": "common", "image": "/images/monsters/test_wolf.png", "move": 4, "range": 1, "power": 2, "defense": 2, "hp": 2, "abilities": [{"name": "Pack Tactics", "type": "Essence", "description": "Gains +1 Power beside another wolf"}]},
+      {"name": "Test Golem", "tier": "elite", "image": "/images/monsters/test_golem.png", "move": 2, "range": 1, "power": 4, "defense": 4, "hp": 5, "abilities": []},
+      {"name": "Test Wyrm", "tier": "boss", "image": "/images/monsters/test_wyrm.png", "move": 3, "range": 3, "power": 6, "defense": 5, "hp": 10, "abilities": [{"name": "Frost Breath", "description": "An ability with no type"}]},
+      {"name": "Test Phantom", "hidden": true, "tier": "elite", "move": 3, "range": 1, "power": 3, "defense": 3, "hp": 3, "abilities": []}
+    ]}
+  ],
   "terrainObjects": []
 }
