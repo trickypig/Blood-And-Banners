@@ -167,6 +167,47 @@ public sealed class DraftTableTests : BunitContext
 
         Assert.NotNull(cut.Find(".draft-ribbon [data-testid=commander-name]"));
     }
+
+    [Fact]
+    public void The_draft_log_lists_picks_newest_first_and_previews_the_latest()
+    {
+        var events = new[]
+        {
+            DraftEvent(1, "initiativeRolled", """{"rolls":{"seat-red":[18],"seat-blue":[4]},"order":["seat-red","seat-blue"]}"""),
+            DraftEvent(2, "draftPicked", """{"seatId":"seat-red","decision":"chooseFirstPlayer","value":"seat-red"}"""),
+            DraftEvent(3, "draftPicked", """{"seatId":"seat-blue","decision":"pickHero","value":"Malachar the Voidcaller"}"""),
+        };
+
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red"))
+            .Add(component => component.Events, events));
+
+        var log = cut.Find("[data-testid=draft-log]");
+        Assert.Equal("Draft log", log.QuerySelector(".combat-log h2")!.TextContent);
+        Assert.Equal(
+            ["Rival chose Malachar the Voidcaller.", "You chose to move first.", "Initiative: You rolled 18, Rival rolled 4. You won."],
+            log.QuerySelectorAll(".combat-log li").Select(item => item.TextContent));
+        Assert.Equal("Rival chose Malachar the Voidcaller.", log.QuerySelector(".draft-log-latest")!.TextContent);
+    }
+
+    [Fact]
+    public void The_draft_log_toggle_opens_and_closes_it_on_small_screens()
+    {
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red")));
+
+        var toggle = cut.Find(".draft-log-toggle");
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Contains("No picks yet.", cut.Find("[data-testid=draft-log] .combat-log").TextContent);
+
+        toggle.Click();
+
+        Assert.Equal("true", cut.Find(".draft-log-toggle").GetAttribute("aria-expanded"));
+        Assert.Contains("open", cut.Find("[data-testid=draft-log]").ClassList);
+    }
+
+    private static GameEvent DraftEvent(long sequence, string kind, string payload) =>
+        new(sequence, 9, kind, null, [], JsonSerializer.Deserialize<JsonElement>(payload), DateTimeOffset.UnixEpoch);
 }
 
 internal static class DraftFixtures

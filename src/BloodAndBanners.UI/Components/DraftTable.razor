@@ -18,6 +18,16 @@
         <p class="draft-error" role="alert">@ErrorMessage</p>
     }
 
+    <div class="draft-layout">
+    <aside class="draft-log @(_logOpen ? "open" : null)" data-testid="draft-log">
+        <button type="button" class="draft-log-toggle" aria-expanded="@(_logOpen ? "true" : "false")" @onclick="() => _logOpen = !_logOpen">
+            <span class="draft-log-label">Draft log</span>
+            <span class="draft-log-latest">@(LatestLine ?? "No picks yet.")</span>
+        </button>
+        <CombatLog Projection="Projection" Events="Events" Title="Draft log" EmptyText="No picks yet." />
+    </aside>
+
+    <div class="draft-main">
     @if (!IsCoop)
     {
         <div class="decision-row">
@@ -134,6 +144,9 @@
         </div>
     </section>
 
+    </div>
+    </div>
+
     @if (Projection.Viewer.CanCommand)
     {
         <LeaveMatchControl OnLeave="OnReturnToWarRoom" />
@@ -154,12 +167,19 @@
     public string? ImageBaseUrl { get; set; }
 
     [Parameter]
+    public IReadOnlyList<GameEvent> Events { get; set; } = [];
+
+    [Parameter]
     public EventCallback<GameCommandRequest> OnCommand { get; set; }
 
     [Parameter]
     public EventCallback OnReturnToWarRoom { get; set; }
 
+    private bool _logOpen;
+
     private DraftProjection Draft => Projection.Draft!;
+
+    private string? LatestLine => CombatLogFormatter.Recent(Events, Projection, 1).Select(line => line.Text).FirstOrDefault();
 
     private string? ViewerSeat => Projection.Viewer.SeatId;
 

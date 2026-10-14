@@ -11,9 +11,37 @@
 }
 
 .draft-ribbon,
-.decision-row,
-.roster-section,
-.draft-error { width: min(72rem, 100%); margin-inline: auto; }
+.draft-layout,
+.draft-error { width: min(90rem, 100%); margin-inline: auto; }
+
+.draft-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; margin-top: 1.25rem; }
+.draft-main { min-width: 0; }
+.draft-main > :first-child { margin-top: 0; }
+
+.draft-log { background: rgba(0, 0, 0, .25); border: 1px solid #5a5548; }
+.draft-log-toggle { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 2.75rem; padding: .5rem .85rem; color: var(--parchment); background: transparent; border: 0; text-align: left; font: inherit; cursor: pointer; }
+.draft-log-toggle::after { content: "▾"; flex: none; color: #ddbf76; }
+.draft-log.open .draft-log-toggle::after { content: "▴"; }
+.draft-log-label { flex: none; font-family: Georgia, serif; color: #ddbf76; }
+.draft-log-latest { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .9rem; }
+.draft-log ::deep .combat-log { display: none; border-top: 1px solid #5a5548; }
+.draft-log.open ::deep .combat-log { display: block; }
+.draft-log ::deep .combat-log h2 { display: none; }
+.draft-log ::deep .combat-log p { margin: 0; padding: .75rem .85rem; color: #a9a190; }
+.draft-log ::deep .combat-log ol { margin: 0; padding: .35rem 0; list-style: none; max-height: 14rem; overflow: auto; }
+.draft-log ::deep .combat-log li { padding: .5rem .85rem; line-height: 1.4; font-size: .92rem; }
+.draft-log ::deep .combat-log li:first-child { color: #f8f0dc; background: rgba(240, 207, 122, .1); box-shadow: inset .2rem 0 0 #f0cf7a; }
+
+@media (min-width: 64rem) {
+    .draft-layout { grid-template-columns: minmax(0, 1fr) 18rem; align-items: start; }
+    .draft-log { grid-column: 2; grid-row: 1; position: sticky; top: 1rem; }
+    .draft-main { grid-column: 1; grid-row: 1; }
+    .draft-log-toggle { display: none; }
+    .draft-log ::deep .combat-log,
+    .draft-log.open ::deep .combat-log { display: block; border-top: 0; }
+    .draft-log ::deep .combat-log h2 { display: block; margin: 0; padding: .85rem .85rem .6rem; font-family: Georgia, serif; color: #ddbf76; font-size: 1.2rem; border-bottom: 1px solid #5a5548; }
+    .draft-log ::deep .combat-log ol { max-height: calc(100dvh - 7rem); }
+}
 
 .draft-ribbon { display: grid; gap: .5rem; padding-bottom: 1rem; border-bottom: .25rem solid var(--brass); }
 .draft-ribbon h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.8rem, 5vw, 2.8rem); }
@@ -23,7 +51,7 @@
 .draft-status.my-pick { color: #f0cf7a; }
 .draft-error { margin-top: 1rem; padding: .75rem 1rem; background: #4b1b1f; border-left: .3rem solid #d26a5a; }
 
-.decision-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.decision-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
 .decision { padding: 1rem; background: rgba(0, 0, 0, .25); border: 1px solid #5a5548; }
 .decision h2,
 .roster-section h2 { margin: 0 0 .75rem; font-family: Georgia, serif; color: #ddbf76; font-size: 1.2rem; }

@@ -152,6 +152,48 @@ public sealed class CombatLogFormatterTests
     }
 
     [Fact]
+    public void Initiative_lines_show_each_roll_and_the_winner()
+    {
+        var projection = BattleFixtures.Projection();
+
+        Assert.Equal(
+            "Initiative: You rolled 4, Rival rolled 2. You won.",
+            CombatLogFormatter.Describe(Event("initiativeRolled", """{"rolls":{"seat-red":[4],"seat-blue":[2]},"order":["seat-red","seat-blue"]}"""), projection));
+        Assert.Equal(
+            "Initiative: You rolled 7 → 3, Rival rolled 7 → 15. Rival won.",
+            CombatLogFormatter.Describe(Event("initiativeRolled", """{"rolls":{"seat-red":[7,3],"seat-blue":[7,15]},"order":["seat-blue","seat-red"]}"""), projection));
+    }
+
+    [Theory]
+    [InlineData("seat-red", "seat-red", "You chose to move first.")]
+    [InlineData("seat-red", "seat-blue", "You chose Rival to move first.")]
+    [InlineData("seat-blue", "seat-red", "Rival chose you to move first.")]
+    [InlineData("seat-blue", "seat-blue", "Rival chose to move first.")]
+    public void First_player_lines_read_naturally(string picker, string first, string expected)
+    {
+        Assert.Equal(expected, CombatLogFormatter.Describe(
+            Event("draftPicked", $$"""{"seatId":"{{picker}}","decision":"chooseFirstPlayer","value":"{{first}}"}"""),
+            BattleFixtures.Projection()));
+    }
+
+    [Fact]
+    public void Recent_lists_the_newest_readable_lines_first()
+    {
+        var projection = BattleFixtures.Projection();
+        var events = new[]
+        {
+            Event("draftPicked", """{"seatId":"seat-red","decision":"pickHero","value":"Warden"}"""),
+            Event("readinessChanged", """{"ready":true}"""),
+            Event("draftPicked", """{"seatId":"seat-blue","decision":"pickArmy","value":"Blackmaw"}"""),
+        };
+
+        Assert.Equal(
+            ["Rival chose Blackmaw.", "You chose Warden."],
+            CombatLogFormatter.Recent(events, projection, 40).Select(line => line.Text));
+        Assert.Equal(["Rival chose Blackmaw."], CombatLogFormatter.Recent(events, projection, 1).Select(line => line.Text));
+    }
+
+    [Fact]
     public void Turn_lines_use_the_chosen_name()
     {
         var projection = BattleFixtures.Projection() with

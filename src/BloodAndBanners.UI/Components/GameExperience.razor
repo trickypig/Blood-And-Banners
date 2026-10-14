@@ -31,6 +31,7 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
 else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
 {
     <DraftTable Projection="_game"
+                Events="_events"
                 IsBusy="_isBusy"
                 ErrorMessage="@_error"
                 ImageBaseUrl="@ImageBaseUrl"

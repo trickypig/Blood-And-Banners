@@ -17,12 +17,21 @@ public static class CombatLogFormatter
         }
     }
 
+    /// <summary>The newest <paramref name="take"/> events that have a readable line, newest first.</summary>
+    public static IReadOnlyList<(string Kind, string Text)> Recent(IEnumerable<GameEvent> events, GameProjection projection, int take) => events
+        .Reverse()
+        .Select(gameEvent => (gameEvent.Kind, Text: Describe(gameEvent, projection)))
+        .Where(line => line.Text is not null)
+        .Take(take)
+        .Select(line => (line.Kind, line.Text!))
+        .ToList();
+
     private static string? DescribeCore(GameEvent gameEvent, GameProjection projection)
     {
         var payload = gameEvent.Payload;
         return gameEvent.Kind switch
         {
-            "initiativeRolled" => "Initiative is rolled.",
+            "initiativeRolled" => Initiative(projection, payload),
             "draftPicked" => $"{Seat(projection, Text(payload, "seatId"))} chose {DraftChoice(projection, payload)}.",
             "armiesPlaced" => "Both armies take the field.",
             "unitMoved" => Moved(projection, payload),
@@ -201,13 +210,24 @@ public static class CombatLogFormatter
         var value = payload.GetProperty("value").ToString();
         return Text(payload, "decision") switch
         {
-            "chooseFirstPlayer" => $"{Seat(projection, value)} to move first",
+            "chooseFirstPlayer" when value == Text(payload, "seatId") => "to move first",
+            "chooseFirstPlayer" => $"{Object(Seat(projection, value))} to move first",
             "chooseStartPosition" => $"start {value}",
             _ => value,
         };
     }
 
     private static string Seat(GameProjection projection, string seatId) => SeatNames.Display(projection, seatId);
+
+    private static string Object(string name) => name == "You" ? "you" : name;
+
+    private static string Initiative(GameProjection projection, JsonElement payload)
+    {
+        var rolls = payload.GetProperty("rolls").EnumerateObject()
+            .Select(seat => $"{Seat(projection, seat.Name)} rolled {string.Join(" → ", seat.Value.EnumerateArray().Select(roll => roll.GetInt32()))}");
+        var winner = payload.GetProperty("order").EnumerateArray().First().GetString() ?? string.Empty;
+        return $"Initiative: {string.Join(", ", rolls)}. {Seat(projection, winner)} won.";
+    }
 
 
     private static string Pushed(GameProjection projection, JsonElement payload)
