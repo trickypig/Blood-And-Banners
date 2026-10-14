@@ -35,6 +35,39 @@ function foundation_tests(): array
             expect_same(1, $count, 'game_states should exist exactly once');
         },
 
+        'migrations record what they applied and add the commander name column once' => static function (): void {
+            $db = ConnectionFactory::sqliteMemory();
+            (new Migrator($db))->migrate();
+            (new Migrator($db))->migrate();
+
+            $applied = $db->query('SELECT name FROM schema_migrations ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
+            expect_same(['001_initial', '002_match_state', '003_commander_names'], $applied, 'each migration is recorded once');
+            $columns = array_column($db->query('PRAGMA table_info(game_memberships)')->fetchAll(), 'name');
+            expect_same(1, count(array_keys($columns, 'commander_name', true)), 'the name column exists exactly once');
+        },
+
+        'a database migrated before tracking existed upgrades cleanly' => static function (): void {
+            $db = ConnectionFactory::sqliteMemory();
+            $root = dirname(__DIR__) . '/migrations/';
+            $db->exec((string)file_get_contents($root . '001_initial.sqlite.sql'));
+            $db->exec((string)file_get_contents($root . '002_match_state.sqlite.sql'));
+
+            (new Migrator($db))->migrate();
+            (new Migrator($db))->migrate();
+
+            $columns = array_column($db->query('PRAGMA table_info(game_memberships)')->fetchAll(), 'name');
+            expect_true(in_array('commander_name', $columns, true), 'the legacy database gains the name column');
+        },
+
+        'lobby projections carry a null name for unnamed seats' => static function (): void {
+            [$db, $auth, $games] = test_services_with_games();
+            $guest = $auth->createGuest('name-projection-device');
+            $projection = $games->createGame($guest['identityId'], 'vanillaPvp', 'Training Grounds');
+
+            expect_true(array_key_exists('name', $projection['memberships'][0]), 'memberships expose name');
+            expect_same(null, $projection['memberships'][0]['name'], 'an unnamed seat projects null');
+        },
+
         'guest refresh tokens rotate and cannot be replayed' => static function (): void {
             [$db, $auth] = test_services();
             $issued = $auth->createGuest('device-alpha');

@@ -630,6 +630,7 @@ final class GameService
                 'role' => (string)$seat['role'],
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
+                'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
             ], $memberships),
             'draft' => $state !== null && $state['phase'] === 'draft' ? (($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->coopDraftProjection($state) : $this->draftProjection($state)) : null,
             'units' => $state === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($state, $unit), self::orderedUnits($state))),
@@ -896,7 +897,7 @@ final class GameService
     private function memberships(string $gameId): array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, identity_id, seat_index, role, is_host, ready FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
+            'SELECT id, identity_id, seat_index, role, is_host, ready, commander_name FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
         );
         $statement->execute(['game' => $gameId]);
         return $statement->fetchAll();
