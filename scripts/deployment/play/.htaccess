@@ -1,4 +1,5 @@
 Options -Indexes
+CGIPassAuth On
 LimitRequestBody 1048576
 
 RewriteEngine On

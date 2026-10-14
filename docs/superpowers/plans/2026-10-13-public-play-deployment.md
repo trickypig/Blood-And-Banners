@@ -417,7 +417,7 @@ Return 204 to `OPTIONS` only after configuration loads and the incoming origin e
 
 - [ ] **Step 5: Add hardened Apache rules and package the templates**
 
-Use `Options -Indexes`, `LimitRequestBody 1048576`, `RewriteBase /play/`, an `^api(?:/|$)` rewrite to `/play/api/index.php`, real-file/directory checks, and a final `/play/index.html` fallback. Do not override the PHP handler in `.htaccess`; IONOS selects the active PHP version per domain in the Hosting control panel. Add `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: SAMEORIGIN`, and `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Set `Cache-Control: no-cache` on `index.html`, manifest, and service-worker files; set one-year immutable caching on fingerprinted framework assets.
+Use `Options -Indexes`, `CGIPassAuth On`, `LimitRequestBody 1048576`, `RewriteBase /play/`, an `^api(?:/|$)` rewrite to `/play/api/index.php`, real-file/directory checks, and a final `/play/index.html` fallback. Do not override the PHP handler in `.htaccess`; IONOS selects the active PHP version per domain in the Hosting control panel. Add `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: SAMEORIGIN`, and `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Set `Cache-Control: no-cache` on `index.html`, manifest, and service-worker files; set one-year immutable caching on fingerprinted framework assets.
 
 Copy `.htaccess` and the gateway to `public/play/api/index.php` from the release builder.
 
