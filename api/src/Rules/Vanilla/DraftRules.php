@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Game\GameServiceException;
+use BloodAndBanners\Rules\Vanilla\Modes\VanillaMode;
 
 final class DraftRules
 {
@@ -65,7 +66,7 @@ final class DraftRules
         if (!in_array($kind, $this->openDecisions($state, $seatId), true)) {
             self::fail('decisionAlreadyMade');
         }
-        $other = MatchEngine::otherSeat($state, $seatId);
+        $other = VanillaMode::other($state, $seatId);
         $draft = $state['draft'];
         if ($kind === 'chooseFirstPlayer') {
             $value = self::text($payload, 'seatId');
@@ -144,7 +145,7 @@ final class DraftRules
             }
             $positions = Placement::place($state['board'], $homes[$start], $homes[3 - $start], array_keys($roster), $occupied);
             foreach ($roster as $unitId => $stats) {
-                $units[$unitId] = ['unitId' => $unitId, 'seatId' => $seatId] + $stats + ['wounds' => 0, 'hex' => $positions[$unitId], 'flags' => []];
+                $units[$unitId] = ['unitId' => $unitId, 'seatId' => $seatId, 'side' => $seatId] + $stats + ['wounds' => 0, 'hex' => $positions[$unitId], 'flags' => []];
                 $occupied[$positions[$unitId]] = true;
                 $placed[$unitId] = $positions[$unitId];
             }

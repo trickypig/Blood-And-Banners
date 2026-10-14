@@ -5,6 +5,7 @@ namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 
 final class Wounds
 {
@@ -43,16 +44,13 @@ final class Wounds
         if ($state['turn']['activeUnitId'] === $unitId) {
             $state['turn']['activeUnitId'] = null;
         }
-        foreach ($state['seats'] as $seatId) {
-            if (!self::anyAlive($state, $seatId)) {
-                $winner = MatchEngine::otherSeat($state, $seatId);
-                $state['phase'] = 'completed';
-                $state['result'] = ['reason' => 'annihilation', 'winningSeatId' => $winner];
-                $state['turn']['activeUnitId'] = null;
-                $state['pending'] = null;
-                $events[] = MatchEngine::event('matchCompleted', [], ['winningSeatId' => $winner, 'reason' => 'annihilation']);
-                break;
-            }
+        $result = Modes::ofState($state)->victory($state);
+        if ($result !== null) {
+            $state['phase'] = 'completed';
+            $state['result'] = $result;
+            $state['turn']['activeUnitId'] = null;
+            $state['pending'] = null;
+            $events[] = MatchEngine::event('matchCompleted', [], $result);
         }
         return $state;
     }
