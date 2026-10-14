@@ -53,7 +53,8 @@
       "seatId": "seat-blue",
       "seatIndex": 2,
       "ready": true,
-      "isHost": false
+      "isHost": false,
+      "name": "Lord Ashfang"
     }
   ],
   "units": [

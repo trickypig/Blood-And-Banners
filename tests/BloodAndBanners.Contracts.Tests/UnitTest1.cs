@@ -20,6 +20,8 @@ public sealed class ContractFixtureTests
         Assert.Equal(2, projection.Memberships.Count);
         Assert.True(projection.Memberships[0].IsHost);
         Assert.True(projection.Memberships[1].Ready);
+        Assert.Null(projection.Memberships[0].Name);
+        Assert.Equal("Lord Ashfang", projection.Memberships[1].Name);
         Assert.Equal("unit-thorgrim", projection.Board.Hexes.Single().OccupantId);
         Assert.Equal("moveUnit", projection.LegalActions.Single().Kind);
         Assert.Equal("unit-thorgrim", projection.Turn.ActiveUnitId);

@@ -102,6 +102,8 @@ public sealed record MembershipProjection(
     bool IsHost)
 {
     public string Role { get; init; } = "player";
+
+    public string? Name { get; init; }
 }
 
 public sealed record SideProjection(string Kind, IReadOnlyList<string> SeatIds);
