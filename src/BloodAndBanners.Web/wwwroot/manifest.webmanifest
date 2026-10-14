@@ -3,6 +3,7 @@
   "short_name": "B&B",
   "id": "./",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#232529",
   "theme_color": "#681e24",
