@@ -90,7 +90,7 @@ function coop_battle_tests(): array
 
         'rule error messages are valid UTF-8 and encode as JSON' => static function (): void {
             foreach (glob(__DIR__ . '/../src/Rules/Vanilla/{*.php,Modes/*.php}', GLOB_BRACE) as $file) {
-                expect_true(mb_check_encoding((string)file_get_contents($file), 'UTF-8'), basename($file) . ' is valid UTF-8');
+                expect_true(preg_match('//u', (string)file_get_contents($file)) === 1, basename($file) . ' is valid UTF-8');
             }
             $source = (string)file_get_contents(__DIR__ . '/../src/Rules/Vanilla/BattleRules.php');
             preg_match("/'heroesActivationRequired' => '([^']*)'/", $source, $match);
