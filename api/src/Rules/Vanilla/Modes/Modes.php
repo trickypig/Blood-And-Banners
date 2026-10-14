@@ -12,6 +12,7 @@ final class Modes
     {
         return match ($mode) {
             'vanillaPvp' => new VanillaMode($catalog),
+            'coop' => new CoopMode($catalog),
             default => throw new GameServiceException('modeNotPlayable', 'That game mode cannot be played in this version yet.'),
         };
     }

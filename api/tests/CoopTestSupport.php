@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Turn;
 
 /** A battle where seat-a and seat-c are allied heroes and seat-b is the Void. */
@@ -18,4 +19,38 @@ function allied_battle(array $board, array $units, string $activeSeat = 'seat-a'
     }
     $state['turn'] = Turn::fresh($state, $activeSeat, 1);
     return $state;
+}
+
+/** 9×9 board: hero start at 1,4; every hex with q >= 7 is a void spawn hex. */
+function coop_board(): array
+{
+    $elevations = [];
+    for ($q = 0; $q < 9; $q++) {
+        for ($r = 0; $r < 9; $r++) {
+            $elevations["{$q},{$r}"] = 0;
+        }
+    }
+    $board = vanilla_board($elevations);
+    foreach ($board as $key => $hex) {
+        $board[$key]['spawnZone'] = (int)explode(',', (string)$key)[0] >= 7 ? 'void' : null;
+    }
+    $board['1,4']['playerStart'] = 1;
+    return $board;
+}
+
+/** Hero seats hero-a (rolls 15) and hero-b (rolls 5) against void-lord; budget 4 + 8 × 2 = 20. */
+function coop_start(?array $board = null, array $heroSeats = ['hero-a', 'hero-b'], array $rolls = [15, 5]): array
+{
+    return (new MatchEngine(test_catalog()))->start(
+        array_merge($heroSeats, ['void-lord']),
+        $board ?? coop_board(),
+        new SequenceRandom($rolls),
+        'coop',
+        ['voidLordSeatId' => 'void-lord', 'coop' => ['basePoints' => 4, 'pointsPerHeroPlayer' => 8]]
+    );
+}
+
+function coop_command(array $state, string $seatId, string $kind, array $payload = [], array $rolls = []): array
+{
+    return (new MatchEngine(test_catalog()))->apply($state, $seatId, $kind, $payload, new SequenceRandom($rolls));
 }
