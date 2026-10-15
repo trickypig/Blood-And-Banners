@@ -68,6 +68,9 @@
 .draft-card { display: grid; gap: .35rem; align-content: start; padding: .85rem; text-align: left; color: var(--parchment); background: #2c2d28; border: 1px solid #6a6252; box-shadow: inset .25rem 0 0 var(--brass); }
 .draft-card img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border: 1px solid #6a6252; }
 .draft-card strong { font-family: Georgia, serif; font-size: 1.05rem; }
+.army-head { display: flex; align-items: center; gap: .65rem; }
+.draft-card img.army-emblem { flex: none; width: 3.5rem; height: 3.5rem; aspect-ratio: auto; object-fit: contain; border: 0; }
+.army-title { display: grid; gap: .1rem; }
 .stat-line,
 .army-colour { color: #c9c2b2; font-size: .85rem; }
 .draft-card ul { margin: .25rem 0 0; padding-left: 1rem; font-size: .85rem; }

@@ -149,6 +149,7 @@ public sealed record GameProjection(
     public string ScenarioName { get; init; } = string.Empty;
     public IReadOnlyList<MembershipProjection> Memberships { get; init; } = [];
     public DraftProjection? Draft { get; init; }
+    public IReadOnlyDictionary<string, SeatArmyProjection>? Armies { get; init; }
     public IReadOnlyList<UnitProjection> Units { get; init; } = [];
     public PendingChoiceSummary? PendingChoiceSummary { get; init; }
     public IReadOnlyDictionary<string, SideProjection>? Sides { get; init; }

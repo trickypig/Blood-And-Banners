@@ -672,9 +672,22 @@ final class GameService
                 'isHost' => (bool)$seat['is_host'],
                 'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
             ], $memberships),
+            'armies' => $this->armiesProjection($state),
             'draft' => $state !== null && $state['phase'] === 'draft' ? (($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->coopDraftProjection($state) : $this->draftProjection($state)) : null,
             'units' => $state === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($state, $unit), self::orderedUnits($state))),
         ];
+    }
+
+    /** Each seat's drafted army, kept from the draft into the battle so the rosters can show its emblem. */
+    private function armiesProjection(?array $state): ?array
+    {
+        $armies = [];
+        foreach ($state['draft']['armyBySeat'] ?? [] as $seatId => $name) {
+            if ($name !== null && ($army = $this->engine->catalog()->army($name)) !== null) {
+                $armies[(string)$seatId] = ['name' => $army['name'], 'emblem' => $army['emblem']];
+            }
+        }
+        return $armies === [] ? null : $armies;
     }
 
     private function unitProjection(array $state, array $unit): array

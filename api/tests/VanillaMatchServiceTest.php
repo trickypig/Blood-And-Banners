@@ -82,6 +82,10 @@ function vanilla_match_service_tests(): array
             expect_same(['chooseFirstPlayer', 'chooseStartPosition', 'pickHero', 'pickArmy', 'setCommanderName'], array_column($started['legalActions'], 'kind'), 'the picker sees every open decision');
             expect_same(5, count($started['draft']['availableHeroes']), 'the catalog heroes are offered');
             expect_same(null, $started['draft']['availableHeroes'][0]['takenBySeatId'], 'no hero is taken yet');
+            $armies = array_column($started['draft']['availableArmies'], null, 'name');
+            expect_same('/images/armies/red-company.svg', $armies['Red Company']['emblem'], 'armies carry their emblem');
+            expect_same(null, $armies['Blue Company']['emblem'], 'an army without an emblem projects null');
+            expect_same(null, $started['armies'], 'no seat has an army before the draft picks');
             expect_same(['setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['rival']['identity'])['legalActions'], 'kind'), 'the rival waits but may rename');
             $events = $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0)['events'];
             expect_same(['gameStarted', 'initiativeRolled'], array_slice(array_column($events, 'kind'), -2), 'start and initiative are logged');
@@ -129,6 +133,14 @@ function vanilla_match_service_tests(): array
 
             expect_same('active', $projection['lifecycle'], 'the finished draft starts the battle');
             expect_same(null, $projection['draft'], 'the draft block disappears after the draft');
+            expect_same(
+                [
+                    $match['host']['seat'] => ['name' => 'Red Company', 'emblem' => '/images/armies/red-company.svg'],
+                    $match['rival']['seat'] => ['name' => 'Blue Company', 'emblem' => null],
+                ],
+                $projection['armies'],
+                'each seat keeps its drafted army and emblem into the battle'
+            );
             expect_same(14, count($projection['units']), 'both armies are projected');
             expect_same('s1-hero', $projection['units'][0]['unitId'], 'the first seat hero leads the unit list');
             expect_same('s1-u1', $projection['units'][1]['unitId'], 'units follow their hero in numeric order');
