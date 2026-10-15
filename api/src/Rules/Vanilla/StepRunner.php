@@ -26,9 +26,14 @@ final class StepRunner
         ];
     }
 
-    public static function save(string $unitId, string $sourceUnitId, string $ability): array
+    public static function save(string $unitId, string $sourceUnitId, string $ability, int $threshold = 11): array
     {
-        return ['op' => 'save', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'ability' => $ability];
+        return ['op' => 'save', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'ability' => $ability, 'threshold' => $threshold];
+    }
+
+    public static function poison(string $unitId, string $sourceUnitId, bool $immediate = false): array
+    {
+        return ['op' => 'poison', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'immediate' => $immediate];
     }
 
     public static function teleport(string $casterId, string $unitId, string $toHex): array
@@ -79,6 +84,7 @@ final class StepRunner
             'land' => [...$this->land($state, $step, $events), null],
             'teleport' => [$this->teleportStep($state, $step, $events), [], null],
             'save' => [$this->saveStep($state, $step, $events), [], null],
+            'poison' => [Poison::apply($state, $step['unitId'], $step['sourceUnitId'], $this->random, $events, $step['immediate']), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
             'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
@@ -157,7 +163,7 @@ final class StepRunner
         }
         $more = [];
         foreach (AbilityRegistry::abilitiesOf($attacker) as $ability) {
-            $more = array_merge($more, $ability->afterHit($state, $step['attackerId'], $step['targetId']));
+            $more = array_merge($more, $ability->afterHit($state, $step['attackerId'], $step['targetId'], $wounds));
         }
         return [$state, $more];
     }
@@ -184,7 +190,7 @@ final class StepRunner
             return $state;
         }
         $roll = $this->random->roll(20);
-        $saved = $roll >= 11;
+        $saved = $roll >= ($step['threshold'] ?? 11);
         $events[] = MatchEngine::event('saveRolled', [$target['hex']], [
             'unitId' => $step['unitId'], 'sourceUnitId' => $step['sourceUnitId'], 'ability' => $step['ability'], 'roll' => $roll, 'saved' => $saved,
         ]);

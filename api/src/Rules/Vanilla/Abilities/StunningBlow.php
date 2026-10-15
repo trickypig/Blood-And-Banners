@@ -11,7 +11,7 @@ use BloodAndBanners\Rules\Vanilla\UnitConditions;
 /** After each hit, the target saves on 11+ or is Stunned until the end of its seat's next turn. */
 final class StunningBlow extends Ability
 {
-    public function afterHit(array $state, string $ownerId, string $targetId): array
+    public function afterHit(array $state, string $ownerId, string $targetId, int $wounds = 0): array
     {
         return [StepRunner::save($targetId, $ownerId, $this->name)];
     }

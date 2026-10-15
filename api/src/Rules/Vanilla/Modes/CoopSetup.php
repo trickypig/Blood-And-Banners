@@ -19,6 +19,7 @@ final class CoopSetup
     private const PLAYABLE_ESSENCES = [
         'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence',
         'Ogre Rivalry', 'Stoneskin', 'Hollow Bones', 'Flying',
+        'Poison Arrows', 'Venom', 'Poisonous Bite',
     ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',

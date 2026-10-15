@@ -58,8 +58,8 @@ abstract class Ability
         return 0;
     }
 
-    /** Steps to run after this unit's strike lands on a surviving target (attack and defense dice were rolled). */
-    public function afterHit(array $state, string $ownerId, string $targetId): array
+    /** After a strike lands on a surviving target, including a blocked strike with zero wounds. */
+    public function afterHit(array $state, string $ownerId, string $targetId, int $wounds = 0): array
     {
         return [];
     }

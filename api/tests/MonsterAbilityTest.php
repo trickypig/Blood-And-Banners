@@ -122,8 +122,8 @@ function monster_ability_tests(): array
             foreach ([['Marsh Hydra', '7,0'], ['Pyromancer', '7,1'], ['Void Dragon', '7,2']] as [$name, $hex]) {
                 $state = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => $hex], new SequenceRandom([]))['state'];
             }
-            expect_same(['Outrage'], array_column($state['units']['v-m1']['abilities'], 'name'), 'the hydra only gains the supported essence');
-            expect_same(['Multiple Heads', 'Poisonous Bite'], array_column($state['units']['v-m1']['inactiveAbilities'], 'name'), 'other hydra abilities remain deferred');
+            expect_same(['Poisonous Bite', 'Outrage'], array_column($state['units']['v-m1']['abilities'], 'name'), 'the hydra gains its supported essences');
+            expect_same(['Multiple Heads'], array_column($state['units']['v-m1']['inactiveAbilities'], 'name'), 'the unsupported hydra ability remains deferred');
             expect_same([], $state['units']['v-m2']['abilities'], 'pyromancer does not get the wizard fireball');
             expect_same(['Fireball'], array_column($state['units']['v-m2']['inactiveAbilities'], 'name'), 'its own fireball remains deferred');
             expect_same(['Flying'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains flying');
@@ -172,9 +172,9 @@ function monster_ability_tests(): array
             $spawn = $started['setup']['spawnZoneHexes'][0];
             $placed = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Marsh Hydra', 'hex' => $spawn]);
             $hydra = $placed['units'][0];
-            expect_same(['Outrage'], array_column($hydra['abilities'], 'name'), 'the supported essence appears on the active card');
+            expect_same(['Poisonous Bite', 'Outrage'], array_column($hydra['abilities'], 'name'), 'the supported essences appear on the active card');
             expect_same(true, $hydra['abilities'][0]['playable'], 'the essence is marked playable');
-            expect_same([false, false], array_column($hydra['inactiveAbilities'], 'playable'), 'unsupported essences stay visibly inactive');
+            expect_same([false], array_column($hydra['inactiveAbilities'], 'playable'), 'unsupported essences stay visibly inactive');
             $dragonPlaced = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Void Dragon', 'hex' => $started['setup']['spawnZoneHexes'][1]]);
             $dragon = array_column($dragonPlaced['units'], null, 'unitId')['v-m2'];
             expect_same($flight, $dragon['abilities'][0]['description'], 'the placed dragon card explains the same flying rules');

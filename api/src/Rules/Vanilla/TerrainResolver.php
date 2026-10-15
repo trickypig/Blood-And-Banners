@@ -90,19 +90,9 @@ final class TerrainResolver
             if ($unit['seatId'] !== $seatId || $unit['hex'] === null || !UnitConditions::has($state, $unitId, 'Poisoned')) {
                 continue;
             }
-            $roll = (new CustomDice())->roll(1, $random);
-            $onPoison = Terrain::type($state['board'][$unit['hex']]) === 'poison';
-            $cleared = in_array('shield', $roll['faces'], true) && !$onPoison;
-            $events[] = MatchEngine::event('poisonRolled', [$unit['hex']], [
-                'unitId' => $unitId, 'hex' => $unit['hex'], 'faces' => $roll['faces'],
-                'wounds' => $roll['swords'], 'cleared' => $cleared,
-            ]);
-            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            $state = Poison::roll($state, $unitId, $random, $events);
             if ($state['phase'] !== 'active') {
                 return $state;
-            }
-            if ($cleared) {
-                $state = UnitConditions::clear($state, $unitId, 'Poisoned', $events);
             }
         }
         foreach ($ids as $unitId) {
