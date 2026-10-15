@@ -598,7 +598,8 @@
 
     private IReadOnlyList<string> PlaceableHexes => !InSetup || _selectedMonster is null
         ? []
-        : Projection.LegalActions.Where(action => action.Kind == "placeMonster").SelectMany(action => action.TargetHexes).ToList();
+        : Projection.LegalActions.Where(action => action.Kind == "placeMonster" && (action.Monster is null || action.Monster == _selectedMonster))
+            .SelectMany(action => action.TargetHexes).ToList();
 
     private void SelectMonster(string name) => _selectedMonster = _selectedMonster == name ? null : name;
 
@@ -687,6 +688,15 @@
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
             var aimed = key;
+            if (aiming.Ability == "Tentacle Regeneration")
+            {
+                if (aiming.TargetHexes.Contains(aimed) && hex.OccupantId is null)
+                {
+                    CancelTargeting();
+                    await Send("specialAttack", new { unitId = caster, ability = aiming.Ability, targetUnitIds = new[] { caster }, toHex = aimed });
+                }
+                return;
+            }
             if (aiming.Kind == "moveAbility")
             {
                 if (aiming.TargetHexes.Contains(aimed) && MovementOption(aimed) is { } movement)
@@ -824,6 +834,7 @@
     private string BannerText(Targeting aiming) => Teleporting
         ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
         : aiming.Kind == "moveAbility" ? $"{aiming.Ability}: choose a destination"
+        : aiming.Ability == "Tentacle Regeneration" ? "Tentacle Regeneration: choose adjacent water for a new tentacle; it can act next Void turn"
         : aiming.Ability == "Spore Bomb" ? "Spore Bomb: click the caster to release spores within 2 hexes and defeat itself"
         : aiming.Ability == "Spore Cloud" ? "Spore Cloud: click the caster to release spores within 3 hexes"
         : $"{aiming.Ability}: choose a target";

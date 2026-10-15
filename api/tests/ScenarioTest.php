@@ -144,7 +144,7 @@ function scenario_tests(): array
             }
         },
 
-        'void reaches is a 25 by 25 co-op map with safe spawn zones and two routes to every zone' => static function (): void {
+        'void reaches has land and river spawn zones and two routes to every land zone' => static function (): void {
             $scenario = built_in_scenario('void-reaches');
             expect_same('Void Reaches', $scenario['name'], 'the map uses its approved name');
             expect_same(['coop'], $scenario['modeCompatibility'], 'the map is Co-op only');
@@ -157,10 +157,10 @@ function scenario_tests(): array
             expect_same(1, count($starts), 'there is one shared hero start');
             $start = $starts[0];
             $spawn = array_keys(array_filter($board, static fn(array $hex): bool => $hex['spawnZone'] === 'void'));
-            expect_true(count($spawn) >= 100 && count($spawn) <= 170, 'spawn zones hold about 150 hexes');
+            expect_true(count($spawn) >= 100 && count($spawn) <= 190, 'spawn zones include the original regions and a small river area');
             foreach ($spawn as $key) {
                 expect_true(\BloodAndBanners\Rules\Vanilla\Hex::distance($start, $key) >= 7, "spawn hex {$key} is at least 7 from the start");
-                expect_same(null, \BloodAndBanners\Rules\Vanilla\Terrain::type($board[$key]), "spawn hex {$key} is not hazardous");
+                expect_true(in_array(\BloodAndBanners\Rules\Vanilla\Terrain::type($board[$key]), [null, 'water'], true), "spawn hex {$key} is land or water");
                 expect_true(!$board[$key]['sightBlocker'], "spawn hex {$key} is enterable");
             }
 

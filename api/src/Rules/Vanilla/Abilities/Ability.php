@@ -59,6 +59,16 @@ abstract class Ability
         return 0;
     }
 
+    public function allowsVoluntaryHex(array $state, array $unit, string $hex): bool
+    {
+        return true;
+    }
+
+    public function blocksAttack(array $state, string $ownerId, string $attackerId, string $originHex): bool
+    {
+        return false;
+    }
+
     /** After a strike lands on a surviving target, including a blocked strike with zero wounds. */
     public function afterHit(array $state, string $ownerId, string $targetId, int $wounds = 0): array
     {

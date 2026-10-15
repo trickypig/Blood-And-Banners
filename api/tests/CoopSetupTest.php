@@ -40,7 +40,7 @@ function coop_setup_tests(): array
             expect_same('initiativeRolled', $started['events'][0]['kind'], 'initiative is announced');
             $engine = new \BloodAndBanners\Rules\Vanilla\MatchEngine(test_catalog());
             expect_same([], $engine->legalActions($state, 'hero-a'), 'hero players wait during setup');
-            expect_same(['placeMonster'], array_column($engine->legalActions($state, 'void-lord'), 'kind'), 'the void lord may place');
+            expect_same(['placeMonster'], array_values(array_unique(array_column($engine->legalActions($state, 'void-lord'), 'kind'))), 'the void lord may place');
         },
 
         'co-op start needs a void lord, a hero player and a co-op battlefield' => static function (): void {

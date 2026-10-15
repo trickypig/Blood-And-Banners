@@ -12,6 +12,11 @@ abstract class SpecialAttack extends Ability
     /** Steps resolving the attack against the ordered targets. */
     abstract public function steps(array $state, string $unitId, array $targetIds, array $options = []): array;
 
+    public function targetHexes(array $state, string $unitId): array
+    {
+        return array_map(static fn(string $id): string => $state['units'][$id]['hex'], $this->targets($state, $unitId));
+    }
+
     /** Error code for an invalid target list, or null. Single-target attacks accept exactly one listed target. */
     public function validate(array $state, string $unitId, array $targetIds, array $options = []): ?string
     {

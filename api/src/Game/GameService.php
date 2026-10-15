@@ -708,7 +708,8 @@ final class GameService
             'hp' => $unit['hp'],
             'wounds' => $unit['wounds'],
             'hex' => $unit['hex'],
-            'activatedThisTurn' => in_array($id, $state['turn']['activated'], true),
+            'activatedThisTurn' => in_array($id, $state['turn']['activated'], true)
+                || ($unit['flags']['summonedOnTurn'] ?? null) === $state['turn']['number'],
             'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? [], isset($unit['tier'])),
             'side' => $unit['side'] ?? $unit['seatId'],
             'tier' => $unit['tier'] ?? null,

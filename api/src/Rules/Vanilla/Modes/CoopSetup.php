@@ -23,6 +23,7 @@ final class CoopSetup
         'Stunning Kick', 'Arrows of Slowness',
         'Multiple Heads', 'Many Heads', 'Branch Attack',
         'Spore Release', 'Mycelium Network',
+        'Water Affinity', 'Water Bound', 'Submerged',
     ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
@@ -48,7 +49,7 @@ final class CoopSetup
     public static function isAbilityPlayable(array $ability): bool
     {
         return ((($ability['type'] ?? '') === 'Essence' && in_array($ability['name'], self::PLAYABLE_ESSENCES, true))
-                || (($ability['type'] ?? '') === 'Attack' && in_array($ability['name'], ['Spore Bomb', 'Spore Cloud'], true)))
+                || (($ability['type'] ?? '') === 'Attack' && in_array($ability['name'], ['Spore Bomb', 'Spore Cloud', 'Water Twister', 'Tentacle Regeneration'], true)))
             && AbilityRegistry::isPlayable($ability['name']);
     }
 
@@ -59,10 +60,11 @@ final class CoopSetup
         }
         $actions = [];
         $remaining = $state['setup']['budget'] - $state['setup']['spent'];
-        $free = self::freeSpawnHexes($state);
-        $cheapest = min(array_map(self::cost(...), $this->catalog->monsters()) ?: [PHP_INT_MAX]);
-        if ($free !== [] && $cheapest <= $remaining) {
-            $actions[] = ['kind' => 'placeMonster', 'unitId' => null, 'targetHexes' => $free];
+        foreach ($this->catalog->monsters() as $monster) {
+            $free = self::freeSpawnHexes($state, $monster);
+            if ($free !== [] && self::cost($monster) <= $remaining) {
+                $actions[] = ['kind' => 'placeMonster', 'unitId' => null, 'monster' => $monster['name'], 'targetHexes' => $free];
+            }
         }
         foreach ($state['units'] as $unitId => $unit) {
             $actions[] = ['kind' => 'removeMonster', 'unitId' => (string)$unitId, 'targetHexes' => [$unit['hex']]];
@@ -94,7 +96,7 @@ final class CoopSetup
             if (self::occupied($state, $hex)) {
                 self::fail('hexOccupied');
             }
-            if ($state['board'][$hex]['sightBlocker'] || Terrain::type($state['board'][$hex]) !== null) {
+            if (!self::canPlace($state, $monster, $hex)) {
                 self::fail('hexNotEnterable');
             }
             $cost = self::cost($monster);
@@ -104,26 +106,7 @@ final class CoopSetup
             $unitId = 'v-m' . $state['setup']['nextMonster'];
             $state['setup']['nextMonster']++;
             $state['setup']['spent'] += $cost;
-            $state['units'][$unitId] = [
-                'unitId' => $unitId,
-                'seatId' => $state['voidLordSeatId'],
-                'side' => 'void',
-                'isHero' => false,
-                'tier' => $monster['tier'],
-                'biome' => $monster['biome'],
-                'name' => $monster['name'],
-                'image' => $monster['image'],
-                'move' => $monster['move'],
-                'range' => $monster['range'],
-                'power' => $monster['power'],
-                'defense' => $monster['defense'],
-                'hp' => $monster['hp'],
-                'abilities' => array_values(array_filter($monster['abilities'], self::isAbilityPlayable(...))),
-                'inactiveAbilities' => array_values(array_filter($monster['abilities'], static fn(array $ability): bool => !self::isAbilityPlayable($ability))),
-                'wounds' => 0,
-                'hex' => $hex,
-                'flags' => [],
-            ];
+            $state['units'][$unitId] = self::unit($monster, $unitId, $state['voidLordSeatId'], $hex);
             $events[] = MatchEngine::event('monsterPlaced', [$hex], ['unitId' => $unitId, 'monster' => $monster['name'], 'hex' => $hex, 'cost' => $cost]);
         } elseif ($kind === 'removeMonster') {
             $unitId = self::text($payload, 'unitId');
@@ -148,12 +131,52 @@ final class CoopSetup
         return ['state' => $state, 'events' => $events];
     }
 
-    private static function freeSpawnHexes(array $state): array
+    /** Shared creature construction for setup and in-battle summons. */
+    public static function unit(array $monster, string $unitId, string $seatId, string $hex): array
+    {
+        return [
+            'unitId' => $unitId,
+            'seatId' => $seatId,
+            'side' => 'void',
+            'isHero' => false,
+            'tier' => $monster['tier'],
+            'biome' => $monster['biome'],
+            'name' => $monster['name'],
+            'image' => $monster['image'],
+            'move' => $monster['move'],
+            'range' => $monster['range'],
+            'power' => $monster['power'],
+            'defense' => $monster['defense'],
+            'hp' => $monster['hp'],
+            'abilities' => array_values(array_filter($monster['abilities'], self::isAbilityPlayable(...))),
+            'inactiveAbilities' => array_values(array_filter($monster['abilities'], static fn(array $ability): bool => !self::isAbilityPlayable($ability))),
+            'wounds' => 0,
+            'hex' => $hex,
+            'flags' => [],
+        ];
+    }
+
+    private static function canPlace(array $state, array $monster, string $hex): bool
+    {
+        if (in_array($monster['name'], ['Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'], true)
+            && count(array_filter($state['units'], static fn(array $u): bool => $u['hex'] !== null && ($u['side'] ?? '') === 'void'
+                && in_array($u['name'], ['Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'], true))) >= 4) {
+            return false;
+        }
+        $unit = $monster;
+        $unit['abilities'] = array_values(array_filter($monster['abilities'], self::isAbilityPlayable(...)));
+        $type = Terrain::type($state['board'][$hex]);
+        $waterCreature = in_array($monster['biome'], ['River'], true);
+        return !$state['board'][$hex]['sightBlocker'] && ($type === null || ($type === 'water' && $waterCreature))
+            && Terrain::allowsVoluntaryHex($state, $unit, $hex);
+    }
+
+    private static function freeSpawnHexes(array $state, array $monster): array
     {
         $free = [];
         foreach ($state['board'] as $key => $hex) {
             $key = (string)$key;
-            if ($hex['spawnZone'] === 'void' && !$hex['sightBlocker'] && Terrain::type($hex) === null && !self::occupied($state, $key)) {
+            if ($hex['spawnZone'] === 'void' && self::canPlace($state, $monster, $key) && !self::occupied($state, $key)) {
                 $free[] = $key;
             }
         }

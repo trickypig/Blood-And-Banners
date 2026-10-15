@@ -36,6 +36,9 @@ final class BattleRules
         'invalidTerrainDestination' => 'That unit cannot voluntarily stop on that terrain.',
         'invalidSlipChoice' => 'That ice movement choice is no longer legal.',
         'targetOutOfRange' => 'That target is out of range.',
+        'targetSubmerged' => 'That unit is submerged and immune to ranged attacks.',
+        'unitSummonedThisTurn' => 'A summoned unit can activate starting on its next turn.',
+        'tentacleLimitReached' => 'There can be at most four living allied Kraken tentacles.',
         'noLineOfSight' => 'That target is not in line of sight.',
         'unknownAbility' => 'That unit does not have that ability.',
         'abilityNotPlayable' => 'That ability is not yet in the digital game.',
@@ -190,13 +193,13 @@ final class BattleRules
                     if (!$ability instanceof SpecialAttack) {
                         continue;
                     }
-                    $targets = $ability->targets($state, $unitId);
-                    if ($targets !== []) {
+                    $hexes = $ability->targetHexes($state, $unitId);
+                    if ($hexes !== []) {
                         $actions[] = [
                             'kind' => 'specialAttack',
                             'unitId' => $unitId,
                             'ability' => $ability->name,
-                            'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
+                            'targetHexes' => $hexes,
                         ];
                     }
                 }
@@ -634,6 +637,9 @@ final class BattleRules
 
     private function activationError(array $state, string $unitId): ?string
     {
+        if (($state['units'][$unitId]['flags']['summonedOnTurn'] ?? null) === $state['turn']['number']) {
+            return 'unitSummonedThisTurn';
+        }
         if (in_array($unitId, $state['turn']['activated'], true)) {
             return 'unitAlreadyActivated';
         }

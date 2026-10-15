@@ -62,6 +62,9 @@ final class Terrain
         if ($destination === null || $destination['sightBlocker']) {
             return false;
         }
+        if ($movementKind === 'voluntary' && !self::allowsVoluntaryHex($state, $state['units'][$unitId], $to)) {
+            return false;
+        }
         $source = $state['board'][$from];
         $rise = $destination['elevation'] - $source['elevation'];
         if (self::hasTrait($state, $unitId, 'Flying')) {
@@ -81,6 +84,16 @@ final class Terrain
     public static function canEnd(array $state, string $unitId, string $hex, string $movementKind): bool
     {
         return !(self::type($state['board'][$hex]) === 'lava' && self::hasTrait($state, $unitId, 'Flying') && $movementKind === 'voluntary');
+    }
+
+    public static function allowsVoluntaryHex(array $state, array $unit, string $hex): bool
+    {
+        foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+            if (!$ability->allowsVoluntaryHex($state, $unit, $hex)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static function stopsVoluntary(array $state, string $unitId, string $hex): bool

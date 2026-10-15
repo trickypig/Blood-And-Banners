@@ -18,11 +18,11 @@ final class StepRunner
     {
     }
 
-    public static function strike(string $attackerId, string $targetId, ?int $power = null, ?string $ability = null, bool $double = false, ?string $damageType = null): array
+    public static function strike(string $attackerId, string $targetId, ?int $power = null, ?string $ability = null, bool $double = false, ?string $damageType = null, ?string $originHex = null): array
     {
         return [
             'op' => 'strike', 'attackerId' => $attackerId, 'targetId' => $targetId, 'power' => $power,
-            'ability' => $ability, 'double' => $double, 'damageType' => $damageType,
+            'ability' => $ability, 'double' => $double, 'damageType' => $damageType, 'originHex' => $originHex,
         ];
     }
 
@@ -93,6 +93,7 @@ final class StepRunner
             'condition' => [UnitConditions::apply($state, $step['name'], $step['unitId'], $step['sourceUnitId'], $step['expires'], $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
             'spores' => [$this->sporesStep($state, $step, $events), [], null],
+            'summonTentacle' => [Abilities\TentacleRegeneration::summon($state, $step['unitId'], $step['toHex'], $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
             'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
             default => throw new \LogicException("Unknown step {$step['op']}."),
@@ -106,6 +107,9 @@ final class StepRunner
         if ($state['units'][$attackerId]['hex'] === null || $state['units'][$targetId]['hex'] === null) {
             return [$state, [], null];
         }
+        if (Combat::protectedFrom($state, $attackerId, $targetId, $step['originHex'] ?? null)) {
+            return [$state, [], null];
+        }
         if (AbilityRegistry::any($state['units'][$targetId], static fn(Ability $ability): bool => $ability->evades())) {
             $roll = $this->random->roll(20);
             $events[] = MatchEngine::event('evaded', [$state['units'][$targetId]['hex']], [
@@ -115,7 +119,7 @@ final class StepRunner
                 return [$state, [], null];
             }
         }
-        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'damageType' => $step['damageType'] ?? null];
+        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'damageType' => $step['damageType'] ?? null, 'originHex' => $step['originHex'] ?? null];
         $power = Stats::effective($state, $attackerId, 'power', $context, $step['power']);
         if ($step['double']) {
             $power *= 2;
@@ -128,6 +132,7 @@ final class StepRunner
             'targetId' => $targetId,
             'ability' => $step['ability'],
             'damageType' => $step['damageType'] ?? null,
+            'originHex' => $step['originHex'] ?? null,
             'attackFaces' => $dice->roll($power, $this->random)['faces'],
             'defenseFaces' => $dice->roll($defense, $this->random)['faces'],
             'rerolled' => null,
@@ -157,6 +162,9 @@ final class StepRunner
         ];
         if (($step['damageType'] ?? null) !== null) {
             $payload['damageType'] = $step['damageType'];
+        }
+        if (($step['originHex'] ?? null) !== null) {
+            $payload['originHex'] = $step['originHex'];
         }
         $events[] = MatchEngine::event(
             'attackResolved',
@@ -219,6 +227,9 @@ final class StepRunner
             if ($unitId === $step['excludeUnitId'] || $unit['hex'] === null || Hex::distance($step['hex'], $unit['hex']) !== 1) {
                 continue;
             }
+            if (isset($step['sourceUnitId']) && Combat::protectedFrom($state, $step['sourceUnitId'], $unitId)) {
+                continue;
+            }
             $roll = $dice->roll(1, $this->random);
             $hits[] = ['unitId' => $unitId, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
         }
@@ -239,6 +250,7 @@ final class StepRunner
             return $state;
         }
         $targets = Spores::enemiesWithin($state, $step['unitId'], $unit['hex'], $step['radius']);
+        $targets = array_values(array_filter($targets, static fn(string $id): bool => !Combat::protectedFrom($state, $step['unitId'], $id)));
         $state = Spores::release($state, $step['unitId'], $unit['hex'], $targets, $step['ability'], $step['threshold'], $this->random, $events);
         return $step['sacrifice'] ? Wounds::apply($state, $step['unitId'], $unit['hp'], $events, $this->random) : $state;
     }

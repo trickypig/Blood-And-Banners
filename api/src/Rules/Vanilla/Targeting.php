@@ -13,6 +13,7 @@ final class Targeting
             self::unitsWithin($state, $unitId, $range, false),
             static fn(string $id): bool => Sides::enemies($state, $unitId, $id)
                 && Combat::visible($state, $self['hex'], $state['units'][$id]['hex'])
+                && !Combat::protectedFrom($state, $unitId, $id)
         ));
     }
 

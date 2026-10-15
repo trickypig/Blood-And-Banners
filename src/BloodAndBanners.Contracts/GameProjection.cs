@@ -87,6 +87,7 @@ public sealed record LegalAction(
     IReadOnlyList<string> TargetHexes)
 {
     public string? Ability { get; init; }
+    public string? Monster { get; init; }
     public IReadOnlyList<MovementOptionProjection> MovementOptions { get; init; } = [];
 }
 

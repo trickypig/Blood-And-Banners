@@ -105,4 +105,21 @@ public sealed class VoidLordSetupTests : BunitContext
         Assert.Equal("5,0", place.GetProperty("hex").GetString());
         Assert.Equal("v-m1", JsonSerializer.SerializeToElement(sent[1].Payload).GetProperty("unitId").GetString());
     }
+
+    [Fact]
+    public void Placement_highlights_only_the_selected_monster_habitat()
+    {
+        var sent = new List<GameCommandRequest>();
+        var riverAction = JsonSerializer.Deserialize<LegalAction>("""{"kind":"placeMonster","unitId":null,"monster":"Ice Wolf","targetHexes":["4,0"]}""", ContractJson.Options)!;
+        var landAction = JsonSerializer.Deserialize<LegalAction>("""{"kind":"placeMonster","unitId":null,"monster":"Frost Wyrm","targetHexes":["5,0"]}""", ContractJson.Options)!;
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, SetupTable("seat-void", riverAction, landAction))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-monster='Ice Wolf']").Click();
+        Assert.Contains("placeable", cut.Find("[data-hex='4,0']").ClassList);
+        Assert.DoesNotContain("placeable", cut.Find("[data-hex='5,0']").ClassList);
+        cut.Find("[data-hex='5,0']").Click();
+        Assert.Empty(sent);
+        cut.Find("[data-hex='4,0']").Click();
+        Assert.Single(sent);
+    }
 }

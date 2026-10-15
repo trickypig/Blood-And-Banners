@@ -6,6 +6,8 @@ namespace BloodAndBanners\Rules\Vanilla;
 use BloodAndBanners\Rules\CustomDice;
 use BloodAndBanners\Rules\HexLineOfSight;
 use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 
 final class Combat
 {
@@ -19,7 +21,16 @@ final class Combat
         if (!self::visible($state, $attacker['hex'], $target['hex'])) {
             return 'noLineOfSight';
         }
+        if (self::protectedFrom($state, $attackerId, $targetId)) {
+            return 'targetSubmerged';
+        }
         return null;
+    }
+
+    public static function protectedFrom(array $state, string $attackerId, string $targetId, ?string $originHex = null): bool
+    {
+        $originHex ??= $state['units'][$attackerId]['hex'];
+        return AbilityRegistry::any($state['units'][$targetId], static fn(Ability $a): bool => $a->blocksAttack($state, $targetId, $attackerId, $originHex));
     }
 
     public static function targets(array $state, string $attackerId): array

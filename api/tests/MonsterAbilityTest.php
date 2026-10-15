@@ -43,6 +43,7 @@ function monster_ability_tests(): array
                 monster_unit('shark', 'Sahuagin', '0,0'),
                 coop_hero('hero', 'hero-a', '1,0', ['wounds' => 1]),
             ]);
+            $state['board']['0,0']['terrain'] = 'shallow-water';
             $context = ['attackerId' => 'shark', 'defenderId' => 'hero'];
             expect_same(4, Stats::effective($state, 'shark', 'power', $context), 'a wounded enemy grants +1');
             expect_same(3, Stats::effective($state, 'shark', 'power'), 'no target means no bonus');
@@ -111,6 +112,7 @@ function monster_ability_tests(): array
                 monster_unit('stray', 'Stray', '2,0', ['seatId' => 'hero-a', 'side' => 'heroes', 'isHero' => true, 'wounds' => 1, 'hp' => 20]),
                 coop_hero('other-hero', 'hero-b', '8,0'),
             ], 'void-lord');
+            $state['board']['0,0']['terrain'] = 'shallow-water';
             $result = coop_command($state, 'void-lord', 'attackUnit', ['unitId' => 'shark', 'targetUnitId' => 'stray'], array_fill(0, 20, 6));
             $attack = array_values(array_filter($result['events'], static fn(array $event): bool => $event['kind'] === 'attackResolved'))[0]['payload'];
             expect_same(4, count($attack['attackFaces']), 'shark instinct adds an attack die');
