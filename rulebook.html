@@ -368,6 +368,12 @@
             margin-left: auto;
         }
 
+        .army-emblem {
+            width: 64px;
+            height: 64px;
+            flex: none;
+        }
+
         .army-name {
             font-size: 2em;
             color: #d4af37;
@@ -1963,6 +1969,7 @@
 
                 let armyHeaderHTML = `
                     <div class="army-header">
+                        ${army.emblem ? `<img src="${army.emblem}" alt="" class="army-emblem">` : ''}
                         <div class="army-name">${army.name}</div>
                         <div class="army-color">${army.color}${army.race ? ' - ' + army.race : ''}</div>
                         <a href="army-print.html?army=${encodeURIComponent(army.name)}" target="_blank" style="color: #ffd700; text-decoration: none; font-size: 0.9em; padding: 6px 12px; background: rgba(212,175,55,0.2); border: 1px solid #d4af37; border-radius: 4px; transition: all 0.3s; white-space: nowrap;">📄 Printable Sheet</a>

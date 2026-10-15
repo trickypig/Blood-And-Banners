@@ -43,6 +43,17 @@
             margin-bottom: 3px;
         }
 
+        .army-emblem {
+            display: block;
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 6px;
+        }
+
+        .army-emblem[hidden] {
+            display: none;
+        }
+
         .army-info {
             color: #b8860b;
             font-size: 0.95em;
@@ -285,6 +296,7 @@
 
         <div id="content">
             <header>
+                <img id="armyEmblem" class="army-emblem" alt="" hidden>
                 <h1 id="armyTitle">Loading...</h1>
                 <div class="army-info" id="armyInfo"></div>
             </header>
@@ -334,6 +346,11 @@
 
             // Update header
             document.getElementById('armyTitle').textContent = army.name;
+            if (army.emblem) {
+                const emblem = document.getElementById('armyEmblem');
+                emblem.src = army.emblem;
+                emblem.hidden = false;
+            }
             document.getElementById('armyInfo').textContent =
                 `${army.color}${army.race ? ' - ' + army.race : ''}`;
 
