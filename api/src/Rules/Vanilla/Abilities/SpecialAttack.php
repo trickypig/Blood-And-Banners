@@ -6,6 +6,12 @@ namespace BloodAndBanners\Rules\Vanilla\Abilities;
 /** An Attack-type ability: used instead of the unit's normal attack. */
 abstract class SpecialAttack extends Ability
 {
+    /** Only this named special strike landed on a surviving target, including zero wounds. */
+    public function afterStrike(array $state, string $unitId, string $targetId, int $wounds): array
+    {
+        return [];
+    }
+
     public function unavailable(array $state, string $unitId): ?string
     {
         return null;

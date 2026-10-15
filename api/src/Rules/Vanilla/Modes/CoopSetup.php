@@ -49,7 +49,7 @@ final class CoopSetup
     public static function isAbilityPlayable(array $ability): bool
     {
         return ((($ability['type'] ?? '') === 'Essence' && in_array($ability['name'], self::PLAYABLE_ESSENCES, true))
-                || (($ability['type'] ?? '') === 'Attack' && in_array($ability['name'], ['Spore Bomb', 'Spore Cloud', 'Water Twister', 'Tentacle Regeneration', 'Frost Storm', 'Fireball'], true)))
+                || (($ability['type'] ?? '') === 'Attack' && in_array($ability['name'], ['Spore Bomb', 'Spore Cloud', 'Water Twister', 'Tentacle Regeneration', 'Frost Storm', 'Fireball', 'Tail Slash', 'Stone Swat'], true)))
             && AbilityRegistry::isPlayable($ability['name']);
     }
 

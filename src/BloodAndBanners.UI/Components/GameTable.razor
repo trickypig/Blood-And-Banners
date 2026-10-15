@@ -828,14 +828,15 @@
     {
         get
         {
-            if (_targeting?.Ability != "Gust of Wind" || _hoveredHex is not { } hovered || !_targeting.TargetHexes.Contains(hovered)
+            var distance = _targeting?.Ability switch { "Tail Slash" => 1, "Stone Swat" or "Gust of Wind" => 2, _ => 0 };
+            if (distance == 0 || _hoveredHex is not { } hovered || !_targeting!.TargetHexes.Contains(hovered)
                 || SelectedHex is not { } casterHex || HexMath.Direction(casterHex, hovered) is not { } direction)
             {
                 return [];
             }
             var path = new List<string>();
             var current = Index.HexByKey[hovered];
-            for (var step = 0; step < 2; step++)
+            for (var step = 0; step < distance; step++)
             {
                 var nextKey = HexMath.Step(HexKey(current), direction);
                 var next = Index.HexByKey.GetValueOrDefault(nextKey);
@@ -853,6 +854,8 @@
     private string BannerText(Targeting aiming) => Teleporting
         ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
         : aiming.Selection is not null ? MultiSelectionText(aiming)
+        : aiming.Ability == "Tail Slash" ? "Tail Slash: choose an adjacent enemy; save 11+ or be pushed 1 hex"
+        : aiming.Ability == "Stone Swat" ? "Stone Swat: choose an adjacent enemy; a surviving target is pushed 2 hexes"
         : aiming.Kind == "moveAbility" ? $"{aiming.Ability}: choose a destination"
         : aiming.Ability == "Tentacle Regeneration" ? "Tentacle Regeneration: choose adjacent water for a new tentacle; it can act next Void turn"
         : aiming.Ability == "Spore Bomb" ? "Spore Bomb: click the caster to release spores within 2 hexes and defeat itself"

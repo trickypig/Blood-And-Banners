@@ -415,6 +415,7 @@ final class BattleRules
         return $state['turn']['attacks'] < self::attackAllowance($state['units'][$unitId], [
             'specialAttack' => $specialAttack,
             'specialAttackUsed' => $state['turn']['specialAttackUsed'] ?? false,
+            'abilitiesUsed' => $state['turn']['abilitiesUsed'][$unitId] ?? [],
         ]);
     }
 
@@ -451,7 +452,8 @@ final class BattleRules
         if ($state['turn']['activeUnitId'] !== $unitId) {
             return $state;
         }
-        if (!self::attacksLeft($state, $unitId) && !($state['turn']['attacks'] > 0 && self::canMove($state, $unitId))) {
+        if (!self::attacksLeft($state, $unitId) && !self::attacksLeft($state, $unitId, true)
+            && !($state['turn']['attacks'] > 0 && self::canMove($state, $unitId))) {
             $state['turn']['activeUnitId'] = null;
         }
         return $state;

@@ -7,6 +7,7 @@ use BloodAndBanners\Rules\CustomDice;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 
 /**
  * Resolves attacks as a queue of steps. A step may add steps in front of the queue, and may open a
@@ -34,6 +35,11 @@ final class StepRunner
     public static function poison(string $unitId, string $sourceUnitId, bool $immediate = false): array
     {
         return ['op' => 'poison', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'immediate' => $immediate];
+    }
+
+    public static function push(string $unitId, string $sourceUnitId, int $hexes): array
+    {
+        return ['op' => 'push', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'hexes' => $hexes];
     }
 
     public static function condition(string $name, string $unitId, string $sourceUnitId, array $expires): array
@@ -89,6 +95,7 @@ final class StepRunner
             'land' => [...$this->land($state, $step, $events), null],
             'teleport' => [$this->teleportStep($state, $step, $events), [], null],
             'save' => [$this->saveStep($state, $step, $events), [], null],
+            'push' => [$this->pushStep($state, $step, $events), [], null],
             'poison' => [Poison::apply($state, $step['unitId'], $step['sourceUnitId'], $this->random, $events, $step['immediate']), [], null],
             'condition' => [UnitConditions::apply($state, $step['name'], $step['unitId'], $step['sourceUnitId'], $step['expires'], $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
@@ -177,11 +184,23 @@ final class StepRunner
         if ($state['phase'] !== 'active' || $attacker['hex'] === null || $state['units'][$step['targetId']]['hex'] === null) {
             return [$state, []];
         }
-        $more = [];
+        $special = AbilityRegistry::get($step['ability'] ?? '');
+        $more = $special instanceof SpecialAttack ? $special->afterStrike($state, $step['attackerId'], $step['targetId'], $wounds) : [];
         foreach (AbilityRegistry::abilitiesOf($attacker) as $ability) {
             $more = array_merge($more, $ability->afterHit($state, $step['attackerId'], $step['targetId'], $wounds));
         }
         return [$state, $more];
+    }
+
+    private function pushStep(array $state, array $step, array &$events): array
+    {
+        $source = $state['units'][$step['sourceUnitId']]['hex'];
+        $target = $state['units'][$step['unitId']]['hex'];
+        if ($source === null || $target === null) {
+            return $state;
+        }
+        $direction = Forced::directionFrom($source, $target);
+        return $direction === null ? $state : Forced::push($state, $step['unitId'], $direction, $step['hexes'], $step['sourceUnitId'], $this->random, $events);
     }
 
     private function teleportStep(array $state, array $step, array &$events): array

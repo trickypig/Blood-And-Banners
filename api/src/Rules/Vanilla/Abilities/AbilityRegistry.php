@@ -105,6 +105,8 @@ final class AbilityRegistry
                 new ChaosStrike('Chaos Strike'),
                 new Fireball('Fireball'),
                 new FrostStorm('Frost Storm'),
+                new TailSlash('Tail Slash'),
+                new StoneSwat('Stone Swat'),
                 new MysticShield('Mystic Shield'),
                 new ChainLightning('Chain Lightning'),
                 new StatBlessing('Shield Wall', 'defense', 1, Effects::UNTIL_NEXT_TURN, 1, StatBlessing::ALLIES, false),
