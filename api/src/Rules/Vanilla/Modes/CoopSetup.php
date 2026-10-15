@@ -20,6 +20,8 @@ final class CoopSetup
         'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence',
         'Ogre Rivalry', 'Stoneskin', 'Hollow Bones', 'Flying',
         'Poison Arrows', 'Venom', 'Poisonous Bite',
+        'Stunning Kick', 'Arrows of Slowness',
+        'Multiple Heads', 'Many Heads', 'Branch Attack',
     ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',

@@ -344,7 +344,7 @@
                         </p>
                         @foreach (var condition in selected.Conditions)
                         {
-                            var summary = ConditionText.Summary(condition.Name);
+                            var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty);
                             <p class="unit-condition" data-condition="@condition.Name">@condition.Name — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires)</p>
                         }
                         <p>Wounds @selected.Wounds / @selected.Hp</p>
@@ -509,8 +509,8 @@
             .Where(effect => effect.Stat == stat)
             .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {(effect.Expires == "endOfTurn" ? "until end of turn" : "until your next turn")}")
             .Concat(unit.Conditions
-                .Where(condition => ConditionText.StatDelta(condition.Name, stat) != 0)
-                .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires)}"))
+                .Where(condition => ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty) != 0)
+                .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires)}"))
             .ToList();
         return sources.Count == 0 ? null : string.Join("; ", sources);
     }
@@ -1475,6 +1475,7 @@
     private static string ConditionMarker(string name) => name switch
     {
         "Stunned" => "✦",
+        "Slowed" => "↓",
         "Unsteady" => "≈",
         "Slipping" => "➜",
         "Poisoned" => "◆",

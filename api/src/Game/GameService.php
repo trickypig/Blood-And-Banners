@@ -739,6 +739,9 @@ final class GameService
         if ($expires['kind'] === 'afterTurn') {
             return $expires['turnNumber'] === $state['turn']['number'] ? 'endOfThisTurn' : 'endOfNextTurn';
         }
+        if ($expires['kind'] === 'turnEnd') {
+            return $expires['seatId'] === $state['turn']['activeSeatId'] ? 'endOfThisTurn' : 'endOfNextTurn';
+        }
         return (string)$expires['kind'];
     }
 

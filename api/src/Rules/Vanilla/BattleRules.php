@@ -171,7 +171,7 @@ final class BattleRules
                     'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
                 ];
             }
-            if (self::attacksLeft($state, $unitId) && !self::spellsLocked($state, $unitId)) {
+            if (self::attacksLeft($state, $unitId, true) && !self::spellsLocked($state, $unitId)) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
                     if (!$ability instanceof SpecialAttack) {
                         continue;
@@ -349,22 +349,25 @@ final class BattleRules
         return (new StepRunner($random, $this->now))->run($state, [StepRunner::strike($unitId, $targetId)], $events);
     }
 
-    private static function attackAllowance(array $unit): int
+    private static function attackAllowance(array $unit, array $context): int
     {
         $allowance = 1;
         foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-            $allowance = max($allowance, $ability->attacksPerActivation());
+            $allowance = max($allowance, $ability->attacksPerActivation($unit, $context));
         }
         return $allowance;
     }
 
     /** Whether $unitId may still attack, as the active unit or as a fresh activation. */
-    private static function attacksLeft(array $state, string $unitId): bool
+    private static function attacksLeft(array $state, string $unitId, bool $specialAttack = false): bool
     {
         if ($state['turn']['activeUnitId'] !== $unitId) {
             return true;
         }
-        return $state['turn']['attacks'] < self::attackAllowance($state['units'][$unitId]);
+        return $state['turn']['attacks'] < self::attackAllowance($state['units'][$unitId], [
+            'specialAttack' => $specialAttack,
+            'specialAttackUsed' => $state['turn']['specialAttackUsed'] ?? false,
+        ]);
     }
 
     private static function stings(array $unit): bool
@@ -419,7 +422,7 @@ final class BattleRules
         if (self::spellsLocked($state, $unitId)) {
             self::fail('abilityLocked');
         }
-        if (!self::attacksLeft($state, $unitId)) {
+        if (!self::attacksLeft($state, $unitId, true)) {
             self::fail('noAttacksLeft');
         }
         $options = ['toHex' => self::text($payload, 'toHex')];
@@ -428,6 +431,7 @@ final class BattleRules
             self::fail($error);
         }
         $state['turn']['attacks']++;
+        $state['turn']['specialAttackUsed'] = true;
         $state = self::closeIfSpent($state, $unitId);
         return (new StepRunner($random, $this->now))->run($state, $ability->steps($state, $unitId, $targets, $options), $events);
     }
@@ -523,6 +527,7 @@ final class BattleRules
                 $state['turn']['activated'][] = $unitId;
                 $state['turn']['moved'] = true;
                 $state['turn']['attacks'] = 0;
+                $state['turn']['specialAttackUsed'] = false;
                 $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
                 $state['turn']['movedAfterAttack'] = false;
             }
@@ -578,6 +583,7 @@ final class BattleRules
         $state['turn']['activated'][] = $unitId;
         $state['turn']['moved'] = $wasSlipping;
         $state['turn']['attacks'] = 0;
+        $state['turn']['specialAttackUsed'] = false;
         $state['turn']['moveSpent'] = $wasSlipping ? $move - $slide['remainingMove'] : 0;
         $state['turn']['movedAfterAttack'] = false;
         return $state;

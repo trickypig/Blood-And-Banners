@@ -5,8 +5,7 @@ namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
-use BloodAndBanners\Rules\Vanilla\Turn;
-use BloodAndBanners\Rules\Vanilla\UnitConditions;
+use BloodAndBanners\Rules\Vanilla\Conditions\Stunned;
 
 /** After each hit, the target saves on 11+ or is Stunned until the end of its seat's next turn. */
 final class StunningBlow extends Ability
@@ -18,7 +17,6 @@ final class StunningBlow extends Ability
 
     public function onFailedSave(array $state, string $ownerId, string $targetId, int $roll, RandomSource $random, array &$events): array
     {
-        $seat = $state['units'][$targetId]['seatId'];
-        return UnitConditions::apply($state, 'Stunned', $targetId, $ownerId, UnitConditions::afterTurn(Turn::nextTurnNumberOf($state, $seat)), $events);
+        return Stunned::apply($state, $targetId, $ownerId, $events);
     }
 }

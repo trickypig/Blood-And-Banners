@@ -11,6 +11,7 @@ public sealed record EffectProjection(string Name, string Stat, int Amount, stri
 public sealed record ConditionDataProjection
 {
     public IReadOnlyList<int>? Direction { get; init; }
+    public int? PowerPenalty { get; init; }
 }
 
 public sealed record ConditionProjection(string Name, string Expires)

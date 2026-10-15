@@ -3,18 +3,20 @@ namespace BloodAndBanners.UI.Services;
 /// <summary>Player-facing wording for unit conditions; mirrors the server's condition handlers.</summary>
 public static class ConditionText
 {
-    public static string Summary(string name) => name switch
+    public static string Summary(string name, int? powerPenalty = null) => name switch
     {
-        "Stunned" => "can't move, no parting strikes, −2 Power",
+        "Stunned" => $"can't move, no parting strikes, −{powerPenalty ?? 2} Power",
+        "Slowed" => "−1 Move",
         "Unsteady" => "−1 Power and no disengagement strikes",
         "Slipping" => "must continue in its locked direction before acting",
         "Poisoned" => "rolls one poison die for a wound at the end of its owner's turn",
         _ => string.Empty,
     };
 
-    public static int StatDelta(string name, string stat) => (name, stat) switch
+    public static int StatDelta(string name, string stat, int? powerPenalty = null) => (name, stat) switch
     {
-        ("Stunned", "power") => -2,
+        ("Stunned", "power") => -(powerPenalty ?? 2),
+        ("Slowed", "move") => -1,
         ("Unsteady", "power") => -1,
         _ => 0,
     };

@@ -215,7 +215,7 @@ function vanilla_forced_tests(): array
             ]);
             $stunned = vanilla_command($setup(), 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6, 10]);
             expect_same(['attackResolved', 'saveRolled', 'conditionApplied'], array_slice(array_column($stunned['events'], 'kind'), 0, 3), 'stunned');
-            expect_same(['kind' => 'afterTurn', 'turnNumber' => 2], $stunned['events'][2]['payload']['expires'], 'through seat-b\'s next turn');
+            expect_same(['kind' => 'turnEnd', 'seatId' => 'seat-b'], $stunned['events'][2]['payload']['expires'], 'through seat-b\'s next turn');
             $resisted = vanilla_command($setup(), 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [6, 11]);
             expect_same([], $resisted['state']['conditions'], '11 or more resists');
         },

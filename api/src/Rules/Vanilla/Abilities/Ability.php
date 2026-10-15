@@ -18,7 +18,8 @@ abstract class Ability
         return 0;
     }
 
-    public function attacksPerActivation(): int
+    /** Total attack budget at current health. Context distinguishes a requested or previously used special attack. */
+    public function attacksPerActivation(array $unit = [], array $context = []): int
     {
         return 1;
     }

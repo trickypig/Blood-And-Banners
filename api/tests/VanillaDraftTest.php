@@ -153,7 +153,7 @@ function vanilla_draft_tests(): array
             expect_same(0, $state['units']['s1-u1']['wounds'], 'units start unwounded');
             expect_same(
                 ['round' => 1, 'number' => 1, 'slot' => 0, 'activeSeatId' => 'seat-b', 'activeUnitId' => null, 'activated' => [], 'moved' => false, 'allowance' => 4,
-                    'attacks' => 0, 'moveSpent' => 0, 'movedAfterAttack' => false, 'abilitiesUsed' => [], 'glareUsed' => []],
+                    'attacks' => 0, 'specialAttackUsed' => false, 'moveSpent' => 0, 'movedAfterAttack' => false, 'abilitiesUsed' => [], 'glareUsed' => []],
                 $state['turn'],
                 'the chosen first player opens round one'
             );

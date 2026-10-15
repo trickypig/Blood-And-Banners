@@ -36,6 +36,11 @@ final class StepRunner
         return ['op' => 'poison', 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'immediate' => $immediate];
     }
 
+    public static function condition(string $name, string $unitId, string $sourceUnitId, array $expires): array
+    {
+        return ['op' => 'condition', 'name' => $name, 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'expires' => $expires];
+    }
+
     public static function teleport(string $casterId, string $unitId, string $toHex): array
     {
         return ['op' => 'teleport', 'casterId' => $casterId, 'unitId' => $unitId, 'toHex' => $toHex];
@@ -85,6 +90,7 @@ final class StepRunner
             'teleport' => [$this->teleportStep($state, $step, $events), [], null],
             'save' => [$this->saveStep($state, $step, $events), [], null],
             'poison' => [Poison::apply($state, $step['unitId'], $step['sourceUnitId'], $this->random, $events, $step['immediate']), [], null],
+            'condition' => [UnitConditions::apply($state, $step['name'], $step['unitId'], $step['sourceUnitId'], $step['expires'], $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
             'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
