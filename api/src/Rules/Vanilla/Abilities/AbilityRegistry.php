@@ -104,6 +104,7 @@ final class AbilityRegistry
                 new FixedStrike('Flame Strike', 3, 5, 'fire'),
                 new ChaosStrike('Chaos Strike'),
                 new Fireball('Fireball'),
+                new FrostStorm('Frost Storm'),
                 new MysticShield('Mystic Shield'),
                 new ChainLightning('Chain Lightning'),
                 new StatBlessing('Shield Wall', 'defense', 1, Effects::UNTIL_NEXT_TURN, 1, StatBlessing::ALLIES, false),

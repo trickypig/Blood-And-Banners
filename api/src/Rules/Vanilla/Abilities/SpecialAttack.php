@@ -6,6 +6,28 @@ namespace BloodAndBanners\Rules\Vanilla\Abilities;
 /** An Attack-type ability: used instead of the unit's normal attack. */
 abstract class SpecialAttack extends Ability
 {
+    public function unavailable(array $state, string $unitId): ?string
+    {
+        return null;
+    }
+
+    public function onUse(array $state, string $unitId): array
+    {
+        return $state;
+    }
+
+    /** Called only when the owner's commander finishes a turn. */
+    public function afterTurn(array $state, string $unitId): array
+    {
+        return $state;
+    }
+
+    /** Optional multi-target controls; all candidate lists remain server-authoritative. */
+    public function selection(array $state, string $unitId): ?array
+    {
+        return null;
+    }
+
     /** Unit ids this attack may target first. */
     abstract public function targets(array $state, string $unitId): array;
 

@@ -6,6 +6,7 @@ namespace BloodAndBanners\Game;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\SecureRandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
+use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 use BloodAndBanners\Rules\Vanilla\BattleRules;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
@@ -695,6 +696,14 @@ final class GameService
         $id = $unit['unitId'];
         $alive = $unit['hex'] !== null && $state['phase'] === 'active';
         $effective = static fn(string $stat): int => $alive ? Stats::effective($state, $id, $stat) : (int)$unit[$stat];
+        $abilities = self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? [], isset($unit['tier']));
+        foreach ($abilities as &$card) {
+            $handler = AbilityRegistry::get($card['name']);
+            if ($handler instanceof SpecialAttack) {
+                $card['coolingDown'] = $handler->unavailable($state, $id) === 'abilityCoolingDown';
+            }
+        }
+        unset($card);
         return [
             'unitId' => $id,
             'seatId' => $unit['seatId'],
@@ -710,7 +719,7 @@ final class GameService
             'hex' => $unit['hex'],
             'activatedThisTurn' => in_array($id, $state['turn']['activated'], true)
                 || ($unit['flags']['summonedOnTurn'] ?? null) === $state['turn']['number'],
-            'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? [], isset($unit['tier'])),
+            'abilities' => $abilities,
             'side' => $unit['side'] ?? $unit['seatId'],
             'tier' => $unit['tier'] ?? null,
             'inactiveAbilities' => array_map(

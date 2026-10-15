@@ -92,6 +92,7 @@ final class StepRunner
             'poison' => [Poison::apply($state, $step['unitId'], $step['sourceUnitId'], $this->random, $events, $step['immediate']), [], null],
             'condition' => [UnitConditions::apply($state, $step['name'], $step['unitId'], $step['sourceUnitId'], $step['expires'], $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
+            'selectedSplash' => [$this->selectedSplashStep($state, $step, $events), [], null],
             'spores' => [$this->sporesStep($state, $step, $events), [], null],
             'summonTentacle' => [Abilities\TentacleRegeneration::summon($state, $step['unitId'], $step['toHex'], $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
@@ -239,6 +240,29 @@ final class StepRunner
         $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'hits' => $hits]);
         foreach ($hits as $hit) {
             $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $step['sourceUnitId'] ?? null);
+        }
+        return $state;
+    }
+
+    private function selectedSplashStep(array $state, array $step, array &$events): array
+    {
+        $source = $step['sourceUnitId'];
+        if ($state['units'][$source]['hex'] === null) {
+            return $state;
+        }
+        $hits = [];
+        foreach ($step['targetIds'] as $id) {
+            if ($state['units'][$id]['hex'] === null || Combat::protectedFrom($state, $source, $id)) {
+                continue;
+            }
+            $roll = (new CustomDice())->roll(2, $this->random);
+            $hits[] = ['unitId' => $id, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
+        }
+        if ($hits !== []) {
+            $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'sourceUnitId' => $source, 'hits' => $hits]);
+            foreach ($hits as $hit) {
+                $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $source);
+            }
         }
         return $state;
     }

@@ -126,8 +126,8 @@ function monster_ability_tests(): array
             }
             expect_same(['Multiple Heads', 'Poisonous Bite', 'Outrage'], array_column($state['units']['v-m1']['abilities'], 'name'), 'the hydra gains its supported essences');
             expect_same([], $state['units']['v-m1']['inactiveAbilities'], 'all marsh hydra abilities are now supported');
-            expect_same([], $state['units']['v-m2']['abilities'], 'pyromancer does not get the wizard fireball');
-            expect_same(['Fireball'], array_column($state['units']['v-m2']['inactiveAbilities'], 'name'), 'its own fireball remains deferred');
+            expect_same(['Fireball'], array_column($state['units']['v-m2']['abilities'], 'name'), 'pyromancer gains its own fireball');
+            expect_same([], $state['units']['v-m2']['inactiveAbilities'], 'its own fireball is supported');
             expect_same(['Flying'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains flying');
             $saved = $state;
             $saved['units']['v-m3']['inactiveAbilities'] = $saved['units']['v-m3']['abilities'];
@@ -168,7 +168,7 @@ function monster_ability_tests(): array
             $started = $games->startGame($match['gameId'], $host['identityId'], $created['seatToken']);
             $roster = array_column($started['setup']['roster'], null, 'name');
             expect_same(true, $roster['Ice Wolf']['abilities'][0]['playable'], 'pack tactics is advertised as active');
-            expect_same(false, $roster['Pyromancer']['abilities'][0]['playable'], 'pyromancer fireball is advertised as deferred');
+            expect_same(true, $roster['Pyromancer']['abilities'][0]['playable'], 'pyromancer fireball is advertised as playable');
             $flight = array_column($roster['Void Dragon']['abilities'], null, 'name')['Flying']['description'];
             expect_true(str_contains($flight, 'cannot land') && str_contains($flight, 'Poison pits still apply'), 'the setup card explains shared flying limits instead of promising poison immunity');
             $spawn = $started['setup']['spawnZoneHexes'][0];

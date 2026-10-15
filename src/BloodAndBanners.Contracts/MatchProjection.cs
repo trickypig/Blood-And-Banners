@@ -4,6 +4,7 @@ public sealed record AbilityProjection(string Name, string Type, string Descript
 {
     public bool Playable { get; init; }
     public bool UsedThisTurn { get; init; }
+    public bool CoolingDown { get; init; }
 }
 
 public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires);

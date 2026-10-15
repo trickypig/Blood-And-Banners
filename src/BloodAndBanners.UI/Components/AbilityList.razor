@@ -27,6 +27,10 @@
                     {
                         <span class="ability-used">Used</span>
                     }
+                    @if (ability.CoolingDown)
+                    {
+                        <span class="ability-used">Cooling down</span>
+                    }
                     @if (!ability.Playable)
                     {
                         <span class="ability-deferred">Not yet in the digital game</span>

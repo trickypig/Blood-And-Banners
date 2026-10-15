@@ -37,6 +37,12 @@
                     <span>@_chain.Count / @ChainMaxTargets picked</span>
                     <button type="button" data-action="strikeChain" disabled="@(_chain.Count == 0 || IsBusy)" @onclick="StrikeChain">Strike</button>
                 }
+                @if (MultiSelecting)
+                {
+                    <span>@_pickedTargets.Count / @aiming.Selection!.MaxTargets picked</span>
+                    <button type="button" data-action="undoTarget" disabled="@(_pickedTargets.Count == 0 || IsBusy)" @onclick="UndoTarget">Undo</button>
+                    <button type="button" data-action="confirmTargets" disabled="@(_pickedTargets.Count == 0 || IsBusy)" @onclick="ConfirmTargets">Strike</button>
+                }
                 <button type="button" data-action="cancelTargeting" @onclick="CancelTargeting">Cancel</button>
             </div>
         }
@@ -150,7 +156,7 @@
                               fill="@TerrainArt.LabelColor(hex.Biome)"
                               aria-hidden="true">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
                     }
-                    @if (hex.OccupantId is { } occupant && _chain.IndexOf(occupant) is >= 0 and var link)
+                    @if (hex.OccupantId is { } occupant && PickedIndex(occupant) is >= 0 and var link)
                     {
                         <!text class="chain-mark" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@(link + 1)</!text>
                     }
@@ -486,7 +492,7 @@
     private bool _followEvents = true;
 
     private string? _selectedUnitId;
-    private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes);
+    private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes, TargetSelectionProjection? Selection);
 
     private Targeting? _targeting;
     private MovementOptionProjection? _previewedMovement;
@@ -525,8 +531,9 @@
         ClearMovementState();
         _swingChoice = false;
         _chain.Clear();
+        _pickedTargets.Clear();
         _teleportUnitId = null;
-        _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes);
+        _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes, action.TargetSelection);
     }
     private string? _hoveredUnitId;
 
@@ -551,6 +558,10 @@
         if (_lastGameId != Projection.GameId || _lastProjectionVersion != Projection.Version)
         {
             ClearMovementState();
+            if (MultiSelecting)
+            {
+                CancelTargeting();
+            }
             _swingChoice = false;
             _lastGameId = Projection.GameId;
             _lastProjectionVersion = Projection.Version;
@@ -688,6 +699,14 @@
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
             var aimed = key;
+            if (MultiSelecting)
+            {
+                if (SelectionCandidates().Contains(aimed) && hex.OccupantId is { } picked)
+                {
+                    _pickedTargets.Add(picked);
+                }
+                return;
+            }
             if (aiming.Ability == "Tentacle Regeneration")
             {
                 if (aiming.TargetHexes.Contains(aimed) && hex.OccupantId is null)
@@ -833,6 +852,7 @@
 
     private string BannerText(Targeting aiming) => Teleporting
         ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
+        : aiming.Selection is not null ? MultiSelectionText(aiming)
         : aiming.Kind == "moveAbility" ? $"{aiming.Ability}: choose a destination"
         : aiming.Ability == "Tentacle Regeneration" ? "Tentacle Regeneration: choose adjacent water for a new tentacle; it can act next Void turn"
         : aiming.Ability == "Spore Bomb" ? "Spore Bomb: click the caster to release spores within 2 hexes and defeat itself"
@@ -840,6 +860,48 @@
         : $"{aiming.Ability}: choose a target";
 
     private bool Chaining => _targeting?.Ability == "Chain Lightning";
+
+    private readonly List<string> _pickedTargets = [];
+    private bool MultiSelecting => _targeting?.Selection is not null;
+    private int PickedIndex(string unitId) => MultiSelecting ? _pickedTargets.IndexOf(unitId) : _chain.IndexOf(unitId);
+
+    private string MultiSelectionText(Targeting aiming) => aiming.Selection?.Mode == "independent"
+        ? $"{aiming.Ability}: choose up to 3 enemies · Power {6 - Math.Max(1, _pickedTargets.Count)}{(_pickedTargets.Count > 1 ? " each" : "")}"
+        : _pickedTargets.Count == 0 ? $"{aiming.Ability}: choose a primary target"
+        : $"{aiming.Ability}: choose up to 2 adjacent enemies, or strike now";
+
+    private IReadOnlyList<string> SelectionCandidates()
+    {
+        if (_targeting is not { Selection: { } selection } aiming || _pickedTargets.Count >= selection.MaxTargets)
+        {
+            return [];
+        }
+        IReadOnlyList<string> candidates = aiming.TargetHexes;
+        if (selection.Mode == "adjacentEnemies" && _pickedTargets.Count > 0)
+        {
+            var primaryHex = UnitById(_pickedTargets[0])?.Hex;
+            candidates = primaryHex is not null && selection.SecondaryTargets.TryGetValue(primaryHex, out var secondary) ? secondary : [];
+        }
+        return candidates.Where(hex => Index.HexByKey.GetValueOrDefault(hex)?.OccupantId is { } id && !_pickedTargets.Contains(id)).ToList();
+    }
+
+    private void UndoTarget()
+    {
+        if (_pickedTargets.Count > 0)
+        {
+            _pickedTargets.RemoveAt(_pickedTargets.Count - 1);
+        }
+    }
+
+    private async Task ConfirmTargets()
+    {
+        if (_selectedUnitId is { } caster && _targeting is { } aiming && _pickedTargets.Count > 0)
+        {
+            var targets = _pickedTargets.ToArray();
+            CancelTargeting();
+            await Send("specialAttack", new { unitId = caster, ability = aiming.Ability, targetUnitIds = targets });
+        }
+    }
 
     /// <summary>Hexes the next Chain Lightning link may hit: first hop from the server's list, later hops by remaining reach.</summary>
     private IReadOnlyList<string> ChainCandidates()
@@ -903,6 +965,7 @@
         _targeting = null;
         _teleportUnitId = null;
         _chain.Clear();
+        _pickedTargets.Clear();
     }
 
     private void OnBoardKey(KeyboardEventArgs args)
@@ -924,7 +987,7 @@
     }
 
     private IReadOnlyList<string> SplashHexes =>
-        _targeting?.Ability == "Fireball" && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
+        _targeting?.Ability == "Fireball" && !MultiSelecting && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
             ? HexMath.Neighbours(hovered)
             : [];
 
@@ -1134,7 +1197,7 @@
                 hazards.TryAdd(hazard.Hex, hazard);
             }
         }
-        IReadOnlyList<string> aimed = _targeting is null ? [] : Chaining ? ChainCandidates() : _targeting.TargetHexes;
+        IReadOnlyList<string> aimed = _targeting is null ? [] : MultiSelecting ? SelectionCandidates() : Chaining ? ChainCandidates() : _targeting.TargetHexes;
         return new BoardView(
             SelectedHex,
             Targets("moveUnit").ToHashSet(),

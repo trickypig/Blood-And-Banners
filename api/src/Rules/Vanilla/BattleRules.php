@@ -43,6 +43,7 @@ final class BattleRules
         'unknownAbility' => 'That unit does not have that ability.',
         'abilityNotPlayable' => 'That ability is not yet in the digital game.',
         'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
+        'abilityCoolingDown' => 'That attack is cooling down and cannot be used this turn.',
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
         'gustNeedsStillness' => 'Gust of Wind must be used instead of moving.',
@@ -190,7 +191,7 @@ final class BattleRules
             }
             if (self::attacksLeft($state, $unitId, true) && !self::spellsLocked($state, $unitId)) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-                    if (!$ability instanceof SpecialAttack) {
+                    if (!$ability instanceof SpecialAttack || $ability->unavailable($state, $unitId) !== null) {
                         continue;
                     }
                     $hexes = $ability->targetHexes($state, $unitId);
@@ -200,6 +201,7 @@ final class BattleRules
                             'unitId' => $unitId,
                             'ability' => $ability->name,
                             'targetHexes' => $hexes,
+                            ...(($selection = $ability->selection($state, $unitId)) === null ? [] : ['targetSelection' => $selection]),
                         ];
                     }
                 }
@@ -465,6 +467,9 @@ final class BattleRules
             return $state;
         }
         $ability = self::resolveAbility($state['units'][$unitId], $name, SpecialAttack::class);
+        if (($unavailable = $ability->unavailable($state, $unitId)) !== null) {
+            self::fail($unavailable);
+        }
         if (self::spellsLocked($state, $unitId)) {
             self::fail('abilityLocked');
         }
@@ -478,8 +483,10 @@ final class BattleRules
         }
         $state['turn']['attacks']++;
         $state['turn']['specialAttackUsed'] = true;
+        $steps = $ability->steps($state, $unitId, $targets, $options);
+        $state = $ability->onUse($state, $unitId);
         $state = self::closeIfSpent($state, $unitId);
-        return (new StepRunner($random, $this->now))->run($state, $ability->steps($state, $unitId, $targets, $options), $events);
+        return (new StepRunner($random, $this->now))->run($state, $steps, $events);
     }
 
     /** The unit's handler for $name, which must be an instance of $class. */
@@ -669,6 +676,16 @@ final class BattleRules
             return [$state, $events];
         }
         $state = UnitConditions::atTurnEnd($state, $events);
+        foreach ($state['units'] as $unitId => $unit) {
+            if ($unit['seatId'] !== $current) {
+                continue;
+            }
+            foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+                if ($ability instanceof SpecialAttack) {
+                    $state = $ability->afterTurn($state, (string)$unitId);
+                }
+            }
+        }
         $slot = (int)$state['turn']['slot'];
         $nextSlot = Schedule::after($state, $slot);
         $next = Modes::ofState($state)->seatAtSlot($state, $nextSlot);

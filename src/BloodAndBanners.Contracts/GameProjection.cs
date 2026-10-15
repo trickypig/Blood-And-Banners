@@ -88,7 +88,13 @@ public sealed record LegalAction(
 {
     public string? Ability { get; init; }
     public string? Monster { get; init; }
+    public TargetSelectionProjection? TargetSelection { get; init; }
     public IReadOnlyList<MovementOptionProjection> MovementOptions { get; init; } = [];
+}
+
+public sealed record TargetSelectionProjection(string Mode, int MaxTargets)
+{
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> SecondaryTargets { get; init; } = new Dictionary<string, IReadOnlyList<string>>();
 }
 
 public sealed record GameResult(
