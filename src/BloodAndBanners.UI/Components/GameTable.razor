@@ -413,6 +413,8 @@
                         @foreach (var unit in Projection.Units.Where(unit => unit.SeatId == seat.SeatId))
                         {
                             <li class="@RosterClass(unit)" data-roster-unit="@unit.UnitId" aria-current="@(unit.UnitId == _selectedUnitId ? "true" : null)">
+                                <button type="button" class="roster-unit" data-focus-unit disabled="@(unit.Hex is null)"
+                                        title="@(unit.Hex is null ? null : "Show on the battlefield")" @onclick="() => FocusUnit(unit)">
                                 <span>
                                     @unit.Name
                                     @switch (ActivationState(unit))
@@ -426,6 +428,7 @@
                                     }
                                 </span>
                                 <span>@(unit.Hp - unit.Wounds)/@unit.Hp</span>
+                                </button>
                             </li>
                         }
                     </ul>
@@ -1318,6 +1321,29 @@
         var focusPoints = FocusPoints();
         _viewport.EnsureVisible(focusPoints);
         await OnFollowEvents.InvokeAsync();
+    }
+
+    /// <summary>
+    /// An army-list click: selects the unit when a board click on it would, and pans the board to it
+    /// when it is out of view. Other units are only shown, so looking at a rival keeps your selection.
+    /// </summary>
+    private async Task FocusUnit(UnitProjection unit)
+    {
+        if (unit.Hex is not { } hex || Index.TileByKey.GetValueOrDefault(hex) is not { } tile)
+        {
+            return;
+        }
+        if (!IsBusy && !InSetup && Projection.PendingChoice is null && _targeting is null
+            && unit.UnitId != _selectedUnitId && Selectable(unit.UnitId))
+        {
+            ClearMovementState();
+            _selectedUnitId = unit.UnitId;
+        }
+        await MeasureBoard();
+        if (_viewport.EnsureVisible([new ViewportPoint(tile.X, tile.Y)], BoardLayout.Size))
+        {
+            await PauseFollowing();
+        }
     }
 
     private async Task EndBoardPointer(PointerEventArgs args)

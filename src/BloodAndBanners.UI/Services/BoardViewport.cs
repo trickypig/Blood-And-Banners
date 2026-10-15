@@ -193,9 +193,13 @@ public sealed class BoardViewport
         return true;
     }
 
-    public bool EnsureVisible(IReadOnlyList<ViewportPoint> focusPoints)
+    /// <summary>Centres on the focus points unless one already sits at least <paramref name="margin"/> world units inside the view.</summary>
+    public bool EnsureVisible(IReadOnlyList<ViewportPoint> focusPoints, double margin = 0)
     {
-        if (focusPoints.Count == 0 || focusPoints.Any(VisibleWorld.Contains))
+        var visible = VisibleWorld;
+        var inset = Math.Min(Math.Max(0, margin), Math.Min(visible.Width, visible.Height) / 2);
+        var safe = new WorldRect(visible.X + inset, visible.Y + inset, visible.Width - 2 * inset, visible.Height - 2 * inset);
+        if (focusPoints.Count == 0 || focusPoints.Any(safe.Contains))
         {
             return false;
         }

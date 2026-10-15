@@ -112,8 +112,10 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .roster-head .army-emblem { flex: none; width: 2.75rem; height: 2.75rem; }
 .army-name { display: block; margin-top: -.35rem; margin-bottom: .45rem; color: #c9c2b2; font-size: .85rem; }
 .roster ul { margin: 0; padding: 0; list-style: none; }
-.roster li { display: flex; justify-content: space-between; padding: .2rem 0; border-bottom: 1px solid #3c3a33; }
-.roster li.defeated { color: #8b8578; text-decoration: line-through; }
+.roster li { padding: .2rem 0; border-bottom: 1px solid #3c3a33; }
+.roster-unit { display: flex; justify-content: space-between; width: 100%; padding: 0; color: inherit; font: inherit; text-align: left; text-decoration: inherit; background: none; border: 0; cursor: pointer; }
+.roster-unit:disabled { cursor: default; }
+.roster-unit:hover:not(:disabled) { color: #fff3c4; }.roster li.defeated { color: #8b8578; text-decoration: line-through; }
 .roster li.spent { color: #9a9383; }
 .activation-tag { margin-left: .35rem; padding: 0 .35rem; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; border-radius: .2rem; }
 .activation-tag.spent { color: #c9c2b2; background: #3c3a33; }

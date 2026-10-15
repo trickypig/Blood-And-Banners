@@ -186,6 +186,48 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Clicking_a_unit_in_the_army_list_selects_it_on_the_board()
+    {
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection() with { Turn = new TurnProjection(2, null, 3) }));
+        Assert.Empty(cut.FindAll("[data-testid=selected-unit]"));
+
+        cut.Find("[data-roster-unit=s1-u3] [data-focus-unit]").Click();
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+        Assert.Contains("selected", cut.Find("[data-hex='1,4']").ClassList);
+        Assert.Equal("Ranger", cut.Find("[data-testid=selected-unit] h3").TextContent);
+
+        // A rival can be looked at but not commanded, so the selection stays put.
+        cut.Find("[data-roster-unit=s2-u1] [data-focus-unit]").Click();
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+        Assert.True(cut.Find("[data-roster-unit=s2-u2] [data-focus-unit]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Clicking_a_unit_in_the_army_list_pans_the_board_to_it_only_when_it_is_out_of_view()
+    {
+        var fixture = BattleFixtures.Projection();
+        var projection = fixture with
+        {
+            Board = fixture.Board with { Hexes = [.. fixture.Board.Hexes, new HexProjection(10, 8, "plains", "roads", 0, false, "s2-u2")] },
+            Units = [.. fixture.Units.Select(unit => unit.UnitId == "s2-u2" ? unit with { Hex = "10,8", Wounds = 0 } : unit)],
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        for (var zoom = 0; zoom < 8; zoom++)
+        {
+            cut.Find("[aria-label='Zoom in']").Click();
+        }
+        var zoomed = cut.Find("svg.hex-board").GetAttribute("viewBox");
+
+        cut.Find("[data-roster-unit=s2-u2] [data-focus-unit]").Click();
+        var panned = cut.Find("svg.hex-board").GetAttribute("viewBox");
+        Assert.NotEqual(zoomed, panned);
+
+        cut.Find("[data-roster-unit=s2-u2] [data-focus-unit]").Click();
+        Assert.Equal(panned, cut.Find("svg.hex-board").GetAttribute("viewBox"));
+    }
+
+    [Fact]
     public void Units_that_have_acted_this_turn_are_marked_on_the_board_and_in_the_army_list()
     {
         var projection = BattleFixtures.Projection();
