@@ -83,6 +83,23 @@ public sealed class DraftTableTests : BunitContext
     }
 
     [Fact]
+    public void Army_cards_show_the_army_emblem()
+    {
+        var projection = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        projection = projection with
+        {
+            Draft = projection.Draft! with { AvailableArmies = [projection.Draft.AvailableArmies[0] with { Emblem = "/images/armies/blackmaw.svg" }] },
+        };
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        Assert.Equal(
+            "https://example.test/blood/images/armies/blackmaw.svg",
+            cut.Find("button[data-army='Blackmaw'] img.army-emblem").GetAttribute("src"));
+    }
+
+    [Fact]
     public void Players_can_leave_the_draft_after_confirming()
     {
         var left = false;

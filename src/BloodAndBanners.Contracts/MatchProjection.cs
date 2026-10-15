@@ -47,7 +47,12 @@ public sealed record ArmyCard(
     string Name,
     string Color,
     IReadOnlyList<UnitCard> Units,
-    string? TakenBySeatId);
+    string? TakenBySeatId)
+{
+    public string? Emblem { get; init; }
+}
+
+public sealed record SeatArmyProjection(string Name, string? Emblem);
 
 public sealed record DraftProjection(
     IReadOnlyDictionary<string, IReadOnlyList<int>> InitiativeRolls,

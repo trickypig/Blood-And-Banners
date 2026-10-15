@@ -159,6 +159,7 @@
         {
             "name": "Sol Invictus",
             "color": "Gold",
+            "emblem": "/images/armies/sol-invictus.svg",
             "units": [
                 {
                     "name": "Cleric",
@@ -237,6 +238,7 @@
         {
             "name": "Blackmaw",
             "color": "Black",
+            "emblem": "/images/armies/blackmaw.svg",
             "race": "Orcs",
             "units": [
                 {
@@ -316,6 +318,7 @@
         {
             "name": "Deepstone Guard",
             "color": "Dark Blue",
+            "emblem": "/images/armies/deepstone-guard.svg",
             "race": "Dwarves",
             "units": [
                 {
@@ -406,6 +409,7 @@
         {
             "name": "Sellsword Marauders",
             "color": "Gray",
+            "emblem": "/images/armies/sellsword-marauders.svg",
             "race": "Humans",
             "units": [
                 {
@@ -497,6 +501,7 @@
         {
             "name": "Amethyst Thornguard",
             "color": "Green-Purple",
+            "emblem": "/images/armies/amethyst-thornguard.svg",
             "race": "Elves",
             "units": [
                 {

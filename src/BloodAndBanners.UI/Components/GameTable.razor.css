@@ -108,6 +108,9 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .unit-card h3 { margin: 0 0 .35rem; font-family: Georgia, serif; color: #f0cf7a; }
 .unit-card p { margin: .15rem 0; }
 .rosters { display: grid; gap: 1rem; }
+.roster-head { display: flex; align-items: center; gap: .6rem; }
+.roster-head .army-emblem { flex: none; width: 2.75rem; height: 2.75rem; }
+.army-name { display: block; margin-top: -.35rem; margin-bottom: .45rem; color: #c9c2b2; font-size: .85rem; }
 .roster ul { margin: 0; padding: 0; list-style: none; }
 .roster li { display: flex; justify-content: space-between; padding: .2rem 0; border-bottom: 1px solid #3c3a33; }
 .roster li.defeated { color: #8b8578; text-decoration: line-through; }

@@ -32,6 +32,7 @@ final class Catalog
             $this->armies[(string)$army['name']] = [
                 'name' => (string)$army['name'],
                 'color' => (string)($army['color'] ?? ''),
+                'emblem' => isset($army['emblem']) ? (string)$army['emblem'] : null,
                 'units' => array_map(self::stats(...), $army['units']),
             ];
         }

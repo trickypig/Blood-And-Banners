@@ -120,6 +120,29 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Rosters_show_each_seats_army_emblem_and_name()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Armies = new Dictionary<string, SeatArmyProjection>
+            {
+                ["seat-red"] = new("Blackmaw", "/images/armies/blackmaw.svg"),
+                ["seat-blue"] = new("Sol Invictus", null),
+            },
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        var mine = cut.Find(".roster.seat-1");
+        Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", mine.QuerySelector("img.army-emblem")?.GetAttribute("src"));
+        Assert.Equal("Blackmaw", mine.QuerySelector(".army-name")?.TextContent);
+        var rival = cut.Find(".roster.seat-2");
+        Assert.Null(rival.QuerySelector("img.army-emblem"));
+        Assert.Equal("Sol Invictus", rival.QuerySelector(".army-name")?.TextContent);
+    }
+
+    [Fact]
     public void The_board_paints_editor_terrain_raises_high_ground_and_zooms()
     {
         var cut = Render<GameTable>(parameters => parameters

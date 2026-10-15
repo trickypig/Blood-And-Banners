@@ -395,7 +395,20 @@
             @foreach (var seat in Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId))
             {
                 <div class="roster @SeatClass(seat.SeatId)">
-                    <h2>@RosterTitle(seat)</h2>
+                    @{ var army = Projection.Armies?.GetValueOrDefault(seat.SeatId); }
+                    <div class="roster-head">
+                        @if (CatalogImages.Resolve(ImageBaseUrl, army?.Emblem) is { } emblem)
+                        {
+                            <img class="army-emblem" src="@emblem" alt="" />
+                        }
+                        <div>
+                            <h2>@RosterTitle(seat)</h2>
+                            @if (army is not null)
+                            {
+                                <span class="army-name">@army.Name</span>
+                            }
+                        </div>
+                    </div>
                     <ul>
                         @foreach (var unit in Projection.Units.Where(unit => unit.SeatId == seat.SeatId))
                         {

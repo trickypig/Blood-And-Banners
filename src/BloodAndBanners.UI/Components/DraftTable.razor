@@ -127,8 +127,16 @@
                         data-army="@army.Name"
                         disabled="@(taken || !Can("pickArmy"))"
                         @onclick="() => PickArmy(army.Name)">
-                    <strong>@army.Name</strong>
-                    <span class="army-colour">@army.Color banner</span>
+                    <span class="army-head">
+                        @if (CatalogImages.Resolve(ImageBaseUrl, army.Emblem) is { } emblem)
+                        {
+                            <img class="army-emblem" src="@emblem" alt="" />
+                        }
+                        <span class="army-title">
+                            <strong>@army.Name</strong>
+                            <span class="army-colour">@army.Color banner</span>
+                        </span>
+                    </span>
                     <ul>
                         @foreach (var unit in army.Units)
                         {
