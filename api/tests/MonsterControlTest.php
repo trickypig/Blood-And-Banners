@@ -142,7 +142,7 @@ function monster_control_tests(): array
         },
         'new control monsters enable their supported abilities and keep their other rules deferred' => static function (): void {
             $engine = new MatchEngine(new Catalog());
-            foreach ([['Shroom Kicker', ['Stunning Kick'], ['Mycelium Network', 'Spore Release']], ['Stray', ['Arrows of Slowness', 'Hollow Bones'], []]] as [$name, $active, $inactive]) {
+            foreach ([['Shroom Kicker', ['Stunning Kick', 'Mycelium Network', 'Spore Release'], []], ['Stray', ['Arrows of Slowness', 'Hollow Bones'], []]] as [$name, $active, $inactive]) {
                 $state = $engine->start(['hero-a', 'void-lord'], coop_board(), new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
                 $unit = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => '7,0'], new SequenceRandom([]))['state']['units']['v-m1'];
                 expect_same($active, array_column($unit['abilities'], 'name'), 'the verified control abilities are active');

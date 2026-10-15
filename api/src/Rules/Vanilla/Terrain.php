@@ -103,8 +103,8 @@ final class Terrain
                 'forced' => false, 'stops' => $movementKind === 'voluntary',
             ]],
             'ice' => [[
-                'kind' => 'slip', 'terrain' => 'ice', 'hex' => $hex,
-                'dice' => 0, 'forced' => true, 'stops' => false,
+                'kind' => $movementKind === 'teleport' ? 'condition' : 'slip', 'terrain' => 'ice', 'hex' => $hex,
+                'dice' => 0, 'forced' => $movementKind !== 'teleport', 'stops' => false,
             ]],
             'poison' => [[
                 'kind' => 'condition', 'terrain' => 'poison', 'hex' => $hex,

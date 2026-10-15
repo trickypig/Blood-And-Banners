@@ -77,7 +77,7 @@ final class IceMovement
                     'wounds' => $roll['swords'],
                     'hex' => $next,
                 ]);
-                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences);
+                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences, $random);
                 if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
                     $stopped = 'defeated';
                     break 2;
@@ -267,7 +267,7 @@ final class IceMovement
                 'unitId' => $hitId, 'terrain' => 'ice', 'cause' => 'collision', 'dice' => 1,
                 'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $hex,
             ]);
-            $state = Wounds::apply($state, $hitId, $roll['swords'], $consequences);
+            $state = Wounds::apply($state, $hitId, $roll['swords'], $consequences, $random);
         }
         $to = $state['units'][$unitId]['hex'] ?? ($path === [] ? $from : $path[array_key_last($path)]);
         self::slideEvent($events, $unitId, $from, $to, $path, $direction, 'enemyCollision');
@@ -362,7 +362,7 @@ final class IceMovement
                 'unitId' => $unitId, 'terrain' => 'fall', 'cause' => 'slipFall', 'dice' => 1,
                 'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $hex,
             ]);
-            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events, $random);
         }
         return $state;
     }

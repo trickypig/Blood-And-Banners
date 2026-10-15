@@ -57,7 +57,7 @@ final class TerrainResolver
                 'unitId' => $unitId, 'terrain' => $paint, 'cause' => 'entry', 'dice' => $dice,
                 'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $to,
             ]);
-            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events, $random);
         }
         if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
             return ['state' => $state, 'stop' => true];
@@ -111,7 +111,7 @@ final class TerrainResolver
                 'unitId' => $unitId, 'terrain' => 'lava', 'cause' => 'turnEnd', 'dice' => 5,
                 'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $unit['hex'],
             ]);
-            $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events, $random);
             if ($state['phase'] !== 'active') {
                 return $state;
             }

@@ -9,6 +9,7 @@ use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Abilities\SpecialAttack;
 use BloodAndBanners\Rules\Vanilla\Abilities\TargetedAbility;
+use BloodAndBanners\Rules\Vanilla\Abilities\MovementAbility;
 use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
 use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 
@@ -16,7 +17,7 @@ final class BattleRules
 {
     public const CHOICE_TIMEOUT_SECONDS = 45;
 
-    private const KINDS = ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
+    private const KINDS = ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'heroesActivationRequired' => 'While your heroes live, your other units are limited this turn; activate a hero.',
         'unitStunned' => 'A stunned unit cannot move.',
@@ -42,6 +43,7 @@ final class BattleRules
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
         'gustNeedsStillness' => 'Gust of Wind must be used instead of moving.',
+        'networkNeedsStillness' => 'Mycelium Network must replace the whole movement before attacking.',
         'invalidDestination' => 'That unit cannot be teleported there.',
         'abilityAlreadyUsed' => 'That ability has already been used this turn.',
         'choicePending' => 'Waiting for a decision before the battle can continue.',
@@ -76,6 +78,8 @@ final class BattleRules
             $state = $this->activate($state, $seatId, self::text($payload, 'unitId'), $random, $events);
         } elseif ($kind === 'moveUnit') {
             $state = $this->move($state, $seatId, $payload, $random, $events);
+        } elseif ($kind === 'moveAbility') {
+            $state = $this->moveAbility($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'attackUnit') {
             $state = $this->attack($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'specialAttack') {
@@ -151,6 +155,16 @@ final class BattleRules
             }
             if (!$active && !$canStart) {
                 continue;
+            }
+            foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+                if (!$ability instanceof MovementAbility || $ability->unavailable($state, $unitId) !== null) {
+                    continue;
+                }
+                $options = $ability->options($state, $unitId);
+                if ($options !== []) {
+                    $actions[] = ['kind' => 'moveAbility', 'unitId' => $unitId, 'ability' => $ability->name,
+                        'targetHexes' => array_column($options, 'destination'), 'movementOptions' => $options];
+                }
             }
             if (self::canMove($state, $unitId)) {
                 $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
@@ -235,7 +249,16 @@ final class BattleRules
             $hits[] = ['byUnitId' => $enemyId] + Combat::disengagementHit($random);
         }
         $consequences = [];
-        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences);
+        $remaining = $state['units'][$unitId]['hp'] - $state['units'][$unitId]['wounds'];
+        $killer = null;
+        foreach ($hits as $hit) {
+            $remaining -= $hit['wounds'];
+            if ($remaining <= 0) {
+                $killer = $hit['byUnitId'];
+                break;
+            }
+        }
+        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences, $random, $killer);
         if ($state['units'][$unitId]['hex'] === null || $state['phase'] !== 'active') {
             $events[] = MatchEngine::event('unitMoved', [$from], [
                 'unitId' => $unitId, 'from' => $from, 'to' => $from, 'path' => [], 'disengagement' => $hits,
@@ -289,6 +312,26 @@ final class BattleRules
             'disengagement' => $hits,
         ]);
         return self::closeIfSpent($state, $unitId);
+    }
+
+    private function moveAbility(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
+    {
+        $unitId = self::text($payload, 'unitId');
+        $name = self::text($payload, 'ability');
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        $ability = self::resolveAbility($state['units'][$unitId], $name, MovementAbility::class);
+        $blocked = $ability->unavailable($state, $unitId);
+        if ($blocked !== null) {
+            self::fail($blocked);
+        }
+        $to = self::text($payload, 'toHex');
+        if (!in_array($to, array_column($ability->options($state, $unitId), 'destination'), true)) {
+            self::fail('invalidDestination');
+        }
+        return $ability->apply($state, $unitId, $to, $random, $events);
     }
 
     private function movementOption(array $state, string $unitId, array $payload, int $budget): array
@@ -603,7 +646,7 @@ final class BattleRules
     private function canAct(array $state, string $seatId): bool
     {
         foreach ($this->legalActions($state, $seatId) as $action) {
-            if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
+            if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
                 return true;
             }
         }

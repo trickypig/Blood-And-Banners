@@ -70,4 +70,10 @@ abstract class Ability
     {
         return $state;
     }
+
+    /** Death reactions run after removal, before victory, with the original position preserved. */
+    public function onDefeat(array $state, string $unitId, array $defeated, ?string $attackerId, ?RandomSource $random, array &$events): array
+    {
+        return $state;
+    }
 }

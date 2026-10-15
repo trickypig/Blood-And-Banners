@@ -491,6 +491,7 @@
     private Targeting? _targeting;
     private MovementOptionProjection? _previewedMovement;
     private MovementOptionProjection? _confirmingMovement;
+    private string? _confirmingMovementAbility;
     private bool _swingChoice;
     private string? _lastGameId;
     private long _lastProjectionVersion = long.MinValue;
@@ -516,7 +517,7 @@
     }
 
     private IReadOnlyList<LegalAction> AbilityActions(string unitId) => Projection.LegalActions
-        .Where(action => action.UnitId == unitId && (action.Kind is "specialAttack" or "useAbility"))
+        .Where(action => action.UnitId == unitId && (action.Kind is "specialAttack" or "useAbility" or "moveAbility"))
         .ToList();
 
     private void StartTargeting(LegalAction action)
@@ -638,7 +639,7 @@
 
     private bool Selectable(string unitId) =>
         Projection.Viewer.CanCommand &&
-        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "attackUnit" or "specialAttack" or "useAbility"));
+        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "moveAbility" or "attackUnit" or "specialAttack" or "useAbility"));
 
     private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
         ? []
@@ -686,6 +687,22 @@
         if (_targeting is { } aiming && _selectedUnitId is { } caster)
         {
             var aimed = key;
+            if (aiming.Kind == "moveAbility")
+            {
+                if (aiming.TargetHexes.Contains(aimed) && MovementOption(aimed) is { } movement)
+                {
+                    _previewedMovement = movement;
+                    if (RequiresConfirmation(movement))
+                    {
+                        _confirmingMovement = movement;
+                        _confirmingMovementAbility = aiming.Ability;
+                        return;
+                    }
+                    CancelTargeting();
+                    await Send("moveAbility", new { unitId = caster, ability = aiming.Ability, toHex = aimed });
+                }
+                return;
+            }
             if (Teleporting)
             {
                 if (_teleportUnitId is { } traveller && TeleportDestinations(traveller).Contains(aimed))
@@ -806,6 +823,9 @@
 
     private string BannerText(Targeting aiming) => Teleporting
         ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
+        : aiming.Kind == "moveAbility" ? $"{aiming.Ability}: choose a destination"
+        : aiming.Ability == "Spore Bomb" ? "Spore Bomb: click the caster to release spores within 2 hexes and defeat itself"
+        : aiming.Ability == "Spore Cloud" ? "Spore Cloud: click the caster to release spores within 3 hexes"
         : $"{aiming.Ability}: choose a target";
 
     private bool Chaining => _targeting?.Ability == "Chain Lightning";
@@ -868,6 +888,7 @@
 
     private void CancelTargeting()
     {
+        ClearMovementState();
         _targeting = null;
         _teleportUnitId = null;
         _chain.Clear();
@@ -993,7 +1014,9 @@
     private MovementOptionProjection? MovementOption(string destination) => _selectedUnitId is null
         ? null
         : Projection.LegalActions
-            .Where(action => action.Kind == "moveUnit" && action.UnitId == _selectedUnitId)
+            .Where(action => action.UnitId == _selectedUnitId && (_targeting is { Kind: "moveAbility" } aiming
+                ? action.Kind == "moveAbility" && action.Ability == aiming.Ability
+                : action.Kind == "moveUnit"))
             .SelectMany(action => action.MovementOptions)
             .FirstOrDefault(option => option.Destination == destination);
 
@@ -1004,7 +1027,7 @@
     private MovementHazardProjection? ProjectedHazardAt(string key) => Index.ProjectedHazards.GetValueOrDefault(key);
 
     private static bool RequiresConfirmation(MovementOptionProjection movement) =>
-        movement.Hazards.Any(hazard => hazard.Dice > 0 || hazard.Forced || hazard.Stops);
+        movement.Hazards.Any(hazard => hazard.Dice > 0 || hazard.Forced || hazard.Stops || hazard.Kind == "condition");
 
     private static string MovementRisk(MovementOptionProjection movement)
     {
@@ -1022,6 +1045,14 @@
         {
             risks.Add("movement stops on entry");
         }
+        if (movement.Hazards.Any(hazard => hazard.Kind == "condition" && hazard.Terrain == "poison"))
+        {
+            risks.Add("becomes Poisoned");
+        }
+        if (movement.Hazards.Any(hazard => hazard.Kind == "condition" && hazard.Terrain == "ice"))
+        {
+            risks.Add("becomes Unsteady");
+        }
         return risks.Count == 0 ? "No projected terrain hazards." : string.Join(" · ", risks);
     }
 
@@ -1032,6 +1063,13 @@
             return;
         }
         var path = movement.Path.ToArray();
+        if (_confirmingMovementAbility is { } ability)
+        {
+            var toHex = movement.Destination;
+            CancelTargeting();
+            await Send("moveAbility", new { unitId, ability, toHex });
+            return;
+        }
         await Send("moveUnit", new { unitId, path });
     }
 
@@ -1041,6 +1079,7 @@
     {
         _previewedMovement = null;
         _confirmingMovement = null;
+        _confirmingMovementAbility = null;
     }
 
     private UnitProjection? UnitById(string? unitId) =>

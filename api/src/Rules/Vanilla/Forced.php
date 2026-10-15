@@ -40,7 +40,7 @@ final class Forced
                 $blocked = $hex === null ? 'edge' : 'wall';
                 $roll = $dice->roll(1, $random);
                 $collisions[] = ['unitId' => $unitId, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
-                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences);
+                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences, $random);
                 break;
             }
             $occupant = self::occupantAt($state, $next);
@@ -53,7 +53,7 @@ final class Forced
                     $collisions[] = ['unitId' => $hitId, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
                 }
                 foreach ($rolls as $hitId => $wounds) {
-                    $state = Wounds::apply($state, (string)$hitId, $wounds, $consequences);
+                    $state = Wounds::apply($state, (string)$hitId, $wounds, $consequences, $random);
                 }
                 break;
             }
@@ -67,7 +67,7 @@ final class Forced
             if ($drop >= 2) {
                 $roll = $dice->roll($drop, $random);
                 $falls[] = ['levels' => $drop, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
-                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences);
+                $state = Wounds::apply($state, $unitId, $roll['swords'], $consequences, $random);
             }
         }
         $events[] = MatchEngine::event('unitPushed', $path, [

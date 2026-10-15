@@ -45,6 +45,13 @@ final class Catalog
                     'biome' => (string)($biome['biome'] ?? ''),
                     'tier' => (string)($creature['tier'] ?? 'common'),
                 ];
+                // Myconid prints its death reaction as Attack; it is always a passive reaction in play.
+                foreach ($this->monsters[(string)$creature['name']]['abilities'] as &$ability) {
+                    if ($ability['name'] === 'Spore Release') {
+                        $ability['type'] = 'Essence';
+                    }
+                }
+                unset($ability);
             }
         }
     }

@@ -53,6 +53,7 @@ public sealed class CombatLogFormatterTests
     [InlineData("chaosRolled", """{"unitId":"s1-u3","roll":15,"struck":true}""", "Chaos Strike surges (rolled 15)!")]
     [InlineData("splashDamage", """{"ability":"Fireball","hits":[{"unitId":"s2-u1","faces":["sword"],"wounds":1},{"unitId":"s2-u2","faces":["blank"],"wounds":0}]}""", "Fireball scorches Grunt for 1 and Brute for 0.")]
     [InlineData("abilityUsed", """{"unitId":"s1-u3","ability":"Shield Wall","targetUnitId":"s2-u1"}""", "Ranger uses Shield Wall on Grunt.")]
+    [InlineData("sporesReleased", """{"unitId":"s1-u3","ability":"Spore Cloud","targetUnitIds":["s2-u1"]}""", "Ranger releases spores (Spore Cloud).")]
     [InlineData("effectApplied", """{"name":"Rune of Distraction","sourceUnitId":"s1-u3","targetUnitId":"s2-u1","stat":"defense","amount":-2,"expires":{"seatId":"seat-red","at":"turnStart"}}""", "Grunt gets -2 Defense (Rune of Distraction).")]
     [InlineData("effectExpired", """{"name":"Shield Wall","targetUnitId":"s2-u1"}""", "Shield Wall fades from Grunt.")]
     [InlineData("choiceOpened", """{"choiceId":"choice-1","seatId":"seat-blue","kind":"moonlightGlare","unitId":"s2-u1"}""", "Grunt may re-roll a die (Moonlight Glare).")]

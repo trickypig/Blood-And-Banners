@@ -66,6 +66,7 @@ public static class CombatLogFormatter
             "unitPushed" => Pushed(projection, payload),
             "conditionApplied" => $"{Unit(projection, Text(payload, "unitId"))} is {Text(payload, "name").ToLowerInvariant()}.",
             "conditionExpired" => $"{Unit(projection, Text(payload, "unitId"))} is no longer {Text(payload, "name").ToLowerInvariant()}.",
+            "sporesReleased" => $"{Unit(projection, Text(payload, "unitId"))} releases spores ({Text(payload, "ability")}).",
             "unitTeleported" => Text(payload, "unitId") == Text(payload, "casterId")
                 ? $"{Unit(projection, Text(payload, "casterId"))} teleports to {Text(payload, "to")}."
                 : $"{Unit(projection, Text(payload, "casterId"))} teleports {Unit(projection, Text(payload, "unitId"))} to {Text(payload, "to")}.",

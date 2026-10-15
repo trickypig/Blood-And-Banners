@@ -34,7 +34,7 @@ final class Poison
             'unitId' => $unitId, 'hex' => $unit['hex'], 'faces' => $roll['faces'],
             'wounds' => $roll['swords'], 'cleared' => $cleared,
         ]);
-        $state = Wounds::apply($state, $unitId, $roll['swords'], $events);
+        $state = Wounds::apply($state, $unitId, $roll['swords'], $events, $random);
         return $cleared && $state['phase'] === 'active' ? UnitConditions::clear($state, $unitId, 'Poisoned', $events) : $state;
     }
 }

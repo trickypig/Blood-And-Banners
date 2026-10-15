@@ -4,12 +4,13 @@ declare(strict_types=1);
 namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
+use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 
 final class Wounds
 {
-    public static function apply(array $state, string $unitId, int $wounds, array &$events): array
+    public static function apply(array $state, string $unitId, int $wounds, array &$events, ?RandomSource $random = null, ?string $attackerId = null): array
     {
         $unit = $state['units'][$unitId];
         if ($wounds <= 0 || $unit['hex'] === null || $state['phase'] !== 'active') {
@@ -43,6 +44,9 @@ final class Wounds
         $state = UnitConditions::clearUnit($state, $unitId);
         if ($state['turn']['activeUnitId'] === $unitId) {
             $state['turn']['activeUnitId'] = null;
+        }
+        foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+            $state = $ability->onDefeat($state, $unitId, $unit, $attackerId, $random, $events);
         }
         $result = Modes::ofState($state)->victory($state);
         if ($result !== null) {

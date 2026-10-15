@@ -22,6 +22,7 @@ final class CoopSetup
         'Poison Arrows', 'Venom', 'Poisonous Bite',
         'Stunning Kick', 'Arrows of Slowness',
         'Multiple Heads', 'Many Heads', 'Branch Attack',
+        'Spore Release', 'Mycelium Network',
     ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
@@ -46,8 +47,8 @@ final class CoopSetup
 
     public static function isAbilityPlayable(array $ability): bool
     {
-        return ($ability['type'] ?? '') === 'Essence'
-            && in_array($ability['name'], self::PLAYABLE_ESSENCES, true)
+        return ((($ability['type'] ?? '') === 'Essence' && in_array($ability['name'], self::PLAYABLE_ESSENCES, true))
+                || (($ability['type'] ?? '') === 'Attack' && in_array($ability['name'], ['Spore Bomb', 'Spore Cloud'], true)))
             && AbilityRegistry::isPlayable($ability['name']);
     }
 

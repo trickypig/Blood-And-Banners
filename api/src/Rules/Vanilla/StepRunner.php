@@ -46,9 +46,9 @@ final class StepRunner
         return ['op' => 'teleport', 'casterId' => $casterId, 'unitId' => $unitId, 'toHex' => $toHex];
     }
 
-    public static function splash(string $hex, string $excludeUnitId, string $ability): array
+    public static function splash(string $hex, string $excludeUnitId, string $ability, ?string $sourceUnitId = null): array
     {
-        return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability];
+        return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability, 'sourceUnitId' => $sourceUnitId];
     }
 
     public static function chaos(string $unitId, string $targetId, string $ability): array
@@ -92,6 +92,7 @@ final class StepRunner
             'poison' => [Poison::apply($state, $step['unitId'], $step['sourceUnitId'], $this->random, $events, $step['immediate']), [], null],
             'condition' => [UnitConditions::apply($state, $step['name'], $step['unitId'], $step['sourceUnitId'], $step['expires'], $events), [], null],
             'splash' => [$this->splashStep($state, $step, $events), [], null],
+            'spores' => [$this->sporesStep($state, $step, $events), [], null],
             'chaos' => $this->chaosStep($state, $step, $events),
             'effect' => [Effects::add($state, $step['name'], $step['sourceUnitId'], $step['targetUnitId'], $step['stat'], $step['amount'], $step['seatId'], $step['at'], $events), [], null],
             default => throw new \LogicException("Unknown step {$step['op']}."),
@@ -162,7 +163,7 @@ final class StepRunner
             [$state['units'][$step['attackerId']]['hex'] ?? $state['units'][$step['targetId']]['hex'], $state['units'][$step['targetId']]['hex']],
             $payload
         );
-        $state = Wounds::apply($state, $step['targetId'], $wounds, $events);
+        $state = Wounds::apply($state, $step['targetId'], $wounds, $events, $this->random, $step['attackerId']);
         $attacker = $state['units'][$step['attackerId']];
         if ($state['phase'] !== 'active' || $attacker['hex'] === null || $state['units'][$step['targetId']]['hex'] === null) {
             return [$state, []];
@@ -226,9 +227,20 @@ final class StepRunner
         }
         $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'hits' => $hits]);
         foreach ($hits as $hit) {
-            $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events);
+            $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $step['sourceUnitId'] ?? null);
         }
         return $state;
+    }
+
+    private function sporesStep(array $state, array $step, array &$events): array
+    {
+        $unit = $state['units'][$step['unitId']];
+        if ($unit['hex'] === null) {
+            return $state;
+        }
+        $targets = Spores::enemiesWithin($state, $step['unitId'], $unit['hex'], $step['radius']);
+        $state = Spores::release($state, $step['unitId'], $unit['hex'], $targets, $step['ability'], $step['threshold'], $this->random, $events);
+        return $step['sacrifice'] ? Wounds::apply($state, $step['unitId'], $unit['hp'], $events, $this->random) : $state;
     }
 
     private function chaosStep(array $state, array $step, array &$events): array
