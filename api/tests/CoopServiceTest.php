@@ -99,8 +99,9 @@ function coop_service_tests(): array
             $placed = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => $spawnHex]);
             $wolf = array_values(array_filter($placed['units'], static fn(array $unit): bool => $unit['unitId'] === 'v-m1'))[0];
             expect_same(['void', 'common'], [$wolf['side'], $wolf['tier']], 'monster side and tier are projected');
-            expect_same('Pack Tactics', $wolf['inactiveAbilities'][0]['name'], 'printed monster abilities are projected');
-            expect_same(false, $wolf['inactiveAbilities'][0]['playable'], 'and marked not yet in play');
+            expect_same('Pack Tactics', $wolf['abilities'][0]['name'], 'supported monster abilities are projected');
+            expect_same(true, $wolf['abilities'][0]['playable'], 'and marked playable');
+            expect_same([], $wolf['inactiveAbilities'], 'supported abilities are no longer listed as deferred');
 
             $drafting = vanilla_submit($match, 'host', 'confirmSetup', []);
             expect_same('draft', $drafting['lifecycle'], 'the draft opens');

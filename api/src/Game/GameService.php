@@ -709,7 +709,7 @@ final class GameService
             'wounds' => $unit['wounds'],
             'hex' => $unit['hex'],
             'activatedThisTurn' => in_array($id, $state['turn']['activated'], true),
-            'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? []),
+            'abilities' => self::abilityCards($unit['abilities'], $state['turn']['abilitiesUsed'][$id] ?? [], isset($unit['tier'])),
             'side' => $unit['side'] ?? $unit['seatId'],
             'tier' => $unit['tier'] ?? null,
             'inactiveAbilities' => array_map(
@@ -742,12 +742,15 @@ final class GameService
         return (string)$expires['kind'];
     }
 
-    private static function abilityCards(array $abilities, array $used = []): array
+    private static function abilityCards(array $abilities, array $used = [], bool $monster = false): array
     {
         return array_map(static fn(array $ability): array => [
             'name' => $ability['name'],
             'type' => $ability['type'],
-            'description' => $ability['description'],
+            // Monster Flying uses the shared digital terrain rules, which are narrower than its printed text.
+            'description' => $monster && $ability['name'] === 'Flying'
+                ? 'Ignores open water and ice. Can cross lava during voluntary movement, but cannot land on it. Poison pits still apply. Forced entry into lava and ending a turn there cause lava damage.'
+                : $ability['description'],
             'playable' => AbilityRegistry::isPlayable($ability['name']),
             'usedThisTurn' => in_array($ability['name'], $used, true),
         ], $abilities);
@@ -829,7 +832,10 @@ final class GameService
                 'power' => $monster['power'],
                 'defense' => $monster['defense'],
                 'hp' => $monster['hp'],
-                'abilities' => self::abilityCards($monster['abilities']),
+                'abilities' => array_map(
+                    static fn(array $card): array => array_merge($card, ['playable' => CoopSetup::isAbilityPlayable($card)]),
+                    self::abilityCards($monster['abilities'], [], true)
+                ),
             ], $this->engine->catalog()->monsters()),
         ];
     }

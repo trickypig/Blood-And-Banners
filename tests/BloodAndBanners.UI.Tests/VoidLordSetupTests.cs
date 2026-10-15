@@ -10,6 +10,33 @@ public sealed class VoidLordSetupTests : BunitContext
 {
     public VoidLordSetupTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
+    [Fact]
+    public void Selected_monster_shows_ability_descriptions_and_marks_only_unsupported_abilities_deferred()
+    {
+        var setup = Setup() with
+        {
+            Roster =
+            [
+                new MonsterCard("Marsh Hydra", "Poison", "boss", 4, "", 3, 1, 4, 3, 8)
+                {
+                    Abilities =
+                    [
+                        new AbilityProjection("Outrage", "Essence", "+2 Power at 1 HP") { Playable = true },
+                        new AbilityProjection("Multiple Heads", "Essence", "One attack per HP remaining") { Playable = false },
+                    ],
+                },
+            ],
+        };
+        var cut = Render<VoidLordSetup>(p => p
+            .Add(c => c.Setup, setup)
+            .Add(c => c.IsVoidLord, true)
+            .Add(c => c.SelectedMonster, "Marsh Hydra"));
+
+        Assert.Contains("+2 Power at 1 HP", cut.Find("[data-ability='Outrage']").TextContent);
+        Assert.DoesNotContain("deferred", cut.Find("[data-ability='Outrage']").ClassList);
+        Assert.Contains("Not yet in the digital game", cut.Find("[data-ability='Multiple Heads']").TextContent);
+    }
+
     private static SetupProjection Setup(int spent = 0) => new(12, spent, false, ["5,0", "6,0"],
     [
         new MonsterCard("Ice Wolf", "Ice", "common", 1, "", 4, 1, 2, 2, 2),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace BloodAndBanners\Rules\Vanilla\Modes;
 
 use BloodAndBanners\Game\GameServiceException;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Terrain;
@@ -13,6 +14,12 @@ final class CoopSetup
 {
     public const COSTS = ['common' => 1, 'elite' => 2, 'boss' => 4];
     public const KINDS = ['placeMonster', 'removeMonster', 'confirmSetup'];
+    // Monster cards can share a name with a different hero ability (e.g. Fireball).
+    // Enable only the monster rules verified for this slice, never every registry match.
+    private const PLAYABLE_ESSENCES = [
+        'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence',
+        'Ogre Rivalry', 'Stoneskin', 'Hollow Bones', 'Flying',
+    ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notVoidLord' => 'Only the Void Lord sets up the monsters.',
@@ -32,6 +39,13 @@ final class CoopSetup
     public static function cost(array $monster): int
     {
         return self::COSTS[$monster['tier']] ?? self::COSTS['common'];
+    }
+
+    public static function isAbilityPlayable(array $ability): bool
+    {
+        return ($ability['type'] ?? '') === 'Essence'
+            && in_array($ability['name'], self::PLAYABLE_ESSENCES, true)
+            && AbilityRegistry::isPlayable($ability['name']);
     }
 
     public function legalActions(array $state, string $seatId): array
@@ -100,8 +114,8 @@ final class CoopSetup
                 'power' => $monster['power'],
                 'defense' => $monster['defense'],
                 'hp' => $monster['hp'],
-                'abilities' => [],
-                'inactiveAbilities' => $monster['abilities'],
+                'abilities' => array_values(array_filter($monster['abilities'], self::isAbilityPlayable(...))),
+                'inactiveAbilities' => array_values(array_filter($monster['abilities'], static fn(array $ability): bool => !self::isAbilityPlayable($ability))),
                 'wounds' => 0,
                 'hex' => $hex,
                 'flags' => [],
