@@ -95,16 +95,13 @@ Use `-f net10.0-android` to select Android for the MAUI build. Do not pass a glo
 
 ### Build a standalone test APK
 
-For an APK you can copy to a phone without a debugger or release keystore, explicitly embed the .NET assemblies:
+For an APK you can copy to a phone without a debugger or release keystore, build Debug for Android:
 
 ```powershell
-dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj `
-  -t:Rebuild -f net10.0-android -c Debug `
-  -p:AndroidPackageFormats=apk `
-  -p:EmbedAssembliesIntoApk=true -p:AndroidEnableFastDeployment=false
+dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -t:Rebuild -f net10.0-android -c Debug
 ```
 
-Install `src/BloodAndBanners.Maui/bin/Debug/net10.0-android/com.trickypig.bloodandbanners.game-Signed.apk`. The SDK signs this with its debug key automatically. A Debug APK built for fast deployment can omit assemblies and close immediately when installed manually; the explicit embedding option above avoids that.
+Install `src/BloodAndBanners.Maui/bin/Debug/net10.0-android/com.trickypig.bloodandbanners.game-Signed.apk`. The SDK signs this with its debug key automatically. The project file always embeds the .NET assemblies (`EmbedAssembliesIntoApk=true`, fast deployment off) for Android builds, because a fast-deployment APK omits them and closes immediately when installed by hand. This makes `-t:Run` deploys slower but means any APK in `bin/` is standalone.
 
 If startup fails, reproduce the crash, then capture the Android crash buffer:
 
