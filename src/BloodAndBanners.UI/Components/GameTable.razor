@@ -308,6 +308,19 @@
                 }
             </section>
         }
+        else if (Projection.PendingChoice is { Kind: "panPipes" or "skyToss" } control && control.SeatId == Projection.Viewer.SeatId)
+        {
+            <section class="choice-prompt control-choice" role="dialog" aria-modal="false" aria-labelledby="control-choice-title" data-testid="control-choice">
+                <h2 id="control-choice-title">@ControlChoiceTitle(control.Kind)</h2>
+                <p>@(control.Kind == "panPipes" ? "Choose a highlighted ally for the attacker to strike instead." : "Choose a highlighted landing hex. The victim takes 3 fall-damage dice without Defense, plus any landing hazards.")</p>
+                <div class="choice-options">
+                    @foreach (var option in control.Options)
+                    {
+                        <button type="button" data-choice="@option" disabled="@IsBusy" @onclick="() => Resolve(control.ChoiceId, option)">@ControlChoiceLabel(control, option)</button>
+                    }
+                </div>
+            </section>
+        }
         else if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
         {
             <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title">
@@ -324,9 +337,9 @@
         else if (Projection.PendingChoiceSummary is { } waitingOn && Projection.Viewer.CanCommand)
         {
             <section class="choice-waiting" data-testid="choice-waiting" role="status">
-                <h2>Moonlight Glare</h2>
+                <h2>@ControlChoiceTitle(waitingOn.Kind)</h2>
                 <p>Waiting for your opponent's decision…</p>
-                @if (Projection.LegalActions.Any(action => action.Kind == "resolveChoice"))
+                @if ((waitingOn.Kind is "" or "moonlightGlare") && Projection.LegalActions.Any(action => action.Kind == "resolveChoice"))
                 {
                     <button type="button" data-action="keepForThem" disabled="@IsBusy" @onclick='() => Resolve(waitingOn.ChoiceId, "keep")'>Keep the roll for them</button>
                 }
@@ -651,7 +664,9 @@
 
     private bool Selectable(string unitId) =>
         Projection.Viewer.CanCommand &&
-        Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "moveAbility" or "attackUnit" or "specialAttack" or "useAbility"));
+        (Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "moveAbility" or "attackUnit" or "specialAttack" or "useAbility"))
+         || Projection.Units.Any(unit => unit.UnitId == unitId && unit.SeatId == Projection.Viewer.SeatId && unit.Hex is not null
+             && unit.Conditions.Any(condition => condition.Name is "Petrified" or "Entrapped" or "Pan Pipes")));
 
     private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
         ? []
@@ -681,6 +696,18 @@
             else if (_selectedMonster is { } monster && PlaceableHexes.Contains(key))
             {
                 await Send("placeMonster", new { monster, hex = key });
+            }
+            return;
+        }
+        if (Projection.PendingChoice is { Kind: "panPipes" or "skyToss" } control)
+        {
+            if (control.SeatId == Projection.Viewer.SeatId && control.TargetHexes.Contains(key))
+            {
+                var option = control.Kind == "panPipes" ? $"target:{hex.OccupantId}" : $"land:{key}";
+                if (control.Options.Contains(option))
+                {
+                    await Resolve(control.ChoiceId, option);
+                }
             }
             return;
         }
@@ -828,9 +855,9 @@
     {
         get
         {
-            var distance = _targeting?.Ability switch { "Tail Slash" => 1, "Stone Swat" or "Gust of Wind" => 2, _ => 0 };
+            var distance = _targeting?.Ability switch { "Tail Slash" or "Boulder Throw" => 1, "Stone Swat" or "Gust of Wind" => 2, _ => 0 };
             if (distance == 0 || _hoveredHex is not { } hovered || !_targeting!.TargetHexes.Contains(hovered)
-                || SelectedHex is not { } casterHex || HexMath.Direction(casterHex, hovered) is not { } direction)
+                || SelectedHex is not { } casterHex || HexMath.DirectionAway(casterHex, hovered) is not { } direction)
             {
                 return [];
             }
@@ -855,6 +882,14 @@
         ? (_teleportUnitId is null ? "Teleport: choose a unit" : "Teleport: choose where")
         : aiming.Selection is not null ? MultiSelectionText(aiming)
         : aiming.Ability == "Tail Slash" ? "Tail Slash: choose an adjacent enemy; save 11+ or be pushed 1 hex"
+        : aiming.Ability == "Petrifying Gaze" ? "Petrifying Gaze: choose an enemy within 3 hexes; save 13+ or lose movement, attacks and Defense until your next turn"
+        : aiming.Ability == "Stone Grip" ? "Stone Grip: choose an adjacent enemy; save 12+ or face Power 2 and become Entrapped through its next turn"
+        : aiming.Ability == "Sky Toss" ? "Sky Toss: choose an adjacent enemy; save 15+ or choose its landing within 4 hexes, with 3 undefended fall dice"
+        : aiming.Ability == "Pan Pipes" ? "Pan Pipes: choose the piper to protect allied Satyrs within 3 hexes until your next turn"
+        : aiming.Ability == "Dragon Breath" ? "Dragon Breath: Power 6, Range 4; adjacent units, including allies, defend against one fewer sword"
+        : aiming.Ability == "Column Swing" ? "Column Swing: choose an enemy within 2 hexes; Power 5"
+        : aiming.Ability == "Column Toss" ? "Column Toss: choose an enemy 3–4 hexes away; Power 7. Tossing permanently spends the column and disables both column attacks"
+        : aiming.Ability == "Boulder Throw" ? "Boulder Throw: choose an enemy within 3 hexes; a surviving target is pushed 1 hex"
         : aiming.Ability == "Stone Swat" ? "Stone Swat: choose an adjacent enemy; a surviving target is pushed 2 hexes"
         : aiming.Kind == "moveAbility" ? $"{aiming.Ability}: choose a destination"
         : aiming.Ability == "Tentacle Regeneration" ? "Tentacle Regeneration: choose adjacent water for a new tentacle; it can act next Void turn"
@@ -990,9 +1025,21 @@
     }
 
     private IReadOnlyList<string> SplashHexes =>
-        _targeting?.Ability == "Fireball" && !MultiSelecting && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
+        (_targeting?.Ability is "Fireball" or "Dragon Breath") && !MultiSelecting && _hoveredHex is { } hovered && _targeting.TargetHexes.Contains(hovered)
             ? HexMath.Neighbours(hovered)
             : [];
+
+    private static string ControlChoiceTitle(string kind) => kind switch
+    {
+        "panPipes" => "Pan Pipes",
+        "skyToss" => "Sky Toss",
+        "iceCollision" => "Ice collision",
+        _ => "Moonlight Glare",
+    };
+
+    private string ControlChoiceLabel(PendingChoiceProjection choice, string option) => choice.Kind == "panPipes"
+        ? $"Strike {UnitById(option["target:".Length..])?.Name ?? "ally"} at {UnitById(option["target:".Length..])?.Hex}"
+        : $"Land at {option["land:".Length..]}";
 
     private Task Resolve(string choiceId, string option) => Send("resolveChoice", new { choiceId, option });
 
@@ -1054,13 +1101,18 @@
 
     private string? InteractionHexState(string key)
     {
+        if (Projection.PendingChoice is { Kind: "panPipes" or "skyToss" } control
+            && control.SeatId == Projection.Viewer.SeatId && control.TargetHexes.Contains(key))
+        {
+            return "control-target";
+        }
         if (_swingChoice && Projection.PendingChoice?.TargetHexes.Contains(key) == true)
         {
             return "swing-target";
         }
         if (key == _view.SelectedHex)
         {
-            return "selected";
+            return _view.Splash.Contains(key) ? "selected splash" : "selected";
         }
         if (_targeting is not null)
         {
@@ -1590,6 +1642,9 @@
 
     private static string ConditionMarker(string name) => name switch
     {
+        "Petrified" => "◈",
+        "Entrapped" => "⊗",
+        "Pan Pipes" => "♪",
         "Stunned" => "✦",
         "Slowed" => "↓",
         "Unsteady" => "≈",

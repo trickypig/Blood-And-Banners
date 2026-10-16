@@ -36,6 +36,10 @@ public static class CombatLogFormatter
             "armiesPlaced" => "Both armies take the field.",
             "unitMoved" => Moved(projection, payload),
             "attackResolved" => Attack(projection, payload),
+            "attackRedirected" => payload.TryGetProperty("targetUnitId", out var redirected) && redirected.ValueKind == JsonValueKind.String
+                ? $"Pan Pipes forces {Unit(projection, Text(payload, "unitId"))} to attack {Unit(projection, redirected.GetString()!)} instead."
+                : $"Pan Pipes: {Unit(projection, Text(payload, "unitId"))} has no legal ally to attack; the attack is wasted.",
+            "unitTossed" => $"Sky Toss hurls {Unit(projection, Text(payload, "unitId"))} to {Text(payload, "to")}: {Faces(payload.GetProperty("faces"))} — {Wounds(payload.GetProperty("wounds").GetInt32())} (no Defense).",
             "evaded" => payload.GetProperty("evaded").GetBoolean()
                 ? $"{Unit(projection, Text(payload, "unitId"))} evades (rolled {payload.GetProperty("roll").GetInt32()})."
                 : $"{Unit(projection, Text(payload, "unitId"))} fails to evade (rolled {payload.GetProperty("roll").GetInt32()}).",
@@ -84,6 +88,8 @@ public static class CombatLogFormatter
     private static string? ChoiceOpened(GameProjection projection, JsonElement payload) => Text(payload, "kind") switch
     {
         "moonlightGlare" => $"{Unit(projection, Text(payload, "unitId"))} may re-roll a die (Moonlight Glare).",
+        "panPipes" => $"Pan Pipes: the Satyr owner chooses an ally for {Unit(projection, Text(payload, "unitId"))} to attack.",
+        "skyToss" => $"Sky Toss: the Dragon owner chooses where {Unit(projection, Text(payload, "unitId"))} lands.",
         "iceCollision" => $"{Unit(projection, Text(payload, "unitId"))} must choose how to pass an ally on the ice.",
         _ => null,
     };
@@ -185,8 +191,11 @@ public static class CombatLogFormatter
     private static string Attack(GameProjection projection, JsonElement payload)
     {
         var ability = payload.TryGetProperty("ability", out var name) && name.ValueKind == JsonValueKind.String ? $" ({name.GetString()})" : string.Empty;
+        var shared = payload.TryGetProperty("sharedAttackRoll", out var sharedRoll) && sharedRoll.ValueKind == JsonValueKind.True ? "shared roll " : string.Empty;
+        var penalty = payload.TryGetProperty("attackPenalty", out var modifier) && modifier.GetInt32() > 0
+            ? $" − {modifier.GetInt32()} sword (splash)" : string.Empty;
         var line = $"{Unit(projection, Text(payload, "unitId"))} → {Unit(projection, Text(payload, "targetUnitId"))}{ability}: " +
-            $"{Faces(payload.GetProperty("attackFaces"))} vs {Faces(payload.GetProperty("defenseFaces"))} — " +
+            $"{shared}{Faces(payload.GetProperty("attackFaces"))}{penalty} vs {Faces(payload.GetProperty("defenseFaces"))} — " +
             Wounds(payload.GetProperty("wounds").GetInt32());
         if (payload.TryGetProperty("rerolled", out var reroll) && reroll.ValueKind == JsonValueKind.Object)
         {

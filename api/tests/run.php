@@ -33,10 +33,15 @@ require __DIR__ . '/MonsterMushroomTest.php';
 require __DIR__ . '/MonsterWaterTest.php';
 require __DIR__ . '/MonsterAreaAttackTest.php';
 require __DIR__ . '/MonsterPushAttackTest.php';
+require __DIR__ . '/BoulderThrowTest.php';
+require __DIR__ . '/ColumnAttackTest.php';
+require __DIR__ . '/DragonBreathTest.php';
 require __DIR__ . '/CommanderNameTest.php';
+require __DIR__ . '/MonsterLockAttackTest.php';
 
+require __DIR__ . '/ControlChoiceAttackTest.php';
 $failures = 0;
-$tests = array_merge(config_tests(), http_request_factory_tests(), gateway_tests(), foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_terrain_tests(), vanilla_ice_tests(), vanilla_match_service_tests(), coop_service_tests(), coop_sides_tests(), coop_setup_tests(), coop_draft_tests(), mode_schedule_tests(), coop_battle_tests(), monster_ability_tests(), monster_poison_tests(), monster_control_tests(), monster_extra_attack_tests(), monster_mushroom_tests(), monster_water_tests(), monster_area_attack_tests(), monster_push_attack_tests(), commander_name_tests());
+$tests = array_merge(config_tests(), http_request_factory_tests(), gateway_tests(), foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_terrain_tests(), vanilla_ice_tests(), vanilla_match_service_tests(), coop_service_tests(), coop_sides_tests(), coop_setup_tests(), coop_draft_tests(), mode_schedule_tests(), coop_battle_tests(), monster_ability_tests(), monster_poison_tests(), monster_control_tests(), monster_extra_attack_tests(), monster_mushroom_tests(), monster_water_tests(), monster_area_attack_tests(), monster_push_attack_tests(), boulder_throw_tests(), column_attack_tests(), dragon_breath_tests(), commander_name_tests(), monster_lock_attack_tests(), control_choice_attack_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

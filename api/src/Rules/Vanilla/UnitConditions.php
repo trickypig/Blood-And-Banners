@@ -116,7 +116,7 @@ final class UnitConditions
         $seat = $state['turn']['activeSeatId'];
         return self::expireWhere($state, static fn(array $expires): bool =>
             ($expires['kind'] === 'afterTurn' && $expires['turnNumber'] === $number)
-            || ($expires['kind'] === 'turnEnd' && $expires['seatId'] === $seat), $events);
+            || ($expires['kind'] === 'turnEnd' && $expires['seatId'] === $seat && $number > ($expires['afterTurnNumber'] ?? -1)), $events);
     }
 
     /** Run turn-start hooks, then expire conditions bound to the starting seat. Call after the new turn is set. */

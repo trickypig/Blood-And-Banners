@@ -20,6 +20,16 @@ abstract class Condition
         return false;
     }
 
+    public function blocksAttacks(): bool
+    {
+        return false;
+    }
+
+    public function blocksDefense(): bool
+    {
+        return false;
+    }
+
     public function blocksDisengagementStrike(): bool
     {
         return false;

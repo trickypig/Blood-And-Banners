@@ -128,7 +128,7 @@ function monster_ability_tests(): array
             expect_same([], $state['units']['v-m1']['inactiveAbilities'], 'all marsh hydra abilities are now supported');
             expect_same(['Fireball'], array_column($state['units']['v-m2']['abilities'], 'name'), 'pyromancer gains its own fireball');
             expect_same([], $state['units']['v-m2']['inactiveAbilities'], 'its own fireball is supported');
-            expect_same(['Flying'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains flying');
+            expect_same(['Dragon Breath', 'Sky Toss', 'Flying'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains breath and flying');
             $saved = $state;
             $saved['units']['v-m3']['inactiveAbilities'] = $saved['units']['v-m3']['abilities'];
             $saved['units']['v-m3']['abilities'] = [];
@@ -179,7 +179,7 @@ function monster_ability_tests(): array
             expect_same([], $hydra['inactiveAbilities'], 'the marsh hydra has no deferred abilities left');
             $dragonPlaced = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Void Dragon', 'hex' => $started['setup']['spawnZoneHexes'][1]]);
             $dragon = array_column($dragonPlaced['units'], null, 'unitId')['v-m2'];
-            expect_same($flight, $dragon['abilities'][0]['description'], 'the placed dragon card explains the same flying rules');
+            expect_same($flight, array_column($dragon['abilities'], null, 'name')['Flying']['description'], 'the placed dragon card explains the same flying rules');
         },
     ];
 }

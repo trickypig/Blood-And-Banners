@@ -20,6 +20,8 @@ final class BattleRules
     private const KINDS = ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'heroesActivationRequired' => 'While your heroes live, your other units are limited this turn; activate a hero.',
+        'unitCannotAttack' => 'That unit cannot attack while petrified or entrapped.',
+        'unitImmobilized' => 'That unit cannot move while petrified or entrapped.',
         'unitStunned' => 'A stunned unit cannot move.',
         'unsupportedCommand' => 'This command is not legal in the current game phase.',
         'notYourTurn' => 'It is not your turn.',
@@ -43,6 +45,7 @@ final class BattleRules
         'unknownAbility' => 'That unit does not have that ability.',
         'abilityNotPlayable' => 'That ability is not yet in the digital game.',
         'abilityLocked' => 'Fragile Focus: that unit cannot cast spells this turn.',
+        'columnAlreadyTossed' => 'That Treant has already tossed its column and cannot use either column attack again.',
         'abilityCoolingDown' => 'That attack is cooling down and cannot be used this turn.',
         'invalidAbilityTarget' => 'That is not a valid target for this ability.',
         'chainTooLong' => 'Chain Lightning can only travel 5 hexes in total.',
@@ -112,7 +115,7 @@ final class BattleRules
         }
         if ($state['pending'] !== null) {
             $choice = $state['pending']['choice'];
-            if (($choice['kind'] ?? null) === 'iceCollision') {
+            if (($choice['kind'] ?? null) !== 'moonlightGlare') {
                 return $seatId === $choice['seatId']
                     ? [[
                         'kind' => 'resolveChoice', 'unitId' => $choice['unitId'],
@@ -220,6 +223,9 @@ final class BattleRules
         $state = $this->activate($state, $seatId, $unitId, $random, $events);
         if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
             return $state;
+        }
+        if (UnitConditions::has($state, $unitId, 'Petrified') || UnitConditions::has($state, $unitId, 'Entrapped')) {
+            self::fail('unitImmobilized');
         }
         if (self::rooted($state, $unitId)) {
             self::fail('unitStunned');
@@ -381,6 +387,9 @@ final class BattleRules
         if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
             return $state;
         }
+        if (UnitConditions::any($state, $unitId, static fn(Condition $c): bool => $c->blocksAttacks())) {
+            self::fail('unitCannotAttack');
+        }
         if (!self::attacksLeft($state, $unitId)) {
             self::fail('noAttacksLeft');
         }
@@ -394,7 +403,7 @@ final class BattleRules
         }
         $state['turn']['attacks']++;
         $state = self::closeIfSpent($state, $unitId);
-        return (new StepRunner($random, $this->now))->run($state, [StepRunner::strike($unitId, $targetId)], $events);
+        return (new StepRunner($random, $this->now))->run($state, [['op' => 'attackIntent', 'attackerId' => $unitId, 'targetIds' => [$targetId], 'ability' => null]], $events);
     }
 
     private static function attackAllowance(array $unit, array $context): int
@@ -409,6 +418,9 @@ final class BattleRules
     /** Whether $unitId may still attack, as the active unit or as a fresh activation. */
     private static function attacksLeft(array $state, string $unitId, bool $specialAttack = false): bool
     {
+        if (UnitConditions::any($state, $unitId, static fn(Condition $c): bool => $c->blocksAttacks())) {
+            return false;
+        }
         if ($state['turn']['activeUnitId'] !== $unitId) {
             return true;
         }
@@ -468,6 +480,9 @@ final class BattleRules
         if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
             return $state;
         }
+        if (UnitConditions::any($state, $unitId, static fn(Condition $c): bool => $c->blocksAttacks())) {
+            self::fail('unitCannotAttack');
+        }
         $ability = self::resolveAbility($state['units'][$unitId], $name, SpecialAttack::class);
         if (($unavailable = $ability->unavailable($state, $unitId)) !== null) {
             self::fail($unavailable);
@@ -485,7 +500,8 @@ final class BattleRules
         }
         $state['turn']['attacks']++;
         $state['turn']['specialAttackUsed'] = true;
-        $steps = $ability->steps($state, $unitId, $targets, $options);
+        $steps = [['op' => 'attackIntent', 'attackerId' => $unitId, 'targetIds' => $targets, 'ability' => $name, 'options' => $options,
+            'availability' => ['flags' => $state['units'][$unitId]['flags'], 'used' => $state['turn']['abilitiesUsed'][$unitId] ?? []]]];
         $state = $ability->onUse($state, $unitId);
         $state = self::closeIfSpent($state, $unitId);
         return (new StepRunner($random, $this->now))->run($state, $steps, $events);
@@ -594,7 +610,7 @@ final class BattleRules
             return ['state' => $state, 'events' => $events];
         }
         if ($seatId !== $choice['seatId']) {
-            if ($option !== 'keep') {
+            if (($choice['kind'] ?? null) !== 'moonlightGlare' || $option !== 'keep') {
                 self::fail('notYourChoice');
             }
             if ($this->now - $choice['openedAt'] < self::CHOICE_TIMEOUT_SECONDS) {

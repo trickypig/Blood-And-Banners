@@ -201,3 +201,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .roster.seat-5 h2 { color: #e0a8e2; }
 .roster.seat-void h2 { color: #b48cff; }
 .inactive-abilities { opacity: .7; font-style: italic; }
+
+.hex.control-target .hex-outline { fill: rgba(240, 207, 122, .3); stroke: #fff1a8; stroke-width: 4; }
+
+.control-choice .choice-options { max-height: 14rem; overflow-y: auto; }

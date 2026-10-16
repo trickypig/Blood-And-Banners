@@ -17,6 +17,17 @@ public sealed class CombatLogFormatterTests
     }
 
     [Fact]
+    public void Dragon_breath_log_identifies_the_shared_roll_and_splash_sword_penalty()
+    {
+        var line = CombatLogFormatter.Describe(
+            Event("attackResolved", """{"unitId":"s1-u3","targetUnitId":"s2-u1","ability":"Dragon Breath","attackFaces":["sword","sword","sword","shield","blank","blank"],"defenseFaces":["shield"],"sharedAttackRoll":true,"attackPenalty":1,"damageType":"fire","wounds":1}"""),
+            BattleFixtures.Projection());
+        Assert.Contains("shared roll", line);
+        Assert.Contains("− 1 sword", line);
+        Assert.Contains("1 wound", line);
+    }
+
+    [Fact]
     public void Moves_report_disengagement_strikes_and_turns_name_the_next_commander()
     {
         var projection = BattleFixtures.Projection();

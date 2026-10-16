@@ -700,7 +700,11 @@ final class GameService
         foreach ($abilities as &$card) {
             $handler = AbilityRegistry::get($card['name']);
             if ($handler instanceof SpecialAttack) {
-                $card['coolingDown'] = $handler->unavailable($state, $id) === 'abilityCoolingDown';
+                $unavailable = $handler->unavailable($state, $id);
+                $card['coolingDown'] = $unavailable === 'abilityCoolingDown';
+                if ($unavailable === 'columnAlreadyTossed') {
+                    $card['description'] .= ' The column has been tossed and is unavailable for the rest of the match.';
+                }
             }
         }
         unset($card);
@@ -750,7 +754,7 @@ final class GameService
             return $expires['turnNumber'] === $state['turn']['number'] ? 'endOfThisTurn' : 'endOfNextTurn';
         }
         if ($expires['kind'] === 'turnEnd') {
-            return $expires['seatId'] === $state['turn']['activeSeatId'] ? 'endOfThisTurn' : 'endOfNextTurn';
+            return $expires['seatId'] === $state['turn']['activeSeatId'] && $state['turn']['number'] > ($expires['afterTurnNumber'] ?? -1) ? 'endOfThisTurn' : 'endOfNextTurn';
         }
         return (string)$expires['kind'];
     }

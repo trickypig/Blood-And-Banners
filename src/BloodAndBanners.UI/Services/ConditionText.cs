@@ -6,6 +6,9 @@ public static class ConditionText
     public static string Summary(string name, int? powerPenalty = null) => name switch
     {
         "Stunned" => $"can't move, no parting strikes, −{powerPenalty ?? 2} Power",
+        "Petrified" => "can't move or attack, no parting strikes, no Defense dice",
+        "Entrapped" => "can't move or attack, no parting strikes",
+        "Pan Pipes" => "protects allied Satyrs within 3 hexes; failed save 15+ lets their owner redirect the attack",
         "Slowed" => "−1 Move",
         "Unsteady" => "−1 Power and no disengagement strikes",
         "Slipping" => "must continue in its locked direction before acting",

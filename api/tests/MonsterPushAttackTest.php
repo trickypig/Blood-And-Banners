@@ -82,7 +82,7 @@ function monster_push_attack_tests(): array
             expect_same('3,0', $result['state']['units']['target']['hex'], 'the failed save still pushes');
         },
         'evasion and a lethal strike prevent the special knockback effect' => static function (): void {
-            foreach ([['Dune Wyvern', 'Tail Slash'], ['Stonekin Boulderfist', 'Stone Swat']] as [$name, $ability]) {
+            foreach ([['Dune Wyvern', 'Tail Slash'], ['Stonekin Boulderfist', 'Stone Swat'], ['Stoneking', 'Boulder Throw']] as [$name, $ability]) {
                 $evaded = monster_push_attack(monster_push_battle($name, ['abilities' => [['name' => 'Evasion']]]), $ability, [11]);
                 expect_same('2,0', $evaded['state']['units']['target']['hex'], 'evaded strikes never push');
                 expect_same([], monster_push_events($evaded, 'saveRolled'), 'evaded tail slash never rolls a save');
@@ -93,7 +93,7 @@ function monster_push_attack_tests(): array
             }
         },
         'special pushes resolve only after a saved moonlight glare choice' => static function (): void {
-            foreach ([['Dune Wyvern', 'Tail Slash'], ['Stonekin Boulderfist', 'Stone Swat']] as [$name, $ability]) {
+            foreach ([['Dune Wyvern', 'Tail Slash'], ['Stonekin Boulderfist', 'Stone Swat'], ['Stoneking', 'Boulder Throw']] as [$name, $ability]) {
                 $state = monster_push_battle($name, ['defense' => 1, 'abilities' => [['name' => 'Moonlight Glare']]]);
                 $opened = monster_push_attack($state, $ability, [1, 6, 6, 6, 6]);
                 expect_true($opened['state']['pending'] !== null, 'the defense reroll pauses the hit');
@@ -101,7 +101,7 @@ function monster_push_attack_tests(): array
                 $saved = json_decode(json_encode($opened['state'], JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
                 $result = coop_command($saved, 'hero-a', 'resolveChoice', ['choiceId' => $saved['pending']['choice']['choiceId'], 'option' => 'reroll:0'], $ability === 'Tail Slash' ? [4, 10] : [4]);
                 expect_same(0, $result['state']['units']['target']['wounds'], 'the rerolled shield prevents the attack wound');
-                expect_same($ability === 'Tail Slash' ? '3,0' : '4,0', $result['state']['units']['target']['hex'], 'the special push follows the final attack result');
+                expect_same(in_array($ability, ['Tail Slash', 'Boulder Throw'], true) ? '3,0' : '4,0', $result['state']['units']['target']['hex'], 'the special push follows the final attack result');
             }
         },
         'stone swat uses shared wall collision and falling damage rules' => static function (): void {
@@ -235,9 +235,9 @@ function monster_push_attack_tests(): array
                 expect_same(null, $finished['turn']['activeUnitId'], 'the second attack finishes the activation');
             }
         },
-        'new wyverns and boulderfists enable their special attacks without upgrading old saves' => static function (): void {
+        'new wyverns boulderfists and stonekings enable their special attacks without upgrading old saves' => static function (): void {
             $engine = new MatchEngine(new Catalog());
-            foreach ([['Dune Wyvern', 'Tail Slash', []], ['Stonekin Boulderfist', 'Stone Swat', ['Stone Grip']]] as [$name, $ability, $deferred]) {
+            foreach ([['Dune Wyvern', 'Tail Slash', []], ['Stonekin Boulderfist', 'Stone Swat', []], ['Stoneking', 'Boulder Throw', []]] as [$name, $ability, $deferred]) {
                 $state = $engine->start(['hero-a', 'void-lord'], coop_board(), new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
                 $placed = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => '7,0'], new SequenceRandom([]))['state'];
                 expect_true(in_array($ability, array_column($placed['units']['v-m1']['abilities'], 'name'), true), 'the special attack is enabled');

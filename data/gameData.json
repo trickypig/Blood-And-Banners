@@ -751,7 +751,7 @@
                     "tier": "common",
                     "image": "/images/monsters/mermaid.png",
                     "move": 3,
-                    "range": 3,
+                    "range": 5,
                     "power": 0,
                     "defense": 1,
                     "hp": 3,
@@ -759,7 +759,7 @@
                         {
                             "name": "Siren's Song",
                             "type": "Attack",
-                            "description": "Once per turn, enchant a unit at Range 3. Target makes a save roll of 15 or higher. If they fail, they are charmed and must move toward the Mermaid on their next activation and cannot attack"
+                            "description": "Once per turn, enchant a unit at Range 5. Target makes a save roll of 15 or higher. If they fail, they are charmed and must move toward the Mermaid on their next activation and cannot attack"
                         },
                         {
                             "name": "Water Affinity",

@@ -19,6 +19,29 @@ final class Forced
         return in_array($direction, Hex::DIRECTIONS, true) ? $direction : null;
     }
 
+    /** Closest hex direction away from a source at any range; ties follow Hex::DIRECTIONS order. */
+    public static function directionAwayFrom(string $fromHex, string $toHex): ?array
+    {
+        [$q1, $r1] = Hex::parse($fromHex);
+        [$q2, $r2] = Hex::parse($toHex);
+        $dq = $q2 - $q1;
+        $dr = $r2 - $r1;
+        if ($dq === 0 && $dr === 0) {
+            return null;
+        }
+        $best = null;
+        $bestScore = PHP_INT_MIN;
+        foreach (Hex::DIRECTIONS as [$q, $r]) {
+            // Cube-coordinate dot product selects the closest of the six equal-length directions.
+            $score = $dq * $q + $dr * $r + ($dq + $dr) * ($q + $r);
+            if ($score > $bestScore) {
+                $best = [$q, $r];
+                $bestScore = $score;
+            }
+        }
+        return $best;
+    }
+
     public static function push(array $state, string $unitId, array $direction, int $hexes, ?string $sourceUnitId, RandomSource $random, array &$events): array
     {
         $dice = new CustomDice();

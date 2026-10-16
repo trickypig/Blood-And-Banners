@@ -14,7 +14,8 @@ final class RangedDefense extends Ability
             return 0;
         }
         $attacker = $state['units'][$context['attackerId'] ?? ''] ?? null;
-        return $attacker !== null && $attacker['hex'] !== null
-            && Hex::distance($context['originHex'] ?? $attacker['hex'], $state['units'][$ownerId]['hex']) > 1 ? 2 : 0;
+        $origin = $context['originHex'] ?? $attacker['hex'] ?? null;
+        return $attacker !== null && $origin !== null
+            && Hex::distance($origin, $state['units'][$ownerId]['hex']) > 1 ? 2 : 0;
     }
 }

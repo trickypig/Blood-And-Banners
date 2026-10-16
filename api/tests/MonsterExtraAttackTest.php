@@ -27,7 +27,7 @@ function monster_extra_actions(array $state, string $kind): array
     ));
 }
 
-/** Give a Treant an existing special attack to exercise its exclusion rule before its own spells ship. */
+/** An unrelated special attack checks that Branch Attack excludes every special, not just column attacks. */
 function monster_extra_spell_treant(): array
 {
     $state = monster_extra_attack_battle('Treant');
@@ -137,7 +137,7 @@ function monster_extra_attack_tests(): array
         },
         'branch attack forbids a special after a normal strike in both legal actions and command validation' => static function (): void {
             $state = monster_extra_spell_treant();
-            expect_same(1, count(monster_extra_actions($state, 'specialAttack')), 'a fresh treant may choose a special attack');
+            expect_true(in_array('Flame Strike', array_column(monster_extra_actions($state, 'specialAttack'), 'ability'), true), 'a fresh treant may choose an unrelated special attack');
             $state = monster_extra_strike($state, 'target', [6])['state'];
             expect_same([], monster_extra_actions($state, 'specialAttack'), 'choosing a normal attack hides special attacks');
             expect_game_error('noAttacksLeft', static fn() => coop_command($state, 'void-lord', 'specialAttack', ['unitId' => 'monster', 'ability' => 'Flame Strike', 'targetUnitIds' => ['target']], [6, 6, 6]));
@@ -229,7 +229,7 @@ function monster_extra_attack_tests(): array
             foreach ([
                 ['Marsh Hydra', ['Multiple Heads', 'Poisonous Bite', 'Outrage'], []],
                 ['Void Hydra', ['Many Heads', 'Outrage'], []],
-                ['Treant', ['Branch Attack'], ['Column Swing', 'Column Toss', "Nature's Wrath"]],
+                ['Treant', ['Column Swing', 'Column Toss', 'Branch Attack'], ["Nature's Wrath"]],
             ] as [$name, $active, $inactive]) {
                 $state = $engine->start(['hero-a', 'void-lord'], coop_board(), new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
                 $unit = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => '7,0'], new SequenceRandom([]))['state']['units']['v-m1'];
