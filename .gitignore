@@ -8,3 +8,7 @@
 *.suo
 api/var/*.sqlite
 api/var/*.sqlite-*
+
+# Local agent notes and skills
+.agents/
+docs/todo.md
