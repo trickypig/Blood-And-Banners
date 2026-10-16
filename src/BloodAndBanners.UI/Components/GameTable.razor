@@ -182,6 +182,10 @@
                             }
                             </g>
                             <circle class="token-ring" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
+                            @if (key == _view.SpotlitHex)
+                            {
+                                <circle class="token-spotlight" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius + 5)" />
+                            }
                             @if (ActivationState(unit) == "spent")
                             {
                                 var badgeX = tile.X - radius * .75;
@@ -550,6 +554,9 @@
     }
     private string? _hoveredUnitId;
 
+    /// <summary>The unit last picked from the army list, marked on the board until the board is clicked.</summary>
+    private string? _spotlitUnitId;
+
     protected override void OnParametersSet()
     {
         var newGame = _lastGameId != Projection.GameId;
@@ -677,11 +684,12 @@
 
     private async Task SelectHex(HexProjection hex, bool keyboardActivation = false)
     {
-        if (!Projection.Viewer.CanCommand || IsBusy)
+        if (!keyboardActivation && _viewport.ConsumeSuppressedActivation())
         {
             return;
         }
-        if (!keyboardActivation && _viewport.ConsumeSuppressedActivation())
+        _spotlitUnitId = null;
+        if (!Projection.Viewer.CanCommand || IsBusy)
         {
             return;
         }
@@ -1096,6 +1104,10 @@
         {
             classes.Add("placeable");
         }
+        if (key == _view.SpotlitHex)
+        {
+            classes.Add("spotlit");
+        }
         return classes.Count == 0 ? null : string.Join(' ', classes);
     }
 
@@ -1255,6 +1267,7 @@
         IReadOnlyList<string> aimed = _targeting is null ? [] : MultiSelecting ? SelectionCandidates() : Chaining ? ChainCandidates() : _targeting.TargetHexes;
         return new BoardView(
             SelectedHex,
+            _spotlitUnitId is null ? null : Index.OccupiedHex.GetValueOrDefault(_spotlitUnitId),
             Targets("moveUnit").ToHashSet(),
             Targets("attackUnit").ToHashSet(),
             FocusHexes.ToHashSet(),
@@ -1342,6 +1355,7 @@
 
     private sealed record BoardView(
         string? SelectedHex,
+        string? SpotlitHex,
         HashSet<string> Moves,
         HashSet<string> Attacks,
         HashSet<string> Focus,
@@ -1354,7 +1368,7 @@
         Dictionary<string, int> PathSteps,
         Dictionary<string, MovementHazardProjection> Hazards)
     {
-        public static readonly BoardView Empty = new(null, [], [], [], [], [], [], [], [], [], [], []);
+        public static readonly BoardView Empty = new(null, null, [], [], [], [], [], [], [], [], [], [], []);
     }
 
     private bool IsCoop => Projection.Mode == GameMode.Coop;
@@ -1413,7 +1427,7 @@
         {
             unit.Hex is null ? "defeated" : null,
             unit.UnitId == _selectedUnitId ? "selected" : null,
-            unit.UnitId == _hoveredUnitId ? "highlighted" : null,
+            unit.UnitId == (_hoveredUnitId ?? _spotlitUnitId) ? "highlighted" : null,
             ActivationState(unit),
         }.OfType<string>().ToList();
         return classes.Count == 0 ? null : string.Join(' ', classes);
@@ -1501,6 +1515,7 @@
         {
             return;
         }
+        _spotlitUnitId = unit.UnitId;
         if (!IsBusy && !InSetup && Projection.PendingChoice is null && _targeting is null
             && unit.UnitId != _selectedUnitId && Selectable(unit.UnitId))
         {

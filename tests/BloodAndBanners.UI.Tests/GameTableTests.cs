@@ -197,9 +197,18 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("selected", cut.Find("[data-hex='1,4']").ClassList);
         Assert.Equal("Ranger", cut.Find("[data-testid=selected-unit] h3").TextContent);
 
-        // A rival can be looked at but not commanded, so the selection stays put.
+        // A rival can be looked at but not commanded, so the selection stays put and the rival is spotlit instead.
         cut.Find("[data-roster-unit=s2-u1] [data-focus-unit]").Click();
         Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+        Assert.Contains("spotlit", cut.Find("[data-hex='3,4']").ClassList);
+        Assert.Single(cut.FindAll("[data-hex='3,4'] .token-spotlight"));
+        Assert.Single(cut.FindAll(".token-spotlight"));
+        Assert.Contains("highlighted", cut.Find("[data-roster-unit=s2-u1]").ClassList);
+
+        // Clicking the board puts the spotlight away.
+        cut.Find("[data-hex='4,4']").Click();
+        Assert.Empty(cut.FindAll(".spotlit, .token-spotlight"));
+        Assert.DoesNotContain("highlighted", cut.Find("[data-roster-unit=s2-u1]").ClassList);
         Assert.True(cut.Find("[data-roster-unit=s2-u2] [data-focus-unit]").HasAttribute("disabled"));
     }
 
