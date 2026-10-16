@@ -39,6 +39,9 @@ final class BattleRules
         'invalidSlipChoice' => 'That ice movement choice is no longer legal.',
         'targetOutOfRange' => 'That target is out of range.',
         'targetSubmerged' => 'That unit is submerged and immune to ranged attacks.',
+        'charmedUnitFirst' => 'A charmed unit must move toward its Mermaid before anything else this turn.',
+        'charmedMustApproach' => 'A charmed unit must end its move as close as possible to its Mermaid.',
+        'unitCharmed' => 'A charmed unit cannot use abilities.',
         'targetBurrowed' => 'That unit is burrowed and immune to ranged attacks until it is engaged.',
         'unitSummonedThisTurn' => 'A summoned unit can activate starting on its next turn.',
         'tentacleLimitReached' => 'There can be at most four living allied Kraken tentacles.',
@@ -77,6 +80,9 @@ final class BattleRules
             self::fail('notYourTurn');
         }
         if ($kind === 'endTurn') {
+            if (self::charmHolds($state, $seatId) !== null) {
+                self::fail('charmedUnitFirst');
+            }
             [$state, $events] = self::passTurn($state, $random);
             return ['state' => $state, 'events' => $events];
         }
@@ -99,9 +105,15 @@ final class BattleRules
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
                 self::fail('unitNotActive');
             }
+            if (self::mustApproach($state, $unitId)) {
+                self::fail('charmedMustApproach');
+            }
             $state['turn']['activeUnitId'] = null;
         }
 
+        if ($state['phase'] === 'active') {
+            $state = Charm::cleanup($state, $events);
+        }
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $seatId)) {
             [$state, $passed] = self::passTurn($state, $random);
             $events = array_merge($events, $passed);
@@ -133,11 +145,13 @@ final class BattleRules
             return [];
         }
         $actions = [];
+        $held = self::charmHolds($state, $seatId);
         foreach ($state['units'] as $unitId => $unit) {
             $unitId = (string)$unitId;
-            if ($unit['seatId'] !== $seatId || $unit['hex'] === null) {
+            if ($unit['seatId'] !== $seatId || $unit['hex'] === null || ($held !== null && $held !== $unitId)) {
                 continue;
             }
+            $charmed = Charm::source($state, $unitId) !== null;
             $active = $state['turn']['activeUnitId'] === $unitId;
             $activated = in_array($unitId, $state['turn']['activated'], true);
             $canStart = !$activated && $this->activationError($state, $unitId) === null;
@@ -145,7 +159,7 @@ final class BattleRules
                 $actions[] = ['kind' => 'activateUnit', 'unitId' => $unitId, 'targetHexes' => []];
                 continue;
             }
-            if ($activated || $canStart) {
+            if (($activated || $canStart) && !$charmed) {
                 foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
                     if (!$ability instanceof TargetedAbility || in_array($ability->name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true) || $ability->unavailable($state, $unitId) !== null) {
                         continue;
@@ -165,7 +179,7 @@ final class BattleRules
                 continue;
             }
             foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-                if (!$ability instanceof MovementAbility || $ability->unavailable($state, $unitId) !== null) {
+                if ($charmed || !$ability instanceof MovementAbility || $ability->unavailable($state, $unitId) !== null) {
                     continue;
                 }
                 $options = $ability->options($state, $unitId);
@@ -176,7 +190,7 @@ final class BattleRules
             }
             if (self::canMove($state, $unitId)) {
                 $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
-                $options = Movement::options($state, $unitId, $budget);
+                $options = Charm::allowed($state, $unitId, Movement::options($state, $unitId, $budget));
                 if ($options !== []) {
                     $actions[] = [
                         'kind' => 'moveUnit', 'unitId' => $unitId,
@@ -211,10 +225,12 @@ final class BattleRules
                 }
             }
         }
-        if ($state['turn']['activeUnitId'] !== null) {
+        if ($state['turn']['activeUnitId'] !== null && !self::mustApproach($state, $state['turn']['activeUnitId'])) {
             $actions[] = ['kind' => 'endActivation', 'unitId' => $state['turn']['activeUnitId'], 'targetHexes' => []];
         }
-        $actions[] = ['kind' => 'endTurn', 'unitId' => null, 'targetHexes' => []];
+        if ($held === null) {
+            $actions[] = ['kind' => 'endTurn', 'unitId' => null, 'targetHexes' => []];
+        }
         return $actions;
     }
 
@@ -236,6 +252,9 @@ final class BattleRules
         }
         $budget = Stats::effective($state, $unitId, 'move') - $state['turn']['moveSpent'];
         $option = $this->movementOption($state, $unitId, $payload, $budget);
+        if (!in_array($option['destination'], array_column(Charm::allowed($state, $unitId, Movement::options($state, $unitId, $budget)), 'destination'), true)) {
+            self::fail('charmedMustApproach');
+        }
         $to = $option['destination'];
         $path = $option['path'];
         $from = $state['units'][$unitId]['hex'];
@@ -330,6 +349,9 @@ final class BattleRules
     {
         $unitId = self::text($payload, 'unitId');
         $name = self::text($payload, 'ability');
+        if (Charm::source($state, $unitId) !== null) {
+            self::fail('unitCharmed');
+        }
         $state = $this->activate($state, $seatId, $unitId, $random, $events);
         if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
             return $state;
@@ -542,6 +564,9 @@ final class BattleRules
         if ($unit['seatId'] !== $seatId) {
             self::fail('notYourUnit');
         }
+        if (Charm::source($state, $unitId) !== null) {
+            self::fail('unitCharmed');
+        }
         $ability = self::resolveAbility($unit, $name, TargetedAbility::class);
         if (in_array($name, $state['turn']['abilitiesUsed'][$unitId] ?? [], true)) {
             self::fail('abilityAlreadyUsed');
@@ -674,7 +699,31 @@ final class BattleRules
         if (Turn::activationsRemaining($state) <= 0) {
             return 'noActivationsRemaining';
         }
+        $held = self::charmHolds($state, $state['units'][$unitId]['seatId']);
+        if ($held !== null && $held !== $unitId) {
+            return 'charmedUnitFirst';
+        }
         return Modes::ofState($state)->activationError($state, $unitId);
+    }
+
+    /** The seat's charmed unit that must still walk toward its Mermaid before anything else happens, if any. */
+    private static function charmHolds(array $state, string $seatId): ?string
+    {
+        foreach ($state['units'] as $unitId => $unit) {
+            if ($unit['seatId'] === $seatId && $unit['hex'] !== null && self::mustApproach($state, (string)$unitId)) {
+                return (string)$unitId;
+            }
+        }
+        return null;
+    }
+
+    private static function mustApproach(array $state, string $unitId): bool
+    {
+        if (Charm::source($state, $unitId) === null || !self::canMove($state, $unitId)) {
+            return false;
+        }
+        $spent = $state['turn']['activeUnitId'] === $unitId ? $state['turn']['moveSpent'] : 0;
+        return Charm::canApproach($state, $unitId, Movement::options($state, $unitId, Stats::effective($state, $unitId, 'move') - $spent));
     }
 
     private function canAct(array $state, string $seatId): bool

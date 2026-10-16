@@ -118,6 +118,7 @@ final class AbilityRegistry
                 new StoneGrip('Stone Grip'),
                 new SkyToss('Sky Toss'),
                 new PanPipes('Pan Pipes'),
+                new SirensSong("Siren's Song"),
                 new BoulderThrow('Boulder Throw'),
                 new ColumnAttack('Column Swing'),
                 new ColumnAttack('Column Toss', toss: true),

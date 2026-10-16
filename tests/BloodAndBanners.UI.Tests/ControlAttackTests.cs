@@ -89,6 +89,7 @@ public sealed class ControlAttackTests : BunitContext
     [Theory]
     [InlineData("Petrified", "no Defense dice")]
     [InlineData("Entrapped", "can't move or attack")]
+    [InlineData("Charmed", "must move as close as possible to its Mermaid")]
     [InlineData("Pan Pipes", "Satyrs within 3 hexes")]
     public void Control_conditions_explain_their_effects_on_the_unit_card(string condition, string explanation)
     {
@@ -108,6 +109,7 @@ public sealed class ControlAttackTests : BunitContext
     [InlineData("Petrifying Gaze", "save 13+")]
     [InlineData("Stone Grip", "save 12+")]
     [InlineData("Sky Toss", "save 15+")]
+    [InlineData("Siren's Song", "within 5 hexes; save 15+ or be charmed")]
     public void Control_attack_targeting_guides_the_save(string ability, string guidance)
     {
         var projection = ChoiceProjection("panPipes");
@@ -122,7 +124,7 @@ public sealed class ControlAttackTests : BunitContext
         var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection)
             .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
         cut.Find("[data-hex='0,0']").Click();
-        cut.Find($"[data-use-ability='{ability}']").Click();
+        cut.Find($"[data-use-ability=\"{ability}\"]").Click();
         Assert.Contains(guidance, cut.Find("[data-testid=targeting-banner]").TextContent);
         cut.Find($"[data-hex='{target}']").Click();
         var command = Assert.Single(sent);

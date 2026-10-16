@@ -8,6 +8,7 @@ public static class ConditionText
         "Stunned" => $"can't move, no parting strikes, −{powerPenalty ?? 2} Power",
         "Petrified" => "can't move or attack, no parting strikes, no Defense dice",
         "Entrapped" => "can't move or attack, no parting strikes",
+        "Charmed" => "must move as close as possible to its Mermaid before its side acts; can't attack or use abilities, no parting strikes",
         "Pan Pipes" => "protects allied Satyrs within 3 hexes; failed save 15+ lets their owner redirect the attack",
         "Slowed" => "−1 Move",
         "Unsteady" => "−1 Power and no disengagement strikes",

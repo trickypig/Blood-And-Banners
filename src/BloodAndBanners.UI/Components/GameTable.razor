@@ -680,7 +680,7 @@
         Projection.Viewer.CanCommand &&
         (Projection.LegalActions.Any(action => action.UnitId == unitId && (action.Kind is "moveUnit" or "moveAbility" or "attackUnit" or "specialAttack" or "useAbility"))
          || Projection.Units.Any(unit => unit.UnitId == unitId && unit.SeatId == Projection.Viewer.SeatId && unit.Hex is not null
-             && unit.Conditions.Any(condition => condition.Name is "Petrified" or "Entrapped" or "Pan Pipes")));
+             && unit.Conditions.Any(condition => condition.Name is "Petrified" or "Entrapped" or "Pan Pipes" or "Charmed")));
 
     private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
         ? []
@@ -899,6 +899,7 @@
         : aiming.Ability == "Tail Slash" ? "Tail Slash: choose an adjacent enemy; save 11+ or be pushed 1 hex"
         : aiming.Ability == "Petrifying Gaze" ? "Petrifying Gaze: choose an enemy within 3 hexes; save 13+ or lose movement, attacks and Defense until your next turn"
         : aiming.Ability == "Stone Grip" ? "Stone Grip: choose an adjacent enemy; save 12+ or face Power 2 and become Entrapped through its next turn"
+        : aiming.Ability == "Siren's Song" ? "Siren's Song: choose an enemy within 5 hexes; save 15+ or be charmed: on its next turn it must first walk as close as it can to the Mermaid and cannot attack"
         : aiming.Ability == "Sky Toss" ? "Sky Toss: choose an adjacent enemy; save 15+ or choose its landing within 4 hexes, with 3 undefended fall dice"
         : aiming.Ability == "Dragon Breath" ? "Dragon Breath: Power 6, Range 4; adjacent units, including allies, defend against one fewer sword"
         : aiming.Ability == "Column Swing" ? "Column Swing: choose an enemy within 2 hexes; Power 5"
@@ -1665,6 +1666,7 @@
     {
         "Petrified" => "◈",
         "Entrapped" => "⊗",
+        "Charmed" => "♥",
         "Pan Pipes" => "♪",
         "Stunned" => "✦",
         "Slowed" => "↓",

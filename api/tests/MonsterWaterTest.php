@@ -248,11 +248,7 @@ function monster_water_tests(): array
                 expect_true(in_array($hex, $placement[0]['targetHexes'] ?? [], true), "{$name} gets suitable spawn hexes");
                 $unit = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => $hex], new SequenceRandom([]))['state']['units']['v-m1'];
                 expect_true(count($unit['abilities']) >= 1, 'water mechanics are active');
-                if ($name === 'Mermaid') {
-                    expect_same(["Siren's Song"], array_column($unit['inactiveAbilities'], 'name'), 'charm is still deferred');
-                } else {
-                    expect_same([], $unit['inactiveAbilities'], 'the other water creatures are fully supported');
-                }
+                expect_same([], $unit['inactiveAbilities'], 'every water creature is fully supported');
                 if (in_array($name, ['Merman', 'Mermaid', 'Kraken', 'Kraken Tentacle (Lesser)'], true)) {
                     expect_game_error('hexNotEnterable', static fn() => $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => '8,8'], new SequenceRandom([])));
                 }
