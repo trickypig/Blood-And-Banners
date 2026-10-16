@@ -669,6 +669,9 @@ final class BattleRules
         if ($blocked !== null) {
             self::fail($blocked);
         }
+        foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+            $state = $ability->onActivate($state, $unitId, $events);
+        }
         $wasSlipping = UnitConditions::has($state, $unitId, 'Slipping');
         $move = Stats::effective($state, $unitId, 'move');
         // Set before the slide so a slide paused on a choice still remembers where the activation began.
@@ -747,10 +750,11 @@ final class BattleRules
         }
         $state = UnitConditions::atTurnEnd($state, $events);
         foreach ($state['units'] as $unitId => $unit) {
-            if ($unit['seatId'] !== $current) {
+            if ($unit['seatId'] !== $current || $unit['hex'] === null) {
                 continue;
             }
             foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
+                $state = $ability->onTurnEnd($state, (string)$unitId, $events);
                 if ($ability instanceof SpecialAttack) {
                     $state = $ability->afterTurn($state, (string)$unitId);
                 }

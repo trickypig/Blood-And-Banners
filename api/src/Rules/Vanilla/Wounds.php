@@ -45,6 +45,14 @@ final class Wounds
         if ($state['turn']['activeUnitId'] === $unitId) {
             $state['turn']['activeUnitId'] = null;
         }
+        foreach ($state['units'] as $ownerId => $owner) {
+            if ($owner['hex'] === null) {
+                continue;
+            }
+            foreach (AbilityRegistry::abilitiesOf($owner) as $ability) {
+                $state = $ability->onUnitDefeated($state, (string)$ownerId, $unit, $events);
+            }
+        }
         foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
             $state = $ability->onDefeat($state, $unitId, $unit, $attackerId, $random, $events);
         }

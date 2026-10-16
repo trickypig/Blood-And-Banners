@@ -98,6 +98,29 @@ abstract class Ability
         return $state;
     }
 
+    /** Initial conditions when a creature is placed. */
+    public function onPlaced(array $state, string $unitId, array &$events): array
+    {
+        return $state;
+    }
+
+    public function onActivate(array $state, string $unitId, array &$events): array
+    {
+        return $state;
+    }
+
+    /** Called for living units owned by the ending seat, before resetting activation history. */
+    public function onTurnEnd(array $state, string $unitId, array &$events): array
+    {
+        return $state;
+    }
+
+    /** A battlefield defeat observed by a surviving ability owner, regardless of allegiance. */
+    public function onUnitDefeated(array $state, string $ownerId, array $defeated, array &$events): array
+    {
+        return $state;
+    }
+
     /** Death reactions run after removal, before victory, with the original position preserved. */
     public function onDefeat(array $state, string $unitId, array $defeated, ?string $attackerId, ?RandomSource $random, array &$events): array
     {

@@ -8,6 +8,7 @@ use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Terrain;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
 /** The Void Lord places monsters from a tier-point budget inside spawn zones, then confirms. */
 final class CoopSetup
@@ -17,7 +18,7 @@ final class CoopSetup
     // Monster cards can share a name with a different hero ability (e.g. Fireball).
     // Enable only the monster rules verified for this slice, never every registry match.
     private const PLAYABLE_ESSENCES = [
-        'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence', 'Feral Charge',
+        'Hibernation', "Nature's Wrath", 'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence', 'Feral Charge',
         'Ogre Rivalry', 'Stoneskin', 'Hollow Bones', 'Flying',
         'Poison Arrows', 'Venom', 'Poisonous Bite',
         'Stunning Kick', 'Arrows of Slowness',
@@ -109,6 +110,9 @@ final class CoopSetup
             $state['setup']['spent'] += $cost;
             $state['units'][$unitId] = self::unit($monster, $unitId, $state['voidLordSeatId'], $hex);
             $events[] = MatchEngine::event('monsterPlaced', [$hex], ['unitId' => $unitId, 'monster' => $monster['name'], 'hex' => $hex, 'cost' => $cost]);
+            foreach (AbilityRegistry::abilitiesOf($state['units'][$unitId]) as $ability) {
+                $state = $ability->onPlaced($state, $unitId, $events);
+            }
         } elseif ($kind === 'removeMonster') {
             $unitId = self::text($payload, 'unitId');
             $unit = $state['units'][$unitId] ?? null;
@@ -117,6 +121,7 @@ final class CoopSetup
             }
             $cost = self::cost($unit);
             $state['setup']['spent'] -= $cost;
+            $state = UnitConditions::clearUnit($state, $unitId);
             unset($state['units'][$unitId]);
             $events[] = MatchEngine::event('monsterRemoved', [$unit['hex']], ['unitId' => $unitId, 'monster' => $unit['name'], 'hex' => $unit['hex'], 'cost' => $cost]);
         } else {

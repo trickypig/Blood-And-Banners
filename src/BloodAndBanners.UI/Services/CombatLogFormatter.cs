@@ -68,6 +68,10 @@ public static class CombatLogFormatter
                 ? $"{Unit(projection, Text(payload, "unitId"))} resists {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()})."
                 : $"{Unit(projection, Text(payload, "unitId"))} fails to resist {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()}).",
             "unitPushed" => Pushed(projection, payload),
+            "conditionApplied" when Text(payload, "name") == "Enraged"
+                && payload.TryGetProperty("data", out var conditionData)
+                && conditionData.TryGetProperty("level", out var rageLevel) =>
+                $"{Unit(projection, Text(payload, "unitId"))} is Enraged +{rageLevel.GetInt32()}.",
             "conditionApplied" => $"{Unit(projection, Text(payload, "unitId"))} is {Text(payload, "name").ToLowerInvariant()}.",
             "conditionExpired" => $"{Unit(projection, Text(payload, "unitId"))} is no longer {Text(payload, "name").ToLowerInvariant()}.",
             "sporesReleased" => $"{Unit(projection, Text(payload, "unitId"))} releases spores ({Text(payload, "ability")}).",

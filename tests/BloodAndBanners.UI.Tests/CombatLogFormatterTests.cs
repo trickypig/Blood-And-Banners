@@ -6,6 +6,17 @@ using BloodAndBanners.UI.Services;
 
 public sealed class CombatLogFormatterTests
 {
+    [Theory]
+    [InlineData(2)]
+    [InlineData(5)]
+    [InlineData(3)]
+    public void Rage_history_shows_the_level_at_the_time_of_each_change(int level)
+    {
+        var payload = JsonSerializer.Serialize(new { unitId = "s1-u3", name = "Enraged", data = new { level } });
+        var line = CombatLogFormatter.Describe(Event("conditionApplied", payload), BattleFixtures.Projection());
+        Assert.Contains($"Enraged +{level}", line);
+    }
+
     [Fact]
     public void Attacks_show_both_dice_rolls_and_wounds()
     {

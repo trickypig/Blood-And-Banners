@@ -65,6 +65,8 @@ final class AbilityRegistry
                 new StunningBlow('Stunning Blow'),
                 new Flying('Flying'),
                 new PackTactics('Pack Tactics'),
+                new Hibernation('Hibernation'),
+                new NaturesWrath("Nature's Wrath"),
                 new SharkInstinct('Shark Instinct'),
                 new Outrage('Outrage'),
                 new FrighteningPresence('Frightening Presence'),

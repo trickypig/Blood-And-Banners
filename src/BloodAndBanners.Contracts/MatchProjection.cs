@@ -13,6 +13,7 @@ public sealed record ConditionDataProjection
 {
     public IReadOnlyList<int>? Direction { get; init; }
     public int? PowerPenalty { get; init; }
+    public int? Level { get; init; }
 }
 
 public sealed record ConditionProjection(string Name, string Expires)

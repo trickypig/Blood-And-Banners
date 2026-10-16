@@ -662,7 +662,7 @@
                         {
                             "name": "Hibernation",
                             "type": "Essence",
-                            "description": "If this unit did not move or attack last turn, it has +2 Defense"
+                            "description": "Starts Hibernating (+2 Defense). Activating this unit clears Hibernating. At the end of its owner's turn, if it was not activated, it becomes Hibernating."
                         }
                     ]
                 },
@@ -1218,7 +1218,7 @@
                         {
                             "name": "Nature's Wrath",
                             "type": "Essence",
-                            "description": "If a forest creature was killed last turn, Treant gets +1 Power and +1 Defense"
+                            "description": "Whenever a Forest creature is defeated, gain 2 Enraged tokens. Each token grants +1 Power and +1 Defense. At the end of each turn for this unit's owner, remove 1 token."
                         }
                     ]
                 }

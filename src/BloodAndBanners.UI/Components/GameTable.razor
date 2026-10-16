@@ -214,7 +214,7 @@
                                           data-condition-marker="@condition.Name"
                                           x="@Num(tile.X + (conditionIndex - (unit.Conditions.Count - 1) / 2d) * 13)"
                                           y="@Num(tokenY - radius * 1.05)"
-                                          aria-hidden="true">@ConditionMarker(condition.Name)</!text>
+                                          aria-hidden="true">@ConditionMarker(condition)</!text>
                                 }
                             }
                             @if (unit is not null)
@@ -367,8 +367,8 @@
                         </p>
                         @foreach (var condition in selected.Conditions)
                         {
-                            var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty);
-                            <p class="unit-condition" data-condition="@condition.Name">@condition.Name — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires)</p>
+                            var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty, condition.Data.Level);
+                            <p class="unit-condition" data-condition="@condition.Name">@ConditionLabel(condition) — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires, condition.Name)</p>
                         }
                         <p>Wounds @selected.Wounds / @selected.Hp</p>
                         <AbilityList Abilities="selected.Abilities"
@@ -533,8 +533,8 @@
             .Where(effect => effect.Stat == stat)
             .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {(effect.Expires == "endOfTurn" ? "until end of turn" : "until your next turn")}")
             .Concat(unit.Conditions
-                .Where(condition => ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty) != 0)
-                .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires)}"))
+                .Where(condition => ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty, condition.Data.Level) != 0)
+                .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty, condition.Data.Level).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires, condition.Name)}"))
             .ToList();
         return sources.Count == 0 ? null : string.Join("; ", sources);
     }
@@ -1649,7 +1649,7 @@
     private static string ConditionLabel(ConditionProjection condition) =>
         condition.Name == "Slipping" && condition.Data.Direction is { Count: 2 } direction
             ? $"Slipping {DirectionName(direction)}"
-            : condition.Name;
+            : condition.Name == "Enraged" ? $"Enraged +{condition.Data.Level ?? 0}" : condition.Name;
 
     private static string DirectionName(IReadOnlyList<int> direction) => (direction[0], direction[1]) switch
     {
@@ -1662,7 +1662,7 @@
         _ => $"toward {direction[0]},{direction[1]}",
     };
 
-    private static string ConditionMarker(string name) => name switch
+    private static string ConditionMarker(ConditionProjection condition) => condition.Name switch
     {
         "Petrified" => "◈",
         "Entrapped" => "⊗",
@@ -1673,6 +1673,8 @@
         "Unsteady" => "≈",
         "Slipping" => "➜",
         "Poisoned" => "◆",
+        "Hibernating" => "Zz",
+        "Enraged" => $"+{condition.Data.Level ?? 0}",
         _ => "•",
     };
 

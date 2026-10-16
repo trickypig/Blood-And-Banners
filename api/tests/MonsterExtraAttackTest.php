@@ -229,7 +229,7 @@ function monster_extra_attack_tests(): array
             foreach ([
                 ['Marsh Hydra', ['Multiple Heads', 'Poisonous Bite', 'Outrage'], []],
                 ['Void Hydra', ['Many Heads', 'Outrage'], []],
-                ['Treant', ['Column Swing', 'Column Toss', 'Branch Attack'], ["Nature's Wrath"]],
+                ['Treant', ['Column Swing', 'Column Toss', 'Branch Attack', "Nature's Wrath"], []],
             ] as [$name, $active, $inactive]) {
                 $state = $engine->start(['hero-a', 'void-lord'], coop_board(), new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
                 $unit = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => $name, 'hex' => '7,0'], new SequenceRandom([]))['state']['units']['v-m1'];

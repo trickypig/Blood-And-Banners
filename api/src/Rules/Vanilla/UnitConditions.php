@@ -27,6 +27,7 @@ final class UnitConditions
         $hex = $state['units'][$unitId]['hex'];
         $events[] = MatchEngine::event('conditionApplied', $hex === null ? [] : [$hex], [
             'name' => $name, 'unitId' => $unitId, 'sourceUnitId' => $sourceUnitId, 'expires' => $expires,
+            ...($data === [] ? [] : ['data' => $data]),
         ]);
         return $state;
     }
