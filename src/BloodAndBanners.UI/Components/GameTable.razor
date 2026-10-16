@@ -1649,7 +1649,7 @@
     private static string ConditionLabel(ConditionProjection condition) =>
         condition.Name == "Slipping" && condition.Data.Direction is { Count: 2 } direction
             ? $"Slipping {DirectionName(direction)}"
-            : condition.Name == "Enraged" ? $"Enraged +{condition.Data.Level ?? 0}" : condition.Name;
+            : condition.Name is "Enraged" or "Dragon Slayer" ? $"{condition.Name} +{condition.Data.Level ?? 0}" : condition.Name;
 
     private static string DirectionName(IReadOnlyList<int> direction) => (direction[0], direction[1]) switch
     {
@@ -1674,6 +1674,7 @@
         "Slipping" => "➜",
         "Poisoned" => "◆",
         "Hibernating" => "Zz",
+        "Dragon Slayer" => "⚔",
         "Enraged" => $"+{condition.Data.Level ?? 0}",
         _ => "•",
     };

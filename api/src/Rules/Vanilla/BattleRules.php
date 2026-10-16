@@ -289,7 +289,7 @@ final class BattleRules
                 break;
             }
         }
-        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences, $random, $killer);
+        $state = Wounds::apply($state, $unitId, array_sum(array_column($hits, 'wounds')), $consequences, $random, $killer, directAction: true);
         if ($state['units'][$unitId]['hex'] === null || $state['phase'] !== 'active') {
             $events[] = MatchEngine::event('unitMoved', [$from], [
                 'unitId' => $unitId, 'from' => $from, 'to' => $from, 'path' => [], 'disengagement' => $hits,

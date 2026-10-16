@@ -18,6 +18,15 @@ public sealed class CombatLogFormatterTests
     }
 
     [Fact]
+    public void Dragon_slayer_history_reports_the_permanent_award_level()
+    {
+        var line = CombatLogFormatter.Describe(
+            Event("conditionApplied", """{"unitId":"s1-u3","name":"Dragon Slayer","data":{"level":2}}"""), BattleFixtures.Projection());
+        Assert.Contains("Dragon Slayer +2", line);
+        Assert.Contains("rest of the game", line);
+    }
+
+    [Fact]
     public void Attacks_show_both_dice_rolls_and_wounds()
     {
         var line = CombatLogFormatter.Describe(

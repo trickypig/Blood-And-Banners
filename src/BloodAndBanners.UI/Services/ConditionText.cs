@@ -11,7 +11,7 @@ public static class ConditionText
         "Charmed" => "must move as close as possible to its Mermaid before its side acts; can't attack or use abilities, no parting strikes",
         "Pan Pipes" => "protects allied Satyrs within 3 hexes; failed save 15+ lets their owner redirect the attack",
         "Hibernating" => "+2 Defense",
-        "Enraged" => $"+{level ?? 0} Power and +{level ?? 0} Defense",
+        "Enraged" or "Dragon Slayer" => $"+{level ?? 0} Power and +{level ?? 0} Defense",
         "Slowed" => "−1 Move",
         "Unsteady" => "−1 Power and no disengagement strikes",
         "Slipping" => "must continue in its locked direction before acting",
@@ -23,7 +23,7 @@ public static class ConditionText
     {
         ("Stunned", "power") => -(powerPenalty ?? 2),
         ("Hibernating", "defense") => 2,
-        ("Enraged", "power" or "defense") => level ?? 0,
+        ("Enraged" or "Dragon Slayer", "power" or "defense") => level ?? 0,
         ("Slowed", "move") => -1,
         ("Unsteady", "power") => -1,
         _ => 0,
@@ -31,6 +31,7 @@ public static class ConditionText
 
     public static string Expiry(string expires, string? name = null) => name switch
     {
+        "Dragon Slayer" => "for the rest of the game",
         "Hibernating" => "until activated",
         "Enraged" => "loses 1 at the end of its owner's turn",
         _ => ExpiryLabel(expires),
@@ -43,6 +44,7 @@ public static class ConditionText
         "turnStart" => "until its caster's next turn",
         "turnEnd" => "until the end of the turn",
         "whileOnTerrain" => "while it stays on this terrain",
+        "permanent" => "for the rest of the game",
         "untilCleared" => "until cleared",
         _ => "until cleared",
     };

@@ -158,7 +158,7 @@ function monster_ability_tests(): array
             expect_same([], $state['units']['v-m1']['inactiveAbilities'], 'all marsh hydra abilities are now supported');
             expect_same(['Fireball'], array_column($state['units']['v-m2']['abilities'], 'name'), 'pyromancer gains its own fireball');
             expect_same([], $state['units']['v-m2']['inactiveAbilities'], 'its own fireball is supported');
-            expect_same(['Dragon Breath', 'Sky Toss', 'Flying'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains breath and flying');
+            expect_same(['Dragon Breath', 'Sky Toss', 'Flying', 'Dragon Slayer'], array_column($state['units']['v-m3']['abilities'], 'name'), 'the dragon gains breath and flying');
             $saved = $state;
             $saved['units']['v-m3']['inactiveAbilities'] = $saved['units']['v-m3']['abilities'];
             $saved['units']['v-m3']['abilities'] = [];

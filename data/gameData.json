@@ -1685,7 +1685,7 @@
                         {
                             "name": "Dragon Slayer",
                             "type": "Essence",
-                            "description": "The unit that defeats Void Dragon gets +1 Power and +1 Defense for the rest of the game"
+                            "description": "The unit that defeats Void Dragon with a normal attack, special attack (including splash), or disengagement strike gains +1 Power and +1 Defense for the rest of the game. Stacks for each Void Dragon defeated. Poison, terrain, collisions, and falls do not award this bonus."
                         }
                     ]
                 },

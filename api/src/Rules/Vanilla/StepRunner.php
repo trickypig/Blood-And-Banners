@@ -295,7 +295,7 @@ final class StepRunner
             [$state['units'][$step['attackerId']]['hex'] ?? $state['units'][$step['targetId']]['hex'], $state['units'][$step['targetId']]['hex']],
             $payload
         );
-        $state = Wounds::apply($state, $step['targetId'], $wounds, $events, $this->random, $step['attackerId']);
+        $state = Wounds::apply($state, $step['targetId'], $wounds, $events, $this->random, $step['attackerId'], directAction: true);
         $attacker = $state['units'][$step['attackerId']];
         if ($state['phase'] !== 'active' || $attacker['hex'] === null || $state['units'][$step['targetId']]['hex'] === null) {
             return [$state, []];
@@ -374,7 +374,7 @@ final class StepRunner
         }
         $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'hits' => $hits]);
         foreach ($hits as $hit) {
-            $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $step['sourceUnitId'] ?? null);
+            $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $step['sourceUnitId'] ?? null, directAction: true);
         }
         return $state;
     }
@@ -396,7 +396,7 @@ final class StepRunner
         if ($hits !== []) {
             $events[] = MatchEngine::event('splashDamage', [$step['hex']], ['ability' => $step['ability'], 'sourceUnitId' => $source, 'hits' => $hits]);
             foreach ($hits as $hit) {
-                $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $source);
+                $state = Wounds::apply($state, $hit['unitId'], $hit['wounds'], $events, $this->random, $source, directAction: true);
             }
         }
         return $state;

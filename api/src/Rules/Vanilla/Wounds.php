@@ -10,7 +10,7 @@ use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 
 final class Wounds
 {
-    public static function apply(array $state, string $unitId, int $wounds, array &$events, ?RandomSource $random = null, ?string $attackerId = null): array
+    public static function apply(array $state, string $unitId, int $wounds, array &$events, ?RandomSource $random = null, ?string $attackerId = null, bool $directAction = false): array
     {
         $unit = $state['units'][$unitId];
         if ($wounds <= 0 || $unit['hex'] === null || $state['phase'] !== 'active') {
@@ -54,7 +54,7 @@ final class Wounds
             }
         }
         foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-            $state = $ability->onDefeat($state, $unitId, $unit, $attackerId, $random, $events);
+            $state = $ability->onDefeat($state, $unitId, $unit, $attackerId, $random, $events, $directAction);
         }
         $result = Modes::ofState($state)->victory($state);
         if ($result !== null) {

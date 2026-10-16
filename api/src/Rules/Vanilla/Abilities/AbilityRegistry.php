@@ -125,6 +125,7 @@ final class AbilityRegistry
                 new ColumnAttack('Column Swing'),
                 new ColumnAttack('Column Toss', toss: true),
                 new DragonBreath('Dragon Breath'),
+                new DragonSlayer('Dragon Slayer'),
                 new MysticShield('Mystic Shield'),
                 new ChainLightning('Chain Lightning'),
                 new StatBlessing('Shield Wall', 'defense', 1, Effects::UNTIL_NEXT_TURN, 1, StatBlessing::ALLIES, false),

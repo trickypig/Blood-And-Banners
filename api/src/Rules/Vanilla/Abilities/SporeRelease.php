@@ -10,7 +10,7 @@ use BloodAndBanners\Rules\Vanilla\Spores;
 
 final class SporeRelease extends Ability
 {
-    public function onDefeat(array $state, string $unitId, array $defeated, ?string $attackerId, ?RandomSource $random, array &$events): array
+    public function onDefeat(array $state, string $unitId, array $defeated, ?string $attackerId, ?RandomSource $random, array &$events, bool $directAction = false): array
     {
         if ($defeated['name'] === 'Myconid') {
             $targets = Spores::enemiesWithin($state, $unitId, $defeated['hex'], 2);

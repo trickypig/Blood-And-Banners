@@ -166,8 +166,8 @@ function dragon_breath_tests(): array
             $engine = new MatchEngine(new Catalog());
             $state = $engine->start(['hero-a', 'void-lord'], coop_board(), new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
             $state = $engine->apply($state, 'void-lord', 'placeMonster', ['monster' => 'Void Dragon', 'hex' => '7,0'], new SequenceRandom([]))['state'];
-            expect_same(['Dragon Breath', 'Sky Toss', 'Flying'], array_column($state['units']['v-m1']['abilities'], 'name'), 'only implemented dragon abilities are enabled');
-            expect_same(['Dragon Slayer'], array_column($state['units']['v-m1']['inactiveAbilities'], 'name'), 'unrelated abilities remain deferred');
+            expect_same(['Dragon Breath', 'Sky Toss', 'Flying', 'Dragon Slayer'], array_column($state['units']['v-m1']['abilities'], 'name'), 'only implemented dragon abilities are enabled');
+            expect_same([], array_column($state['units']['v-m1']['inactiveAbilities'], 'name'), 'all Void Dragon abilities are implemented');
             $state['units']['v-m1']['abilities'] = [];
             expect_same([], MatchEngine::normalize($state)['units']['v-m1']['abilities'], 'loading never upgrades existing saved dragons');
         },
