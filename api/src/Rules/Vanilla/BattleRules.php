@@ -39,6 +39,7 @@ final class BattleRules
         'invalidSlipChoice' => 'That ice movement choice is no longer legal.',
         'targetOutOfRange' => 'That target is out of range.',
         'targetSubmerged' => 'That unit is submerged and immune to ranged attacks.',
+        'targetBurrowed' => 'That unit is burrowed and immune to ranged attacks until it is engaged.',
         'unitSummonedThisTurn' => 'A summoned unit can activate starting on its next turn.',
         'tentacleLimitReached' => 'There can be at most four living allied Kraken tentacles.',
         'noLineOfSight' => 'That target is not in line of sight.',

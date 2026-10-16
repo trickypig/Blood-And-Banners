@@ -39,7 +39,7 @@ final class TailSlash extends SpecialAttack
 
     public function afterStrike(array $state, string $unitId, string $targetId, int $wounds): array
     {
-        return [StepRunner::save($targetId, $unitId, $this->name)];
+        return Forced::immovable($state, $targetId) ? [] : [StepRunner::save($targetId, $unitId, $this->name)];
     }
 
     public function onFailedSave(array $state, string $ownerId, string $targetId, int $roll, RandomSource $random, array &$events): array

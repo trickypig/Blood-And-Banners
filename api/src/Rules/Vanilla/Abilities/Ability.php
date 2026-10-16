@@ -69,6 +69,23 @@ abstract class Ability
         return false;
     }
 
+    /** The rejection code when blocksAttack() stops a chosen target. */
+    public function blockedAttackError(): string
+    {
+        return 'targetSubmerged';
+    }
+
+    /** Wounds removed from a strike that lands on the owner. $originHex is null when the attack has no position. */
+    public function woundsPrevented(array $state, string $ownerId, ?string $originHex): int
+    {
+        return 0;
+    }
+
+    public function resistsForcedMovement(): bool
+    {
+        return false;
+    }
+
     /** After a strike lands on a surviving target, including a blocked strike with zero wounds. */
     public function afterHit(array $state, string $ownerId, string $targetId, int $wounds = 0): array
     {

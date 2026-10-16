@@ -5,6 +5,8 @@ namespace BloodAndBanners\Rules\Vanilla;
 
 use BloodAndBanners\Rules\CustomDice;
 use BloodAndBanners\Rules\RandomSource;
+use BloodAndBanners\Rules\Vanilla\Abilities\Ability;
+use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 
 /** Forced movement: pushes (with collisions, walls, edges and falls) and teleport destinations. Never triggers disengagement. */
 final class Forced
@@ -42,8 +44,16 @@ final class Forced
         return $best;
     }
 
+    public static function immovable(array $state, string $unitId): bool
+    {
+        return AbilityRegistry::any($state['units'][$unitId], static fn(Ability $ability): bool => $ability->resistsForcedMovement());
+    }
+
     public static function push(array $state, string $unitId, array $direction, int $hexes, ?string $sourceUnitId, RandomSource $random, array &$events): array
     {
+        if (self::immovable($state, $unitId)) {
+            return $state;
+        }
         $dice = new CustomDice();
         $from = $state['units'][$unitId]['hex'];
         $path = [$from];

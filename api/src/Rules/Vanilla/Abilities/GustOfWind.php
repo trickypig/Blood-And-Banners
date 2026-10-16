@@ -32,7 +32,7 @@ final class GustOfWind extends TargetedAbility
     {
         return array_values(array_filter(
             Targeting::unitsWithin($state, $unitId, 1, false),
-            static fn(string $id): bool => Sides::enemies($state, $unitId, $id) && (int)$state['units'][$id]['move'] > 2
+            static fn(string $id): bool => Sides::enemies($state, $unitId, $id) && (int)$state['units'][$id]['move'] > 2 && !Forced::immovable($state, $id)
         ));
     }
 

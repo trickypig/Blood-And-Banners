@@ -21,16 +21,24 @@ final class Combat
         if (!self::visible($state, $attacker['hex'], $target['hex'])) {
             return 'noLineOfSight';
         }
-        if (self::protectedFrom($state, $attackerId, $targetId)) {
-            return 'targetSubmerged';
-        }
-        return null;
+        return self::protector($state, $attackerId, $targetId)?->blockedAttackError();
     }
 
     public static function protectedFrom(array $state, string $attackerId, string $targetId, ?string $originHex = null): bool
     {
+        return self::protector($state, $attackerId, $targetId, $originHex) !== null;
+    }
+
+    /** The target's ability that makes it immune to this attack, if any. */
+    private static function protector(array $state, string $attackerId, string $targetId, ?string $originHex = null): ?Ability
+    {
         $originHex ??= $state['units'][$attackerId]['hex'];
-        return AbilityRegistry::any($state['units'][$targetId], static fn(Ability $a): bool => $a->blocksAttack($state, $targetId, $attackerId, $originHex));
+        foreach (AbilityRegistry::abilitiesOf($state['units'][$targetId]) as $ability) {
+            if ($ability->blocksAttack($state, $targetId, $attackerId, $originHex)) {
+                return $ability;
+            }
+        }
+        return null;
     }
 
     public static function targets(array $state, string $attackerId): array

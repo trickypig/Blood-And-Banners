@@ -261,6 +261,13 @@ final class StepRunner
         $swords = count(array_filter($step['attackFaces'], static fn(string $face): bool => $face === 'sword'));
         $shields = count(array_filter($step['defenseFaces'], static fn(string $face): bool => $face === 'shield'));
         $wounds = max(0, $swords - ($step['attackPenalty'] ?? 0) - $shields);
+        $origin = $step['originHex'] ?? $state['units'][$step['attackerId']]['hex'];
+        $prevented = 0;
+        foreach (AbilityRegistry::abilitiesOf($state['units'][$step['targetId']]) as $ability) {
+            $prevented += $ability->woundsPrevented($state, $step['targetId'], $origin);
+        }
+        $prevented = min($wounds, $prevented);
+        $wounds -= $prevented;
         $payload = [
             'unitId' => $step['attackerId'],
             'targetUnitId' => $step['targetId'],
@@ -270,6 +277,9 @@ final class StepRunner
             'rerolled' => $step['rerolled'],
             'wounds' => $wounds,
         ];
+        if ($prevented > 0) {
+            $payload['woundsPrevented'] = $prevented;
+        }
         if (!empty($step['sharedAttackRoll'])) {
             $payload['sharedAttackRoll'] = true;
             $payload['attackPenalty'] = $step['attackPenalty'] ?? 0;
