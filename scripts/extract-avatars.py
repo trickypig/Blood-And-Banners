@@ -1,8 +1,9 @@
 """Extract background-free map avatars from the Paint.NET sources.
 
 Each card's .pdn keeps the figure on its top layer over a painted background.
-This saves that top layer as <name>_nobg.png beside the .pdn, then points each
-gameData.json card whose image has a matching _nobg.png at it via avatarImage.
+This saves that top layer, trimmed to the figure, as <name>_nobg.png beside the
+.pdn, then points each gameData.json card whose image has a matching _nobg.png
+at it via avatarImage.
 
     pip install pypdn pillow
     python scripts/extract-avatars.py            # skip PNGs that already exist
@@ -30,7 +31,9 @@ def extract(force: bool) -> None:
         if not (figure.image[..., 3] == 0).any():
             print(f"skipped {source.relative_to(ROOT)}: top layer has no transparency")
             continue
-        Image.fromarray(figure.image, "RGBA").save(target, optimize=True)
+        # Trim the empty margin so map tokens can scale the figure itself to fill its hex.
+        avatar = Image.fromarray(figure.image, "RGBA")
+        avatar.crop(avatar.getchannel("A").getbbox()).save(target, optimize=True)
         print(f"wrote {target.relative_to(ROOT)}")
 
 

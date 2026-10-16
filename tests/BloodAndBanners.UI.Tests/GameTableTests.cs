@@ -154,8 +154,8 @@ public sealed partial class GameTableTests : BunitContext
             .Add(component => component.Projection, projection)
             .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
 
-        Assert.Equal("https://example.test/blood/images/units/gold_ranger_nobg.png", cut.Find("#bb-unit-s1-u3 image").GetAttribute("href"));
-        Assert.Equal("https://example.test/blood/images/units/black_grunt_card.png", cut.Find("#bb-unit-s2-u1 image").GetAttribute("href"));
+        Assert.Equal("https://example.test/blood/images/units/gold_ranger_nobg.png", cut.Find("[data-hex='1,4'] image.token-figure").GetAttribute("href"));
+        Assert.Equal("https://example.test/blood/images/units/black_grunt_card.png", cut.Find("[data-hex='3,4'] image.token-figure").GetAttribute("href"));
     }
 
     [Fact]

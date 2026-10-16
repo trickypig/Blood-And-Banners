@@ -74,17 +74,15 @@
 @keyframes spotlight-pulse { from { stroke-width: 9; stroke-opacity: .35; } to { stroke-width: 3; stroke-opacity: 1; } }
 
 .unit-token { pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .55)); }
-.token-base { fill: var(--oxblood); }
-.token-ring { fill: none; stroke: #d6b76d; stroke-width: 3; }
-.unit-token.seat-2 .token-base { fill: #1f4a6b; }
-.unit-token.seat-2 .token-ring { stroke: #9cc3df; }
+.token-plate { fill: var(--oxblood); stroke: #d6b76d; stroke-width: 1.5; }
+.unit-token.seat-2 .token-plate { fill: #1f4a6b; stroke: #9cc3df; }
 .token-initials { fill: #f5ead2; font: 700 14px Georgia, serif; text-anchor: middle; dominant-baseline: central; }
 .token-hero { fill: #f0cf7a; font-size: 16px; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #000; stroke-width: 2; }
-.hp-bar { fill: #3a1414; stroke: #111; stroke-width: 1; }
+.hp-bar { fill: #3a1414; stroke: #111; stroke-width: .75; }
 .hp-fill { fill: #7fd36b; }
 .unit-token.spent .token-face { filter: grayscale(1) brightness(.6); }
-.unit-token.spent .token-ring { stroke: #8b8578; }
-.unit-token.activating .token-ring { stroke: #ffd700; stroke-width: 4; }
+.unit-token.spent .token-plate { stroke: #8b8578; }
+.unit-token.activating .token-plate { stroke: #ffd700; stroke-width: 2.5; }
 .token-spent-badge { fill: #1f201d; stroke: #c9c2b2; stroke-width: 1.5; }
 .token-spent-mark { fill: #e8e1cf; font: 700 10px Arial, sans-serif; text-anchor: middle; dominant-baseline: central; }
 
@@ -191,15 +189,11 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .hex.spawn-zone .hex-outline { stroke: #b48cff; stroke-width: 2; stroke-dasharray: 4 3; }
 .hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }
 
-.unit-token.seat-3 .token-base { fill: #2f5b2a; }
-.unit-token.seat-3 .token-ring { stroke: #a8d79b; }
-.unit-token.seat-4 .token-base { fill: #6b5a1f; }
-.unit-token.seat-4 .token-ring { stroke: #e6cf7c; }
-.unit-token.seat-5 .token-base { fill: #5a2f5b; }
-.unit-token.seat-5 .token-ring { stroke: #e0a8e2; }
-.unit-token.seat-void .token-base { fill: #1b1030; }
-.unit-token.seat-void .token-ring { stroke: #b48cff; }
-.unit-token.ally .token-ring { stroke-dasharray: 3 2; }
+.unit-token.seat-3 .token-plate { fill: #2f5b2a; stroke: #a8d79b; }
+.unit-token.seat-4 .token-plate { fill: #6b5a1f; stroke: #e6cf7c; }
+.unit-token.seat-5 .token-plate { fill: #5a2f5b; stroke: #e0a8e2; }
+.unit-token.seat-void .token-plate { fill: #1b1030; stroke: #b48cff; }
+.unit-token.ally .token-plate { stroke-dasharray: 3 2; }
 .roster.seat-3 h2 { color: #a8d79b; }
 .roster.seat-4 h2 { color: #e6cf7c; }
 .roster.seat-5 h2 { color: #e0a8e2; }

@@ -77,15 +77,6 @@
                         }
                     </pattern>
                 }
-                @foreach (var unit in Projection.Units)
-                {
-                    @if (TokenImage(unit) is { } portrait)
-                    {
-                        <pattern id="@UnitPatternId(unit)" patternContentUnits="objectBoundingBox" width="1" height="1">
-                            <image href="@portrait" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
-                        </pattern>
-                    }
-                }
             </defs>
             @if (PreviewedMovement is { } preview)
             {
@@ -166,44 +157,60 @@
                     }
                     @if (hex.OccupantId is not null)
                     {
-                        var tokenY = tile.Y + BoardLayout.Size * .1;
-                        var radius = BoardLayout.Size * .42;
-                        var portrait = unit is not null && TokenImage(unit) is not null;
+                        // The figure is a full hex tall, its feet level with the bottom of the seat-coloured plate drawn
+                        // over them, so its head may rise into the hex behind.
+                        var hexTop = tile.Y - HexHalfHeight;
+                        var plateWidth = BoardLayout.Size * .92;
+                        var plateHeight = 11d;
+                        var plateX = tile.X - plateWidth / 2;
+                        var plateY = tile.Y + HexHalfHeight - 3 - plateHeight;
+                        var figureHeight = 2 * HexHalfHeight;
+                        var figureTop = plateY + plateHeight - figureHeight;
+                        var figureWidth = BoardLayout.Size * 1.9;
+                        var figureMidY = figureTop + figureHeight / 2;
+                        var portrait = unit is null ? null : TokenImage(unit);
                         <g class="unit-token @SeatClass(unit?.SeatId) @(unit is not null && IsCoop && unit.SeatId != Projection.Viewer.SeatId && SideOf(unit) == ViewerSide ? "ally" : null) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
-                            <g class="token-face">
-                            <circle class="token-base" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
-                            @if (portrait)
+                            @if (key == _view.SpotlitHex)
                             {
-                                <circle cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" fill="url(#@UnitPatternId(unit!))" />
+                                <circle class="token-spotlight" cx="@Num(tile.X)" cy="@Num(tile.Y)" r="@Num(HexHalfHeight - 3)" />
+                            }
+                            <g class="token-face">
+                            @if (portrait is not null)
+                            {
+                                <image class="token-figure" href="@portrait"
+                                       x="@Num(tile.X - figureWidth / 2)" y="@Num(figureTop)" width="@Num(figureWidth)" height="@Num(figureHeight)"
+                                       preserveAspectRatio="xMidYMax meet" />
                             }
                             else
                             {
-                                <!text class="token-initials" x="@Num(tile.X)" y="@Num(tokenY)">@(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))</!text>
+                                <!text class="token-initials" x="@Num(tile.X)" y="@Num(figureMidY)">@(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))</!text>
                             }
                             </g>
-                            <circle class="token-ring" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
-                            @if (key == _view.SpotlitHex)
+                            <rect class="token-plate" x="@Num(plateX)" y="@Num(plateY)" width="@Num(plateWidth)" height="@Num(plateHeight)" rx="2" />
+                            @if (unit is not null)
                             {
-                                <circle class="token-spotlight" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius + 5)" />
+                                var barWidth = plateWidth - 6;
+                                <rect class="hp-bar" x="@Num(plateX + 3)" y="@Num(plateY + 3)" width="@Num(barWidth)" height="@Num(plateHeight - 6)" />
+                                <rect class="hp-fill" x="@Num(plateX + 3)" y="@Num(plateY + 3)" width="@Num(barWidth * HealthPercent(unit) / 100)" height="@Num(plateHeight - 6)" />
                             }
                             @if (ActivationState(unit) == "spent")
                             {
-                                var badgeX = tile.X - radius * .75;
-                                var badgeY = tokenY - radius * .75;
+                                var badgeX = tile.X - plateWidth / 2;
+                                var badgeY = hexTop + 9;
                                 <circle class="token-spent-badge" cx="@Num(badgeX)" cy="@Num(badgeY)" r="7" />
                                 <!text class="token-spent-mark" x="@Num(badgeX)" y="@Num(badgeY)">✓</!text>
                             }
                             @if (unit?.IsHero == true)
                             {
-                                <!text class="token-hero" x="@Num(tile.X + radius * .85)" y="@Num(tokenY - radius * .75)">⚑</!text>
+                                <!text class="token-hero" x="@Num(tile.X + plateWidth / 2)" y="@Num(hexTop + 9)">⚑</!text>
                             }
                             @if (unit is not null && unit.Effects.Any(effect => effect.Amount > 0))
                             {
-                                <!text class="effect-marker buff" x="@Num(tile.X + radius * .85)" y="@Num(tokenY + radius * .55)">▲</!text>
+                                <!text class="effect-marker buff" x="@Num(tile.X + plateWidth / 2 + 2)" y="@Num(figureMidY + 8)">▲</!text>
                             }
                             @if (unit is not null && unit.Effects.Any(effect => effect.Amount < 0))
                             {
-                                <!text class="effect-marker debuff" x="@Num(tile.X - radius * .85)" y="@Num(tokenY + radius * .55)">▼</!text>
+                                <!text class="effect-marker debuff" x="@Num(tile.X - plateWidth / 2 - 2)" y="@Num(figureMidY + 8)">▼</!text>
                             }
                             @if (unit is not null)
                             {
@@ -213,17 +220,9 @@
                                     <!text class="condition-marker condition-@SafeId(condition.Name)"
                                           data-condition-marker="@condition.Name"
                                           x="@Num(tile.X + (conditionIndex - (unit.Conditions.Count - 1) / 2d) * 13)"
-                                          y="@Num(tokenY - radius * 1.05)"
+                                          y="@Num(hexTop - 4)"
                                           aria-hidden="true">@ConditionMarker(condition)</!text>
                                 }
-                            }
-                            @if (unit is not null)
-                            {
-                                var barWidth = radius * 1.7;
-                                var barX = tile.X - barWidth / 2;
-                                var barY = tokenY + radius + 2;
-                                <rect class="hp-bar" x="@Num(barX)" y="@Num(barY)" width="@Num(barWidth)" height="4" />
-                                <rect class="hp-fill" x="@Num(barX)" y="@Num(barY)" width="@Num(barWidth * HealthPercent(unit) / 100)" height="4" />
                             }
                         </g>
                     }
@@ -1602,7 +1601,7 @@
     private static string TerrainPatternId(HexProjection hex) =>
         "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}") + (TerrainArt.Variant(hex.Q, hex.R) is var variant and > 0 ? $"-v{variant}" : "");
 
-    private static string UnitPatternId(UnitProjection unit) => "bb-unit-" + SafeId(unit.UnitId);
+    private static readonly double HexHalfHeight = Math.Sqrt(3) / 2 * BoardLayout.Size;
 
     // Map tokens prefer the background-free avatar; cards elsewhere keep the full image.
     private string? TokenImage(UnitProjection unit) =>
