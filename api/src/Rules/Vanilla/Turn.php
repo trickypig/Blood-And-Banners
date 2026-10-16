@@ -8,7 +8,7 @@ use BloodAndBanners\Rules\Vanilla\Modes\Modes;
 final class Turn
 {
     /** Per-turn bookkeeping that every fresh turn resets. */
-    private const USAGE = ['attacks' => 0, 'specialAttackUsed' => false, 'moveSpent' => 0, 'movedAfterAttack' => false, 'abilitiesUsed' => [], 'glareUsed' => []];
+    private const USAGE = ['attacks' => 0, 'specialAttackUsed' => false, 'moveSpent' => 0, 'movedAfterAttack' => false, 'startHex' => null, 'abilitiesUsed' => [], 'glareUsed' => []];
 
     public static function idle(): array
     {

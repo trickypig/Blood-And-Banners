@@ -17,7 +17,7 @@ final class CoopSetup
     // Monster cards can share a name with a different hero ability (e.g. Fireball).
     // Enable only the monster rules verified for this slice, never every registry match.
     private const PLAYABLE_ESSENCES = [
-        'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence',
+        'Pack Tactics', 'Shark Instinct', 'Outrage', 'Frightening Presence', 'Feral Charge',
         'Ogre Rivalry', 'Stoneskin', 'Hollow Bones', 'Flying',
         'Poison Arrows', 'Venom', 'Poisonous Bite',
         'Stunning Kick', 'Arrows of Slowness',

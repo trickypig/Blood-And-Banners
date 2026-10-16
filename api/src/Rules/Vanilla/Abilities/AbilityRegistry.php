@@ -68,6 +68,7 @@ final class AbilityRegistry
                 new SharkInstinct('Shark Instinct'),
                 new Outrage('Outrage'),
                 new FrighteningPresence('Frightening Presence'),
+                new FeralCharge('Feral Charge'),
                 new OgreRivalry('Ogre Rivalry'),
                 new RangedDefense('Stoneskin'),
                 new RangedDefense('Hollow Bones'),

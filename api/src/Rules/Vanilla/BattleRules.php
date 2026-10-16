@@ -645,6 +645,8 @@ final class BattleRules
         }
         $wasSlipping = UnitConditions::has($state, $unitId, 'Slipping');
         $move = Stats::effective($state, $unitId, 'move');
+        // Set before the slide so a slide paused on a choice still remembers where the activation began.
+        $state['turn']['startHex'] = $unit['hex'];
         $slide = IceMovement::beforeActivation($state, $unitId, $random, $events);
         $state = $slide['state'];
         if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {

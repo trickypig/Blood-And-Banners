@@ -106,6 +106,36 @@ function monster_ability_tests(): array
                 expect_same($base, Stats::effective($state, 'monster', 'defense', $context), 'an adjacent archer does not count as ranged');
             }
         },
+        'feral charge adds two power only when this activation closed on the target' => static function (): void {
+            $state = coop_battle([
+                monster_unit('satyr', 'Satyr Warrior', '2,0'),
+                coop_hero('ahead', 'hero-a', '3,0'),
+                coop_hero('behind', 'hero-b', '1,0'),
+            ], 'void-lord');
+            $vs = static fn(string $target): array => ['attackerId' => 'satyr', 'defenderId' => $target];
+            expect_same(3, Stats::effective($state, 'satyr', 'power', $vs('ahead')), 'an unactivated satyr has not charged');
+            $state['turn']['activated'] = ['satyr'];
+            $state['turn']['startHex'] = '0,0';
+            expect_same(5, Stats::effective($state, 'satyr', 'power', $vs('ahead')), 'moving closer grants +2');
+            expect_same(3, Stats::effective($state, 'satyr', 'power', $vs('behind')), 'ending no closer to the target grants nothing');
+            expect_same(3, Stats::effective($state, 'satyr', 'power'), 'outside an attack nothing changes');
+            $state['turn']['activated'][] = 'other';
+            expect_same(3, Stats::effective($state, 'satyr', 'power', $vs('ahead')), 'the start hex belongs to a later activation');
+            $state['turn']['activated'] = ['satyr'];
+            $state['turn']['startHex'] = '2,0';
+            expect_same(3, Stats::effective($state, 'satyr', 'power', $vs('ahead')), 'standing still grants nothing');
+        },
+        'feral charge counts the move made earlier in the same activation' => static function (): void {
+            $state = coop_battle([
+                monster_unit('satyr', 'Satyr Warrior', '0,0'),
+                monster_unit('stray', 'Stray', '4,0', ['seatId' => 'hero-a', 'side' => 'heroes', 'isHero' => true, 'hp' => 20]),
+                coop_hero('other-hero', 'hero-b', '8,0'),
+            ], 'void-lord');
+            $state = coop_command($state, 'void-lord', 'moveUnit', ['unitId' => 'satyr', 'to' => '3,0'])['state'];
+            $result = coop_command($state, 'void-lord', 'attackUnit', ['unitId' => 'satyr', 'targetUnitId' => 'stray'], array_fill(0, 20, 6));
+            $attack = array_values(array_filter($result['events'], static fn(array $event): bool => $event['kind'] === 'attackResolved'))[0]['payload'];
+            expect_same(5, count($attack['attackFaces']), 'the charge rolls two extra attack dice');
+        },
         'monster modifiers change the actual attack and defense dice' => static function (): void {
             $state = coop_battle([
                 monster_unit('shark', 'Sahuagin', '0,0', ['range' => 3]),
