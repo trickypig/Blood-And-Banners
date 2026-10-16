@@ -115,6 +115,8 @@
             <p class="war-room__error" role="alert">@ErrorMessage</p>
         }
     </footer>
+
+    <LeaveMatchControl Label="Cancel" ConfirmLabel="Confirm cancel" OnLeave="OnLeave" />
 </main>
 
 @code {
@@ -144,6 +146,9 @@
 
     [Parameter]
     public EventCallback<GameCommandRequest> OnCommand { get; set; }
+
+    [Parameter]
+    public EventCallback OnLeave { get; set; }
 
     private int SeatLimit => Projection.Mode == GameMode.VanillaPvp ? 2 : 5;
 

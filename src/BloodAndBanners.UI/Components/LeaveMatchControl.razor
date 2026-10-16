@@ -3,18 +3,24 @@
 <div class="leave-match">
     @if (_confirming)
     {
-        <button type="button" class="leave-confirm" data-action="confirmLeave" @onclick="Leave">Confirm leave</button>
+        <button type="button" class="leave-confirm" data-action="confirmLeave" @onclick="Leave">@ConfirmLabel</button>
         <button type="button" data-action="stayInMatch" @onclick="() => _confirming = false">Stay</button>
     }
     else
     {
-        <button type="button" data-action="leaveMatch" @onclick="() => _confirming = true">Leave match</button>
+        <button type="button" data-action="leaveMatch" @onclick="() => _confirming = true">@Label</button>
     }
 </div>
 
 @code {
     [Parameter]
     public EventCallback OnLeave { get; set; }
+
+    [Parameter]
+    public string Label { get; set; } = "Leave match";
+
+    [Parameter]
+    public string ConfirmLabel { get; set; } = "Confirm leave";
 
     private bool _confirming;
 

@@ -26,7 +26,8 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
                   OnReadyChanged="SetReady"
                   OnStart="StartGame"
                   OnCommand="SubmitGameCommand"
-                  OnCopyInvite="CopyInvite" />
+                  OnCopyInvite="CopyInvite"
+                  OnLeave="ReturnToWarRoom" />
 }
 else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
 {

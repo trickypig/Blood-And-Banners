@@ -234,6 +234,22 @@ public sealed class GameExperienceTests : BunitContext
     }
 
     [Fact]
+    public void Cancelling_from_the_war_room_returns_to_the_starting_selection()
+    {
+        var api = new FakeSessionCoordinator { Reconnected = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-action=leaveMatch]").Click();
+        cut.Find("button[data-action=confirmLeave]").Click();
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]")));
+        Assert.True(api.Left);
+        Assert.Empty(cut.FindAll("[data-testid=game-code]"));
+    }
+
+    [Fact]
     public void A_failed_event_fetch_does_not_hide_a_successful_order()
     {
         var draft = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
