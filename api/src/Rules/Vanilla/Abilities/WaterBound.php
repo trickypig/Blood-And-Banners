@@ -7,6 +7,11 @@ use BloodAndBanners\Rules\Vanilla\Water;
 
 final class WaterBound extends Ability
 {
+    public function ignoresTerrain(string $terrain, string $movementKind): bool
+    {
+        return $terrain === 'water' && $movementKind === 'voluntary';
+    }
+
     public function allowsVoluntaryHex(array $state, array $unit, string $hex): bool
     {
         return Water::contains($state, $hex);

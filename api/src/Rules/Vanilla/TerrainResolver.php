@@ -23,7 +23,11 @@ final class TerrainResolver
             'unitId' => $unitId, 'terrain' => $paint, 'hex' => $to, 'movementKind' => $movementKind,
         ]);
         if (Terrain::ignored($state, $unitId, $type, $movementKind)) {
-            $ability = Terrain::hasTrait($state, $unitId, 'Lava Walker') && $type === 'lava' ? 'Lava Walker' : 'Flying';
+            $ability = match (true) {
+                $type === 'lava' && Terrain::hasTrait($state, $unitId, 'Lava Walker') => 'Lava Walker',
+                $type === 'water' && Terrain::hasTrait($state, $unitId, 'Water Bound') => 'Water Bound',
+                default => 'Flying',
+            };
             $events[] = MatchEngine::event('terrainIgnored', [$to], [
                 'unitId' => $unitId, 'terrain' => $paint, 'ability' => $ability, 'hex' => $to,
             ]);

@@ -57,6 +57,37 @@ function monster_water_tests(): array
             expect_same(2, Stats::effective($state, 'water', 'defense', ['attackerId' => 'enemy', 'defenderId' => 'water']), 'sahuagin has no merfolk defense bonus');
             expect_true(in_array('2,0', Movement::reachable($state, 'water'), true), 'sahuagin may move onto dry land');
         },
+        'water bound enters open water without projected terrain warnings' => static function (): void {
+            foreach (['Kraken', 'Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'] as $name) {
+                $state = water_battle($name);
+                $state['board']['1,0']['terrain'] = 'open-water';
+                $actions = (new BattleRules(100))->legalActions($state, 'void-lord');
+                $move = array_values(array_filter($actions, static fn(array $a): bool => $a['kind'] === 'moveUnit' && $a['unitId'] === 'water'))[0];
+                $entry = array_values(array_filter($move['movementOptions'], static fn(array $o): bool => $o['destination'] === '1,0'))[0];
+                expect_same([], $entry['hazards'], "{$name} enters water without a danger warning");
+            }
+        },
+        'water bound uses its full move through shallow and open water' => static function (): void {
+            foreach (['Kraken', 'Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'] as $name) {
+                foreach (['shallow-water', 'open-water'] as $terrain) {
+                    $state = water_battle($name, 'void-lord', ['move' => 4]);
+                    $state['units']['enemy']['hex'] = '7,0';
+                    foreach (range(1, 5) as $q) {
+                        $state['board']["{$q},0"]['terrain'] = $q % 2 ? $terrain : 'shallow-water';
+                    }
+                    expect_same(['1,0', '2,0', '3,0', '4,0'], Movement::reachable($state, 'water'), "{$name} gets four normal steps through {$terrain}");
+                    $option = Movement::canonical($state, 'water', '4,0');
+                    expect_same(4, $option['cost'], 'each water step costs one Move');
+                    expect_same([], $option['hazards'], 'the entire water route is safe');
+                    $result = coop_command($state, 'void-lord', 'moveUnit', ['unitId' => 'water', 'to' => '4,0']);
+                    expect_same('4,0', $result['state']['units']['water']['hex'], 'execution reaches the end without stopping at water entry');
+                    expect_same([], array_values(array_filter($result['events'], static fn(array $e): bool => $e['kind'] === 'movementStopped')), 'water does not stop the move');
+                    foreach (array_filter($result['events'], static fn(array $e): bool => $e['kind'] === 'terrainIgnored') as $event) {
+                        expect_same('Water Bound', $event['payload']['ability'], 'the log names the water immunity correctly');
+                    }
+                }
+            }
+        },
         'water bound prohibits dry path steps but forced movement can strand the unit' => static function (): void {
             foreach (['Kraken', 'Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'] as $name) {
                 $state = water_battle($name);
