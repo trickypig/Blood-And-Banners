@@ -16,7 +16,8 @@
 .war-room__banner,
 .war-room__briefing,
 .war-room__muster,
-.war-room__orders {
+.war-room__orders,
+.war-room__exit {
     width: min(70rem, 100%);
     margin-inline: auto;
 }
@@ -82,6 +83,9 @@
 .war-room__error { grid-column: 1 / -1; margin: 0; padding: .75rem .9rem; }
 .war-room__status { border-left: .25rem solid var(--brass); background: #303129; }
 .war-room__error { color: #fff0e6 !important; border-left: .25rem solid #d0ad66; background: var(--oxblood); }
+.war-room__exit { padding-top: 1.5rem; border-top: 1px solid #5c5649; }
+.war-room__exit ::deep .leave-match { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; width: auto; margin: 0; }
+.war-room__exit ::deep .leave-match button { min-height: 3rem; font: inherit; cursor: pointer; }
 .war-room button:focus-visible,
 .war-room input:focus-visible { outline: .2rem solid #fff3aa; outline-offset: .16rem; }
 
@@ -89,7 +93,8 @@
     .war-room__banner { align-items: start; }
     .war-room__briefing { grid-template-columns: 1fr; }
     .seat-list { grid-template-columns: 1fr; }
-    .war-room__orders { grid-template-columns: 1fr; }
+    .war-room__orders,
+    .war-room__exit ::deep .leave-match { grid-template-columns: 1fr; }
     .host-note { grid-column: 1; text-align: left; }
 }
 
