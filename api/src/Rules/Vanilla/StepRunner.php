@@ -223,7 +223,7 @@ final class StepRunner
         if (empty($step['skipEvasion']) && $this->evaded($state, $attackerId, $targetId, $events)) {
             return [$state, [], null];
         }
-        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'damageType' => $step['damageType'] ?? null, 'originHex' => $step['originHex'] ?? null];
+        $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'ability' => $step['ability'], 'damageType' => $step['damageType'] ?? null, 'originHex' => $step['originHex'] ?? null];
         $dice = new CustomDice();
         $attackFaces = $step['attackFaces'] ?? null;
         if (!$shared) {

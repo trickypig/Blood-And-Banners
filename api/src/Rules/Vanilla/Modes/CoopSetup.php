@@ -24,7 +24,7 @@ final class CoopSetup
         'Multiple Heads', 'Many Heads', 'Branch Attack',
         'Spore Release', 'Mycelium Network',
         'Water Affinity', 'Water Bound', 'Submerged',
-        'Burrow', 'Molten Shell', 'Darkness Veil', 'Unmovable', 'Aquatic Surge',
+        'Burrow', 'Molten Shell', 'Darkness Veil', 'Unmovable', 'Aquatic Surge', 'Crushing Blow',
     ];
     private const MESSAGES = [
         'unsupportedCommand' => 'This command is not legal in the current game phase.',

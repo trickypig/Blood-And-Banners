@@ -74,6 +74,7 @@ final class AbilityRegistry
                 new DamageReduction('Darkness Veil', rangedOnly: true),
                 new Burrow('Burrow'),
                 new Unmovable('Unmovable'),
+                new CrushingBlow('Crushing Blow'),
                 new AquaticSurge('Aquatic Surge'),
                 new RangedDefense('Stoneskin'),
                 new RangedDefense('Hollow Bones'),

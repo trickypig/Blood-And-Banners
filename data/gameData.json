@@ -1397,7 +1397,7 @@
                         {
                             "name": "Crushing Blow",
                             "type": "Essence",
-                            "description": "Attack deals bonus damage equal to target's Defense value divided by 2"
+                            "description": "Attack power is increased by target's base Defense value divided by 2 (round up)"
                         },
                         {
                             "name": "Unmovable",

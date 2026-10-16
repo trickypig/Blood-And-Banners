@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Combat;
+use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\Modes\CoopSetup;
 use BloodAndBanners\Rules\Vanilla\Movement;
+use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\StepRunner;
 
 /** Hidden creatures are not in the catalog, so their abilities are tested on stand-in monsters. */
@@ -17,7 +19,7 @@ function monster_defense_tests(): array
 {
     return [
         'the new defensive essences stay active on summoned monsters' => static function (): void {
-            foreach (['Burrow', 'Molten Shell', 'Darkness Veil', 'Unmovable', 'Aquatic Surge'] as $name) {
+            foreach (['Burrow', 'Molten Shell', 'Darkness Veil', 'Unmovable', 'Aquatic Surge', 'Crushing Blow'] as $name) {
                 expect_true(CoopSetup::isAbilityPlayable(['name' => $name, 'type' => 'Essence']), "{$name} is playable");
             }
         },
@@ -80,6 +82,27 @@ function monster_defense_tests(): array
             expect_same('1,0', $swatted['units']['giant']['hex'], 'a queued push does nothing');
             $state['units']['basher']['abilities'] = [['name' => 'Gust of Wind', 'type' => 'Ability', 'description' => '']];
             expect_same([], AbilityRegistry::get('Gust of Wind')->targets($state, 'basher'), 'gust of wind cannot target it');
+        },
+        'crushing blow adds half the target base defense rounded up to normal attack power' => static function (): void {
+            $state = coop_battle([
+                hidden_monster('giant', '0,0', ['Crushing Blow'], ['power' => 2]),
+                coop_hero('bulky', 'hero-a', '1,0', ['defense' => 3]),
+                coop_hero('slight', 'hero-b', '0,1', ['defense' => 0]),
+            ], 'void-lord');
+            $state['board']['0,1'] = $state['board']['0,0'];
+            $normal = ['attackerId' => 'giant', 'defenderId' => 'bulky', 'ability' => null];
+            expect_same(4, Stats::effective($state, 'giant', 'power', $normal), 'defense 3 adds two dice');
+            expect_same(2, Stats::effective($state, 'giant', 'power', ['defenderId' => 'slight'] + $normal), 'defense 0 adds nothing');
+            expect_same(2, Stats::effective($state, 'giant', 'power'), 'no target means no bonus');
+            expect_same(2, Stats::effective($state, 'giant', 'power', ['ability' => 'Boulder Throw'] + $normal), 'special attacks get no bonus');
+            $events = [];
+            $shielded = Effects::add($state, 'Shield Wall', 'bulky', 'bulky', 'defense', 2, 'hero-a', Effects::UNTIL_NEXT_TURN, $events);
+            expect_same(4, Stats::effective($shielded, 'giant', 'power', $normal), 'temporary defense bonuses do not count');
+            $state['units']['slight']['defense'] = 1;
+            $state['units']['slight']['hp'] = 10;
+            // Power 2 + ceil(1 / 2) = 3 attack dice, then one defense die.
+            $struck = (new StepRunner(new SequenceRandom([1, 1, 1, 6]), 100))->run($state, [StepRunner::strike('giant', 'slight')], $events);
+            expect_same(3, $struck['units']['slight']['wounds'], 'a real strike rolls the extra die');
         },
         'aquatic surge moves through water without stopping or extra cost' => static function (): void {
             $water = ['biome' => 'water', 'terrain' => 'open-water'];
