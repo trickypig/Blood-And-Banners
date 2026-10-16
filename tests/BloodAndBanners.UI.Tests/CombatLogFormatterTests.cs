@@ -26,6 +26,26 @@ public sealed class CombatLogFormatterTests
         Assert.Contains("rest of the game", line);
     }
 
+    [Theory]
+    [InlineData(true, "Grunt reflects incoming damage with Reflective Surface (rolled 16).")]
+    [InlineData(false, "Grunt fails to reflect incoming damage with Reflective Surface (rolled 16).")]
+    public void Reflection_saves_explain_whether_damage_is_returned(bool saved, string expected)
+    {
+        var payload = JsonSerializer.Serialize(new { unitId = "s2-u1", sourceUnitId = "s1-u3", ability = "Reflective Surface", roll = 16, saved });
+        Assert.Equal(expected, CombatLogFormatter.Describe(Event("saveRolled", payload), BattleFixtures.Projection()));
+    }
+
+    [Fact]
+    public void Reflected_attacks_identify_the_reflector_and_damage_recipient()
+    {
+        var line = CombatLogFormatter.Describe(
+            Event("attackResolved", """{"unitId":"s1-u3","targetUnitId":"s1-u3","reflectedByUnitId":"s2-u1","attackFaces":["sword","sword"],"defenseFaces":["shield"],"wounds":1}"""),
+            BattleFixtures.Projection());
+        Assert.Contains("reflected by Grunt", line);
+        Assert.Contains("Ranger → Ranger", line);
+        Assert.Contains("1 wound", line);
+    }
+
     [Fact]
     public void Attacks_show_both_dice_rolls_and_wounds()
     {

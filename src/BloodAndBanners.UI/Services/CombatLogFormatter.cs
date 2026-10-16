@@ -64,6 +64,8 @@ public static class CombatLogFormatter
             "monsterPlaced" => $"The Void Lord placed {Text(payload, "monster")}.",
             "monsterRemoved" => $"The Void Lord withdrew {Text(payload, "monster")}.",
             "setupConfirmed" => $"The Void Lord unleashed {payload.GetProperty("monsters").GetInt32()} monsters. The heroes draft.",
+            "saveRolled" when Text(payload, "ability") == "Reflective Surface" =>
+                $"{Unit(projection, Text(payload, "unitId"))} {(payload.GetProperty("saved").GetBoolean() ? "reflects" : "fails to reflect")} incoming damage with Reflective Surface (rolled {payload.GetProperty("roll").GetInt32()}).",
             "saveRolled" => payload.GetProperty("saved").GetBoolean()
                 ? $"{Unit(projection, Text(payload, "unitId"))} resists {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()})."
                 : $"{Unit(projection, Text(payload, "unitId"))} fails to resist {Text(payload, "ability")} (rolled {payload.GetProperty("roll").GetInt32()}).",
@@ -195,6 +197,10 @@ public static class CombatLogFormatter
     private static string Attack(GameProjection projection, JsonElement payload)
     {
         var ability = payload.TryGetProperty("ability", out var name) && name.ValueKind == JsonValueKind.String ? $" ({name.GetString()})" : string.Empty;
+        if (payload.TryGetProperty("reflectedByUnitId", out var reflector) && reflector.ValueKind == JsonValueKind.String)
+        {
+            ability += $" (reflected by {Unit(projection, reflector.GetString()!)})";
+        }
         var shared = payload.TryGetProperty("sharedAttackRoll", out var sharedRoll) && sharedRoll.ValueKind == JsonValueKind.True ? "shared roll " : string.Empty;
         var penalty = payload.TryGetProperty("attackPenalty", out var modifier) && modifier.GetInt32() > 0
             ? $" − {modifier.GetInt32()} sword (splash)" : string.Empty;

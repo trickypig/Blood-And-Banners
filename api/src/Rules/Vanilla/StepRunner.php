@@ -52,9 +52,9 @@ final class StepRunner
         return ['op' => 'teleport', 'casterId' => $casterId, 'unitId' => $unitId, 'toHex' => $toHex];
     }
 
-    public static function splash(string $hex, string $excludeUnitId, string $ability, ?string $sourceUnitId = null): array
+    public static function splash(string $hex, string $excludeUnitId, string $ability, ?string $sourceUnitId = null, ?string $originHex = null): array
     {
-        return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability, 'sourceUnitId' => $sourceUnitId];
+        return ['op' => 'splash', 'hex' => $hex, 'excludeUnitId' => $excludeUnitId, 'ability' => $ability, 'sourceUnitId' => $sourceUnitId, 'originHex' => $originHex];
     }
 
     public static function chaos(string $unitId, string $targetId, string $ability): array
@@ -154,6 +154,7 @@ final class StepRunner
             $steps[] = self::strike($step['attackerId'], $id, null, $step['ability'], false, 'fire', $step['originHex']) + [
                 'attackFaces' => $step['attackFaces'],
                 'attackPenalty' => $id === $step['targetId'] ? 0 : 1,
+                'targeted' => $id === $step['targetId'],
                 'rerolled' => $step['rerolled'],
             ];
         }
@@ -170,6 +171,30 @@ final class StepRunner
             'unitId' => $targetId, 'attackerId' => $attackerId, 'roll' => $roll, 'evaded' => $roll > 10,
         ]);
         return $roll > 10;
+    }
+
+    /** Reflection changes only the damage recipient, never the attack's other effects. */
+    private function reflectsDamage(array $state, array $step, array &$events): bool
+    {
+        if (($step['targeted'] ?? true) === false || $state['units'][$step['attackerId']]['hex'] === null) {
+            return false;
+        }
+        foreach (AbilityRegistry::abilitiesOf($state['units'][$step['targetId']]) as $ability) {
+            $threshold = $ability->reflectionThreshold();
+            if ($threshold === null) {
+                continue;
+            }
+            $roll = $this->random->roll(20);
+            $saved = $roll >= $threshold;
+            $events[] = MatchEngine::event('saveRolled', [$state['units'][$step['targetId']]['hex']], [
+                'unitId' => $step['targetId'], 'sourceUnitId' => $step['attackerId'],
+                'ability' => $ability->name, 'roll' => $roll, 'saved' => $saved,
+            ]);
+            if ($saved) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function saveAttackStep(array $state, array $step, array &$events): array
@@ -223,6 +248,8 @@ final class StepRunner
         if (empty($step['skipEvasion']) && $this->evaded($state, $attackerId, $targetId, $events)) {
             return [$state, [], null];
         }
+        $reflected = $this->reflectsDamage($state, $step, $events);
+        $damageTargetId = $reflected ? $attackerId : $targetId;
         $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'ability' => $step['ability'], 'damageType' => $step['damageType'] ?? null, 'originHex' => $step['originHex'] ?? null];
         $dice = new CustomDice();
         $attackFaces = $step['attackFaces'] ?? null;
@@ -233,9 +260,14 @@ final class StepRunner
             }
             $attackFaces = $dice->roll($power, $this->random)['faces'];
         }
-        $defense = Stats::effective($state, $targetId, 'defense', $context);
+        $defenseContext = $reflected
+            ? ['attackerId' => $targetId, 'defenderId' => $attackerId, 'originHex' => $state['units'][$targetId]['hex']] + $context
+            : $context;
+        $defense = Stats::effective($state, $damageTargetId, 'defense', $defenseContext);
         $land = [
             'op' => 'land',
+            'damageTargetId' => $damageTargetId,
+            'reflected' => $reflected,
             'attackerId' => $attackerId,
             'targetId' => $targetId,
             'ability' => $step['ability'],
@@ -261,22 +293,27 @@ final class StepRunner
         $swords = count(array_filter($step['attackFaces'], static fn(string $face): bool => $face === 'sword'));
         $shields = count(array_filter($step['defenseFaces'], static fn(string $face): bool => $face === 'shield'));
         $wounds = max(0, $swords - ($step['attackPenalty'] ?? 0) - $shields);
-        $origin = $step['originHex'] ?? $state['units'][$step['attackerId']]['hex'];
+        $damageTargetId = $step['damageTargetId'] ?? $step['targetId'];
+        $reflected = $step['reflected'] ?? false;
+        $origin = $reflected ? $state['units'][$step['targetId']]['hex'] : ($step['originHex'] ?? $state['units'][$step['attackerId']]['hex']);
         $prevented = 0;
-        foreach (AbilityRegistry::abilitiesOf($state['units'][$step['targetId']]) as $ability) {
-            $prevented += $ability->woundsPrevented($state, $step['targetId'], $origin);
+        foreach (AbilityRegistry::abilitiesOf($state['units'][$damageTargetId]) as $ability) {
+            $prevented += $ability->woundsPrevented($state, $damageTargetId, $origin);
         }
         $prevented = min($wounds, $prevented);
         $wounds -= $prevented;
         $payload = [
             'unitId' => $step['attackerId'],
-            'targetUnitId' => $step['targetId'],
+            'targetUnitId' => $damageTargetId,
             'ability' => $step['ability'],
             'attackFaces' => $step['attackFaces'],
             'defenseFaces' => $step['defenseFaces'],
             'rerolled' => $step['rerolled'],
             'wounds' => $wounds,
         ];
+        if ($reflected) {
+            $payload['reflectedByUnitId'] = $step['targetId'];
+        }
         if ($prevented > 0) {
             $payload['woundsPrevented'] = $prevented;
         }
@@ -295,7 +332,9 @@ final class StepRunner
             [$state['units'][$step['attackerId']]['hex'] ?? $state['units'][$step['targetId']]['hex'], $state['units'][$step['targetId']]['hex']],
             $payload
         );
-        $state = Wounds::apply($state, $step['targetId'], $wounds, $events, $this->random, $step['attackerId'], directAction: true);
+        $state = Wounds::apply($state, $damageTargetId, $wounds, $events, $this->random, $reflected ? $step['targetId'] : $step['attackerId'], directAction: true);
+        // Wound-triggered effects see no wounds on the original target when damage was reflected.
+        $wounds = $reflected ? 0 : $wounds;
         $attacker = $state['units'][$step['attackerId']];
         if ($state['phase'] !== 'active' || $attacker['hex'] === null || $state['units'][$step['targetId']]['hex'] === null) {
             return [$state, []];
@@ -363,7 +402,7 @@ final class StepRunner
             if ($unitId === $step['excludeUnitId'] || $unit['hex'] === null || Hex::distance($step['hex'], $unit['hex']) !== 1) {
                 continue;
             }
-            if (isset($step['sourceUnitId']) && Combat::protectedFrom($state, $step['sourceUnitId'], $unitId)) {
+            if (isset($step['sourceUnitId']) && Combat::protectedFrom($state, $step['sourceUnitId'], $unitId, $step['originHex'] ?? null)) {
                 continue;
             }
             $roll = $dice->roll(1, $this->random);
@@ -382,12 +421,12 @@ final class StepRunner
     private function selectedSplashStep(array $state, array $step, array &$events): array
     {
         $source = $step['sourceUnitId'];
-        if ($state['units'][$source]['hex'] === null) {
+        if (($step['originHex'] ?? $state['units'][$source]['hex']) === null) {
             return $state;
         }
         $hits = [];
         foreach ($step['targetIds'] as $id) {
-            if ($state['units'][$id]['hex'] === null || Combat::protectedFrom($state, $source, $id)) {
+            if ($state['units'][$id]['hex'] === null || Combat::protectedFrom($state, $source, $id, $step['originHex'] ?? null)) {
                 continue;
             }
             $roll = (new CustomDice())->roll(2, $this->random);
@@ -429,7 +468,7 @@ final class StepRunner
     /** A Moonlight Glare decision for whichever side of this strike has an unspent Duelist and an imperfect die. */
     private function glareChoice(array $state, array $land, bool $allowAttack = true): ?array
     {
-        foreach ([['attack', $land['attackerId'], $land['attackFaces'], 'sword'], ['defense', $land['targetId'], $land['defenseFaces'], 'shield']] as [$side, $unitId, $faces, $best]) {
+        foreach ([['attack', $land['attackerId'], $land['attackFaces'], 'sword'], ['defense', $land['damageTargetId'] ?? $land['targetId'], $land['defenseFaces'], 'shield']] as [$side, $unitId, $faces, $best]) {
             if ($side === 'attack' && !$allowAttack) {
                 continue;
             }

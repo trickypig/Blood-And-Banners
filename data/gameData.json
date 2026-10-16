@@ -1575,7 +1575,7 @@
                         {
                             "name": "Reflective Surface",
                             "type": "Essence",
-                            "description": "When attacked, Crystal Golem attempts a save roll. If 16 or higher, the attack is reflected back at the attacker. The attacking unit then makes its own Defense roll and damages itself"
+                            "description": "When targeted by a damaging attack, Crystal Golem attempts a save roll. On 16 or higher, the attack damage is reflected back at the attacker, who makes its own Defense roll. Splash damage and non-damage effects apply normally."
                         }
                     ]
                 }

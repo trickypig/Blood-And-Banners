@@ -102,6 +102,7 @@ final class AbilityRegistry
                 new RecklessFury('Reckless Fury'),
                 new UnbreakableLine('Unbreakable Line'),
                 new Evasion('Evasion'),
+                new ReflectiveSurface('Reflective Surface'),
                 new OneLastHorn('One Last Horn'),
                 new FragileFocus('Fragile Focus'),
                 new MultiStrike('Dual Strike'),

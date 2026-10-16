@@ -34,6 +34,12 @@ abstract class Ability
         return false;
     }
 
+    /** Saving throw required to return targeted attack damage to its attacker, if any. */
+    public function reflectionThreshold(): ?int
+    {
+        return null;
+    }
+
     public function survivesDefeatOnce(): bool
     {
         return false;

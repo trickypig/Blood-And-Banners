@@ -52,7 +52,7 @@ final class PyromancerFireball extends SpecialAttack
         return [
             StepRunner::strike($unitId, $targetIds[0], null, $this->name, false, 'fire'),
             ['op' => 'selectedSplash', 'sourceUnitId' => $unitId, 'targetIds' => array_slice($targetIds, 1),
-                'hex' => $state['units'][$targetIds[0]]['hex'], 'ability' => $this->name],
+                'hex' => $state['units'][$targetIds[0]]['hex'], 'ability' => $this->name, 'originHex' => $state['units'][$unitId]['hex']],
         ];
     }
 }
