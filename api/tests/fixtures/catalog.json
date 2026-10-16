@@ -8,7 +8,7 @@
   ],
   "armies": [
     {"name": "Red Company", "color": "Red", "emblem": "/images/armies/red-company.svg", "units": [
-      {"name": "Red Spear", "image": "/images/units/red_spear.png", "move": 2, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
+      {"name": "Red Spear", "image": "/images/units/red_spear.png", "avatarImage": "/images/units/red_spear_nobg.png", "move": 2, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},
       {"name": "Red Shield", "image": "/images/units/red_shield.png", "move": 2, "range": 1, "power": 2, "defense": 4, "hp": 4, "abilities": []},
       {"name": "Red Bow", "image": "/images/units/red_bow.png", "move": 3, "range": 5, "power": 2, "defense": 1, "hp": 3, "abilities": []},
       {"name": "Red Rider", "image": "/images/units/red_rider.png", "move": 4, "range": 1, "power": 3, "defense": 2, "hp": 3, "abilities": []},

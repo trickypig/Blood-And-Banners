@@ -79,7 +79,7 @@
                 }
                 @foreach (var unit in Projection.Units)
                 {
-                    @if (CatalogImages.Resolve(ImageBaseUrl, unit.Image) is { } portrait)
+                    @if (TokenImage(unit) is { } portrait)
                     {
                         <pattern id="@UnitPatternId(unit)" patternContentUnits="objectBoundingBox" width="1" height="1">
                             <image href="@portrait" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
@@ -168,7 +168,7 @@
                     {
                         var tokenY = tile.Y + BoardLayout.Size * .1;
                         var radius = BoardLayout.Size * .42;
-                        var portrait = unit is not null && CatalogImages.Resolve(ImageBaseUrl, unit.Image) is not null;
+                        var portrait = unit is not null && TokenImage(unit) is not null;
                         <g class="unit-token @SeatClass(unit?.SeatId) @(unit is not null && IsCoop && unit.SeatId != Projection.Viewer.SeatId && SideOf(unit) == ViewerSide ? "ally" : null) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
                             <g class="token-face">
                             <circle class="token-base" cx="@Num(tile.X)" cy="@Num(tokenY)" r="@Num(radius)" />
@@ -1603,6 +1603,10 @@
         "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}") + (TerrainArt.Variant(hex.Q, hex.R) is var variant and > 0 ? $"-v{variant}" : "");
 
     private static string UnitPatternId(UnitProjection unit) => "bb-unit-" + SafeId(unit.UnitId);
+
+    // Map tokens prefer the background-free avatar; cards elsewhere keep the full image.
+    private string? TokenImage(UnitProjection unit) =>
+        CatalogImages.Resolve(ImageBaseUrl, string.IsNullOrWhiteSpace(unit.AvatarImage) ? unit.Image : unit.AvatarImage);
 
     private static string SafeId(string value) =>
         System.Text.RegularExpressions.Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9-]", "-");

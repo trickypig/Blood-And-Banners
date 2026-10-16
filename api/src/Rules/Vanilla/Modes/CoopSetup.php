@@ -149,6 +149,7 @@ final class CoopSetup
             'biome' => $monster['biome'],
             'name' => $monster['name'],
             'image' => $monster['image'],
+            'avatarImage' => $monster['avatarImage'] ?? null,
             'move' => $monster['move'],
             'range' => $monster['range'],
             'power' => $monster['power'],

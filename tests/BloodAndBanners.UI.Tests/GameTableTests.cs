@@ -143,6 +143,22 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Board_tokens_prefer_the_avatar_image_and_fall_back_to_the_card_image()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { AvatarImage = "/images/units/gold_ranger_nobg.png" }, .. projection.Units.Skip(1)],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        Assert.Equal("https://example.test/blood/images/units/gold_ranger_nobg.png", cut.Find("#bb-unit-s1-u3 image").GetAttribute("href"));
+        Assert.Equal("https://example.test/blood/images/units/black_grunt_card.png", cut.Find("#bb-unit-s2-u1 image").GetAttribute("href"));
+    }
+
+    [Fact]
     public void The_board_paints_editor_terrain_raises_high_ground_and_zooms()
     {
         var cut = Render<GameTable>(parameters => parameters

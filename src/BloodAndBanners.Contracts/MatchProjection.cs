@@ -96,4 +96,5 @@ public sealed record UnitProjection(
     public string? Side { get; init; }
     public string? Tier { get; init; }
     public IReadOnlyList<AbilityProjection> InactiveAbilities { get; init; } = [];
+    public string? AvatarImage { get; init; }
 }

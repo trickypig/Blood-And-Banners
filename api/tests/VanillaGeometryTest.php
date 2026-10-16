@@ -21,7 +21,7 @@ function vanilla_geometry_tests(): array
         'catalog copies hero and army stats from game data' => static function (): void {
             $catalog = test_catalog();
             expect_same(
-                ['name' => 'Test Marshal', 'image' => '/images/heroes/marshal.png', 'move' => 4, 'range' => 2, 'power' => 3, 'defense' => 3, 'hp' => 5, 'abilities' => []],
+                ['name' => 'Test Marshal', 'image' => '/images/heroes/marshal.png', 'avatarImage' => null, 'move' => 4, 'range' => 2, 'power' => 3, 'defense' => 3, 'hp' => 5, 'abilities' => []],
                 $catalog->hero('Test Marshal'),
                 'hero stats and abilities are copied'
             );

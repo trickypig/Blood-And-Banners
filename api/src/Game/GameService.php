@@ -714,6 +714,7 @@ final class GameService
             'isHero' => $unit['isHero'],
             'name' => $unit['name'],
             'image' => $unit['image'],
+            'avatarImage' => $unit['avatarImage'] ?? null,
             'move' => $unit['move'],
             'range' => $unit['range'],
             'power' => $unit['power'],

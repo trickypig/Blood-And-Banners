@@ -91,6 +91,7 @@ final class Catalog
         return [
             'name' => (string)$card['name'],
             'image' => (string)($card['image'] ?? ''),
+            'avatarImage' => isset($card['avatarImage']) ? (string)$card['avatarImage'] : null,
             'move' => (int)$card['move'],
             'range' => (int)$card['range'],
             'power' => (int)$card['power'],
