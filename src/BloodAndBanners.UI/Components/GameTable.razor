@@ -543,13 +543,20 @@
         .Where(action => action.UnitId == unitId && (action.Kind is "specialAttack" or "useAbility" or "moveAbility"))
         .ToList();
 
-    private void StartTargeting(LegalAction action)
+    private async Task StartTargeting(LegalAction action)
     {
         ClearMovementState();
         _swingChoice = false;
         _chain.Clear();
         _pickedTargets.Clear();
         _teleportUnitId = null;
+        // Pan Pipes is an aura around the piper itself, so there is nothing to aim.
+        if (action.Ability == "Pan Pipes")
+        {
+            _targeting = null;
+            await Send("specialAttack", new { unitId = action.UnitId, ability = action.Ability, targetUnitIds = new[] { action.UnitId } });
+            return;
+        }
         _targeting = _targeting?.Ability == action.Ability ? null : new Targeting(action.Kind, action.Ability!, action.TargetHexes, action.TargetSelection);
     }
     private string? _hoveredUnitId;
@@ -893,7 +900,6 @@
         : aiming.Ability == "Petrifying Gaze" ? "Petrifying Gaze: choose an enemy within 3 hexes; save 13+ or lose movement, attacks and Defense until your next turn"
         : aiming.Ability == "Stone Grip" ? "Stone Grip: choose an adjacent enemy; save 12+ or face Power 2 and become Entrapped through its next turn"
         : aiming.Ability == "Sky Toss" ? "Sky Toss: choose an adjacent enemy; save 15+ or choose its landing within 4 hexes, with 3 undefended fall dice"
-        : aiming.Ability == "Pan Pipes" ? "Pan Pipes: choose the piper to protect allied Satyrs within 3 hexes until your next turn"
         : aiming.Ability == "Dragon Breath" ? "Dragon Breath: Power 6, Range 4; adjacent units, including allies, defend against one fewer sword"
         : aiming.Ability == "Column Swing" ? "Column Swing: choose an enemy within 2 hexes; Power 5"
         : aiming.Ability == "Column Toss" ? "Column Toss: choose an enemy 3–4 hexes away; Power 7. Tossing permanently spends the column and disables both column attacks"

@@ -108,11 +108,10 @@ public sealed class ControlAttackTests : BunitContext
     [InlineData("Petrifying Gaze", "save 13+")]
     [InlineData("Stone Grip", "save 12+")]
     [InlineData("Sky Toss", "save 15+")]
-    [InlineData("Pan Pipes", "Satyrs within 3 hexes")]
-    public void Control_attack_targeting_guides_the_save_or_aura(string ability, string guidance)
+    public void Control_attack_targeting_guides_the_save(string ability, string guidance)
     {
         var projection = ChoiceProjection("panPipes");
-        var target = ability == "Pan Pipes" ? "0,0" : "1,0";
+        var target = "1,0";
         projection = projection with
         {
             PendingChoice = null,
@@ -129,6 +128,30 @@ public sealed class ControlAttackTests : BunitContext
         var command = Assert.Single(sent);
         Assert.Equal("specialAttack", command.Kind);
         Assert.Equal(ability, JsonSerializer.SerializeToElement(command.Payload).GetProperty("ability").GetString());
+    }
+
+    [Fact]
+    public void Pan_pipes_plays_at_once_without_asking_for_a_target()
+    {
+        var projection = ChoiceProjection("panPipes");
+        var piper = projection.Units[0];
+        projection = projection with
+        {
+            PendingChoice = null,
+            Units = [piper with { Abilities = [new("Pan Pipes", "Attack", "Control") { Playable = true }] }, .. projection.Units.Skip(1)],
+            LegalActions = [new("specialAttack", piper.UnitId, ["0,0"]) { Ability = "Pan Pipes" }],
+        };
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection)
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-use-ability='Pan Pipes']").Click();
+        var command = Assert.Single(sent);
+        Assert.Equal("specialAttack", command.Kind);
+        var payload = JsonSerializer.SerializeToElement(command.Payload);
+        Assert.Equal("Pan Pipes", payload.GetProperty("ability").GetString());
+        Assert.Equal(piper.UnitId, Assert.Single(payload.GetProperty("targetUnitIds").EnumerateArray()).GetString());
+        Assert.Empty(cut.FindAll("[data-testid=targeting-banner]"));
     }
 
     [Fact]
