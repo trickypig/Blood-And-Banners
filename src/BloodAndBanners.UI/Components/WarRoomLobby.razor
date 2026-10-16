@@ -39,6 +39,8 @@
             <span class="muster-count">@Projection.Memberships.Count / @SeatLimit</span>
         </div>
 
+        <CommanderNameField Projection="Projection" IsBusy="IsBusy" OnCommand="OnCommand" />
+
         <ol class="seat-list">
             @for (var seatIndex = 1; seatIndex <= SeatLimit; seatIndex++)
             {
@@ -71,7 +73,6 @@
                 </li>
             }
         </ol>
-        <CommanderNameField Projection="Projection" IsBusy="IsBusy" OnCommand="OnCommand" />
     </section>
 
     <footer class="war-room__orders">

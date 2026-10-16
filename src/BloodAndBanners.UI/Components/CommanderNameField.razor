@@ -6,7 +6,7 @@
 @if (CanRename)
 {
     <form class="commander-name" data-testid="commander-name" @onsubmit="Save" @onsubmit:preventDefault>
-        <label for="commander-name-input">Commander name</label>
+        <label for="commander-name-input">Your commander name</label>
         <input id="commander-name-input"
                maxlength="24"
                autocomplete="nickname"
@@ -18,7 +18,7 @@
 }
 
 @code {
-    /// <summary>Remembers the last saved name so the next match is prefilled; never sent without the player pressing Save.</summary>
+    /// <summary>Remembers the last saved name so an unnamed seat in the next match takes it automatically.</summary>
     public const string StorageKey = "bloodAndBanners.commanderName";
 
     [Parameter, EditorRequired]
@@ -33,6 +33,7 @@
     private string _draft = string.Empty;
     private string? _syncedName;
     private bool _initialised;
+    private bool _applyRemembered;
 
     private string? CurrentName =>
         Projection.Memberships.FirstOrDefault(member => member.SeatId == Projection.Viewer.SeatId)?.Name;
@@ -54,7 +55,9 @@
         {
             _initialised = true;
             _syncedName = current;
-            _draft = current ?? await Remembered() ?? string.Empty;
+            var remembered = current is null ? await Remembered() : null;
+            _draft = current ?? remembered ?? string.Empty;
+            _applyRemembered = !string.IsNullOrWhiteSpace(remembered) && CanRename;
             return;
         }
         if (current != _syncedName)
@@ -65,6 +68,16 @@
             {
                 await Remember(current);
             }
+        }
+    }
+
+    // Sent after render so the parent is not re-rendered mid parameter update; waits out a busy parent.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_applyRemembered && !IsBusy && CurrentName is null && CanRename)
+        {
+            _applyRemembered = false;
+            await Save();
         }
     }
 

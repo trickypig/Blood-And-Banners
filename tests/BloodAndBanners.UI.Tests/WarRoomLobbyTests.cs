@@ -97,5 +97,6 @@ public sealed class WarRoomLobbyTests : BunitContext
         var cut = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null, "setReady", "setCommanderName")));
 
         Assert.NotNull(cut.Find(".war-room__muster [data-testid=commander-name]"));
+        Assert.Contains("data-testid=\"commander-name\"", cut.Find(".war-room__muster").InnerHtml.Split("seat-list")[0]);
     }
 }

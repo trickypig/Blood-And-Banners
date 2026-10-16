@@ -70,21 +70,64 @@ public sealed class CommanderNameFieldTests : BunitContext
     }
 
     [Fact]
-    public void An_unnamed_seat_is_prefilled_from_memory_and_saves_it()
+    public void An_unnamed_seat_takes_the_remembered_name_without_pressing_save()
     {
         var store = new MemoryStore();
         store.Values[CommanderNameField.StorageKey] = "Lord Ashfang";
         Services.AddSingleton<IKeyValueStore>(store);
-        GameCommandRequest? sent = null;
+        var sent = new List<GameCommandRequest>();
 
         var cut = Render<CommanderNameField>(parameters => parameters
             .Add(c => c.Projection, Draft())
-            .Add(c => c.OnCommand, (GameCommandRequest request) => sent = request));
-        cut.WaitForAssertion(() => Assert.Equal("Lord Ashfang", cut.Find("input").GetAttribute("value")));
-        cut.Find("form").Submit();
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
 
-        Assert.Equal("setCommanderName", sent?.Kind);
-        Assert.Equal("Lord Ashfang", JsonSerializer.SerializeToElement(sent!.Payload).GetProperty("name").GetString());
+        cut.WaitForAssertion(() => Assert.Single(sent));
+        Assert.Equal("Lord Ashfang", cut.Find("input").GetAttribute("value"));
+        Assert.Equal("setCommanderName", sent[0].Kind);
+        Assert.Equal("Lord Ashfang", JsonSerializer.SerializeToElement(sent[0].Payload).GetProperty("name").GetString());
+
+        cut.Render(parameters => parameters.Add(c => c.IsBusy, true));
+        cut.Render(parameters => parameters.Add(c => c.IsBusy, false));
+        Assert.Single(sent);
+    }
+
+    [Fact]
+    public void A_named_seat_is_not_renamed_from_memory()
+    {
+        var store = new MemoryStore();
+        store.Values[CommanderNameField.StorageKey] = "Remembered";
+        Services.AddSingleton<IKeyValueStore>(store);
+        var sent = new List<GameCommandRequest>();
+
+        var cut = Render<CommanderNameField>(parameters => parameters
+            .Add(c => c.Projection, Draft(myName: "Current"))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.WaitForAssertion(() => Assert.Equal("Current", cut.Find("input").GetAttribute("value")));
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void The_remembered_name_is_not_sent_when_renaming_is_not_legal()
+    {
+        var store = new MemoryStore();
+        store.Values[CommanderNameField.StorageKey] = "Lord Ashfang";
+        Services.AddSingleton<IKeyValueStore>(store);
+        var sent = new List<GameCommandRequest>();
+
+        Render<CommanderNameField>(parameters => parameters
+            .Add(c => c.Projection, Draft(canRename: false))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        Assert.Empty(sent);
+    }
+
+    [Fact]
+    public void The_field_is_labelled_as_your_commander_name()
+    {
+        var cut = Render<CommanderNameField>(parameters => parameters.Add(c => c.Projection, Draft()));
+
+        Assert.Equal("Your commander name", cut.Find("label").TextContent.Trim());
     }
 
     [Fact]
