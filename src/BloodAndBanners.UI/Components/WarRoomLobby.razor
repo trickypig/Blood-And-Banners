@@ -120,6 +120,15 @@
             @(ViewerReady ? "Stand down" : "Ready your banner")
         </button>
 
+        @if (IsCoop && SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId))
+        {
+            <button type="button" class="ready-order" data-action="place-monsters" disabled="@IsBusy" @onclick="() => OnPlaceMonsters.InvokeAsync()">Place monsters</button>
+        }
+        else if (IsCoop && VoidLordCount == 1)
+        {
+            <p class="host-note" data-testid="void-preparing">The Void Lord is preparing the horde.</p>
+        }
+
         @if (Projection.Viewer.IsHost)
         {
             <button type="button"
@@ -206,6 +215,8 @@
         Projection.Memberships.FirstOrDefault(seat => seat.SeatId == Projection.Viewer.SeatId);
 
     private bool ViewerReady => ViewerMembership?.Ready ?? false;
+
+    [Parameter] public EventCallback OnPlaceMonsters { get; set; }
 
     private bool IsCoop => Projection.Mode == GameMode.Coop;
 

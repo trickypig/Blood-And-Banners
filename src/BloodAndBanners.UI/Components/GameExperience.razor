@@ -22,9 +22,23 @@ else if (_game.Lifecycle == GameLifecycle.Lobby && IsWatching)
 {
     <SpectatorWaiting Projection="_game" OnLeave="ReturnToWarRoom" />
 }
+else if (_game.Lifecycle == GameLifecycle.Lobby && _placingMonsters && VoidLordPreparing)
+{
+    <GameTable Projection="_game"
+               Events="_events"
+               LiveAfterSequence="_liveAfterSequence"
+               IsBusy="_isBusy"
+               ErrorMessage="@_error"
+               ImageBaseUrl="@ImageBaseUrl"
+               InviteBaseUri="@InviteBaseUri"
+               OnCommand="SubmitGameCommand"
+               OnReturnToWarRoom="LeaveWarRoom"
+               OnBackToWarRoom="() => _placingMonsters = false" />
+}
 else if (_game.Lifecycle == GameLifecycle.Lobby)
 {
-    <WarRoomLobby Projection="_game"
+    <WarRoomLobby OnPlaceMonsters="() => _placingMonsters = true"
+                   Projection="_game"
                   InviteUrl="@InviteUrl"
                   IsBusy="_isBusy"
                   StatusMessage="@_status"
@@ -37,7 +51,7 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
                   OnWatchInstead="WatchInstead"
                   OnLeave="LeaveWarRoom" />
 }
-else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
+else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null && !VoidLordPreparing)
 {
     <DraftTable Projection="_game"
                 Events="_events"
@@ -343,6 +357,7 @@ else
 
     private async Task ReturnToWarRoom()
     {
+        _placingMonsters = false;
         var wasWatching = IsWatching;
         _generation++;
         await Sessions.LeaveAsync();
@@ -471,7 +486,7 @@ else
                 {
                     try
                     {
-                        page = await Sessions.GetEventsAsync(_lastSequence, cancellationToken);
+                        page = await Sessions.GetEventsAsync(Reveals(refreshed) ? 0 : _lastSequence, cancellationToken);
                     }
                     catch (Exception) when (!cancellationToken.IsCancellationRequested)
                     {
@@ -530,6 +545,15 @@ else
         }
     }
 
+    private bool _placingMonsters;
+
+    /// <summary>The Void Lord prepares on the board, not at the draft table, while the heroes draft.</summary>
+    private bool VoidLordPreparing => _game is { Mode: GameMode.Coop, Setup.Redacted: false } && SeatNames.IsVoidLord(_game, _game.Viewer.SeatId);
+
+    /// <summary>Each side's preparations were hidden from the other; the battle brings the whole history.</summary>
+    private bool Reveals(GameProjection next) =>
+        _game is { Mode: GameMode.Coop, Lifecycle: GameLifecycle.Draft } && next.Lifecycle == GameLifecycle.Active;
+
     private void ApplyProjection(GameProjection projection)
     {
         if (_game is not null && _game.GameId != projection.GameId)
@@ -541,6 +565,12 @@ else
         }
         else if (_game is null || projection.Version >= _game.Version)
         {
+            if (Reveals(projection))
+            {
+                _events.Clear();
+                _lastSequence = 0;
+                _liveAfterSequence = null;
+            }
             _game = projection;
         }
     }

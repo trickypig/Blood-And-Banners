@@ -245,6 +245,22 @@ public sealed class DraftTableTests : BunitContext
 
     private static GameEvent DraftEvent(long sequence, string kind, string payload) =>
         new(sequence, 9, kind, null, [], JsonSerializer.Deserialize<JsonElement>(payload), DateTimeOffset.UnixEpoch);
+
+    [Fact]
+    public void Coop_heroes_see_the_void_lord_status_and_wait_for_the_confirm()
+    {
+        var baseline = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-red");
+        var projection = baseline with
+        {
+            Mode = GameMode.Coop,
+            Setup = new SetupProjection(0, 0, false, [], []) { Redacted = true },
+            Draft = baseline.Draft! with { PickingSeatId = null },
+        };
+        var cut = Render<DraftTable>(p => p.Add(c => c.Projection, projection));
+
+        Assert.Contains("The Void Lord is placing monsters", cut.Find("[data-testid=void-status]").TextContent);
+        Assert.Contains("Waiting for the Void Lord", cut.Find("[data-testid=draft-status]").TextContent);
+    }
 }
 
 internal static class DraftFixtures

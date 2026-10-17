@@ -14,6 +14,10 @@
         </div>
         <p data-testid="initiative" class="initiative">@InitiativeText</p>
         <p data-testid="draft-status" class="draft-status @(IsMyPick ? "my-pick" : null)">@StatusText</p>
+        @if (IsCoop && Projection.Setup is { } voidSetup)
+        {
+            <p data-testid="void-status" class="draft-status">@(voidSetup.Confirmed ? "The Void Lord is ready" : "The Void Lord is placing monsters")@(Draft.Redacted ? " · Picks stay hidden until the battle" : null)</p>
+        }
         <CommanderNameField Projection="Projection" IsBusy="IsBusy" OnCommand="OnCommand" />
     </header>
 
@@ -207,7 +211,7 @@
         : IsMyPick
         ? "Your pick"
         : Draft.PickingSeatId is null
-            ? "The armies are taking the field"
+            ? IsCoop && Projection.Setup is { Confirmed: false } ? "Waiting for the Void Lord" : "The armies are taking the field"
             : Projection.Viewer.Role == "player" && !IsCoop
                 ? "Waiting for the opposing commander"
                 : $"{SeatName(Draft.PickingSeatId)} is choosing";

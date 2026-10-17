@@ -151,4 +151,19 @@ public sealed class WarRoomLobbyTests : BunitContext
 
         Assert.True(watched);
     }
+
+    [Fact]
+    public void Only_the_void_lord_can_open_the_monster_board_and_heroes_see_them_preparing()
+    {
+        var opened = 0;
+        var lord = Render<WarRoomLobby>(p => p
+            .Add(c => c.Projection, CoopLobby("seat-2", false, "seat-2", "setReady"))
+            .Add(c => c.OnPlaceMonsters, () => opened++));
+        lord.Find("[data-action=place-monsters]").Click();
+        Assert.Equal(1, opened);
+
+        var hero = Render<WarRoomLobby>(p => p.Add(c => c.Projection, CoopLobby("seat-1", true, "seat-2", "setReady")));
+        Assert.Empty(hero.FindAll("[data-action=place-monsters]"));
+        Assert.Contains("The Void Lord is preparing the horde", hero.Find("[data-testid=void-preparing]").TextContent);
+    }
 }

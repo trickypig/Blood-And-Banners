@@ -547,6 +547,7 @@ public sealed class GameExperienceTests : BunitContext
         public Exception? CommandFailure { get; init; }
         public (long Version, string Kind, object Payload)? CommandRequest { get; private set; }
         public EventPage Events { get; set; } = new([], 0);
+        public List<long> EventRequests { get; } = [];
         public bool Left { get; private set; }
         public bool SeatLeft { get; private set; }
         public bool LeaveConfirmed { get; init; } = true;
@@ -582,8 +583,11 @@ public sealed class GameExperienceTests : BunitContext
             return Task.FromResult(Commanded ?? throw new InvalidOperationException());
         }
 
-        public Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default) =>
-            EventsFailure is not null ? Task.FromException<EventPage>(EventsFailure) : Task.FromResult(Events);
+        public Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default)
+        {
+            EventRequests.Add(afterSequence);
+            return EventsFailure is not null ? Task.FromException<EventPage>(EventsFailure) : Task.FromResult(Events);
+        }
 
         public Task LeaveAsync()
         {
@@ -647,5 +651,67 @@ public sealed class GameExperienceTests : BunitContext
 
         public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
             Task.FromResult(new BoardProjection(0, 0, []));
+    }
+
+    private static GameProjection CoopVoidLord(GameLifecycle lifecycle, long version = 9, params LegalAction[] actions) => new(
+        "game-coop", version, lifecycle, GameMode.Coop,
+        new ViewerPermissions("player", "seat-void", true, true),
+        new BoardProjection(7, 1, Enumerable.Range(0, 7).Select(q => new HexProjection(q, 0, "ice", "snow", 0, false, null)).ToList()),
+        new TurnProjection(lifecycle == GameLifecycle.Active ? 1 : 0, lifecycle == GameLifecycle.Active ? "seat-hero" : null, 0),
+        null, actions, new Dictionary<string, int>(), null)
+    {
+        ScenarioName = "Void Reaches",
+        Memberships = [new MembershipProjection("seat-void", 1, true, true) { Role = "voidLord" }, new MembershipProjection("seat-hero", 2, true, false)],
+        Setup = lifecycle == GameLifecycle.Active ? null : new SetupProjection(12, 1, false, ["5,0"], [new MonsterCard("Ice Wolf", "Ice", "common", 1, "", 4, 1, 2, 2, 2)]),
+        Draft = lifecycle == GameLifecycle.Draft
+            ? new DraftProjection(new Dictionary<string, IReadOnlyList<int>>(), "seat-hero", null, new Dictionary<string, int?>(),
+                new Dictionary<string, string?>(), new Dictionary<string, string?>(), [], []) { PicksMade = 0, PicksTotal = 3, Redacted = true }
+            : null,
+    };
+
+    [Fact]
+    public void The_void_lord_moves_between_the_war_room_and_the_monster_board()
+    {
+        var api = new FakeSessionCoordinator { Reconnected = CoopVoidLord(GameLifecycle.Lobby, actions: new LegalAction("setReady", null, [])) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForElement("[data-action=place-monsters]").Click();
+        cut.WaitForElement("[data-testid=setup-budget]");
+        cut.Find("[data-action=back-to-war-room]").Click();
+        cut.WaitForElement("[data-action=place-monsters]");
+    }
+
+    [Fact]
+    public void In_the_draft_the_void_lord_gets_the_setup_board_not_the_draft_table()
+    {
+        var api = new FakeSessionCoordinator { Reconnected = CoopVoidLord(GameLifecycle.Draft, actions: new LegalAction("confirmSetup", null, [])) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForElement("[data-action=confirmSetup]");
+        Assert.Empty(cut.FindAll("[data-testid=draft-log]"));
+    }
+
+    [Fact]
+    public void The_reveal_refetches_the_whole_log()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = CoopVoidLord(GameLifecycle.Draft, actions: new LegalAction("confirmSetup", null, [])),
+            Commanded = CoopVoidLord(GameLifecycle.Active, version: 10),
+            Events = new EventPage([], 5),
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForElement("[data-action=confirmSetup]").Click();
+
+        // The first fetch (from 0) moves the cursor to 5; without the reveal the post-command fetch would ask from 5.
+        cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2));
+        Assert.Equal(0, api.EventRequests[1]);
     }
 }
