@@ -330,6 +330,15 @@ public sealed class GameExperienceTests : BunitContext
             return Reconnected;
         }
 
+        public GameProjection? Watched { get; init; }
+        public string? WatchRequest { get; private set; }
+
+        public Task<GameProjection> WatchAsync(string gameId, CancellationToken cancellationToken = default)
+        {
+            WatchRequest = gameId;
+            return Task.FromResult(Watched ?? throw new InvalidOperationException());
+        }
+
         public Task<GameProjection> SetReadyAsync(long expectedVersion, bool ready, CancellationToken cancellationToken = default)
         {
             ReadyRequest = (expectedVersion, ready);

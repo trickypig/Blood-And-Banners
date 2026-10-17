@@ -25,6 +25,52 @@ public sealed class GameClientTests
     }
 
     [Theory]
+    [InlineData("http://localhost:5016/?watch=game-123", "game-123")]
+    [InlineData("https://game.test/play/?watch=%20game%201%20", "game 1")]
+    [InlineData("https://game.test/?join=game-123", null)]
+    public void Watch_links_extract_the_watched_game(string uri, string? expected)
+    {
+        Assert.Equal(expected, InviteLinks.WatchGameIdFromUri(uri));
+    }
+
+    [Fact]
+    public void Watch_links_preserve_the_base_path_and_escape_the_game_id()
+    {
+        Assert.Equal(
+            "https://game.test/play/?watch=game%201",
+            InviteLinks.CreateWatch("https://game.test/play/", "game 1"));
+    }
+
+    [Fact]
+    public async Task Watching_reads_the_public_watch_routes_without_credentials()
+    {
+        const string projection = """
+            {
+              "gameId":"game 1","version":4,"lifecycle":"draft","mode":"vanillaPvp",
+              "viewer":{"role":"spectator","seatId":null,"canCommand":false,"isHost":false},
+              "board":{"columns":0,"rows":0,"hexes":[]},
+              "turn":{"round":0,"activeSeatId":null,"activationsRemaining":0},
+              "pendingChoice":null,"legalActions":[],"scores":{},"result":null
+            }
+            """;
+        var handler = new QueueHandler(projection, """{"events":[],"lastSequence":7}""");
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+
+        var game = await client.WatchGameAsync("game 1");
+        var page = await client.GetWatchedEventsAsync("game 1", 3);
+
+        Assert.Equal("spectator", game.Viewer.Role);
+        Assert.Equal(7, page.LastSequence);
+        Assert.Equal("https://game.test/api/v1/watch/game%201", handler.Requests[0].RequestUri?.AbsoluteUri);
+        Assert.Equal("https://game.test/api/v1/watch/game%201/events?after=3", handler.Requests[1].RequestUri?.AbsoluteUri);
+        Assert.All(handler.Requests, request =>
+        {
+            Assert.Null(request.Headers.Authorization);
+            Assert.False(request.Headers.Contains("X-Seat-Token"));
+        });
+    }
+
+    [Theory]
     [InlineData(true, false, false, 0, 750)]
     [InlineData(false, true, false, 0, 750)]
     [InlineData(false, false, false, 0, 2000)]

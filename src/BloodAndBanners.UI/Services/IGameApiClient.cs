@@ -57,4 +57,11 @@ public interface IGameApiClient
         string seatToken,
         long afterSequence,
         CancellationToken cancellationToken = default);
+
+    Task<GameProjection> WatchGameAsync(string gameId, CancellationToken cancellationToken = default);
+
+    Task<EventPage> GetWatchedEventsAsync(
+        string gameId,
+        long afterSequence,
+        CancellationToken cancellationToken = default);
 }

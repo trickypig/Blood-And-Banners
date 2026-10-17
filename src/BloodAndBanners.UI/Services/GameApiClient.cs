@@ -121,6 +121,23 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return await ReadAsync<EventPage>(response, cancellationToken);
     }
 
+    public async Task<GameProjection> WatchGameAsync(string gameId, CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync($"api/v1/watch/{Uri.EscapeDataString(gameId)}", cancellationToken);
+        return await ReadAsync<GameProjection>(response, cancellationToken);
+    }
+
+    public async Task<EventPage> GetWatchedEventsAsync(
+        string gameId,
+        long afterSequence,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await httpClient.GetAsync(
+            $"api/v1/watch/{Uri.EscapeDataString(gameId)}/events?after={afterSequence}",
+            cancellationToken);
+        return await ReadAsync<EventPage>(response, cancellationToken);
+    }
+
     public async Task<SeatReassignmentResult> ReassignSeatAsync(
         AuthSession session,
         string gameId,

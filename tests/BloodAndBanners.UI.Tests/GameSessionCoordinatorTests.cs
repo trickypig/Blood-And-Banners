@@ -210,6 +210,57 @@ public sealed class GameSessionCoordinatorTests
         Assert.Null(store.Current);
     }
 
+    [Fact]
+    public async Task Watching_routes_reconnect_and_events_to_the_watch_api_and_never_touches_the_saved_seat()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var saved = new StoredGameSession("device-1", identity, "my-game", "seat-secret");
+        var store = new MemoryGameSessionStore { Current = saved };
+        var watched = Projection("other-game") with { Viewer = new ViewerPermissions("spectator", null, false, false) };
+        var api = new FakeGameApiClient { Watched = watched, WatchedEvents = new EventPage([], 5) };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var first = await coordinator.WatchAsync(" other-game ");
+        var polled = await coordinator.ReconnectAsync();
+        var page = await coordinator.GetEventsAsync(2);
+        await coordinator.LeaveAsync();
+
+        Assert.Same(watched, first);
+        Assert.Same(watched, polled);
+        Assert.Equal(["other-game", "other-game"], api.WatchRequests);
+        Assert.Equal(("other-game", 2L), api.WatchedEventsRequest);
+        Assert.Equal(5, page.LastSequence);
+        Assert.Null(api.ReconnectRequest);
+        Assert.Equal(saved, store.Current);
+    }
+
+    [Fact]
+    public async Task Watching_refuses_commands_and_stopping_restores_the_saved_seat()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "my-game", "seat-secret") };
+        var mine = Projection("my-game");
+        var api = new FakeGameApiClient { Watched = Projection("other-game"), Reconnected = mine };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        await coordinator.WatchAsync("other-game");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.SubmitCommandAsync(1, "endTurn", new { }));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => coordinator.StartGameAsync());
+        Assert.Null(api.CommandRequest);
+
+        await coordinator.LeaveAsync();
+        Assert.Same(mine, await coordinator.ReconnectAsync());
+    }
+
+    [Fact]
+    public async Task Watching_needs_a_game_code()
+    {
+        var coordinator = new GameSessionCoordinator(new FakeGameApiClient(), new MemoryGameSessionStore());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => coordinator.WatchAsync("  "));
+    }
+
     private static GameProjection Projection(string gameId) => new(
         gameId,
         1,
@@ -281,6 +332,23 @@ public sealed class GameSessionCoordinatorTests
 
         public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public GameProjection? Watched { get; init; }
+        public EventPage? WatchedEvents { get; init; }
+        public List<string> WatchRequests { get; } = [];
+        public (string GameId, long After)? WatchedEventsRequest { get; private set; }
+
+        public Task<GameProjection> WatchGameAsync(string gameId, CancellationToken cancellationToken = default)
+        {
+            WatchRequests.Add(gameId);
+            return Task.FromResult(Watched ?? throw new InvalidOperationException("Watch response was not configured."));
+        }
+
+        public Task<EventPage> GetWatchedEventsAsync(string gameId, long afterSequence, CancellationToken cancellationToken = default)
+        {
+            WatchedEventsRequest = (gameId, afterSequence);
+            return Task.FromResult(WatchedEvents ?? throw new InvalidOperationException("Watched events were not configured."));
+        }
 
         public EventPage? Events { get; init; }
         public (AuthSession Identity, string GameId, string SeatToken, long After)? EventsRequest { get; private set; }
