@@ -679,7 +679,7 @@ final class GameService
         ];
     }
 
-    /** Each seat's drafted army, kept from the draft into the battle so the rosters can show its emblem. */
+    /** Each seat's army identity, including the Void Lord's horde, for roster names and emblems. */
     private function armiesProjection(?array $state): ?array
     {
         $armies = [];
@@ -687,6 +687,9 @@ final class GameService
             if ($name !== null && ($army = $this->engine->catalog()->army($name)) !== null) {
                 $armies[(string)$seatId] = ['name' => $army['name'], 'emblem' => $army['emblem']];
             }
+        }
+        if (($state['mode'] ?? null) === 'coop' && isset($state['voidLordSeatId'])) {
+            $armies[(string)$state['voidLordSeatId']] = ['name' => 'Void Lord', 'emblem' => '/images/armies/void-lord.svg'];
         }
         return $armies === [] ? null : $armies;
     }

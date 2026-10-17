@@ -90,6 +90,8 @@ function coop_service_tests(): array
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             expect_same(12, $started['setup']['budget'], 'one hero player: 4 + 8');
+            $voidArmy = ['name' => 'Void Lord', 'emblem' => '/images/armies/void-lord.svg'];
+            expect_same($voidArmy, $started['armies'][$match['host']['seat']] ?? null, 'setup projects the void lord emblem');
             expect_same(['Test Wolf', 'Test Golem', 'Test Wyrm'], array_column($started['setup']['roster'], 'name'), 'the roster lists visible monsters');
             expect_same([1, 2, 4], array_column($started['setup']['roster'], 'cost'), 'tier costs are projected');
             expect_true(count($started['setup']['spawnZoneHexes']) >= 100, 'spawn hexes are projected');
@@ -110,6 +112,10 @@ function coop_service_tests(): array
             vanilla_submit($match, 'hero1', 'pickHero', ['hero' => 'Test Marshal']);
             $active = vanilla_submit($match, 'hero1', 'pickArmy', ['army' => 'Red Company']);
             expect_same('active', $active['lifecycle'], 'the battle begins');
+            expect_same($voidArmy, $active['armies'][$match['host']['seat']] ?? null, 'the horde keeps its emblem in battle');
+            expect_same('Red Company', $active['armies'][$match['hero1']['seat']]['name'], 'the hero keeps the drafted army');
+            $reconnected = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same($voidArmy, $reconnected['armies'][$match['host']['seat']] ?? null, 'existing matches get the emblem when loaded');
             expect_same($match['hero1']['seat'], $active['turn']['activeSeatId'], 'the hero player acts first');
             expect_same(null, $active['turn']['respondingToSeatId'], 'nobody is being answered on a hero turn');
 
