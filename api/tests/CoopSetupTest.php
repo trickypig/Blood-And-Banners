@@ -32,14 +32,14 @@ function coop_setup_tests(): array
         'a co-op match opens with the void lord setting up and hero initiative rolled' => static function (): void {
             $started = coop_start();
             $state = $started['state'];
-            expect_same(['coop', 'setup', 'void-lord'], [$state['mode'], $state['phase'], $state['voidLordSeatId']], 'setup opens for the void lord');
+            expect_same(['coop', 'prep', 'void-lord'], [$state['mode'], $state['phase'], $state['voidLordSeatId']], 'preparation opens for both sides');
             expect_same(['hero-a', 'hero-b'], $state['initiative']['order'], 'only hero players roll initiative');
             expect_same(['hero-a', 'hero-b'], $state['sides']['heroes']['seatIds'], 'heroes share one side in initiative order');
             expect_same(['void-lord'], $state['sides']['void']['seatIds'], 'the void lord is the void side');
             expect_same(20, $state['setup']['budget'], 'budget is base 4 plus 8 per hero player');
             expect_same('initiativeRolled', $started['events'][0]['kind'], 'initiative is announced');
             $engine = new \BloodAndBanners\Rules\Vanilla\MatchEngine(test_catalog());
-            expect_same([], $engine->legalActions($state, 'hero-a'), 'hero players wait during setup');
+            expect_same(['pickHero', 'pickArmy'], array_column($engine->legalActions($state, 'hero-a'), 'kind'), 'the first hero drafts during setup');
             expect_same(['placeMonster'], array_values(array_unique(array_column($engine->legalActions($state, 'void-lord'), 'kind'))), 'the void lord may place');
         },
 
@@ -94,12 +94,12 @@ function coop_setup_tests(): array
             expect_same(['v-m2'], array_keys($again['units']), 'the next monster gets a fresh id');
         },
 
-        'confirming setup needs a monster and opens the hero draft' => static function (): void {
+        'confirming setup needs a monster and locks the horde' => static function (): void {
             $state = coop_start()['state'];
             expect_game_error('setupEmpty', static fn() => coop_command($state, 'void-lord', 'confirmSetup'));
             $state = coop_command($state, 'void-lord', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,1'])['state'];
             $confirmed = coop_command($state, 'void-lord', 'confirmSetup');
-            expect_same('draft', $confirmed['state']['phase'], 'the draft begins');
+            expect_same('prep', $confirmed['state']['phase'], 'the draft keeps running');
             expect_same(true, $confirmed['state']['setup']['confirmed'], 'setup is locked');
             expect_same('hero-a', $confirmed['state']['draft']['pickingSeatId'], 'the initiative winner picks first');
             expect_same(['kind' => 'setupConfirmed', 'focusHexes' => [], 'payload' => ['monsters' => 1]], $confirmed['events'][0], 'confirmation is announced');

@@ -100,9 +100,24 @@ final class CoopDraft
             return ['state' => $state, 'events' => $events];
         }
         $state['draft']['pickingSeatId'] = null;
+        if (!$state['setup']['confirmed']) {
+            // The heroes are ready first; the Void Lord's confirm starts the battle.
+            return ['state' => $state, 'events' => $events];
+        }
         [$state, $placed] = $this->deploy($state);
         $events[] = MatchEngine::event('armiesPlaced', array_values($placed), ['units' => $placed]);
         return ['state' => $state, 'events' => $events];
+    }
+
+    /** True once every hero seat holds two heroes and an army. */
+    public static function complete(array $state): bool
+    {
+        foreach ($state['initiative']['order'] as $seatId) {
+            if (self::openDecisions($state, $seatId) !== []) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function openDecisions(array $state, string $seatId): array
@@ -117,7 +132,11 @@ final class CoopDraft
         return $open;
     }
 
-    private function deploy(array $state): array
+    /**
+     * Places every hero seat around the shared start and opens round one.
+     * @return array{0: array, 1: array<string,string>}
+     */
+    public function deploy(array $state): array
     {
         $layout = CoopMode::layout($state['board']);
         $order = $state['initiative']['order'];

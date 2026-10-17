@@ -46,11 +46,11 @@ final class CoopMode implements ModeRules
 
         $initiative = (new InitiativeResolver())->resolve($heroSeats, $random);
         $order = $initiative['order'];
-        $budgetRules = $options['coop'] ?? [];
-        $budget = (int)($budgetRules['basePoints'] ?? 4) + (int)($budgetRules['pointsPerHeroPlayer'] ?? 8) * count($heroSeats);
+        $budget = self::budget($options['coop'] ?? [], count($heroSeats));
+        $lobby = is_array($options['setupState'] ?? null) ? $options['setupState'] : null;
         $state = [
             'mode' => 'coop',
-            'phase' => 'setup',
+            'phase' => 'prep',
             'seats' => $seatIds,
             'voidLordSeatId' => $voidLord,
             'sides' => [
@@ -59,17 +59,22 @@ final class CoopMode implements ModeRules
             ],
             'board' => $board,
             'initiative' => ['rolls' => $initiative['rolls'], 'order' => $order],
-            'setup' => ['budget' => $budget, 'spent' => 0, 'nextMonster' => 1, 'confirmed' => false],
+            'setup' => [
+                'budget' => $budget,
+                'spent' => (int)($lobby['setup']['spent'] ?? 0),
+                'nextMonster' => (int)($lobby['setup']['nextMonster'] ?? 1),
+                'confirmed' => false,
+            ],
             'draft' => [
-                'pickingSeatId' => null,
+                'pickingSeatId' => $order[0],
                 'pickIndex' => 0,
                 'firstSeatId' => null,
                 'heroesBySeat' => array_fill_keys($order, []),
                 'armyBySeat' => array_fill_keys($order, null),
             ],
-            'units' => [],
-            'effects' => [],
-            'conditions' => [],
+            'units' => $lobby['units'] ?? [],
+            'effects' => $lobby['effects'] ?? [],
+            'conditions' => $lobby['conditions'] ?? [],
             'pending' => null,
             'turn' => Turn::idle(),
             'result' => null,
@@ -82,16 +87,20 @@ final class CoopMode implements ModeRules
 
     public function applyPreBattle(array $state, string $seatId, string $kind, array $payload): array
     {
-        return $state['phase'] === 'setup'
-            ? (new CoopSetup($this->catalog()))->apply($state, $seatId, $kind, $payload)
-            : (new CoopDraft($this->catalog()))->apply($state, $seatId, $kind, $payload);
+        return match ($state['phase']) {
+            'setup' => (new CoopSetup($this->catalog()))->apply($state, $seatId, $kind, $payload),
+            'prep' => (new CoopPrep($this->catalog()))->apply($state, $seatId, $kind, $payload),
+            default => (new CoopDraft($this->catalog()))->apply($state, $seatId, $kind, $payload),
+        };
     }
 
     public function legalPreBattle(array $state, string $seatId): array
     {
-        return $state['phase'] === 'setup'
-            ? (new CoopSetup($this->catalog()))->legalActions($state, $seatId)
-            : (new CoopDraft($this->catalog()))->legalActions($state, $seatId);
+        return match ($state['phase']) {
+            'setup' => (new CoopSetup($this->catalog()))->legalActions($state, $seatId),
+            'prep' => (new CoopPrep($this->catalog()))->legalActions($state, $seatId),
+            default => (new CoopDraft($this->catalog()))->legalActions($state, $seatId),
+        };
     }
 
     public function slotCount(array $state): int
@@ -163,6 +172,50 @@ final class CoopMode implements ModeRules
         usort($facing, static fn(string $a, string $b): int => [Hex::distance($start, $a), $a] <=> [Hex::distance($start, $b), $b]);
         sort($spawn, SORT_STRING);
         return ['start' => $start, 'facing' => $facing[0], 'spawn' => $spawn];
+    }
+
+    /** Tier points for the Void Lord: base points plus a share per hero player. */
+    public static function budget(array $rules, int $heroPlayers): int
+    {
+        return (int)($rules['basePoints'] ?? 4) + (int)($rules['pointsPerHeroPlayer'] ?? 8) * $heroPlayers;
+    }
+
+    /** The Void Lord's board while the war room is still open: no hero seats, initiative or draft yet. */
+    public static function lobbySetup(array $board, string $voidLordSeatId, int $budget): array
+    {
+        self::layout($board);
+        return [
+            'mode' => 'coop',
+            'phase' => 'setup',
+            'seats' => [$voidLordSeatId],
+            'voidLordSeatId' => $voidLordSeatId,
+            'sides' => [
+                'heroes' => ['kind' => 'heroes', 'seatIds' => []],
+                'void' => ['kind' => 'void', 'seatIds' => [$voidLordSeatId]],
+            ],
+            'board' => $board,
+            'initiative' => ['rolls' => [], 'order' => []],
+            'setup' => ['budget' => $budget, 'spent' => 0, 'nextMonster' => 1, 'confirmed' => false],
+            'draft' => ['pickingSeatId' => null, 'pickIndex' => 0, 'firstSeatId' => null, 'heroesBySeat' => [], 'armyBySeat' => []],
+            'units' => [],
+            'effects' => [],
+            'conditions' => [],
+            'pending' => null,
+            'turn' => Turn::idle(),
+            'result' => null,
+        ];
+    }
+
+    /** The lobby horde follows the Void Lord role to its new seat. */
+    public static function handOver(array $state, string $voidLordSeatId): array
+    {
+        foreach ($state['units'] as $unitId => $unit) {
+            $state['units'][$unitId]['seatId'] = $voidLordSeatId;
+        }
+        $state['voidLordSeatId'] = $voidLordSeatId;
+        $state['seats'] = [$voidLordSeatId];
+        $state['sides']['void']['seatIds'] = [$voidLordSeatId];
+        return $state;
     }
 
     private function catalog(): Catalog

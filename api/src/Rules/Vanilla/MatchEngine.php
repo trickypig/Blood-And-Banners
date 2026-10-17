@@ -30,7 +30,7 @@ final class MatchEngine
     {
         $state = self::normalize($state);
         return match ($state['phase']) {
-            'setup', 'draft' => Modes::ofState($state, $this->catalog)->applyPreBattle($state, $seatId, $kind, $payload),
+            'setup', 'prep', 'draft' => Modes::ofState($state, $this->catalog)->applyPreBattle($state, $seatId, $kind, $payload),
             'active' => (new BattleRules($now ?? time()))->apply($state, $seatId, $kind, $payload, $random),
             default => throw new GameServiceException('matchCompleted', 'The match is already over.'),
         };
@@ -43,7 +43,7 @@ final class MatchEngine
         }
         $state = self::normalize($state);
         return match ($state['phase']) {
-            'setup', 'draft' => Modes::ofState($state, $this->catalog)->legalPreBattle($state, $seatId),
+            'setup', 'prep', 'draft' => Modes::ofState($state, $this->catalog)->legalPreBattle($state, $seatId),
             'active' => (new BattleRules($now ?? time()))->legalActions($state, $seatId),
             default => [],
         };

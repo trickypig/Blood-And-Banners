@@ -36,6 +36,7 @@ final class CoopSetup
         'hexNotEnterable' => 'A monster cannot be placed on that hex.',
         'budgetExceeded' => 'That monster costs more than the remaining budget.',
         'unknownUnit' => 'That monster is not on the battlefield.',
+        'setupConfirmed' => 'The Void Lord has already confirmed the monsters.',
         'setupEmpty' => 'Place at least one monster before confirming.',
     ];
 
@@ -57,7 +58,7 @@ final class CoopSetup
 
     public function legalActions(array $state, string $seatId): array
     {
-        if ($seatId !== $state['voidLordSeatId']) {
+        if ($seatId !== $state['voidLordSeatId'] || $state['setup']['confirmed']) {
             return [];
         }
         $actions = [];
@@ -71,7 +72,7 @@ final class CoopSetup
         foreach ($state['units'] as $unitId => $unit) {
             $actions[] = ['kind' => 'removeMonster', 'unitId' => (string)$unitId, 'targetHexes' => [$unit['hex']]];
         }
-        if ($state['units'] !== []) {
+        if ($state['units'] !== [] && $state['setup']['spent'] <= $state['setup']['budget']) {
             $actions[] = ['kind' => 'confirmSetup', 'unitId' => null, 'targetHexes' => []];
         }
         return $actions;
@@ -84,6 +85,9 @@ final class CoopSetup
         }
         if ($seatId !== $state['voidLordSeatId']) {
             self::fail('notVoidLord');
+        }
+        if ($state['setup']['confirmed']) {
+            self::fail('setupConfirmed');
         }
         $events = [];
         if ($kind === 'placeMonster') {
@@ -128,10 +132,16 @@ final class CoopSetup
             if ($state['units'] === []) {
                 self::fail('setupEmpty');
             }
+            if ($state['setup']['spent'] > $state['setup']['budget']) {
+                self::fail('budgetExceeded');
+            }
             $state['setup']['confirmed'] = true;
-            $state['phase'] = 'draft';
-            $state['draft']['pickingSeatId'] = $state['initiative']['order'][0];
-            $state['draft']['pickIndex'] = 0;
+            if ($state['phase'] === 'setup') {
+                // Saves from before simultaneous preparation open the draft only now.
+                $state['phase'] = 'draft';
+                $state['draft']['pickingSeatId'] = $state['initiative']['order'][0];
+                $state['draft']['pickIndex'] = 0;
+            }
             $events[] = MatchEngine::event('setupConfirmed', [], ['monsters' => count($state['units'])]);
         }
         return ['state' => $state, 'events' => $events];
