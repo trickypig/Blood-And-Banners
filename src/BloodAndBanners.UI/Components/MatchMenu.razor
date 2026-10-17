@@ -1,0 +1,164 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+@using Microsoft.JSInterop
+@implements IDisposable
+@inject IJSRuntime JS
+
+<div class="match-menu" @onkeydown="OnKey">
+    <button type="button"
+            class="match-menu-toggle"
+            data-menu="toggle"
+            aria-label="Match menu"
+            aria-haspopup="menu"
+            aria-expanded="@(_open ? "true" : "false")"
+            @onclick="Toggle">☰</button>
+    @if (_open)
+    {
+        <div class="match-menu-backdrop" data-menu="backdrop" @onclick="Close"></div>
+        <div class="match-menu-panel" role="menu">
+            <button type="button" role="menuitem" data-menu="copyLink" @onclick="CopyLink">Copy Link</button>
+            <button type="button" role="menuitem" data-menu="copyGameId" @onclick="CopyGameId">Copy Game ID</button>
+            @if (_confirming)
+            {
+                <button type="button" role="menuitem" class="leave-confirm" data-menu="confirmLeave" @onclick="Leave">Confirm leave</button>
+                <button type="button" role="menuitem" data-menu="stay" @onclick="() => _confirming = false">Stay</button>
+            }
+            else
+            {
+                <button type="button" role="menuitem" data-menu="leave" @onclick="RequestLeave">@LeaveLabel</button>
+            }
+        </div>
+    }
+    else if (_notice is not null)
+    {
+        <div class="match-menu-notice" role="status" data-menu="notice">
+            <span>@_notice</span>
+            @if (_manualCopy is not null)
+            {
+                <input readonly value="@_manualCopy" aria-label="Text to copy" />
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string GameId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string InviteBaseUri { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsSpectator { get; set; }
+
+    [Parameter]
+    public bool IsFinished { get; set; }
+
+    [Parameter]
+    public EventCallback OnLeave { get; set; }
+
+    private bool _open;
+    private bool _confirming;
+    private string? _notice;
+    private string? _manualCopy;
+    private CancellationTokenSource? _noticeTimer;
+
+    private string LeaveLabel => IsSpectator ? "Stop watching" : IsFinished ? "Leave" : "Leave Match";
+
+    private bool NeedsConfirmation => !IsSpectator && !IsFinished;
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _confirming = false;
+        ClearNotice();
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _confirming = false;
+    }
+
+    private void OnKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Close();
+        }
+    }
+
+    private Task CopyLink() => Copy(InviteLinks.CreateWatch(InviteBaseUri, GameId), "Link copied");
+
+    private Task CopyGameId() => Copy(GameId, "Game ID copied");
+
+    private async Task Copy(string text, string confirmation)
+    {
+        Close();
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            ShowNotice(confirmation, manualCopy: null);
+        }
+        catch (JSException)
+        {
+            ShowNotice("Copy it manually:", manualCopy: text);
+        }
+    }
+
+    private void ShowNotice(string text, string? manualCopy)
+    {
+        ClearNotice();
+        _notice = text;
+        _manualCopy = manualCopy;
+        if (manualCopy is null)
+        {
+            var timer = _noticeTimer = new CancellationTokenSource();
+            _ = HideNoticeLater(timer.Token);
+        }
+    }
+
+    private async Task HideNoticeLater(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2.5), cancellationToken);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+        await InvokeAsync(() =>
+        {
+            _notice = null;
+            StateHasChanged();
+        });
+    }
+
+    private void ClearNotice()
+    {
+        _noticeTimer?.Cancel();
+        _noticeTimer?.Dispose();
+        _noticeTimer = null;
+        _notice = null;
+        _manualCopy = null;
+    }
+
+    private async Task RequestLeave()
+    {
+        if (NeedsConfirmation)
+        {
+            _confirming = true;
+            return;
+        }
+        await Leave();
+    }
+
+    private async Task Leave()
+    {
+        Close();
+        await OnLeave.InvokeAsync();
+    }
+
+    public void Dispose() => ClearNotice();
+}
