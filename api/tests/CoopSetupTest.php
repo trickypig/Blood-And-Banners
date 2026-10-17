@@ -102,7 +102,7 @@ function coop_setup_tests(): array
             expect_same('prep', $confirmed['state']['phase'], 'the draft keeps running');
             expect_same(true, $confirmed['state']['setup']['confirmed'], 'setup is locked');
             expect_same('hero-a', $confirmed['state']['draft']['pickingSeatId'], 'the initiative winner picks first');
-            expect_same(['kind' => 'setupConfirmed', 'focusHexes' => [], 'payload' => ['monsters' => 1]], $confirmed['events'][0], 'confirmation is announced');
+            expect_same(['kind' => 'setupConfirmed', 'focusHexes' => [], 'payload' => []], $confirmed['events'][0], 'confirmation is announced');
         },
     ];
 }

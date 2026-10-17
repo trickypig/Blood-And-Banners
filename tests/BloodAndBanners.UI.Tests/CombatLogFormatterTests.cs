@@ -198,6 +198,7 @@ public sealed class CombatLogFormatterTests
         Assert.Equal("The Void Lord placed Ice Wolf.", CombatLogFormatter.Describe(Event("monsterPlaced", """{"unitId":"v-m1","monster":"Ice Wolf","hex":"5,0","cost":1}"""), projection));
         Assert.Equal("The Void Lord withdrew Ice Wolf.", CombatLogFormatter.Describe(Event("monsterRemoved", """{"unitId":"v-m1","monster":"Ice Wolf","hex":"5,0","cost":1}"""), projection));
         Assert.Equal("The Void Lord unleashed 4 monsters. The heroes draft.", CombatLogFormatter.Describe(Event("setupConfirmed", """{"monsters":4}"""), projection));
+        Assert.Equal("The Void Lord's horde stands ready.", CombatLogFormatter.Describe(Event("setupConfirmed", "{}"), projection));
         Assert.Equal("Round 2: Void Lord's turn.", CombatLogFormatter.Describe(Event("turnEnded", """{"seatId":"seat-a","nextSeatId":"seat-void","round":2}"""), projection));
         Assert.Equal("The heroes have destroyed every monster.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"monstersDefeated","winningSeatId":null,"winningSide":"heroes"}"""), projection));
         Assert.Equal("The Void Lord has slain every hero.", CombatLogFormatter.Describe(Event("matchCompleted", """{"reason":"heroesDefeated","winningSeatId":"seat-void","winningSide":"void"}"""), projection));

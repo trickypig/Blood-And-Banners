@@ -63,7 +63,9 @@ public static class CombatLogFormatter
             },
             "monsterPlaced" => $"The Void Lord placed {Text(payload, "monster")}.",
             "monsterRemoved" => $"The Void Lord withdrew {Text(payload, "monster")}.",
-            "setupConfirmed" => $"The Void Lord unleashed {payload.GetProperty("monsters").GetInt32()} monsters. The heroes draft.",
+            "setupConfirmed" => payload.TryGetProperty("monsters", out var monsters)
+                ? $"The Void Lord unleashed {monsters.GetInt32()} monsters. The heroes draft."
+                : "The Void Lord's horde stands ready.",
             "saveRolled" when Text(payload, "ability") == "Reflective Surface" =>
                 $"{Unit(projection, Text(payload, "unitId"))} {(payload.GetProperty("saved").GetBoolean() ? "reflects" : "fails to reflect")} incoming damage with Reflective Surface (rolled {payload.GetProperty("roll").GetInt32()}).",
             "saveRolled" => payload.GetProperty("saved").GetBoolean()

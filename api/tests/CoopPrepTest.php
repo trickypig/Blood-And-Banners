@@ -74,7 +74,9 @@ function coop_prep_tests(): array
         'a legacy setup save still runs setup then draft' => static function (): void {
             $state = coop_command(coop_legacy_setup(), 'void-lord', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,4'])['state'];
             expect_same([], (new MatchEngine(test_catalog()))->legalActions($state, 'hero-a'), 'heroes wait in the old setup');
-            $state = coop_command($state, 'void-lord', 'confirmSetup')['state'];
+            $confirmed = coop_command($state, 'void-lord', 'confirmSetup');
+            expect_same(['monsters' => 1], $confirmed['events'][0]['payload'], 'the old confirm still announces the count');
+            $state = $confirmed['state'];
             expect_same(['draft', 'hero-a'], [$state['phase'], $state['draft']['pickingSeatId']], 'the old confirm opens the draft');
             foreach (coop_draft_picks() as [$seat, $kind, $payload]) {
                 $state = coop_command($state, $seat, $kind, $payload)['state'];

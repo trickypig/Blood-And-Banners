@@ -136,13 +136,14 @@ final class CoopSetup
                 self::fail('budgetExceeded');
             }
             $state['setup']['confirmed'] = true;
-            if ($state['phase'] === 'setup') {
+            $legacy = $state['phase'] === 'setup';
+            if ($legacy) {
                 // Saves from before simultaneous preparation open the draft only now.
                 $state['phase'] = 'draft';
                 $state['draft']['pickingSeatId'] = $state['initiative']['order'][0];
                 $state['draft']['pickIndex'] = 0;
             }
-            $events[] = MatchEngine::event('setupConfirmed', [], ['monsters' => count($state['units'])]);
+            $events[] = MatchEngine::event('setupConfirmed', [], $legacy ? ['monsters' => count($state['units'])] : []);
         }
         return ['state' => $state, 'events' => $events];
     }

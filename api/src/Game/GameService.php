@@ -305,7 +305,7 @@ final class GameService
 
     /** Preparation events everyone may see: they only report that a side is finished. */
     private const PUBLIC_PREP_EVENTS = ['setupConfirmed', 'armiesPlaced'];
-    private const LOBBY_COMMANDS =['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
+    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
 
     private const NAMING_LIFECYCLES = ['lobby', 'setup', 'draft'];
 

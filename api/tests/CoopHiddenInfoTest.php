@@ -58,6 +58,18 @@ function coop_hidden_info_tests(): array
             expect_true(!str_contains($watched, 'v-m1'), 'the spectator projection never names the wolf');
         },
 
+        'a monster placed during prep stays hidden from heroes' => static function (): void {
+            $match = coop_hidden_prep();
+            coop_lobby_place($match, 'host', 'Test Wolf');
+            $hero = $match['games']->getGame($match['gameId'], $match['hero1']['identity']);
+            expect_same([], $hero['units'], 'the hero sees no units');
+            expect_true(!str_contains(json_encode($hero, JSON_THROW_ON_ERROR), 'v-m2'), 'the hero projection never names the second wolf');
+            $heroEvents = coop_event_kinds($match['games']->getEvents($match['gameId'], $match['hero1']['identity'], $match['hero1']['token'], 0));
+            $lordEvents = coop_event_kinds($match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0));
+            expect_true(!in_array('monsterPlaced', $heroEvents, true), 'no placement events for heroes');
+            expect_same(2, count(array_keys($lordEvents, 'monsterPlaced', true)), 'the void lord sees both placements');
+        },
+
         'events stay with their side until the battle' => static function (): void {
             $match = coop_hidden_prep();
             $heroEvents = coop_event_kinds($match['games']->getEvents($match['gameId'], $match['hero1']['identity'], $match['hero1']['token'], 0));
@@ -68,7 +80,12 @@ function coop_hidden_info_tests(): array
             expect_true(!in_array('monsterPlaced', $watchedEvents, true) && !in_array('draftPicked', $watchedEvents, true), 'spectators see neither');
 
             vanilla_submit($match, 'host', 'confirmSetup', []);
-            expect_true(in_array('setupConfirmed', coop_event_kinds($match['games']->getEvents($match['gameId'], $match['hero1']['identity'], $match['hero1']['token'], 0)), true), 'the confirm itself is public');
+            $heroPage = $match['games']->getEvents($match['gameId'], $match['hero1']['identity'], $match['hero1']['token'], 0);
+            expect_true(in_array('setupConfirmed', coop_event_kinds($heroPage), true), 'the confirm itself is public');
+            foreach ([$heroPage, $match['games']->getWatchedEvents($match['gameId'], 0)] as $page) {
+                $confirm = array_values(array_filter($page['events'], static fn(array $event): bool => $event['kind'] === 'setupConfirmed'));
+                expect_same([[]], array_column($confirm, 'payload'), 'the confirm carries no monster count');
+            }
             vanilla_submit($match, 'hero1', 'pickHero', ['hero' => 'Test Marshal']);
             vanilla_submit($match, 'hero1', 'pickArmy', ['army' => 'Red Company']);
             foreach ([
