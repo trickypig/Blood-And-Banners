@@ -253,17 +253,22 @@ final class StepRunner
         $context = ['attackerId' => $attackerId, 'defenderId' => $targetId, 'ability' => $step['ability'], 'damageType' => $step['damageType'] ?? null, 'originHex' => $step['originHex'] ?? null];
         $dice = new CustomDice();
         $attackFaces = $step['attackFaces'] ?? null;
+        $attackBreakdown = null;
         if (!$shared) {
-            $power = Stats::effective($state, $attackerId, 'power', $context, $step['power']);
+            $attackBreakdown = Stats::breakdown($state, $attackerId, 'power', $context, $step['power']);
+            $power = $attackBreakdown['value'];
             if ($step['double']) {
+                $attackBreakdown['modifiers'][] = ['source' => ($step['ability'] ?? 'Double strike') . ' (double)', 'amount' => $power];
                 $power *= 2;
+                $attackBreakdown['value'] = $power;
             }
             $attackFaces = $dice->roll($power, $this->random)['faces'];
         }
         $defenseContext = $reflected
             ? ['attackerId' => $targetId, 'defenderId' => $attackerId, 'originHex' => $state['units'][$targetId]['hex']] + $context
             : $context;
-        $defense = Stats::effective($state, $damageTargetId, 'defense', $defenseContext);
+        $defenseBreakdown = Stats::breakdown($state, $damageTargetId, 'defense', $defenseContext);
+        $defense = $defenseBreakdown['value'];
         $land = [
             'op' => 'land',
             'damageTargetId' => $damageTargetId,
@@ -278,6 +283,8 @@ final class StepRunner
             'attackPenalty' => $step['attackPenalty'] ?? 0,
             'defenseFaces' => $dice->roll($defense, $this->random)['faces'],
             'rerolled' => $step['rerolled'] ?? null,
+            'attackBreakdown' => $attackBreakdown,
+            'defenseBreakdown' => $defenseBreakdown,
         ];
         $choice = $this->glareChoice($state, $land, !$shared);
         if ($choice !== null) {
@@ -313,6 +320,13 @@ final class StepRunner
         ];
         if ($reflected) {
             $payload['reflectedByUnitId'] = $step['targetId'];
+        }
+        // What the dice pools were built from, for the attack summary popup.
+        foreach (['attack' => 'attackBreakdown', 'defense' => 'defenseBreakdown'] as $side => $key) {
+            if (($step[$key] ?? null) !== null) {
+                $payload[$side . 'Base'] = $step[$key]['base'];
+                $payload[$side . 'Modifiers'] = $step[$key]['modifiers'];
+            }
         }
         if ($prevented > 0) {
             $payload['woundsPrevented'] = $prevented;

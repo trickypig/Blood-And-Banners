@@ -1,0 +1,264 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@implements IDisposable
+
+@if (_current is { } report)
+{
+    <div class="attack-popup-layer">
+        <section class="attack-popup phase-@_phase.ToString().ToLowerInvariant()"
+                 role="dialog"
+                 aria-label="Attack result"
+                 data-testid="attack-popup"
+                 data-sequence="@report.Sequence">
+            <button type="button" class="attack-popup-close" aria-label="Close attack summary" data-testid="attack-popup-close" @onclick="CloseCurrent">×</button>
+            <h2>@Headline(report)</h2>
+            <div class="attack-popup-duel">
+                @Card(report.AttackerId, "Attacker", report)
+                <div class="attack-popup-dice">
+                    @Pool(report.Attack, "sword")
+                    <span class="attack-popup-versus">vs</span>
+                    @Pool(report.Defense, "shield")
+                </div>
+                @Card(report.DefenderId, "Defender", report)
+            </div>
+            @foreach (var note in report.Notes)
+            {
+                <p class="attack-popup-note">@note</p>
+            }
+            <div class="attack-popup-result" aria-live="polite">
+                @if (_phase >= PopupPhase.Settled)
+                {
+                    <p class="attack-popup-summary" data-testid="attack-popup-summary">@report.Summary</p>
+                    @if (report.Consequences.Count > 0)
+                    {
+                        <ul class="attack-popup-consequences" data-testid="attack-popup-consequences">
+                            @foreach (var line in report.Consequences)
+                            {
+                                <li>@line</li>
+                            }
+                        </ul>
+                    }
+                }
+            </div>
+            @if (_queue.Count > 0)
+            {
+                <p class="attack-popup-queue">@_queue.Count more attack@(_queue.Count == 1 ? "" : "s") to follow</p>
+            }
+        </section>
+    </div>
+}
+
+@code {
+    /// <summary>How long each stage of the popup lasts.</summary>
+    public static readonly TimeSpan HiddenDiceTime = TimeSpan.FromMilliseconds(600);
+    public static readonly TimeSpan RollingTime = TimeSpan.FromMilliseconds(1400);
+    public static readonly TimeSpan DefeatDelay = TimeSpan.FromMilliseconds(700);
+    public static readonly TimeSpan ReadingTime = TimeSpan.FromSeconds(4.5);
+
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public IReadOnlyList<GameEvent> Events { get; set; } = [];
+
+    /// <summary>Attacks at or before this sequence are history and never pop up. Null until history has loaded.</summary>
+    [Parameter]
+    public long? LiveAfterSequence { get; set; }
+
+    [Parameter]
+    public string? ImageBaseUrl { get; set; }
+
+    /// <summary>Replaces the timed stages, so tests can step the popup by hand.</summary>
+    [Parameter]
+    public Func<TimeSpan, CancellationToken, Task>? Delay { get; set; }
+
+    private enum PopupPhase { Hidden, Rolling, Settled, Fallen }
+
+    private readonly Queue<AttackReport> _queue = new();
+    private AttackReport? _current;
+    private PopupPhase _phase;
+    private long _watermark = long.MinValue;
+    private CancellationTokenSource? _stages;
+
+    protected override void OnParametersSet()
+    {
+        if (LiveAfterSequence is not { } live)
+        {
+            return;
+        }
+        _watermark = Math.Max(_watermark, live);
+        foreach (var report in AttackReport.FromEvents(Events, Projection, _watermark))
+        {
+            _queue.Enqueue(report);
+            _watermark = report.Sequence;
+        }
+        if (_current is null)
+        {
+            ShowNext();
+        }
+    }
+
+    private void ShowNext()
+    {
+        _stages?.Cancel();
+        _stages?.Dispose();
+        _stages = null;
+        if (!_queue.TryDequeue(out var next))
+        {
+            _current = null;
+            return;
+        }
+        _current = next;
+        _phase = PopupPhase.Hidden;
+        _stages = new CancellationTokenSource();
+        _ = PlayAsync(next, _stages.Token);
+    }
+
+    private async Task PlayAsync(AttackReport report, CancellationToken token)
+    {
+        try
+        {
+            await Wait(HiddenDiceTime, token);
+            await Advance(PopupPhase.Rolling);
+            await Wait(RollingTime, token);
+            await Advance(PopupPhase.Settled);
+            if (report.Defeated)
+            {
+                await Wait(DefeatDelay, token);
+                await Advance(PopupPhase.Fallen);
+            }
+            await Wait(ReadingTime, token);
+            await InvokeAsync(() =>
+            {
+                if (_current == report)
+                {
+                    ShowNext();
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private Task Wait(TimeSpan time, CancellationToken token) => Delay is { } delay ? delay(time, token) : Task.Delay(time, token);
+
+    private Task Advance(PopupPhase phase) => InvokeAsync(() =>
+    {
+        _phase = phase;
+        StateHasChanged();
+    });
+
+    private void CloseCurrent() => ShowNext();
+
+    public void Dispose()
+    {
+        _stages?.Cancel();
+        _stages?.Dispose();
+    }
+
+    private string Headline(AttackReport report)
+    {
+        var attacker = Unit(report.AttackerId)?.Name ?? report.AttackerId;
+        var defender = Unit(report.DefenderId)?.Name ?? report.DefenderId;
+        return report.Ability is { } ability ? $"{attacker} uses {ability} on {defender}" : $"{attacker} attacks {defender}";
+    }
+
+    private UnitProjection? Unit(string unitId) => Projection.Units.FirstOrDefault(unit => unit.UnitId == unitId);
+
+    private RenderFragment Card(string unitId, string role, AttackReport report) => __builder =>
+    {
+        var unit = Unit(unitId);
+        var falls = _phase == PopupPhase.Fallen && report.DamagedUnitId == unitId;
+        <article class="attack-popup-card @(falls ? "fallen" : null)" data-role="@role.ToLowerInvariant()" data-unit-id="@unitId">
+            <p class="attack-popup-role">@role</p>
+            @if (CatalogImages.Resolve(ImageBaseUrl, unit?.Image) is { } image)
+            {
+                <img src="@image" alt="" />
+            }
+            <h3>@(unit?.Name ?? unitId)</h3>
+            @if (unit is not null)
+            {
+                <p class="attack-popup-wounds">Wounds @unit.Wounds / @unit.Hp</p>
+                @foreach (var condition in unit.Conditions)
+                {
+                    var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty, condition.Data.Level);
+                    <p class="attack-popup-condition" data-condition="@condition.Name">@condition.Name@(string.IsNullOrEmpty(summary) ? null : $" — {summary}")</p>
+                }
+            }
+            @if (falls)
+            {
+                <p class="attack-popup-defeated">Defeated</p>
+            }
+        </article>
+    };
+
+    private RenderFragment Pool(DicePool pool, string best) => __builder =>
+    {
+        <div class="attack-popup-pool" data-pool="@pool.Stat.ToLowerInvariant()">
+            <p class="attack-popup-pool-title">@pool.UnitName — @pool.Faces.Count @(pool.Faces.Count == 1 ? "die" : "dice")</p>
+            <p class="attack-popup-modifiers">
+                @if (pool.Base is { } baseValue)
+                {
+                    <span>@pool.Stat @baseValue</span>
+                }
+                @foreach (var modifier in pool.Modifiers)
+                {
+                    <span class="attack-popup-modifier">@modifier</span>
+                }
+            </p>
+            <div class="attack-popup-faces">
+                @if (pool.Faces.Count == 0)
+                {
+                    <span class="attack-popup-nodice">No dice</span>
+                }
+                @for (var index = 0; index < pool.Faces.Count; index++)
+                {
+                    var face = pool.Faces[index];
+                    var scores = face == best;
+                    <span class="die die-@(_phase == PopupPhase.Hidden ? "unknown" : _phase == PopupPhase.Rolling ? "rolling" : face) @(scores && _phase >= PopupPhase.Settled ? "scores" : null)"
+                          style="--die-index: @index"
+                          data-face="@(_phase >= PopupPhase.Settled ? face : null)">
+                        @if (_phase == PopupPhase.Hidden)
+                        {
+                            <span class="die-question">?</span>
+                        }
+                        else if (_phase == PopupPhase.Rolling)
+                        {
+                            <span class="die-strip">@Face("sword")@Face("shield")@Face("blank")@Face("sword")</span>
+                        }
+                        else
+                        {
+                            @Face(face)
+                        }
+                    </span>
+                }
+            </div>
+        </div>
+    };
+
+    private static RenderFragment Face(string face) => __builder =>
+    {
+        <svg class="die-face" viewBox="0 0 24 24" aria-label="@face" role="img">
+            @switch (face)
+            {
+                case "sword":
+                    <g transform="rotate(45 12 12)">
+                        <path d="M12 1l1.6 3v11h-3.2V4z" />
+                        <rect x="7" y="15" width="10" height="2" rx="1" />
+                        <rect x="11" y="17" width="2" height="4" />
+                        <circle cx="12" cy="22" r="1.4" />
+                    </g>
+                    break;
+                case "shield":
+                    <path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" />
+                    break;
+                default:
+                    <rect x="6" y="6" width="12" height="12" rx="2" class="die-blank" />
+                    break;
+            }
+        </svg>
+    };
+}

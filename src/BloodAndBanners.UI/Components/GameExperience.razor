@@ -43,6 +43,7 @@ else
 {
     <GameTable Projection="_game"
                Events="_events"
+               LiveAfterSequence="_liveAfterSequence"
                IsBusy="_isBusy"
                ErrorMessage="@_error"
                ImageBaseUrl="@ImageBaseUrl"
@@ -67,6 +68,8 @@ else
     private GameProjection? _game;
     private readonly List<GameEvent> _events = [];
     private long _lastSequence;
+    /// <summary>The last event of the first page fetched for this game; everything up to it is history, not news.</summary>
+    private long? _liveAfterSequence;
     private int _generation;
     private Task? _pollTask;
     private bool _isBusy;
@@ -158,6 +161,17 @@ else
         _error = null;
         try
         {
+            if (_liveAfterSequence is null)
+            {
+                // Load history first, so this order's own attack is news rather than backlog.
+                try
+                {
+                    ApplyEvents(await Sessions.GetEventsAsync(_lastSequence, _pollCancellation.Token));
+                }
+                catch (Exception) when (!_pollCancellation.IsCancellationRequested)
+                {
+                }
+            }
             var updated = await Sessions.SubmitCommandAsync(expectedVersion, request.Kind, request.Payload, _pollCancellation.Token);
             if (generation != _generation)
             {
@@ -209,6 +223,7 @@ else
         _game = null;
         _events.Clear();
         _lastSequence = 0;
+        _liveAfterSequence = null;
         _error = null;
         _status = null;
     }
@@ -225,6 +240,7 @@ else
             _events.RemoveRange(0, _events.Count - 200);
         }
         _lastSequence = Math.Max(_lastSequence, page.LastSequence);
+        _liveAfterSequence ??= _lastSequence;
     }
 
     private async Task CopyInvite()
@@ -365,6 +381,7 @@ else
         {
             _events.Clear();
             _lastSequence = 0;
+            _liveAfterSequence = null;
             _game = projection;
         }
         else if (_game is null || projection.Version >= _game.Version)

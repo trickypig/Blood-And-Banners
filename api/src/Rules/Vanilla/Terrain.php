@@ -27,18 +27,27 @@ final class Terrain
 
     public static function statDelta(array $state, string $unitId, string $stat, array $context = []): int
     {
+        return array_sum(array_column(self::statSources($state, $unitId, $stat, $context), 'amount'));
+    }
+
+    /** @return list<array{source: string, amount: int}> */
+    public static function statSources(array $state, string $unitId, string $stat, array $context = []): array
+    {
         $unit = $state['units'][$unitId];
         $hex = $unit['hex'] === null ? null : ($state['board'][$unit['hex']] ?? null);
-        $delta = 0;
+        $sources = [];
         if ($stat === 'power' && $hex !== null && self::type($hex) === 'water' && !self::ignored($state, $unitId, 'water', 'standing')) {
-            $delta--;
+            $sources[] = ['source' => 'Standing in water', 'amount' => -1];
         }
         if ($stat === 'defense' && isset($context['damageType'])) {
             foreach (AbilityRegistry::abilitiesOf($unit) as $ability) {
-                $delta += $ability->defenseDeltaForDamageType((string)$context['damageType']);
+                $delta = $ability->defenseDeltaForDamageType((string)$context['damageType']);
+                if ($delta !== 0) {
+                    $sources[] = ['source' => $ability->name, 'amount' => $delta];
+                }
             }
         }
-        return $delta;
+        return $sources;
     }
 
     public static function ignored(array $state, string $unitId, string $terrain, string $movementKind): bool

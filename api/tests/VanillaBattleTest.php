@@ -1,8 +1,11 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Rules\Vanilla\Effects;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Movement;
+use BloodAndBanners\Rules\Vanilla\Stats;
+use BloodAndBanners\Rules\Vanilla\UnitConditions;
 use BloodAndBanners\Rules\Vanilla\Turn;
 
 function vanilla_battle_tests(): array
@@ -153,12 +156,42 @@ function vanilla_battle_tests(): array
             $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 2, 3, 4, 6]);
             expect_same(['attackResolved', 'unitDefeated', 'turnEnded'], array_column($result['events'], 'kind'), 'attack, defeat, then the spent turn passes');
             expect_same(
-                ['unitId' => 'a1', 'targetUnitId' => 'b1', 'ability' => null, 'attackFaces' => ['sword', 'sword', 'sword'], 'defenseFaces' => ['shield', 'blank'], 'rerolled' => null, 'wounds' => 2],
+                ['unitId' => 'a1', 'targetUnitId' => 'b1', 'ability' => null, 'attackFaces' => ['sword', 'sword', 'sword'], 'defenseFaces' => ['shield', 'blank'], 'rerolled' => null, 'wounds' => 2,
+                    'attackBase' => 3, 'attackModifiers' => [], 'defenseBase' => 2, 'defenseModifiers' => []],
                 $result['events'][0]['payload'],
                 'dice faces and wounds are reported'
             );
             expect_same(null, $result['state']['units']['b1']['hex'], 'the defeated unit leaves the board');
             expect_same(2, $result['state']['units']['b1']['wounds'], 'wounds never exceed hit points');
+        },
+
+        'attack reports name every modifier behind each dice pool' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4), [], ['0,0' => ['biome' => 'water', 'terrain' => 'open-water']]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 3]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 1, 'hp' => 5]),
+                vanilla_unit('b2', 'seat-b', '3,0'),
+            ]);
+            $events = [];
+            $state = Effects::add($state, 'Rally', 'b2', 'b1', 'defense', 2, 'seat-b', Effects::UNTIL_NEXT_TURN, $events);
+            $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1, 1, 1, 1]);
+            $payload = $result['events'][0]['payload'];
+            expect_same([3, [['source' => 'Standing in water', 'amount' => -1]]], [$payload['attackBase'], $payload['attackModifiers']], 'water costs the attacker a die');
+            expect_same(2, count($payload['attackFaces']), 'the pool matches the breakdown');
+            expect_same([1, [['source' => 'Rally', 'amount' => 2]]], [$payload['defenseBase'], $payload['defenseModifiers']], 'the effect adds defense dice');
+            expect_same(3, count($payload['defenseFaces']), 'the defense pool matches the breakdown');
+        },
+
+        'a defense-blocking condition is reported as a null modifier' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(4)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['power' => 1]),
+                vanilla_unit('b1', 'seat-b', '1,0', ['defense' => 3, 'hp' => 5]),
+                vanilla_unit('b2', 'seat-b', '3,0'),
+            ]);
+            $events = [];
+            $state = UnitConditions::apply($state, 'Petrified', 'b1', 'a1', ['kind' => 'untilCleared'], $events);
+            $breakdown = Stats::breakdown($state, 'b1', 'defense');
+            expect_same(['value' => 0, 'base' => 3, 'modifiers' => [['source' => 'Petrified', 'amount' => null]]], $breakdown, 'petrified units roll no defense');
+            expect_same(0, Stats::effective($state, 'b1', 'defense'), 'effective agrees with the breakdown');
         },
 
         'destroying the last enemy unit wins by annihilation' => static function (): void {

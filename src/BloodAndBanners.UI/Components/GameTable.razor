@@ -459,6 +459,7 @@
         </section>
 
         <CombatLog Projection="Projection" Events="Events" />
+        <AttackPopup Projection="Projection" Events="Events" LiveAfterSequence="LiveAfterSequence" ImageBaseUrl="@ImageBaseUrl" />
     </aside>
 
     @if (Projection.Result is { } result)
@@ -480,6 +481,10 @@
 
     [Parameter]
     public IReadOnlyList<GameEvent> Events { get; set; } = [];
+
+    /// <summary>Attacks after this sequence arrived live and get the attack popup; null while history is still loading.</summary>
+    [Parameter]
+    public long? LiveAfterSequence { get; set; }
 
     [Parameter]
     public bool IsBusy { get; set; }
