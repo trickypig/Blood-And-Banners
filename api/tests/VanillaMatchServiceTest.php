@@ -174,6 +174,14 @@ function vanilla_match_service_tests(): array
             $spectated = $match['games']->getSpectatorGame($link['token']);
             expect_same([], $spectated['legalActions'], 'spectators cannot act');
             expect_same(14, count($spectated['units']), 'spectators still see the armies');
+            $watched = $match['games']->getWatchedGame($match['gameId']);
+            expect_same([], $watched['legalActions'], 'watchers cannot act');
+            expect_same('spectator', $watched['viewer']['role'], 'watchers are spectators');
+            expect_same(
+                $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0),
+                $match['games']->getWatchedEvents($match['gameId'], 0),
+                'watchers read the same event log as players'
+            );
         },
 
         'the defending seat resolves a Moonlight Glare choice through the service while the attacker waits' => static function (): void {

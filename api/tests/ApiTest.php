@@ -232,6 +232,44 @@ function api_tests(): array
             expect_same('spectatorReadOnly', $mutation->body['error']['code'], 'read-only error should be explicit');
         },
 
+        'watch endpoint shows any game read only by its id alone' => static function (): void {
+            $app = test_application();
+            $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'watch-api-host']));
+            $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
+            $created = $app->handle(new Request('POST', '/api/v1/games', $authorization, [
+                'mode' => 'vanillaPvp',
+                'scenarioName' => 'Proving Field',
+            ]));
+            $gameId = $created->body['game']['gameId'];
+
+            $view = $app->handle(new Request('GET', "/api/v1/watch/{$gameId}"));
+            $events = $app->handle(new Request('GET', "/api/v1/watch/{$gameId}/events", query: ['after' => '0']));
+
+            expect_same(200, $view->status, 'watching needs no account or seat credential');
+            expect_same('lobby', $view->body['lifecycle'], 'a lobby can be watched');
+            expect_same(
+                ['role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false],
+                $view->body['viewer'],
+                'watchers are read-only spectators'
+            );
+            expect_same([], $view->body['legalActions'], 'watchers receive no actions');
+            expect_same(null, $view->body['pendingChoice'], 'watchers receive no actionable choice');
+            expect_true(!str_contains(json_encode($view->body, JSON_THROW_ON_ERROR), $created->body['seatToken']), 'no seat token leaks to watchers');
+            expect_same(200, $events->status, 'the event log can be watched too');
+            expect_true(array_key_exists('lastSequence', $events->body), 'watched events use the player page shape');
+        },
+
+        'watching an unknown game is a not-found error' => static function (): void {
+            $app = test_application();
+
+            $view = $app->handle(new Request('GET', '/api/v1/watch/no-such-game'));
+            $events = $app->handle(new Request('GET', '/api/v1/watch/no-such-game/events'));
+
+            expect_same(404, $view->status, 'unknown games are not found');
+            expect_same('gameNotFound', $view->body['error']['code'], 'the error code is stable');
+            expect_same(404, $events->status, 'unknown game events are not found');
+        },
+
         'scenario board preview is public and marks starting points' => static function (): void {
             $app = test_application();
             $board = $app->handle(new Request('GET', '/api/v1/scenarios/Four%20Corners/board'));

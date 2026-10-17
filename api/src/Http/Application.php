@@ -56,6 +56,15 @@ final class Application
             if (preg_match('#^/api/v1/spectate/([^/]+)$#', $request->path, $matches) === 1 && $request->method === 'GET') {
                 return new Response(200, $this->games->getSpectatorGame($matches[1]));
             }
+            if (preg_match('#^/api/v1/watch/([^/]+)/events$#', $request->path, $matches) === 1 && $request->method === 'GET') {
+                return new Response(200, $this->games->getWatchedEvents(
+                    $matches[1],
+                    max(0, (int)($request->query['after'] ?? 0))
+                ));
+            }
+            if (preg_match('#^/api/v1/watch/([^/]+)$#', $request->path, $matches) === 1 && $request->method === 'GET') {
+                return new Response(200, $this->games->getWatchedGame($matches[1]));
+            }
 
             if (preg_match('#^/api/v1/scenarios/([^/]+)/board$#', $request->path, $matches) === 1 && $request->method === 'GET') {
                 try {

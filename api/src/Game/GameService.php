@@ -481,6 +481,18 @@ final class GameService
     public function getEvents(string $gameId, string $identityId, string $seatToken, int $afterSequence): array
     {
         $this->requireSeatCredential($gameId, $identityId, $seatToken);
+        return $this->eventPage($gameId, $afterSequence);
+    }
+
+    /** Anyone may read a game's event log by its id; it carries nothing seat-private. */
+    public function getWatchedEvents(string $gameId, int $afterSequence): array
+    {
+        $this->gameRow($gameId);
+        return $this->eventPage($gameId, $afterSequence);
+    }
+
+    private function eventPage(string $gameId, int $afterSequence): array
+    {
         $statement = $this->connection->prepare(
             'SELECT sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at
              FROM game_events WHERE game_id = :game AND sequence > :after ORDER BY sequence LIMIT 200'
@@ -580,8 +592,18 @@ final class GameService
         if ($gameId === false) {
             throw new GameServiceException('spectatorLinkInvalid', 'This spectator link is invalid or has been revoked.');
         }
-        $game = $this->gameRow($gameId);
-        return $this->buildProjection($game, $this->memberships($gameId), [
+        return $this->spectatorProjection($this->gameRow($gameId));
+    }
+
+    /** Anyone holding the game id may watch; spectators never receive actions or seat credentials. */
+    public function getWatchedGame(string $gameId): array
+    {
+        return $this->spectatorProjection($this->gameRow($gameId));
+    }
+
+    private function spectatorProjection(array $game): array
+    {
+        return $this->buildProjection($game, $this->memberships($game['id']), [
             'role' => 'spectator', 'seatId' => null, 'isHost' => false, 'canCommand' => false,
         ]);
     }
