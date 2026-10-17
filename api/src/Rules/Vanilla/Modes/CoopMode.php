@@ -47,7 +47,10 @@ final class CoopMode implements ModeRules
         $initiative = (new InitiativeResolver())->resolve($heroSeats, $random);
         $order = $initiative['order'];
         $budget = self::budget($options['coop'] ?? [], count($heroSeats));
-        $lobby = is_array($options['setupState'] ?? null) ? $options['setupState'] : null;
+        $lobby = $options['setupState'] ?? null;
+        if (!is_array($lobby) || ($lobby['voidLordSeatId'] ?? null) !== $voidLord) {
+            $lobby = null;
+        }
         $state = [
             'mode' => 'coop',
             'phase' => 'prep',

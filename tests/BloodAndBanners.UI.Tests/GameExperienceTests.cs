@@ -536,6 +536,9 @@ public sealed class GameExperienceTests : BunitContext
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
         public GameProjection? Reconnected { get; init; }
+        public GameProjection? LaterReconnected { get; init; }
+        /// <summary>How many reconnects return <see cref="Reconnected"/> before <see cref="LaterReconnected"/> takes over.</summary>
+        public int LaterReconnectedAfter { get; init; } = 1;
         public GameProjection? Created { get; init; }
         public GameProjection? Joined { get; init; }
         public GameProjection? Readied { get; init; }
@@ -622,6 +625,10 @@ public sealed class GameExperienceTests : BunitContext
             if (LaterReconnectFailure is not null && reconnects > 1)
             {
                 throw LaterReconnectFailure;
+            }
+            if (LaterReconnected is not null && reconnects > LaterReconnectedAfter)
+            {
+                return LaterReconnected;
             }
             return WatchRequest is not null && !Left ? Watched : Reconnected;
         }
@@ -713,5 +720,24 @@ public sealed class GameExperienceTests : BunitContext
         // The first fetch (from 0) moves the cursor to 5; without the reveal the post-command fetch would ask from 5.
         cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2));
         Assert.Equal(0, api.EventRequests[1]);
+    }
+
+    [Fact]
+    public void A_reveal_that_arrives_by_polling_refetches_the_whole_log()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = CoopVoidLord(GameLifecycle.Draft, actions: new LegalAction("confirmSetup", null, [])),
+            LaterReconnected = CoopVoidLord(GameLifecycle.Active, version: 10),
+            LaterReconnectedAfter = 2,
+            Events = new EventPage([], 5),
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        // The first poll (still Draft) fetches from 0 and moves the cursor to 5; the poll that sees the Active switch must ask from 0 again.
+        cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2), TimeSpan.FromSeconds(10));
+        Assert.Equal([0L, 0L], api.EventRequests.Take(2));
     }
 }

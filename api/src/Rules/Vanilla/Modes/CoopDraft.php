@@ -109,7 +109,10 @@ final class CoopDraft
         return ['state' => $state, 'events' => $events];
     }
 
-    /** True once every hero seat holds two heroes and an army. */
+    /**
+     * True once every hero seat holds two heroes and an army. Only meaningful once the hero
+     * roster is locked: an empty initiative order (the lobby board) is trivially complete.
+     */
     public static function complete(array $state): bool
     {
         foreach ($state['initiative']['order'] as $seatId) {

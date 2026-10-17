@@ -122,7 +122,10 @@
 
         @if (IsCoop && SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId))
         {
-            <button type="button" class="ready-order" data-action="place-monsters" disabled="@IsBusy" @onclick="() => OnPlaceMonsters.InvokeAsync()">Place monsters</button>
+            @if (Projection.Setup is not null)
+            {
+                <button type="button" class="ready-order" data-action="place-monsters" disabled="@IsBusy" @onclick="() => OnPlaceMonsters.InvokeAsync()">Place monsters</button>
+            }
         }
         else if (IsCoop && VoidLordCount == 1)
         {

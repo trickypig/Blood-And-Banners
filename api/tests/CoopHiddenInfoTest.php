@@ -18,9 +18,42 @@ function coop_event_kinds(array $page): array
     return array_column($page['events'], 'kind');
 }
 
+function coop_stale_submit(array $match, string $who, int $version, string $kind, array $payload): array
+{
+    return $match['games']->submitCommand($match['gameId'], $match[$who]['identity'], $match[$who]['token'], [
+        'commandId' => bin2hex(random_bytes(8)), 'expectedVersion' => $version, 'kind' => $kind, 'payload' => $payload,
+    ]);
+}
+
 function coop_hidden_info_tests(): array
 {
     return [
+        'simultaneous prep orders tolerate the other side version bump' => static function (): void {
+            $match = coop_service_match(1);
+            vanilla_submit($match, 'host', 'claimVoidLord', []);
+            coop_lobby_place($match, 'host', 'Test Wolf');
+            coop_ready_all($match);
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            $before = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            vanilla_submit($match, 'hero1', 'pickHero', ['hero' => 'Test Captain']);
+            $spawn = coop_lobby_spawn($before, 'Test Wolf');
+            $placed = coop_stale_submit($match, 'host', $before['version'], 'placeMonster', ['monster' => 'Test Wolf', 'hex' => $spawn]);
+            expect_same(2, count($placed['units']), 'a stale void lord placement still lands');
+
+            $stale = $match['games']->getGame($match['gameId'], $match['hero1']['identity'])['version'];
+            coop_lobby_place($match, 'host', 'Test Wolf');
+            $picked = coop_stale_submit($match, 'hero1', $stale, 'pickHero', ['hero' => 'Test Marshal']);
+            expect_true($picked['version'] > $stale, 'a stale hero pick still lands');
+        },
+
+        'a stale version still conflicts in a vanilla draft' => static function (): void {
+            $match = vanilla_service_match();
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            $stale = $match['games']->getGame($match['gameId'], $match['host']['identity'])['version'];
+            vanilla_submit($match, 'host', 'chooseFirstPlayer', ['seatId' => $match['host']['seat']]);
+            expect_game_error('versionConflict', static fn() => coop_stale_submit($match, 'rival', $stale, 'chooseStartPosition', ['start' => 2]));
+        },
+
         'heroes and spectators cannot see the lobby horde' => static function (): void {
             $match = coop_service_match(1);
             vanilla_submit($match, 'host', 'claimVoidLord', []);

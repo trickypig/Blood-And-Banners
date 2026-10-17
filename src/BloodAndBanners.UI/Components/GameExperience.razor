@@ -561,6 +561,7 @@ else
             _events.Clear();
             _lastSequence = 0;
             _liveAfterSequence = null;
+            _placingMonsters = false;
             _game = projection;
         }
         else if (_game is null || projection.Version >= _game.Version)

@@ -96,8 +96,7 @@ final class GameService
             $seatToken = self::token();
             $this->insertMembership($gameId, $identityId, $seatIndex, false, $seatToken);
             $version = (int)$game['version'] + 1;
-            $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
-                ->execute(['version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+            $this->bumpVersion($gameId, (int)$game['version'], $version);
             $this->syncLobbySetup($game, $version);
             $this->appendEvent($gameId, $version, 'playerJoined', $identityId, ['seatIndex' => $seatIndex]);
             $projection = $this->projection($gameId, $identityId);
@@ -275,7 +274,7 @@ final class GameService
 
             $game = $this->gameRow($gameId);
             $currentVersion = (int)$game['version'];
-            if ((int)$command['expectedVersion'] !== $currentVersion) {
+            if ((int)$command['expectedVersion'] !== $currentVersion && !$this->skipsVersionCheck($game, (string)$command['kind'])) {
                 throw self::versionConflict($currentVersion);
             }
             $newVersion = $currentVersion + 1;
@@ -306,6 +305,16 @@ final class GameService
     /** Preparation events everyone may see: they only report that a side is finished. */
     private const PUBLIC_PREP_EVENTS = ['setupConfirmed', 'armiesPlaced'];
     private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
+
+    /** Co-op preparation orders from the two sides touch disjoint state, so a stale expectedVersion from the other side's bump is tolerated; the rules re-validate against current state. */
+    private const SIMULTANEOUS_PREP_COMMANDS = ['placeMonster', 'removeMonster', 'confirmSetup', 'pickHero', 'pickArmy'];
+
+    private function skipsVersionCheck(array $game, string $kind): bool
+    {
+        return $game['mode'] === 'coop'
+            && in_array($game['lifecycle'], ['lobby', 'draft'], true)
+            && in_array($kind, self::SIMULTANEOUS_PREP_COMMANDS, true);
+    }
 
     private const NAMING_LIFECYCLES = ['lobby', 'setup', 'draft'];
 

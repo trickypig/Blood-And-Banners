@@ -157,10 +157,13 @@ public sealed class WarRoomLobbyTests : BunitContext
     {
         var opened = 0;
         var lord = Render<WarRoomLobby>(p => p
-            .Add(c => c.Projection, CoopLobby("seat-2", false, "seat-2", "setReady"))
+            .Add(c => c.Projection, CoopLobby("seat-2", false, "seat-2", "setReady") with { Setup = new SetupProjection(12, 0, false, [], []) })
             .Add(c => c.OnPlaceMonsters, () => opened++));
         lord.Find("[data-action=place-monsters]").Click();
         Assert.Equal(1, opened);
+
+        var predeploy = Render<WarRoomLobby>(p => p.Add(c => c.Projection, CoopLobby("seat-2", false, "seat-2", "setReady")));
+        Assert.Empty(predeploy.FindAll("[data-action=place-monsters]"));
 
         var hero = Render<WarRoomLobby>(p => p.Add(c => c.Projection, CoopLobby("seat-1", true, "seat-2", "setReady")));
         Assert.Empty(hero.FindAll("[data-action=place-monsters]"));

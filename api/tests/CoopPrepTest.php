@@ -97,6 +97,23 @@ function coop_prep_tests(): array
             expect_same([20, 6, 3], [$state['setup']['budget'], $state['setup']['spent'], $state['setup']['nextMonster']], 'spend and ids carry over; budget follows the locked roster');
         },
 
+        'start ignores a lobby setup that belongs to another void lord' => static function (): void {
+            $lobby = CoopMode::lobbySetup(coop_board(), 'someone-else', 12);
+            $lobby = coop_command($lobby, 'someone-else', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,4'])['state'];
+            $state = (new MatchEngine(test_catalog()))->start(
+                ['hero-a', 'hero-b', 'void-lord'], coop_board(), new SequenceRandom([15, 5]), 'coop',
+                ['voidLordSeatId' => 'void-lord', 'coop' => ['basePoints' => 4, 'pointsPerHeroPlayer' => 8], 'setupState' => $lobby]
+            )['state'];
+            expect_same([[], 0, 1], [$state['units'], $state['setup']['spent'], $state['setup']['nextMonster']], 'no units carried');
+        },
+
+        'in prep each side gets the error for the other side orders' => static function (): void {
+            $state = coop_start()['state'];
+            expect_game_error('notVoidLord', static fn() => coop_command($state, 'hero-a', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,4']));
+            expect_game_error('notVoidLord', static fn() => coop_command($state, 'hero-a', 'confirmSetup'));
+            expect_game_error('notYourPick', static fn() => coop_command($state, 'void-lord', 'pickHero', ['hero' => 'Test Captain']));
+        },
+
         'handing over moves every monster to the new void lord' => static function (): void {
             $lobby = CoopMode::lobbySetup(coop_board(), 'old-lord', 12);
             $lobby = coop_command($lobby, 'old-lord', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '7,4'])['state'];
