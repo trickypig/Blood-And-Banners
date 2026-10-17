@@ -291,7 +291,11 @@
                            ImageBaseUrl="@ImageBaseUrl"
                            MonstersPlaced="Projection.Units.Count"
                            OnSelectMonster="SelectMonster"
-                           OnConfirm='() => Send("confirmSetup", new { })' />
+                           OnConfirm='() => Send("confirmSetup", new { })'
+                           StatusLine="@SetupStatus"
+                           ShowConfirm="@(Projection.Lifecycle != GameLifecycle.Lobby)"
+                           ShowBackToWarRoom="@(Projection.Lifecycle == GameLifecycle.Lobby)"
+                           OnBackToWarRoom="OnBackToWarRoom" />
         }
 
         @if (Projection.PendingChoice is { Kind: "moonlightGlare" } glare && glare.SeatId == Projection.Viewer.SeatId)
@@ -517,6 +521,9 @@
     public EventCallback OnReturnToWarRoom { get; set; }
 
     [Parameter]
+    public EventCallback OnBackToWarRoom { get; set; }
+
+    [Parameter]
     public string InviteBaseUri { get; set; } = string.Empty;
 
     [Parameter]
@@ -670,7 +677,29 @@
 
     private string? _selectedMonster;
 
-    private bool InSetup => Projection.Lifecycle == GameLifecycle.Setup && Projection.Setup is not null;
+    private bool InSetup => Projection.Setup is { Redacted: false }
+        && (Projection.Lifecycle == GameLifecycle.Setup
+            || (Projection.Mode == GameMode.Coop
+                && Projection.Lifecycle is GameLifecycle.Lobby or GameLifecycle.Draft
+                && SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId)));
+
+    private string? SetupStatus
+    {
+        get
+        {
+            if (Projection.Lifecycle == GameLifecycle.Lobby)
+            {
+                var heroes = Projection.Memberships.Where(member => member.Role != "voidLord").ToList();
+                return $"War room · {heroes.Count} {(heroes.Count == 1 ? "hero" : "heroes")}, {heroes.Count(member => member.Ready)} ready · you confirm once the host begins";
+            }
+            if (Projection.Lifecycle == GameLifecycle.Draft && Projection.Draft is { } draft)
+            {
+                var picks = $"{draft.PicksMade}/{draft.PicksTotal} picks";
+                return Projection.Setup!.Confirmed ? $"Waiting for the heroes to finish drafting · {picks}" : $"Heroes drafting · {picks}";
+            }
+            return null;
+        }
+    }
 
     private IReadOnlyList<string> PlaceableHexes => !InSetup || _selectedMonster is null
         ? []

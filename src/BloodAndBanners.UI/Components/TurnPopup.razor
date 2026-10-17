@@ -38,7 +38,7 @@
 
     protected override void OnParametersSet()
     {
-        var seat = Projection.Lifecycle == GameLifecycle.Setup || Projection.Result is not null ? null : Projection.Turn.ActiveSeatId;
+        var seat = Projection.Lifecycle is GameLifecycle.Setup or GameLifecycle.Lobby or GameLifecycle.Draft || Projection.Result is not null ? null : Projection.Turn.ActiveSeatId;
         if (_gameId != Projection.GameId)
         {
             // The first look at a game is the state it is already in, not a change of turn.

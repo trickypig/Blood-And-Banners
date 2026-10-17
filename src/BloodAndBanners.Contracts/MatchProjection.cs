@@ -69,6 +69,13 @@ public sealed record DraftProjection(
 {
     public IReadOnlyDictionary<string, IReadOnlyList<string>> HeroesBySeat { get; init; } =
         new Dictionary<string, IReadOnlyList<string>>();
+
+    public int PicksMade { get; init; }
+
+    public int PicksTotal { get; init; }
+
+    /// <summary>True for the Void Lord and spectators during preparation: claims are blanked, only progress is real.</summary>
+    public bool Redacted { get; init; }
 }
 
 public sealed record UnitProjection(

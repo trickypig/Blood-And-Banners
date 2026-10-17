@@ -9,3 +9,5 @@
 .void-setup__roster img { grid-row: span 3; width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
 .tier--boss { color: #ff9a6b; }
 .tier--elite { color: #9cc3df; }
+.void-setup__over { color: var(--danger, #e06c5a); font-weight: 600; }
+.void-setup__back { justify-self: start; font: inherit; color: #f8f0dc; background: var(--oxblood); border: 1px solid #b18b48; padding: .4rem .7rem; cursor: pointer; }

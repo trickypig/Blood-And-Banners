@@ -122,4 +122,75 @@ public sealed class VoidLordSetupTests : BunitContext
         cut.Find("[data-hex='4,0']").Click();
         Assert.Single(sent);
     }
+
+    [Fact]
+    public void Over_budget_shows_a_warning_and_the_lobby_hides_confirm()
+    {
+        var back = 0;
+        var cut = Render<VoidLordSetup>(p => p
+            .Add(c => c.Setup, Setup(spent: 14))
+            .Add(c => c.IsVoidLord, true)
+            .Add(c => c.ShowConfirm, false)
+            .Add(c => c.ShowBackToWarRoom, true)
+            .Add(c => c.StatusLine, "War room · 1 hero, 0 ready")
+            .Add(c => c.OnBackToWarRoom, () => back++));
+
+        Assert.Contains("Over budget by 2", cut.Find("[data-testid=setup-over-budget]").TextContent);
+        Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
+        Assert.Contains("War room · 1 hero, 0 ready", cut.Find("[data-testid=setup-status]").TextContent);
+        cut.Find("[data-action=back-to-war-room]").Click();
+        Assert.Equal(1, back);
+    }
+
+    [Fact]
+    public void A_confirmed_horde_waits_without_the_roster()
+    {
+        var cut = Render<VoidLordSetup>(p => p
+            .Add(c => c.Setup, Setup(spent: 3) with { Confirmed = true })
+            .Add(c => c.IsVoidLord, true)
+            .Add(c => c.StatusLine, "Waiting for the heroes to finish drafting · 2/3 picks"));
+
+        Assert.NotNull(cut.Find("[data-testid=setup-ready]"));
+        Assert.Empty(cut.FindAll("[data-monster]"));
+        Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
+    }
+
+    [Fact]
+    public void During_the_draft_the_void_lord_keeps_the_setup_board_with_hero_progress()
+    {
+        var projection = SetupTable("seat-void", new LegalAction("confirmSetup", null, [])) with { Lifecycle = GameLifecycle.Draft };
+        projection = projection with
+        {
+            Draft = new DraftProjection(new Dictionary<string, IReadOnlyList<int>>(), "seat-hero", null,
+                new Dictionary<string, int?>(), new Dictionary<string, string?>(), new Dictionary<string, string?>(), [], [])
+            { PicksMade = 2, PicksTotal = 3, Redacted = true },
+        };
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection));
+
+        Assert.Contains("Heroes drafting · 2/3 picks", cut.Find("[data-testid=setup-status]").TextContent);
+        Assert.NotNull(cut.Find("[data-action=confirmSetup]"));
+    }
+
+    [Fact]
+    public void In_the_war_room_the_setup_board_offers_the_way_back_and_no_confirm()
+    {
+        var projection = SetupTable("seat-void", new LegalAction("placeMonster", null, ["5,0"])) with { Lifecycle = GameLifecycle.Lobby };
+        var back = 0;
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection).Add(c => c.OnBackToWarRoom, () => back++));
+
+        Assert.Contains("War room · 1 hero, 1 ready", cut.Find("[data-testid=setup-status]").TextContent);
+        Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
+        cut.Find("[data-action=back-to-war-room]").Click();
+        Assert.Equal(1, back);
+    }
+
+    [Fact]
+    public void A_redacted_setup_never_opens_the_setup_board()
+    {
+        var projection = SetupTable("seat-hero") with { Lifecycle = GameLifecycle.Draft, Setup = Setup() with { Redacted = true } };
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection));
+
+        Assert.Empty(cut.FindAll("[data-testid=setup-budget]"));
+        Assert.DoesNotContain("The Void Lord is placing monsters", cut.Markup);
+    }
 }

@@ -138,7 +138,11 @@ public sealed record SetupProjection(
     int Spent,
     bool Confirmed,
     IReadOnlyList<string> SpawnZoneHexes,
-    IReadOnlyList<MonsterCard> Roster);
+    IReadOnlyList<MonsterCard> Roster)
+{
+    /// <summary>True for a viewer on the other side: only <see cref="Confirmed"/> is real.</summary>
+    public bool Redacted { get; init; }
+}
 
 public sealed record GameProjection(
     string GameId,

@@ -10,44 +10,66 @@
     }
     else
     {
-        <p class="void-setup__budget" data-testid="setup-budget" role="status">Budget @Setup.Spent / @Setup.Budget</p>
-        <meter min="0" max="@Setup.Budget" value="@Setup.Spent" aria-label="Budget spent"></meter>
-        <p class="void-setup__hint">Choose a monster, then a glowing spawn hex. Click a placed monster to remove it.</p>
-        @if (Setup.Roster.FirstOrDefault(monster => monster.Name == SelectedMonster) is { } selected)
+        @if (ShowBackToWarRoom)
         {
-            <div class="void-setup__abilities" aria-label="Selected monster abilities">
-                <strong>@selected.Name</strong>
-                <AbilityList Abilities="selected.Abilities" />
-            </div>
+            <button type="button" class="void-setup__back" data-action="back-to-war-room" @onclick="() => OnBackToWarRoom.InvokeAsync()">Back to war room</button>
         }
-        @foreach (var biome in Setup.Roster.GroupBy(monster => monster.Biome))
+        @if (!string.IsNullOrEmpty(StatusLine))
         {
-            <h3>@biome.Key</h3>
-            <ul class="void-setup__roster">
-                @foreach (var monster in biome.OrderBy(monster => TierOrder(monster.Tier)).ThenBy(monster => monster.Name))
-                {
-                    var affordable = monster.Cost <= Setup.Budget - Setup.Spent;
-                    <li>
-                        <button type="button"
-                                data-monster="@monster.Name"
-                                aria-pressed="@(monster.Name == SelectedMonster ? "true" : "false")"
-                                disabled="@(!affordable || IsBusy)"
-                                @onclick="() => OnSelectMonster.InvokeAsync(monster.Name)">
-                            @if (CatalogImages.Resolve(ImageBaseUrl, monster.Image) is { } art)
-                            {
-                                <img src="@art" alt="" loading="lazy" />
-                            }
-                            <strong>@monster.Name</strong>
-                            <span class="tier tier--@monster.Tier">@monster.Tier · @monster.Cost pt</span>
-                            <small>M@(monster.Move) R@(monster.Range) P@(monster.Power) D@(monster.Defense) HP@(monster.Hp)</small>
-                        </button>
-                    </li>
-                }
-            </ul>
+            <p class="void-setup__status" data-testid="setup-status" role="status">@StatusLine</p>
         }
-        <button type="button" class="action-button" data-action="confirmSetup" disabled="@(!CanConfirm || IsBusy)" @onclick="() => OnConfirm.InvokeAsync()">
-            Unleash the horde
-        </button>
+        @if (Setup.Confirmed)
+        {
+            <p class="void-setup__ready" data-testid="setup-ready" role="status">Your horde stands ready.</p>
+        }
+        else
+        {
+            <p class="void-setup__budget" data-testid="setup-budget" role="status">Budget @Setup.Spent / @Setup.Budget</p>
+            <meter min="0" max="@Setup.Budget" value="@Setup.Spent" aria-label="Budget spent"></meter>
+            @if (Setup.Spent > Setup.Budget)
+            {
+                <p class="void-setup__over" data-testid="setup-over-budget" role="alert">Over budget by @(Setup.Spent - Setup.Budget) — remove monsters before you confirm.</p>
+            }
+            <p class="void-setup__hint">Choose a monster, then a glowing spawn hex. Click a placed monster to remove it.</p>
+            @if (Setup.Roster.FirstOrDefault(monster => monster.Name == SelectedMonster) is { } selected)
+            {
+                <div class="void-setup__abilities" aria-label="Selected monster abilities">
+                    <strong>@selected.Name</strong>
+                    <AbilityList Abilities="selected.Abilities" />
+                </div>
+            }
+            @foreach (var biome in Setup.Roster.GroupBy(monster => monster.Biome))
+            {
+                <h3>@biome.Key</h3>
+                <ul class="void-setup__roster">
+                    @foreach (var monster in biome.OrderBy(monster => TierOrder(monster.Tier)).ThenBy(monster => monster.Name))
+                    {
+                        var affordable = monster.Cost <= Setup.Budget - Setup.Spent;
+                        <li>
+                            <button type="button"
+                                    data-monster="@monster.Name"
+                                    aria-pressed="@(monster.Name == SelectedMonster ? "true" : "false")"
+                                    disabled="@(!affordable || IsBusy)"
+                                    @onclick="() => OnSelectMonster.InvokeAsync(monster.Name)">
+                                @if (CatalogImages.Resolve(ImageBaseUrl, monster.Image) is { } art)
+                                {
+                                    <img src="@art" alt="" loading="lazy" />
+                                }
+                                <strong>@monster.Name</strong>
+                                <span class="tier tier--@monster.Tier">@monster.Tier · @monster.Cost pt</span>
+                                <small>M@(monster.Move) R@(monster.Range) P@(monster.Power) D@(monster.Defense) HP@(monster.Hp)</small>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (ShowConfirm)
+            {
+                <button type="button" class="action-button" data-action="confirmSetup" disabled="@(!CanConfirm || IsBusy)" @onclick="() => OnConfirm.InvokeAsync()">
+                    Unleash the horde
+                </button>
+            }
+        }
     }
 </section>
 
@@ -61,6 +83,10 @@
     [Parameter] public int MonstersPlaced { get; set; }
     [Parameter] public EventCallback<string> OnSelectMonster { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public string? StatusLine { get; set; }
+    [Parameter] public bool ShowConfirm { get; set; } = true;
+    [Parameter] public bool ShowBackToWarRoom { get; set; }
+    [Parameter] public EventCallback OnBackToWarRoom { get; set; }
 
     private static int TierOrder(string tier) => tier switch { "common" => 0, "elite" => 1, "boss" => 2, _ => 3 };
 }
