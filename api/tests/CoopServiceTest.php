@@ -11,7 +11,7 @@ function coop_service_match(int $heroPlayers = 1): array
     $games = new GameService($db, null, new ScriptedRandom(), new MatchEngine(test_catalog()));
     $host = $auth->createGuest('coop-host-' . bin2hex(random_bytes(4)));
     $created = $games->createGame($host['identityId'], 'coop', 'Void Reaches');
-    $match = ['db' => $db, 'games' => $games, 'gameId' => $created['gameId'],
+    $match = ['db' => $db, 'auth' => $auth, 'games' => $games, 'gameId' => $created['gameId'],
         'host' => ['identity' => $host['identityId'], 'token' => $created['seatToken'], 'seat' => $created['viewer']['seatId']]];
     for ($i = 1; $i <= $heroPlayers; $i++) {
         $guest = $auth->createGuest("coop-guest-{$i}-" . bin2hex(random_bytes(4)));
@@ -74,9 +74,9 @@ function coop_service_tests(): array
             vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
-            expect_same('setup', $started['lifecycle'], 'the match opens in setup');
+            expect_same('draft', $started['lifecycle'], 'the match opens in preparation, shown as the draft');
             expect_same(['placeMonster', 'setCommanderName'], array_values(array_unique(array_column($started['legalActions'], 'kind'))), 'the void lord may place monsters');
-            expect_same(['setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['hero1']['identity'])['legalActions'], 'kind'), 'the hero player waits but may rename');
+            expect_same(['pickHero', 'pickArmy', 'setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['hero1']['identity'])['legalActions'], 'kind'), 'the hero player drafts at once');
 
             $solo = coop_service_match(0);
             vanilla_submit($solo, 'host', 'claimVoidLord', []);

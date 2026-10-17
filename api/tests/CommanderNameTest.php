@@ -97,7 +97,7 @@ function commander_name_tests(): array
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
 
             $hero = $match['games']->getGame($match['gameId'], $match['hero1']['identity']);
-            expect_same(['setCommanderName'], array_column($hero['legalActions'], 'kind'), 'the hero may only rename during setup');
+            expect_same(['pickHero', 'pickArmy', 'setCommanderName'], array_column($hero['legalActions'], 'kind'), 'the hero may draft or rename during preparation');
             $named = vanilla_submit($match, 'hero1', 'setCommanderName', ['name' => 'Seris']);
 
             expect_same('Seris', commander_names($named)[$match['hero1']['seat']], 'renaming works during setup');
