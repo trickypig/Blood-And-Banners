@@ -1,5 +1,6 @@
 namespace BloodAndBanners.UI.Tests;
 
+using System.Net;
 using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
 using BloodAndBanners.UI.Services;
@@ -270,6 +271,128 @@ public sealed class GameExperienceTests : BunitContext
         Assert.DoesNotContain("could not be delivered", cut.Markup);
     }
 
+    private static GameProjection Spectating(GameProjection projection) =>
+        projection with { Viewer = new ViewerPermissions("spectator", null, false, false), LegalActions = [] };
+
+    [Fact]
+    public void A_watch_link_opens_the_match_read_only()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Watched = Spectating(DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue"))
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialWatchCode, "game-fixture"));
+
+        cut.WaitForAssertion(() => Assert.Contains("Muster your host", cut.Markup));
+        Assert.Equal("game-fixture", api.WatchRequest);
+        cut.Find("[data-menu=toggle]").Click();
+        Assert.Equal("Stop watching", cut.Find("[data-menu=leave]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void The_start_screen_can_watch_a_game_by_its_code()
+    {
+        var api = new FakeSessionCoordinator { Watched = Spectating(LobbyProjection("seat-red", isHost: true)) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("[data-join-code]").Input(" game-fixture ");
+        cut.Find("button[data-action=watch-game]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Waiting for the commanders to muster", cut.Markup));
+        Assert.Equal("game-fixture", api.WatchRequest);
+        Assert.Empty(cut.FindAll("[data-testid=game-code]"));
+    }
+
+    [Theory]
+    [InlineData("gameFull")]
+    [InlineData("gameAlreadyStarted")]
+    public void A_join_refused_because_the_match_is_full_or_started_offers_to_watch(string code)
+    {
+        var api = new FakeSessionCoordinator
+        {
+            JoinFailure = new GameApiException(HttpStatusCode.UnprocessableEntity, code, "No room."),
+            Watched = Spectating(DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue"))
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialJoinCode, "game-fixture"));
+        cut.WaitForElement("button[data-action=join-game]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("That match is full or already under way.", cut.Markup));
+        cut.Find("button[data-action=watch-instead]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Muster your host", cut.Markup));
+        Assert.Equal("game-fixture", api.WatchRequest);
+    }
+
+    [Fact]
+    public void Other_join_failures_do_not_offer_to_watch()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            JoinFailure = new GameApiException(HttpStatusCode.NotFound, "gameNotFound", "Missing.")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialJoinCode, "game-fixture"));
+        cut.WaitForElement("button[data-action=join-game]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("could not be joined", cut.Markup));
+        Assert.Empty(cut.FindAll("button[data-action=watch-instead]"));
+    }
+
+    [Fact]
+    public void Stopping_watching_returns_to_the_start_and_tells_the_host_page()
+    {
+        var stopped = false;
+        var api = new FakeSessionCoordinator { Watched = Spectating(LobbyProjection("seat-red", isHost: true)) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialWatchCode, "game-fixture")
+            .Add(component => component.OnStoppedWatching, () => stopped = true));
+        cut.WaitForElement("[data-testid=spectator-seats]");
+        cut.Find("[data-menu=leave]").Click();
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]")));
+        Assert.True(api.Left);
+        Assert.True(stopped);
+    }
+
+    [Fact]
+    public void A_player_leaving_their_own_match_does_not_report_stopped_watching()
+    {
+        var stopped = false;
+        var api = new FakeSessionCoordinator { Reconnected = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue") };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.OnStoppedWatching, () => stopped = true));
+        cut.WaitForElement("[data-menu=toggle]").Click();
+        cut.Find("[data-menu=leave]").Click();
+        cut.Find("[data-menu=confirmLeave]").Click();
+
+        cut.WaitForAssertion(() => Assert.True(api.Left));
+        Assert.False(stopped);
+    }
+
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
         public GameProjection? Reconnected { get; init; }
@@ -286,6 +409,7 @@ public sealed class GameExperienceTests : BunitContext
         public EventPage Events { get; set; } = new([], 0);
         public bool Left { get; private set; }
         public Exception? EventsFailure { get; init; }
+        public Exception? JoinFailure { get; init; }
         public TaskCompletionSource? PollGate { get; init; }
         public TaskCompletionSource PollBlocked { get; } = new();
         private int _reconnects;
@@ -318,6 +442,10 @@ public sealed class GameExperienceTests : BunitContext
         public Task<GameProjection> JoinGuestGameAsync(string deviceId, string gameId, CancellationToken cancellationToken = default)
         {
             JoinRequest = (deviceId, gameId);
+            if (JoinFailure is not null)
+            {
+                return Task.FromException<GameProjection>(JoinFailure);
+            }
             return Task.FromResult(Joined ?? throw new InvalidOperationException());
         }
 
@@ -328,7 +456,7 @@ public sealed class GameExperienceTests : BunitContext
                 PollBlocked.TrySetResult();
                 await PollGate.Task;
             }
-            return Reconnected;
+            return WatchRequest is not null && !Left ? Watched : Reconnected;
         }
 
         public GameProjection? Watched { get; init; }

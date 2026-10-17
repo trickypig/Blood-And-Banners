@@ -14,7 +14,13 @@
                 InitialJoinCode="@InitialJoinCode"
                 LoadBoard="LoadScenarioBoard"
                 OnCreate="CreateGame"
-                OnJoin="JoinGame" />
+                OnJoin="JoinGame"
+                OnWatch="WatchGame"
+                WatchOfferGameId="@_watchOffer" />
+}
+else if (_game.Lifecycle == GameLifecycle.Lobby && IsWatching)
+{
+    <SpectatorWaiting Projection="_game" OnLeave="ReturnToWarRoom" />
 }
 else if (_game.Lifecycle == GameLifecycle.Lobby)
 {
@@ -66,6 +72,14 @@ else
     [Parameter]
     public string? ImageBaseUrl { get; set; }
 
+    /// <summary>A game id from a watch link; when set, the page watches it instead of restoring a saved seat.</summary>
+    [Parameter]
+    public string? InitialWatchCode { get; set; }
+
+    /// <summary>Raised after a spectator stops watching, so the host page can drop the watch link from its address.</summary>
+    [Parameter]
+    public EventCallback OnStoppedWatching { get; set; }
+
     private readonly CancellationTokenSource _pollCancellation = new();
     private GameProjection? _game;
     private readonly List<GameEvent> _events = [];
@@ -77,6 +91,10 @@ else
     private bool _isBusy;
     private string? _status;
     private string? _error;
+    private string? _watchOffer;
+    private const string WatchFailed = "That match could not be found. Check the game code and try again.";
+
+    private bool IsWatching => _game?.Viewer.Role == "spectator";
 
     private string InviteUrl => _game is null
         ? string.Empty
@@ -85,9 +103,12 @@ else
     protected override async Task OnInitializedAsync()
     {
         _isBusy = true;
+        var watching = !string.IsNullOrWhiteSpace(InitialWatchCode);
         try
         {
-            _game = await Sessions.ReconnectAsync(_pollCancellation.Token);
+            _game = watching
+                ? await Sessions.WatchAsync(InitialWatchCode!, _pollCancellation.Token)
+                : await Sessions.ReconnectAsync(_pollCancellation.Token);
             StartPolling();
         }
         catch (OperationCanceledException) when (_pollCancellation.IsCancellationRequested)
@@ -95,7 +116,9 @@ else
         }
         catch (Exception)
         {
-            _error = "Your saved war room could not be restored. Check the server and try again.";
+            _error = watching
+                ? WatchFailed
+                : "Your saved war room could not be restored. Check the server and try again.";
         }
         finally
         {
@@ -109,6 +132,7 @@ else
     private Task CreateGame(GameSetupSelection selection) => RunCommand(async () =>
     {
         _generation++;
+        _watchOffer = null;
         ApplyProjection(await Sessions.CreateGuestGameAsync(
             DeviceId(),
             selection.Mode,
@@ -121,13 +145,32 @@ else
     private Task JoinGame(string gameId) => RunCommand(async () =>
     {
         _generation++;
-        ApplyProjection(await Sessions.JoinGuestGameAsync(
-            DeviceId(),
-            gameId,
-            _pollCancellation.Token));
+        _watchOffer = null;
+        try
+        {
+            ApplyProjection(await Sessions.JoinGuestGameAsync(
+                DeviceId(),
+                gameId,
+                _pollCancellation.Token));
+        }
+        catch (GameApiException error) when (error.Code is "gameFull" or "gameAlreadyStarted")
+        {
+            _watchOffer = gameId.Trim();
+            _error = "That match is full or already under way.";
+            return;
+        }
         _status = "You joined the war room.";
         StartPolling();
     }, "That war room could not be joined. Check the game code and try again.");
+
+    private Task WatchGame(string gameId) => RunCommand(async () =>
+    {
+        _generation++;
+        _watchOffer = null;
+        ApplyProjection(await Sessions.WatchAsync(gameId, _pollCancellation.Token));
+        _status = null;
+        StartPolling();
+    }, WatchFailed);
 
     private Task SetReady(bool ready)
     {
@@ -219,6 +262,7 @@ else
 
     private async Task ReturnToWarRoom()
     {
+        var wasWatching = IsWatching;
         _generation++;
         await Sessions.LeaveAsync();
         _generation++;
@@ -228,6 +272,11 @@ else
         _liveAfterSequence = null;
         _error = null;
         _status = null;
+        _watchOffer = null;
+        if (wasWatching)
+        {
+            await OnStoppedWatching.InvokeAsync();
+        }
     }
 
     private void ApplyEvents(EventPage? page)
@@ -320,8 +369,9 @@ else
             var generation = _generation;
 
             var interval = PollingCadence.Select(
-                current.Turn.ActiveSeatId == current.Viewer.SeatId,
-                current.PendingChoiceSummary is not null || current.Draft?.PickingSeatId == current.Viewer.SeatId,
+                PollingCadence.IsViewersMoment(current.Viewer, current.Turn.ActiveSeatId, null),
+                current.PendingChoiceSummary is not null
+                    || PollingCadence.IsViewersMoment(current.Viewer, null, current.Draft?.PickingSeatId),
                 backgrounded: false,
                 failures);
 

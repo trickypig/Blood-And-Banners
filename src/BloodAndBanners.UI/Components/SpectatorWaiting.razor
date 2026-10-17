@@ -1,0 +1,33 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<main class="spectator-waiting" aria-labelledby="spectator-waiting-title">
+    <p class="eyebrow">Spectating · @ModeLabel · @Projection.ScenarioName</p>
+    <h1 id="spectator-waiting-title">Waiting for the commanders to muster…</h1>
+    <ul class="seats" data-testid="spectator-seats">
+        @foreach (var seat in Projection.Memberships)
+        {
+            <li>
+                <span>@SeatNames.Display(Projection, seat.SeatId)</span>
+                <span class="@(seat.Ready ? "ready" : "unready")">@(seat.Ready ? "Ready" : "Not ready")</span>
+            </li>
+        }
+    </ul>
+    <button type="button" data-menu="leave" @onclick="() => OnLeave.InvokeAsync()">Stop watching</button>
+</main>
+
+@code {
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnLeave { get; set; }
+
+    private string ModeLabel => Projection.Mode switch
+    {
+        GameMode.Coop => "Void incursion",
+        GameMode.BattleRoyale => "Battle royale",
+        _ => "Vanilla duel",
+    };
+}

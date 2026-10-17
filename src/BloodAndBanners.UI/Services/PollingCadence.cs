@@ -1,7 +1,13 @@
+using BloodAndBanners.Contracts;
+
 namespace BloodAndBanners.UI.Services;
 
 public static class PollingCadence
 {
+    /// <summary>True when the viewer holds a seat and it is that seat's turn or pick; spectators never do.</summary>
+    public static bool IsViewersMoment(ViewerPermissions viewer, string? activeSeatId, string? pickingSeatId) =>
+        viewer.SeatId is { } seat && (activeSeatId == seat || pickingSeatId == seat);
+
     public static TimeSpan Select(
         bool activeLocalTurn,
         bool pendingChoice,

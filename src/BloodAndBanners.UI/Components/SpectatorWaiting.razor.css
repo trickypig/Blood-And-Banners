@@ -1,0 +1,10 @@
+.spectator-waiting { min-height: 100dvh; padding: clamp(1rem, 6vw, 4rem); color: #e4dcc7; background: linear-gradient(110deg, rgba(21, 22, 19, .98), rgba(38, 37, 32, .94)), repeating-linear-gradient(135deg, #24251f 0 3px, #1d1e1b 3px 11px); font-family: "Segoe UI", system-ui, sans-serif; }
+.eyebrow { margin: 0 0 .5rem; color: #d0ad66; letter-spacing: .04em; }
+h1 { margin: 0 0 1.5rem; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.6rem, 5vw, 2.6rem); }
+.seats { display: grid; gap: .4rem; max-width: 28rem; margin: 0 0 1.5rem; padding: 0; list-style: none; }
+.seats li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .85rem; background: rgba(0, 0, 0, .25); border: 1px solid #5a5548; }
+.ready { color: #b7d69a; }
+.unready { color: #a89f8a; }
+button { min-height: 2.5rem; padding: .45rem .9rem; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; font: inherit; cursor: pointer; }
+button:hover { background: #3a3a33; }
+button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }

@@ -43,6 +43,13 @@
                             disabled="@(IsBusy || string.IsNullOrWhiteSpace(_joinCode))">
                         Join war room
                     </button>
+                    <button type="button"
+                            class="watch"
+                            data-action="watch-game"
+                            disabled="@(IsBusy || string.IsNullOrWhiteSpace(_joinCode))"
+                            @onclick="Watch">
+                        Watch
+                    </button>
                 </div>
             </form>
         </div>
@@ -96,7 +103,15 @@
     }
     else if (!string.IsNullOrWhiteSpace(ErrorMessage))
     {
-        <p class="connection-error" role="alert">@ErrorMessage</p>
+        <div class="connection-error" role="alert">
+            <p>@ErrorMessage</p>
+            @if (!string.IsNullOrWhiteSpace(WatchOfferGameId))
+            {
+                <button type="button" class="watch-instead" data-action="watch-instead" @onclick="() => OnWatch.InvokeAsync(WatchOfferGameId)">
+                    Watch this match instead
+                </button>
+            }
+        </div>
     }
 </section>
 
@@ -112,6 +127,13 @@
 
     [Parameter]
     public EventCallback<string> OnJoin { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnWatch { get; set; }
+
+    /// <summary>A game the player tried to join but cannot; when set, the error offers to watch it.</summary>
+    [Parameter]
+    public string? WatchOfferGameId { get; set; }
 
     [Parameter]
     public string? InitialJoinCode { get; set; }
@@ -207,6 +229,10 @@
     private Task Join() => string.IsNullOrWhiteSpace(_joinCode)
         ? Task.CompletedTask
         : OnJoin.InvokeAsync(_joinCode.Trim());
+
+    private Task Watch() => string.IsNullOrWhiteSpace(_joinCode)
+        ? Task.CompletedTask
+        : OnWatch.InvokeAsync(_joinCode.Trim());
 
     private sealed record Battlefield(string Name, string Size, string Role, IReadOnlyList<string> Tags);
 }

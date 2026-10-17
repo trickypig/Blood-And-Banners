@@ -89,6 +89,17 @@ public sealed class GameClientTests
     }
 
     [Fact]
+    public void Spectators_poll_at_the_relaxed_cadence_even_when_no_seat_is_active()
+    {
+        var viewer = new ViewerPermissions("spectator", null, false, false);
+
+        Assert.False(PollingCadence.IsViewersMoment(viewer, activeSeatId: null, pickingSeatId: null));
+        Assert.False(PollingCadence.IsViewersMoment(viewer, activeSeatId: "seat-red", pickingSeatId: null));
+        Assert.True(PollingCadence.IsViewersMoment(new ViewerPermissions("player", "seat-red", true, false), "seat-red", null));
+        Assert.True(PollingCadence.IsViewersMoment(new ViewerPermissions("player", "seat-red", true, false), null, "seat-red"));
+    }
+
+    [Fact]
     public async Task Guest_session_is_used_to_create_and_deserialize_a_game()
     {
         var handler = new QueueHandler(
