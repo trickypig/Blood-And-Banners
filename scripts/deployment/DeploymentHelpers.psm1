@@ -1,7 +1,8 @@
 Set-StrictMode -Version Latest
 
 function Get-LegacyRsyncProtection {
-    return @('--filter=protect /play/***')
+    # The host keeps its own files (such as certificate challenges) beside our assetlinks.json in /.well-known/.
+    return @('--filter=protect /play/***', '--filter=protect /.well-known/***')
 }
 
 function Assert-SafeDeploymentPath {

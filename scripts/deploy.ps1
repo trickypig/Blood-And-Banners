@@ -63,11 +63,12 @@ Import-Module $DeploymentHelpers -Force
 # serves, so it is spelled out here.
 $SiteUrl = 'https://trickypig.com/blood/public/'
 
-# What the site serves: the pages at the root, the data they fetch and the
-# images. Everything else tracked (api/, src/, tests/, docs/, project files)
-# is source, not site, and must never land in the public folder - so this is
-# an allowlist, and a new top-level folder stays private until added here.
-$IncludePatterns = @('^[^/]+\.html$', '^data/', '^images/')
+# What the site serves: the pages at the root, the data they fetch, the
+# images and the Android app-link proof the game app is verified against.
+# Everything else tracked (api/, src/, tests/, docs/, project files) is
+# source, not site, and must never land in the public folder - so this is an
+# allowlist, and a new top-level folder stays private until added here.
+$IncludePatterns = @('^[^/]+\.html$', '^data/', '^images/', '^\.well-known/assetlinks\.json$')
 
 # Dotfiles anywhere inside the allowed folders still stay home.
 $ExcludePatterns = @('/\.')

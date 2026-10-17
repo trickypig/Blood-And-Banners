@@ -12,8 +12,11 @@ try {
     Import-Module $helpers -Force
 
     $protection = @(Get-LegacyRsyncProtection)
-    if ($protection.Count -ne 1 -or $protection[0] -ne '--filter=protect /play/***') {
+    if ($protection.Count -ne 2 -or $protection[0] -ne '--filter=protect /play/***') {
         throw 'legacy rsync protection does not preserve /play/'
+    }
+    if ($protection[1] -ne '--filter=protect /.well-known/***') {
+        throw 'legacy rsync protection does not preserve /.well-known/'
     }
 
     foreach ($safePath in @(

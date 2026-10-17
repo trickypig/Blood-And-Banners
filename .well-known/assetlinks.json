@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.trickypig.bloodandbanners.game",
+      "sha256_cert_fingerprints": [
+        "AB:25:9C:51:72:45:2A:AB:97:E0:81:CC:A7:17:9C:58:FD:4D:EE:74:23:BF:19:CF:4B:09:08:BE:76:14:C9:45"
+      ]
+    }
+  }
+]

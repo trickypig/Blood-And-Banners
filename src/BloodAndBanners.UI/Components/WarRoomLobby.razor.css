@@ -60,6 +60,9 @@
 .invite-card button,
 .war-room__orders button { min-height: 3rem; color: #f8f0dc; border: 1px solid var(--brass); cursor: pointer; }
 .invite-card button { background: #373830; }
+.invite-qr { grid-column: 1 / -1; display: grid; justify-items: center; gap: .5rem; margin: 0; border-top: 1px solid #514c41; }
+.invite-qr svg { width: min(12rem, 100%); height: auto; }
+.invite-qr figcaption { color: #aaa394; font-size: .9rem; }
 
 .war-room__muster { border-top: 1px solid #5c5649; }
 .muster-heading { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 0; }

@@ -1,5 +1,45 @@
-﻿@page "/"
+@page "/"
+@implements IDisposable
 
 @using BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
 
-<GameExperience ClientKind="maui" InviteBaseUri="https://blood.trickypig.com/play/" ImageBaseUrl="https://blood.trickypig.com/" />
+@* A new link restarts the game view so it reads the codes afresh, as a reload does on the web. *@
+<GameExperience @key="_linkCount"
+                ClientKind="maui"
+                InitialJoinCode="@_joinCode"
+                InitialWatchCode="@_watchCode"
+                InviteBaseUri="https://blood.trickypig.com/play/"
+                ImageBaseUrl="https://blood.trickypig.com/"
+                OnStoppedWatching="() => _watchCode = null" />
+
+@code {
+    private int _linkCount;
+    private string? _joinCode;
+    private string? _watchCode;
+
+    protected override void OnInitialized()
+    {
+        if (IncomingLinks.Latest is { } uri)
+        {
+            ReadLink(uri);
+        }
+
+        IncomingLinks.Received += OnLinkReceived;
+    }
+
+    private void OnLinkReceived(string uri) => InvokeAsync(() =>
+    {
+        ReadLink(uri);
+        _linkCount++;
+        StateHasChanged();
+    });
+
+    private void ReadLink(string uri)
+    {
+        _joinCode = InviteLinks.GameIdFromUri(uri);
+        _watchCode = InviteLinks.WatchGameIdFromUri(uri);
+    }
+
+    public void Dispose() => IncomingLinks.Received -= OnLinkReceived;
+}

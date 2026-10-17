@@ -27,6 +27,17 @@
             <button type="button" data-action="copy-invite" @onclick="OnCopyInvite" disabled="@IsBusy">
                 Copy invite link
             </button>
+            @if (!string.IsNullOrEmpty(InviteUrl))
+            {
+                var qr = InviteQrCode.Create(InviteUrl);
+                <figure class="invite-qr" data-testid="invite-qr">
+                    <svg viewBox="0 0 @qr.Size @qr.Size" role="img" aria-label="QR code for the invite link" shape-rendering="crispEdges">
+                        <rect width="@qr.Size" height="@qr.Size" fill="#fff" />
+                        <path d="@qr.PathData" fill="#000" />
+                    </svg>
+                    <figcaption>Scan to join on a phone</figcaption>
+                </figure>
+            }
         </div>
     </section>
 

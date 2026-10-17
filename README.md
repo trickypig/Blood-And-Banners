@@ -148,6 +148,8 @@ For Google Play, rerun the publish command with `-p:AndroidPackageFormats=aab`. 
 
 After installation, load each battlefield, create or join a war room, check hero/unit artwork, and verify reconnect after restarting the app. Confirm a copied invite opens `https://blood.trickypig.com/play/?join=...`.
 
+Invite links open in the Android app through verified App Links. `.well-known/assetlinks.json` lists the SHA-256 fingerprint of the key that signs the APK (currently the SDK debug key); add the release key's fingerprint there before shipping a release-signed build, then publish it with `scripts/deploy.ps1`. Read a fingerprint with `keytool -printcert -jarfile <apk>`.
+
 The `quality-and-android` workflow in `codemagic.yaml` builds Release Android APK artifacts. It does not configure a private release keystore or upload to Google Play; use the signed publish procedure above for distribution.
 
 
