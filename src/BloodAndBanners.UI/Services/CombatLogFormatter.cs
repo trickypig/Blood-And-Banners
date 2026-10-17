@@ -63,7 +63,7 @@ public static class CombatLogFormatter
             },
             "monsterPlaced" => $"The Void Lord placed {Text(payload, "monster")}.",
             "monsterRemoved" => $"The Void Lord withdrew {Text(payload, "monster")}.",
-            "setupConfirmed" => payload.TryGetProperty("monsters", out var monsters)
+            "setupConfirmed" => payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("monsters", out var monsters)
                 ? $"The Void Lord unleashed {monsters.GetInt32()} monsters. The heroes draft."
                 : "The Void Lord's horde stands ready.",
             "saveRolled" when Text(payload, "ability") == "Reflective Surface" =>
