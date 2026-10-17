@@ -14,4 +14,7 @@ public interface IGameSessionCoordinator
     Task<GameProjection> SubmitCommandAsync(long expectedVersion, string kind, object payload, CancellationToken cancellationToken = default);
     Task<EventPage> GetEventsAsync(long afterSequence, CancellationToken cancellationToken = default);
     Task LeaveAsync();
+    /// <summary>Gives up the saved lobby seat on the server and forgets it; false when the server could not be told.</summary>
+    Task<bool> LeaveSeatAsync(CancellationToken cancellationToken = default);
+    Task<GameProjection> RemoveSeatAsync(string seatId, CancellationToken cancellationToken = default);
 }

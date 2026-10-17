@@ -248,7 +248,79 @@ public sealed class GameExperienceTests : BunitContext
 
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]")));
         Assert.True(api.Left);
+        Assert.True(api.SeatLeft);
         Assert.Empty(cut.FindAll("[data-testid=game-code]"));
+    }
+
+    [Fact]
+    public void Cancelling_while_the_server_is_unreachable_warns_the_seat_may_linger()
+    {
+        var api = new FakeSessionCoordinator { Reconnected = LobbyProjection("seat-red", isHost: true), LeaveConfirmed = false };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-action=leaveMatch]").Click();
+        cut.Find("button[data-action=confirmLeave]").Click();
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]")));
+        Assert.Contains("may still show", cut.Markup);
+    }
+
+    [Fact]
+    public void Watching_instead_gives_up_the_seat_and_watches_the_same_game()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = LobbyProjection("seat-blue", isHost: false),
+            Watched = LobbyProjection("seat-blue", isHost: false) with { Viewer = new ViewerPermissions("spectator", null, false, false) },
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("button[data-action=watch-instead]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("game-fixture", api.WatchRequest));
+        Assert.True(api.SeatLeft);
+        Assert.Empty(cut.FindAll("button[data-action=toggle-ready]"));
+    }
+
+    [Fact]
+    public void The_host_removing_a_commander_shows_the_returned_roster()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = LobbyProjection("seat-red", isHost: true),
+            Removed = LobbyProjection("seat-red", isHost: true) with { Version = 4, Memberships = [new MembershipProjection("seat-red", 1, false, true)] },
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+        cut.WaitForElement("[data-remove-seat='seat-blue']").Click();
+        cut.Find("[data-confirm-remove]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("seat-blue", api.RemoveRequest));
+        cut.WaitForAssertion(() => Assert.Contains("Open banner", cut.Find("li[data-seat='2']").TextContent));
+    }
+
+    [Fact]
+    public void A_commander_removed_by_the_host_returns_to_the_start_and_is_told_why()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = LobbyProjection("seat-blue", isHost: false),
+            LaterReconnectFailure = new GameApiException(HttpStatusCode.Forbidden, "membershipRequired", "gone"),
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]")), TimeSpan.FromSeconds(5));
+        Assert.Contains("The host removed you from the war room.", cut.Markup);
+        Assert.True(api.Left);
     }
 
     [Fact]
@@ -476,6 +548,23 @@ public sealed class GameExperienceTests : BunitContext
         public (long Version, string Kind, object Payload)? CommandRequest { get; private set; }
         public EventPage Events { get; set; } = new([], 0);
         public bool Left { get; private set; }
+        public bool SeatLeft { get; private set; }
+        public bool LeaveConfirmed { get; init; } = true;
+        public GameProjection? Removed { get; init; }
+        public string? RemoveRequest { get; private set; }
+        public Exception? LaterReconnectFailure { get; init; }
+
+        public Task<bool> LeaveSeatAsync(CancellationToken cancellationToken = default)
+        {
+            SeatLeft = true;
+            return Task.FromResult(LeaveConfirmed);
+        }
+
+        public Task<GameProjection> RemoveSeatAsync(string seatId, CancellationToken cancellationToken = default)
+        {
+            RemoveRequest = seatId;
+            return Task.FromResult(Removed ?? throw new InvalidOperationException());
+        }
         public Exception? EventsFailure { get; init; }
         public Exception? JoinFailure { get; init; }
         public Exception? WatchFailure { get; init; }
@@ -520,10 +609,15 @@ public sealed class GameExperienceTests : BunitContext
 
         public async Task<GameProjection?> ReconnectAsync(CancellationToken cancellationToken = default)
         {
-            if (PollGate is not null && Interlocked.Increment(ref _reconnects) > 1)
+            var reconnects = Interlocked.Increment(ref _reconnects);
+            if (PollGate is not null && reconnects > 1)
             {
                 PollBlocked.TrySetResult();
                 await PollGate.Task;
+            }
+            if (LaterReconnectFailure is not null && reconnects > 1)
+            {
+                throw LaterReconnectFailure;
             }
             return WatchRequest is not null && !Left ? Watched : Reconnected;
         }

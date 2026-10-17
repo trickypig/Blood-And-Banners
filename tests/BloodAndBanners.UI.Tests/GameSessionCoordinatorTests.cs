@@ -274,6 +274,62 @@ public sealed class GameSessionCoordinatorTests
         new Dictionary<string, int> { ["seat-1"] = 0 },
         null);
 
+    [Fact]
+    public async Task Leaving_a_seat_tells_the_server_and_forgets_the_seat()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var api = new FakeGameApiClient();
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var confirmed = await coordinator.LeaveSeatAsync();
+
+        Assert.True(confirmed);
+        Assert.Equal((identity, "game-1", "seat-secret"), api.LeaveRequest);
+        Assert.Null(store.Current);
+    }
+
+    [Fact]
+    public async Task Leaving_a_seat_while_the_server_is_unreachable_still_forgets_the_seat()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var api = new FakeGameApiClient { LeaveFailure = new HttpRequestException("offline") };
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var confirmed = await coordinator.LeaveSeatAsync();
+
+        Assert.False(confirmed);
+        Assert.Null(store.Current);
+    }
+
+    [Fact]
+    public async Task Leaving_a_seat_the_server_already_dropped_counts_as_confirmed()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var api = new FakeGameApiClient { LeaveFailure = new GameApiException(HttpStatusCode.Forbidden, "membershipRequired", "gone") };
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        Assert.True(await coordinator.LeaveSeatAsync());
+        Assert.Null(store.Current);
+    }
+
+    [Fact]
+    public async Task Removing_a_seat_sends_the_host_credential()
+    {
+        var identity = new AuthSession("guest-1", "guest", "access-1", "refresh-1");
+        var projection = Projection("game-1");
+        var api = new FakeGameApiClient { Removed = projection };
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("device-1", identity, "game-1", "seat-secret") };
+        var coordinator = new GameSessionCoordinator(api, store);
+
+        var result = await coordinator.RemoveSeatAsync("seat-2");
+
+        Assert.Same(projection, result);
+        Assert.Equal((identity, "game-1", "seat-secret", "seat-2"), api.RemoveRequest);
+    }
+
     private sealed class MemoryGameSessionStore : IGameSessionStore
     {
         public StoredGameSession? Current { get; set; }
@@ -427,6 +483,28 @@ public sealed class GameSessionCoordinatorTests
         {
             StartRequest = (session, gameId, seatToken);
             return Task.FromResult(Started ?? throw new InvalidOperationException("Start response was not configured."));
+        }
+
+        public Exception? LeaveFailure { get; init; }
+        public (AuthSession Identity, string GameId, string SeatToken)? LeaveRequest { get; private set; }
+        public GameProjection? Removed { get; init; }
+        public (AuthSession Identity, string GameId, string SeatToken, string SeatId)? RemoveRequest { get; private set; }
+
+        public Task LeaveGameAsync(AuthSession session, string gameId, string seatToken, CancellationToken cancellationToken = default)
+        {
+            LeaveRequest = (session, gameId, seatToken);
+            return LeaveFailure is null ? Task.CompletedTask : Task.FromException(LeaveFailure);
+        }
+
+        public Task<GameProjection> RemoveSeatAsync(
+            AuthSession session,
+            string gameId,
+            string hostSeatToken,
+            string seatId,
+            CancellationToken cancellationToken = default)
+        {
+            RemoveRequest = (session, gameId, hostSeatToken, seatId);
+            return Task.FromResult(Removed ?? throw new InvalidOperationException("Remove response was not configured."));
         }
 
         public Task<SeatReassignmentResult> ReassignSeatAsync(

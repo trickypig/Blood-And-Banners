@@ -77,9 +77,26 @@
                                         @onclick='() => Send("assignVoidLord", new { seatId = seat.SeatId })'>Make Void Lord</button>
                             }
                         </div>
-                        <span class="seat__state @(seat.Ready ? "seat__state--ready" : null)">
-                            @(seat.Ready ? "Ready" : "Not ready")
-                        </span>
+                        <div class="seat__side">
+                            <span class="seat__state @(seat.Ready ? "seat__state--ready" : null)">
+                                @(seat.Ready ? "Ready" : "Not ready")
+                            </span>
+                            @if (Projection.Viewer.IsHost && seat.SeatId != Projection.Viewer.SeatId)
+                            {
+                                @if (_confirmRemoveSeatId == seat.SeatId)
+                                {
+                                    <button type="button" class="seat__remove seat__remove--confirm" data-confirm-remove="@seat.SeatId" disabled="@IsBusy"
+                                            @onclick="() => RemoveSeat(seat.SeatId)">Confirm remove</button>
+                                    <button type="button" class="seat__remove" data-keep-seat="@seat.SeatId"
+                                            @onclick="() => _confirmRemoveSeatId = null">Keep</button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="seat__remove" data-remove-seat="@seat.SeatId" disabled="@IsBusy"
+                                            @onclick="() => _confirmRemoveSeatId = seat.SeatId">Remove</button>
+                                }
+                            }
+                        </div>
                     }
                 </li>
             }
@@ -130,6 +147,9 @@
 
     <div class="war-room__exit">
         <LeaveMatchControl Label="Cancel" ConfirmLabel="Confirm cancel" OnLeave="OnLeave" />
+        <button type="button" class="watch-instead" data-action="watch-instead" disabled="@IsBusy" @onclick="OnWatchInstead">
+            Watch instead
+        </button>
     </div>
 </main>
 
@@ -163,6 +183,22 @@
 
     [Parameter]
     public EventCallback OnLeave { get; set; }
+
+    /// <summary>Gives up this seat and watches the same match as a spectator.</summary>
+    [Parameter]
+    public EventCallback OnWatchInstead { get; set; }
+
+    /// <summary>The host removes another commander's seat.</summary>
+    [Parameter]
+    public EventCallback<string> OnRemoveSeat { get; set; }
+
+    private string? _confirmRemoveSeatId;
+
+    private async Task RemoveSeat(string seatId)
+    {
+        _confirmRemoveSeatId = null;
+        await OnRemoveSeat.InvokeAsync(seatId);
+    }
 
     private int SeatLimit => Projection.Mode == GameMode.VanillaPvp ? 2 : 5;
 

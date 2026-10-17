@@ -117,6 +117,18 @@ final class Application
             if (preg_match('#^/api/v1/games/([^/]+)/join$#', $request->path, $matches) === 1 && $request->method === 'POST') {
                 return new Response(200, $this->seatSession($this->games->joinGame($matches[1], $principal['identityId'])));
             }
+            if (preg_match('#^/api/v1/games/([^/]+)/leave$#', $request->path, $matches) === 1 && $request->method === 'POST') {
+                $this->games->leaveGame($matches[1], $principal['identityId'], $request->seatToken());
+                return new Response(200, ['left' => true]);
+            }
+            if (preg_match('#^/api/v1/games/([^/]+)/seats/([^/]+)/remove$#', $request->path, $matches) === 1 && $request->method === 'POST') {
+                return new Response(200, $this->games->removeSeat(
+                    $matches[1],
+                    $principal['identityId'],
+                    $request->seatToken(),
+                    $matches[2]
+                ));
+            }
             if (preg_match('#^/api/v1/games/([^/]+)/start$#', $request->path, $matches) === 1 && $request->method === 'POST') {
                 return new Response(200, $this->games->startGame(
                     $matches[1],

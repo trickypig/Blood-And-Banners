@@ -43,6 +43,19 @@ public interface IGameApiClient
         string seatToken,
         CancellationToken cancellationToken = default);
 
+    Task LeaveGameAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
+        CancellationToken cancellationToken = default);
+
+    Task<GameProjection> RemoveSeatAsync(
+        AuthSession session,
+        string gameId,
+        string hostSeatToken,
+        string seatId,
+        CancellationToken cancellationToken = default);
+
     Task<SeatReassignmentResult> ReassignSeatAsync(
         AuthSession session,
         string gameId,

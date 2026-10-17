@@ -33,7 +33,9 @@ else if (_game.Lifecycle == GameLifecycle.Lobby)
                   OnStart="StartGame"
                   OnCommand="SubmitGameCommand"
                   OnCopyInvite="CopyInvite"
-                  OnLeave="ReturnToWarRoom" />
+                  OnRemoveSeat="RemoveSeat"
+                  OnWatchInstead="WatchInstead"
+                  OnLeave="LeaveWarRoom" />
 }
 else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
 {
@@ -281,6 +283,64 @@ else
         }
     }
 
+    private Task RemoveSeat(string seatId) => RunCommand(async () =>
+    {
+        ApplyProjection(await Sessions.RemoveSeatAsync(seatId, _pollCancellation.Token));
+        _status = "The commander was removed from the war room.";
+    }, "That commander could not be removed. The room has been refreshed; try again.", refreshAfterFailure: true);
+
+    /// <summary>Gives up the lobby seat on the server, so the other commanders see it open again.</summary>
+    private async Task LeaveWarRoom()
+    {
+        _generation++;
+        bool confirmed;
+        _isBusy = true;
+        try
+        {
+            confirmed = await Sessions.LeaveSeatAsync(_pollCancellation.Token);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+        await ReturnToWarRoom();
+        if (!confirmed)
+        {
+            _error = "The server could not be reached, so your seat may still show to the other commanders for a while.";
+        }
+    }
+
+    private async Task WatchInstead()
+    {
+        if (_game is null)
+        {
+            return;
+        }
+        var gameId = _game.GameId;
+        _generation++;
+        _isBusy = true;
+        try
+        {
+            await Sessions.LeaveSeatAsync(_pollCancellation.Token);
+            ApplyProjection(await Sessions.WatchAsync(gameId, _pollCancellation.Token));
+            _status = null;
+            _error = null;
+            StartPolling();
+        }
+        catch (OperationCanceledException) when (_pollCancellation.IsCancellationRequested)
+        {
+        }
+        catch (Exception)
+        {
+            await ReturnToWarRoom();
+            _error = "You left your seat, but the match could not be opened for watching. Try watching it by its code.";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
     private async Task ReturnToWarRoom()
     {
         var wasWatching = IsWatching;
@@ -436,6 +496,27 @@ else
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 return;
+            }
+            catch (GameApiException error) when (error.Code == "membershipRequired" && current.Viewer.Role != "spectator")
+            {
+                var removed = false;
+                await InvokeAsync(async () =>
+                {
+                    if (generation != _generation)
+                    {
+                        return;
+                    }
+                    removed = true;
+                    await ReturnToWarRoom();
+                    _error = current.Lifecycle == GameLifecycle.Lobby
+                        ? "The host removed you from the war room."
+                        : "You no longer hold a seat in that match.";
+                    StateHasChanged();
+                });
+                if (removed)
+                {
+                    return;
+                }
             }
             catch (Exception)
             {

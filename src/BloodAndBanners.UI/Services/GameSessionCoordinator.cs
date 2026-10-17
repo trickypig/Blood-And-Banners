@@ -116,6 +116,47 @@ public sealed class GameSessionCoordinator(
         await store.ClearAsync();
     }
 
+    public async Task<bool> LeaveSeatAsync(CancellationToken cancellationToken = default)
+    {
+        var session = await store.LoadAsync();
+        if (session is null)
+        {
+            return true;
+        }
+        try
+        {
+            try
+            {
+                await api.LeaveGameAsync(session.Identity, session.GameId, session.SeatToken, cancellationToken);
+            }
+            catch (HttpRequestException error) when (error.StatusCode is HttpStatusCode.Unauthorized)
+            {
+                var refreshed = await api.RefreshAsync(session.Identity.RefreshToken, session.DeviceId, cancellationToken);
+                await api.LeaveGameAsync(refreshed, session.GameId, session.SeatToken, cancellationToken);
+            }
+            return true;
+        }
+        catch (GameApiException error) when ((int)error.StatusCode is >= 403 and < 500)
+        {
+            // The server answered: the seat is already gone or can no longer be given up.
+            return true;
+        }
+        catch (HttpRequestException)
+        {
+            return false;
+        }
+        finally
+        {
+            await store.ClearAsync();
+        }
+    }
+
+    public async Task<GameProjection> RemoveSeatAsync(string seatId, CancellationToken cancellationToken = default)
+    {
+        var session = await RequiredSessionAsync();
+        return await api.RemoveSeatAsync(session.Identity, session.GameId, session.SeatToken, seatId, cancellationToken);
+    }
+
     public async Task<GameProjection> StartGameAsync(CancellationToken cancellationToken = default)
     {
         var session = await RequiredSessionAsync();

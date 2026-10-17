@@ -87,12 +87,17 @@ final class GameService
             if ($count >= $maximum) {
                 throw new GameServiceException('gameFull', 'This game has no open player seats.', (int)$game['version']);
             }
+            $taken = array_map('intval', array_column($this->memberships($gameId), 'seat_index'));
+            $seatIndex = 1;
+            while (in_array($seatIndex, $taken, true)) {
+                $seatIndex++;
+            }
             $seatToken = self::token();
-            $this->insertMembership($gameId, $identityId, $count + 1, false, $seatToken);
+            $this->insertMembership($gameId, $identityId, $seatIndex, false, $seatToken);
             $version = (int)$game['version'] + 1;
             $this->connection->prepare('UPDATE games SET version = :version, updated_at = :updated WHERE id = :id')
                 ->execute(['version' => $version, 'updated' => self::now(), 'id' => $gameId]);
-            $this->appendEvent($gameId, $version, 'playerJoined', $identityId, ['seatIndex' => $count + 1]);
+            $this->appendEvent($gameId, $version, 'playerJoined', $identityId, ['seatIndex' => $seatIndex]);
             $projection = $this->projection($gameId, $identityId);
             $this->writeSnapshot($gameId, $version, $projection);
             $this->connection->commit();
@@ -101,6 +106,78 @@ final class GameService
             $this->rollback();
             throw $error;
         }
+    }
+
+    /** Gives up a lobby seat. The host role passes to the lowest remaining seat; an emptied room is deleted. */
+    public function leaveGame(string $gameId, string $identityId, string $seatToken): void
+    {
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
+            $this->vacateLobbySeat($game, $membership, 'playerLeft', $identityId);
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
+        }
+    }
+
+    public function removeSeat(string $gameId, string $hostIdentityId, string $hostSeatToken, string $seatId): array
+    {
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            $host = $this->requireSeatCredential($gameId, $hostIdentityId, $hostSeatToken);
+            if ($game['host_identity_id'] !== $hostIdentityId) {
+                throw new GameServiceException('hostRequired', 'Only the host can remove a commander.', (int)$game['version']);
+            }
+            if ((string)$host['id'] === $seatId) {
+                throw new GameServiceException('cannotRemoveSelf', 'Leave the war room instead of removing your own seat.', (int)$game['version']);
+            }
+            $target = null;
+            foreach ($this->memberships($gameId) as $seat) {
+                if ((string)$seat['id'] === $seatId) {
+                    $target = $seat;
+                }
+            }
+            if ($target === null) {
+                throw new GameServiceException('seatNotFound', 'The requested seat does not exist.', (int)$game['version']);
+            }
+            $this->vacateLobbySeat($game, $target, 'playerRemoved', $hostIdentityId);
+            $projection = $this->projection($gameId, $hostIdentityId);
+            $this->connection->commit();
+            return $projection;
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
+        }
+    }
+
+    private function vacateLobbySeat(array $game, array $seat, string $eventKind, string $actor): void
+    {
+        $currentVersion = (int)$game['version'];
+        if ($game['lifecycle'] !== 'lobby') {
+            throw new GameServiceException('illegalLifecycle', 'Seats can only be given up in the war room.', $currentVersion);
+        }
+        $this->connection->prepare('DELETE FROM game_memberships WHERE game_id = :game AND id = :seat')
+            ->execute(['game' => $game['id'], 'seat' => $seat['id']]);
+        $remaining = $this->memberships($game['id']);
+        if ($remaining === []) {
+            $this->connection->prepare('DELETE FROM games WHERE id = :id')->execute(['id' => $game['id']]);
+            return;
+        }
+        if ((bool)$seat['is_host']) {
+            $heir = $remaining[0];
+            $this->connection->prepare('UPDATE game_memberships SET is_host = 1 WHERE game_id = :game AND id = :seat')
+                ->execute(['game' => $game['id'], 'seat' => $heir['id']]);
+            $this->connection->prepare('UPDATE games SET host_identity_id = :identity WHERE id = :game')
+                ->execute(['identity' => $heir['identity_id'], 'game' => $game['id']]);
+        }
+        $newVersion = $currentVersion + 1;
+        $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+        $this->appendEvent($game['id'], $newVersion, $eventKind, $actor, ['seatId' => (string)$seat['id'], 'seatIndex' => (int)$seat['seat_index']]);
+        $this->writeSnapshot($game['id'], $newVersion, $this->spectatorProjection($this->gameRow($game['id'])));
     }
 
     public function setReady(string $gameId, string $identityId, string $seatToken, bool $ready): array

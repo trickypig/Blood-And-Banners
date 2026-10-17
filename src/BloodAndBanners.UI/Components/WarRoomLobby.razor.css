@@ -86,8 +86,11 @@
 .war-room__error { grid-column: 1 / -1; margin: 0; padding: .75rem .9rem; }
 .war-room__status { border-left: .25rem solid var(--brass); background: #303129; }
 .war-room__error { color: #fff0e6 !important; border-left: .25rem solid #d0ad66; background: var(--oxblood); }
-.war-room__exit { padding-top: 1.5rem; border-top: 1px solid #5c5649; }
-.war-room__exit ::deep .leave-match { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; width: auto; margin: 0; }
+.war-room__exit { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; padding-top: 1.5rem; border-top: 1px solid #5c5649; }
+.war-room__exit ::deep .leave-match { display: contents; }
+.watch-instead { min-height: 3rem; font: inherit; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; cursor: pointer; }
+.watch-instead:hover { background: #3a3a33; }
+.watch-instead:disabled { opacity: .45; cursor: not-allowed; }
 .war-room__exit ::deep .leave-match button { min-height: 3rem; font: inherit; cursor: pointer; }
 .war-room button:focus-visible,
 .war-room input:focus-visible { outline: .2rem solid #fff3aa; outline-offset: .16rem; }
@@ -97,9 +100,15 @@
     .war-room__briefing { grid-template-columns: 1fr; }
     .seat-list { grid-template-columns: 1fr; }
     .war-room__orders,
-    .war-room__exit ::deep .leave-match { grid-template-columns: 1fr; }
+    .war-room__exit { grid-template-columns: 1fr; }
     .host-note { grid-column: 1; text-align: left; }
 }
 
 .seat__role { font-weight: 700; color: #b48cff; letter-spacing: .04em; }
 .seat__assign, .role-order { font: inherit; }
+.seat .seat__side { display: grid; justify-items: end; gap: .4rem; }
+.seat__remove { padding: .3rem .7rem; font: inherit; font-size: .85rem; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; cursor: pointer; }
+.seat__remove:hover { background: #3a3a33; }
+.seat__remove--confirm { color: #f8f0dc; background: var(--oxblood); border-color: #b18b48; }
+.seat__remove--confirm:hover { background: #7d262d; }
+.seat__remove:disabled { opacity: .45; cursor: not-allowed; }

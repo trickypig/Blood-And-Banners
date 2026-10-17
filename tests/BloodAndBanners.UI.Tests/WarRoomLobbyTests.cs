@@ -99,4 +99,56 @@ public sealed class WarRoomLobbyTests : BunitContext
         Assert.NotNull(cut.Find(".war-room__muster [data-testid=commander-name]"));
         Assert.Contains("data-testid=\"commander-name\"", cut.Find(".war-room__muster").InnerHtml.Split("seat-list")[0]);
     }
+
+    [Fact]
+    public void The_host_removes_another_commander_after_confirming()
+    {
+        var removed = new List<string>();
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(c => c.Projection, CoopLobby("seat-1", true, null, "setReady"))
+            .Add(c => c.OnRemoveSeat, (string seatId) => removed.Add(seatId)));
+
+        Assert.Empty(cut.FindAll("li[data-seat='1'] [data-remove-seat]"));
+        cut.Find("li[data-seat='2'] [data-remove-seat]").Click();
+        Assert.Empty(removed);
+        cut.Find("li[data-seat='2'] [data-confirm-remove]").Click();
+
+        Assert.Equal(["seat-2"], removed);
+    }
+
+    [Fact]
+    public void Removing_can_be_called_off()
+    {
+        var removed = new List<string>();
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(c => c.Projection, CoopLobby("seat-1", true, null, "setReady"))
+            .Add(c => c.OnRemoveSeat, (string seatId) => removed.Add(seatId)));
+
+        cut.Find("[data-remove-seat='seat-2']").Click();
+        cut.Find("li[data-seat='2'] [data-keep-seat]").Click();
+
+        Assert.Empty(removed);
+        Assert.NotNull(cut.Find("[data-remove-seat='seat-2']"));
+    }
+
+    [Fact]
+    public void Only_the_host_can_remove_commanders()
+    {
+        var cut = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-2", false, null, "setReady")));
+
+        Assert.Empty(cut.FindAll("[data-remove-seat]"));
+    }
+
+    [Fact]
+    public void A_player_can_switch_to_watching()
+    {
+        var watched = false;
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(c => c.Projection, CoopLobby("seat-2", false, null, "setReady"))
+            .Add(c => c.OnWatchInstead, () => watched = true));
+
+        cut.Find("[data-action=watch-instead]").Click();
+
+        Assert.True(watched);
+    }
 }

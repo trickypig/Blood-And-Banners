@@ -138,6 +138,40 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return await ReadAsync<EventPage>(response, cancellationToken);
     }
 
+    public async Task LeaveGameAsync(
+        AuthSession session,
+        string gameId,
+        string seatToken,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateSeatRequest(
+            HttpMethod.Post,
+            $"api/v1/games/{Uri.EscapeDataString(gameId)}/leave",
+            session,
+            seatToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw await ErrorAsync(response, cancellationToken);
+        }
+    }
+
+    public async Task<GameProjection> RemoveSeatAsync(
+        AuthSession session,
+        string gameId,
+        string hostSeatToken,
+        string seatId,
+        CancellationToken cancellationToken = default)
+    {
+        using var request = CreateSeatRequest(
+            HttpMethod.Post,
+            $"api/v1/games/{Uri.EscapeDataString(gameId)}/seats/{Uri.EscapeDataString(seatId)}/remove",
+            session,
+            hostSeatToken);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        return await ReadAsync<GameProjection>(response, cancellationToken);
+    }
+
     public async Task<SeatReassignmentResult> ReassignSeatAsync(
         AuthSession session,
         string gameId,
