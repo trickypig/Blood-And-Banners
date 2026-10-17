@@ -114,15 +114,36 @@ else
         catch (OperationCanceledException) when (_pollCancellation.IsCancellationRequested)
         {
         }
+        catch (Exception) when (watching)
+        {
+            _error = WatchFailed;
+            await OnStoppedWatching.InvokeAsync();
+            await RestoreSavedSeat();
+        }
         catch (Exception)
         {
-            _error = watching
-                ? WatchFailed
-                : "Your saved war room could not be restored. Check the server and try again.";
+            _error = "Your saved war room could not be restored. Check the server and try again.";
         }
         finally
         {
             _isBusy = false;
+        }
+    }
+
+    /// <summary>After watching ends, a player who holds a seat elsewhere goes back to their own match.</summary>
+    private async Task RestoreSavedSeat()
+    {
+        try
+        {
+            if (await Sessions.ReconnectAsync(_pollCancellation.Token) is { } mine)
+            {
+                ApplyProjection(mine);
+                StartPolling();
+            }
+        }
+        catch (Exception) when (!_pollCancellation.IsCancellationRequested)
+        {
+            // No saved seat could be reached; the start screen stays.
         }
     }
 
@@ -276,6 +297,7 @@ else
         if (wasWatching)
         {
             await OnStoppedWatching.InvokeAsync();
+            await RestoreSavedSeat();
         }
     }
 

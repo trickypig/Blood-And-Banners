@@ -375,6 +375,74 @@ public sealed class GameExperienceTests : BunitContext
     }
 
     [Fact]
+    public void Stopping_watching_returns_a_seated_player_to_their_own_match()
+    {
+        var stopped = false;
+        var api = new FakeSessionCoordinator
+        {
+            Watched = Spectating(LobbyProjection("seat-red", isHost: true)),
+            Reconnected = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialWatchCode, "other-game")
+            .Add(component => component.OnStoppedWatching, () => stopped = true));
+        cut.WaitForElement("[data-testid=spectator-seats]");
+        cut.Find("[data-menu=leave]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Muster your host", cut.Markup));
+        Assert.True(stopped);
+        cut.Find("[data-menu=toggle]").Click();
+        Assert.Equal("Leave Match", cut.Find("[data-menu=leave]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void A_watch_link_that_fails_clears_itself_and_restores_the_saved_seat()
+    {
+        var stopped = false;
+        var api = new FakeSessionCoordinator
+        {
+            WatchFailure = new GameApiException(HttpStatusCode.NotFound, "gameNotFound", "Missing."),
+            Reconnected = DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialWatchCode, "stale-game")
+            .Add(component => component.OnStoppedWatching, () => stopped = true));
+
+        cut.WaitForAssertion(() => Assert.Contains("Muster your host", cut.Markup));
+        Assert.True(stopped);
+        Assert.Contains("That match could not be found", cut.Markup);
+    }
+
+    [Fact]
+    public void A_watch_link_that_fails_without_a_saved_seat_shows_the_start_screen_and_clears_itself()
+    {
+        var stopped = false;
+        var api = new FakeSessionCoordinator
+        {
+            WatchFailure = new GameApiException(HttpStatusCode.NotFound, "gameNotFound", "Missing.")
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(parameters => parameters
+            .Add(component => component.ClientKind, "web")
+            .Add(component => component.InitialWatchCode, "stale-game")
+            .Add(component => component.OnStoppedWatching, () => stopped = true));
+
+        cut.WaitForAssertion(() => Assert.Contains("That match could not be found", cut.Markup));
+        Assert.True(stopped);
+        Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]"));
+    }
+
+    [Fact]
     public void A_player_leaving_their_own_match_does_not_report_stopped_watching()
     {
         var stopped = false;
@@ -410,6 +478,7 @@ public sealed class GameExperienceTests : BunitContext
         public bool Left { get; private set; }
         public Exception? EventsFailure { get; init; }
         public Exception? JoinFailure { get; init; }
+        public Exception? WatchFailure { get; init; }
         public TaskCompletionSource? PollGate { get; init; }
         public TaskCompletionSource PollBlocked { get; } = new();
         private int _reconnects;
@@ -465,6 +534,11 @@ public sealed class GameExperienceTests : BunitContext
         public Task<GameProjection> WatchAsync(string gameId, CancellationToken cancellationToken = default)
         {
             WatchRequest = gameId;
+            if (WatchFailure is not null)
+            {
+                WatchRequest = null;
+                return Task.FromException<GameProjection>(WatchFailure);
+            }
             return Task.FromResult(Watched ?? throw new InvalidOperationException());
         }
 
