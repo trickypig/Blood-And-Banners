@@ -136,7 +136,7 @@
                 {
                     "name": "Trembling Fear",
                     "type": "Essence",
-                    "description": "Any non-hero attacking him gets -1 Power."
+                    "description": "Any non-hero, non-boss attacking him gets -1 Power."
                 }
             ]
         },

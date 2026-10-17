@@ -118,12 +118,16 @@ function vanilla_ability_tests(): array
             expect_same(false, AbilityRegistry::isPlayable('Not Printed'), 'unknown abilities remain unplayable');
         },
 
-        'Trembling Fear weakens non-hero attackers only' => static function (): void {
-            $state = vanilla_battle(vanilla_board(vanilla_line(3)), [
+        'Trembling Fear weakens non-hero, non-boss attackers only' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(5)), [
                 vanilla_unit('a1', 'seat-a', '0,0', ['power' => 3]),
                 vanilla_unit('a-hero', 'seat-a', '2,0', ['power' => 3, 'isHero' => true]),
                 ability_unit('b-hero', 'seat-b', '1,0', ['Trembling Fear'], ['isHero' => true]),
+                vanilla_unit('a-boss', 'seat-a', '3,0', ['power' => 3, 'tier' => 'boss']),
+                vanilla_unit('a-elite', 'seat-a', '4,0', ['power' => 3, 'tier' => 'elite']),
             ]);
+            expect_same(3, Stats::effective($state, 'a-boss', 'power', ['attackerId' => 'a-boss', 'defenderId' => 'b-hero']), 'bosses are not afraid');
+            expect_same(2, Stats::effective($state, 'a-elite', 'power', ['attackerId' => 'a-elite', 'defenderId' => 'b-hero']), 'elites still are');
             $vs = ['attackerId' => 'a1', 'defenderId' => 'b-hero'];
             expect_same(2, Stats::effective($state, 'a1', 'power', $vs), 'a unit attacking Urgrok loses one Power');
             expect_same(3, Stats::effective($state, 'a-hero', 'power', ['attackerId' => 'a-hero', 'defenderId' => 'b-hero']), 'heroes are not afraid');

@@ -10,6 +10,8 @@ final class TremblingFear extends Ability
         $attacking = $stat === 'power'
             && ($context['defenderId'] ?? null) === $ownerId
             && ($context['attackerId'] ?? null) === $unitId;
-        return $attacking && !$state['units'][$unitId]['isHero'] ? -1 : 0;
+        $attacker = $state['units'][$unitId];
+        $fearless = $attacker['isHero'] || ($attacker['tier'] ?? null) === 'boss';
+        return $attacking && !$fearless ? -1 : 0;
     }
 }
