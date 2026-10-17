@@ -27,7 +27,13 @@
             <button type="button" aria-label="Zoom out" disabled="@(_viewport.Scale <= _viewport.MinimumScale)" @onclick="() => ZoomViewport(1 / ZoomFactor)">−</button>
             <button type="button" aria-label="Fit whole battlefield" @onclick="FitViewport">Fit</button>
             <button type="button" aria-label="Zoom in" disabled="@(_viewport.Scale >= BoardViewport.MaxScale)" @onclick="() => ZoomViewport(ZoomFactor)">+</button>
-            <span class="viewport-status" data-testid="viewport-status" role="status">Zoom @ZoomPercent% · @(_followEvents ? "Following events" : "Manual view")</span>
+            <button type="button"
+                    class="follow-toggle"
+                    data-follow-events
+                    aria-pressed="@(_followEvents ? "true" : "false")"
+                    title="@(_followEvents ? "Auto: the board follows the action. Drag the board or click to stop." : "Auto off: click to follow the action again.")"
+                    @onclick="ToggleFollowing">Auto</button>
+            <span class="viewport-status" data-testid="viewport-status" role="status">Zoom @ZoomPercent%</span>
         </div>
         @if (_targeting is { } aiming)
         {
@@ -402,16 +408,6 @@
                 }
             </section>
         }
-        else
-        {
-            <section class="spectator-controls">
-                <h2>Battle camera</h2>
-                <button type="button" data-follow-events aria-pressed="@_followEvents" @onclick="ResumeFollowing">
-                    Follow the action
-                </button>
-                <p>Moving the board pauses automatic following.</p>
-            </section>
-        }
 
         <section class="rosters" aria-label="Armies">
             @foreach (var seat in Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId))
@@ -515,6 +511,7 @@
     private IJSObjectReference? _viewportModule;
     private ElementBounds _boardBounds = new();
     private bool _followEvents = true;
+    private string? _lastActiveSeatId;
 
     private string? _selectedUnitId;
     private sealed record Targeting(string Kind, string Ability, IReadOnlyList<string> TargetHexes, TargetSelectionProjection? Selection);
@@ -579,6 +576,12 @@
         {
             _followEvents = true;
         }
+        else if (!Projection.Viewer.CanCommand && Projection.Turn.ActiveSeatId != _lastActiveSeatId)
+        {
+            // Spectators pick the camera back up each turn; players keep the view they chose.
+            _followEvents = true;
+        }
+        _lastActiveSeatId = Projection.Turn.ActiveSeatId;
         var layout = Index.Layout;
         _viewport.ResetForGame(
             Projection.GameId,
@@ -1466,14 +1469,12 @@
     {
         await MeasureBoard();
         _viewport.ZoomAt(new ViewportPoint(_viewport.ContainerWidth / 2, _viewport.ContainerHeight / 2), factor);
-        await PauseFollowing();
     }
 
     private async Task FitViewport()
     {
         await MeasureBoard();
         _viewport.Fit();
-        await PauseFollowing();
     }
 
     private async Task OnWheel(WheelEventArgs args)
@@ -1481,7 +1482,6 @@
         await MeasureBoard();
         var point = LocalPoint(args.ClientX, args.ClientY);
         _viewport.ZoomAt(point, args.DeltaY < 0 ? ZoomFactor : 1 / ZoomFactor);
-        await PauseFollowing();
     }
 
     private async Task BeginBoardPointer(PointerEventArgs args, bool canPan)
@@ -1498,9 +1498,9 @@
     private async Task MoveBoardPointer(PointerEventArgs args)
     {
         var center = _viewport.Center;
-        var scale = _viewport.Scale;
         _viewport.MovePointer(args.PointerId, LocalPoint(args.ClientX, args.ClientY));
-        if (center != _viewport.Center || scale != _viewport.Scale)
+        // Zooming, pinch included, keeps following on; only dragging the board takes the camera.
+        if (!_viewport.IsPinching && center != _viewport.Center)
         {
             await PauseFollowing();
         }
@@ -1511,6 +1511,8 @@
         _followEvents = false;
         await OnFollowEvents.InvokeAsync();
     }
+
+    private Task ToggleFollowing() => _followEvents ? PauseFollowing() : ResumeFollowing();
 
     private async Task ResumeFollowing()
     {

@@ -39,6 +39,9 @@ public sealed class BoardViewport
     private string? _gameId;
 
     public ViewportPoint Center { get; private set; }
+
+    /// <summary>Whether two touches are pinch-zooming the board.</summary>
+    public bool IsPinching => _pinch is not null;
     public double Scale { get; private set; } = 1;
     public double ContainerWidth { get; private set; } = 800;
     public double ContainerHeight { get; private set; } = 600;

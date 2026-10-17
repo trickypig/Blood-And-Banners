@@ -709,6 +709,53 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Auto_toggle_survives_zooming_and_flips_on_click()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, TerrainMovementProjection()));
+        string Pressed() => cut.Find("button[data-follow-events]").GetAttribute("aria-pressed")!;
+
+        Assert.Equal("Auto", cut.Find("button[data-follow-events]").TextContent);
+        Assert.Equal("true", Pressed());
+        Assert.DoesNotContain("Following", cut.Find("[data-testid=viewport-status]").TextContent);
+
+        cut.Find("button[aria-label='Zoom in']").Click();
+        cut.Find("button[aria-label='Fit whole battlefield']").Click();
+        cut.Find(".board-interaction-surface").TriggerEvent("onwheel", new WheelEventArgs { DeltaY = -1 });
+        Assert.Equal("true", Pressed());
+
+        cut.Find("button[data-follow-events]").Click();
+        Assert.Equal("false", Pressed());
+        cut.Find("button[data-follow-events]").Click();
+        Assert.Equal("true", Pressed());
+    }
+
+    [Theory]
+    [InlineData(false, "true")]
+    [InlineData(true, "false")]
+    public void Turn_change_resumes_auto_for_spectators_only(bool canCommand, string expected)
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var projection = TerrainMovementProjection();
+        projection = projection with
+        {
+            Viewer = projection.Viewer with { CanCommand = canCommand },
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        cut.Find("button[data-follow-events]").Click();
+        Assert.Equal("false", cut.Find("button[data-follow-events]").GetAttribute("aria-pressed"));
+
+        var nextTurn = projection with
+        {
+            Version = projection.Version + 1,
+            Turn = projection.Turn with { ActiveSeatId = projection.Turn.ActiveSeatId == "seat-blue" ? "seat-red" : "seat-blue" },
+        };
+        cut.Render(parameters => parameters.Add(component => component.Projection, nextTurn));
+
+        Assert.Equal(expected, cut.Find("button[data-follow-events]").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
     public void Pointer_drag_suppresses_the_following_hex_click_but_small_motion_and_keyboard_still_activate()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
