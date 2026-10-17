@@ -1,0 +1,106 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@implements IDisposable
+
+@if (_shown is { } turn)
+{
+    <div class="turn-popup-layer">
+        <section class="turn-popup @(turn.Mine ? "mine" : null)"
+                 role="status"
+                 aria-live="polite"
+                 data-testid="turn-popup"
+                 data-seat-id="@turn.SeatId">
+            <button type="button" class="turn-popup-close" aria-label="Close turn notice" data-testid="turn-popup-close" @onclick="Close">×</button>
+            <p class="turn-popup-round">Round @turn.Round</p>
+            <h2>@turn.Title</h2>
+        </section>
+    </div>
+}
+
+@code {
+    /// <summary>How long the notice stays up before it closes itself.</summary>
+    public static readonly TimeSpan ShowTime = TimeSpan.FromSeconds(1.6);
+
+    [Parameter, EditorRequired]
+    public GameProjection Projection { get; set; } = default!;
+
+    /// <summary>Replaces the timer, so tests can close the notice by hand.</summary>
+    [Parameter]
+    public Func<TimeSpan, CancellationToken, Task>? Delay { get; set; }
+
+    private sealed record TurnNotice(string SeatId, int Round, string Title, bool Mine);
+
+    private string? _gameId;
+    private string? _seatId;
+    private TurnNotice? _shown;
+    private CancellationTokenSource? _timer;
+
+    protected override void OnParametersSet()
+    {
+        var seat = Projection.Lifecycle == GameLifecycle.Setup || Projection.Result is not null ? null : Projection.Turn.ActiveSeatId;
+        if (_gameId != Projection.GameId)
+        {
+            // The first look at a game is the state it is already in, not a change of turn.
+            _gameId = Projection.GameId;
+            _seatId = seat;
+            Close();
+            return;
+        }
+        if (seat == _seatId)
+        {
+            return;
+        }
+        _seatId = seat;
+        if (seat is null)
+        {
+            Close();
+            return;
+        }
+        var name = SeatNames.Display(Projection, seat);
+        var mine = seat == Projection.Viewer.SeatId;
+        Show(new TurnNotice(seat, Projection.Turn.Round, mine ? "Your turn" : $"{name}'s turn", mine));
+    }
+
+    private void Show(TurnNotice notice)
+    {
+        StopTimer();
+        _shown = notice;
+        _timer = new CancellationTokenSource();
+        _ = ExpireAsync(notice, _timer.Token);
+    }
+
+    private async Task ExpireAsync(TurnNotice notice, CancellationToken token)
+    {
+        try
+        {
+            await (Delay is { } delay ? delay(ShowTime, token) : Task.Delay(ShowTime, token));
+            await InvokeAsync(() =>
+            {
+                if (_shown == notice)
+                {
+                    Close();
+                    StateHasChanged();
+                }
+            });
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void Close()
+    {
+        StopTimer();
+        _shown = null;
+    }
+
+    private void StopTimer()
+    {
+        _timer?.Cancel();
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+    public void Dispose() => StopTimer();
+}
