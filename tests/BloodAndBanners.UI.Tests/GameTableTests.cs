@@ -281,19 +281,20 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
-    public void Leaving_a_match_takes_two_clicks_and_is_only_offered_to_players()
+    public void Leaving_a_match_goes_through_the_menu_and_spectators_have_no_command_controls()
     {
         var left = false;
         var cut = Render<GameTable>(parameters => parameters
             .Add(component => component.Projection, BattleFixtures.Projection())
             .Add(component => component.OnReturnToWarRoom, () => left = true));
 
-        cut.Find("button[data-action=leaveMatch]").Click();
+        Assert.Empty(cut.FindAll("button[data-action=leaveMatch]"));
+        cut.Find("[data-menu=toggle]").Click();
+        cut.Find("[data-menu=leave]").Click();
         Assert.False(left);
-        cut.Find("button[data-action=stayInMatch]").Click();
-        Assert.Empty(cut.FindAll("button[data-action=confirmLeave]"));
-        cut.Find("button[data-action=leaveMatch]").Click();
-        cut.Find("button[data-action=confirmLeave]").Click();
+        cut.Find("[data-menu=stay]").Click();
+        cut.Find("[data-menu=leave]").Click();
+        cut.Find("[data-menu=confirmLeave]").Click();
         Assert.True(left);
 
         var spectating = Render<GameTable>(parameters => parameters
@@ -303,6 +304,8 @@ public sealed partial class GameTableTests : BunitContext
                 LegalActions = []
             }));
         Assert.Empty(spectating.FindAll("[data-action]"));
+        spectating.Find("[data-menu=toggle]").Click();
+        Assert.Equal("Stop watching", spectating.Find("[data-menu=leave]").TextContent.Trim());
     }
 
     [Fact]

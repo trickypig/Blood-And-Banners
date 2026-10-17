@@ -100,16 +100,36 @@ public sealed class DraftTableTests : BunitContext
     }
 
     [Fact]
-    public void Players_can_leave_the_draft_after_confirming()
+    public void Players_leave_the_draft_from_the_match_menu_after_confirming()
     {
         var left = false;
         var cut = Render<DraftTable>(parameters => parameters
             .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue"))
             .Add(component => component.OnReturnToWarRoom, () => left = true));
 
-        cut.Find("button[data-action=leaveMatch]").Click();
+        Assert.Empty(cut.FindAll("button[data-action=leaveMatch]"));
+        cut.Find("[data-menu=toggle]").Click();
+        cut.Find("[data-menu=leave]").Click();
         Assert.False(left);
-        cut.Find("button[data-action=confirmLeave]").Click();
+        cut.Find("[data-menu=confirmLeave]").Click();
+        Assert.True(left);
+    }
+
+    [Fact]
+    public void Spectators_get_the_match_menu_and_stop_watching_at_once()
+    {
+        var left = false;
+        var cut = Render<DraftTable>(parameters => parameters
+            .Add(component => component.Projection, DraftFixtures.Projection(viewerSeat: "seat-red", picking: "seat-blue") with
+            {
+                Viewer = new ViewerPermissions("spectator", null, false, false),
+                LegalActions = []
+            })
+            .Add(component => component.OnReturnToWarRoom, () => left = true));
+
+        cut.Find("[data-menu=toggle]").Click();
+        cut.Find("[data-menu=leave]").Click();
+
         Assert.True(left);
     }
 

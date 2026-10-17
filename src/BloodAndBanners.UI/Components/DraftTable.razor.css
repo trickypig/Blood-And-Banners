@@ -43,7 +43,7 @@
     .draft-log ::deep .combat-log ol { max-height: calc(100dvh - 7rem); }
 }
 
-.draft-ribbon { display: grid; gap: .5rem; padding-bottom: 1rem; border-bottom: .25rem solid var(--brass); }
+.draft-ribbon { display: grid; gap: .5rem; padding-right: 3.25rem; padding-bottom: 1rem; border-bottom: .25rem solid var(--brass); }
 .draft-ribbon h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.8rem, 5vw, 2.8rem); }
 .draft-eyebrow { margin: 0; color: #c9b27a; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
 .initiative { margin: 0; color: #cfc6b2; }

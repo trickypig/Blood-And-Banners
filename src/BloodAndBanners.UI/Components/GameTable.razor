@@ -6,6 +6,11 @@
 @inject IJSRuntime JS
 
 <main class="game-table">
+    <MatchMenu GameId="@Projection.GameId"
+               InviteBaseUri="@InviteBaseUri"
+               IsSpectator="@(!Projection.Viewer.CanCommand)"
+               IsFinished="@(Projection.Result is not null)"
+               OnLeave="OnReturnToWarRoom" />
     <header class="turn-ribbon">
         <div>
             <span class="mode-mark" aria-hidden="true">⚔</span>
@@ -408,11 +413,6 @@
             </section>
         }
 
-        @if (Projection.Viewer.CanCommand && Projection.Result is null)
-        {
-            <LeaveMatchControl OnLeave="OnReturnToWarRoom" />
-        }
-
         <section class="rosters" aria-label="Armies">
             @foreach (var seat in Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId))
             {
@@ -501,6 +501,9 @@
 
     [Parameter]
     public EventCallback OnReturnToWarRoom { get; set; }
+
+    [Parameter]
+    public string InviteBaseUri { get; set; } = string.Empty;
 
     [Parameter]
     public EventCallback OnFollowEvents { get; set; }

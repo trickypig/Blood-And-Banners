@@ -222,8 +222,9 @@ public sealed class GameExperienceTests : BunitContext
         var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
         Assert.True(SpinWait.SpinUntil(() => api.PollBlocked.Task.IsCompleted, TimeSpan.FromSeconds(5)));
 
-        cut.Find("button[data-action=leaveMatch]").Click();
-        cut.Find("button[data-action=confirmLeave]").Click();
+        cut.Find("[data-menu=toggle]").Click();
+        cut.Find("[data-menu=leave]").Click();
+        cut.Find("[data-menu=confirmLeave]").Click();
         cut.WaitForAssertion(() => Assert.DoesNotContain("Muster your host", cut.Markup));
 
         api.PollGate.SetResult();

@@ -16,7 +16,7 @@
     position: sticky;
     top: 0;
     z-index: 5;
-    padding: .35rem 1.15rem;
+    padding: .35rem 3.75rem .35rem 1.15rem;
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;

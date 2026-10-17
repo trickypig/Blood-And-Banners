@@ -36,6 +36,7 @@ else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null)
                 IsBusy="_isBusy"
                 ErrorMessage="@_error"
                 ImageBaseUrl="@ImageBaseUrl"
+                InviteBaseUri="@InviteBaseUri"
                 OnCommand="SubmitGameCommand"
                 OnReturnToWarRoom="ReturnToWarRoom" />
 }
@@ -47,6 +48,7 @@ else
                IsBusy="_isBusy"
                ErrorMessage="@_error"
                ImageBaseUrl="@ImageBaseUrl"
+               InviteBaseUri="@InviteBaseUri"
                OnCommand="SubmitGameCommand"
                OnReturnToWarRoom="ReturnToWarRoom" />
 }

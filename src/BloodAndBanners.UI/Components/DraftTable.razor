@@ -3,6 +3,10 @@
 @using BloodAndBanners.UI.Services
 
 <main class="draft-table" aria-labelledby="draft-title">
+    <MatchMenu GameId="@Projection.GameId"
+               InviteBaseUri="@InviteBaseUri"
+               IsSpectator="@(!Projection.Viewer.CanCommand)"
+               OnLeave="OnReturnToWarRoom" />
     <header class="draft-ribbon">
         <div>
             <p class="draft-eyebrow">Vanilla duel · @Projection.ScenarioName</p>
@@ -154,11 +158,6 @@
 
     </div>
     </div>
-
-    @if (Projection.Viewer.CanCommand)
-    {
-        <LeaveMatchControl OnLeave="OnReturnToWarRoom" />
-    }
 </main>
 
 @code {
@@ -182,6 +181,9 @@
 
     [Parameter]
     public EventCallback OnReturnToWarRoom { get; set; }
+
+    [Parameter]
+    public string InviteBaseUri { get; set; } = string.Empty;
 
     private bool _logOpen;
 
