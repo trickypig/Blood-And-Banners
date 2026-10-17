@@ -73,7 +73,7 @@ Hidden information applies while the lifecycle is `lobby`, or `draft` with engin
 - New migration `004_event_visibility` adds a nullable `visible_side` column to `game_events` (sqlite and mysql).
 - `monsterPlaced` and `monsterRemoved` events appended during lobby or `prep` are tagged `void`. `draftPicked` events during `prep` are tagged `heroes`. The `setupConfirmed` event stays public; it reveals only that the Void Lord is done.
 - `eventPage` takes the viewer's side. While the game is before battle (lifecycle `lobby` or `draft`), it leaves out events whose `visible_side` is set and isn't the viewer's side. Spectators see only untagged events. From `active` onward, every event is returned, so the draft log and placement history fill in at the reveal.
-- New event at battle start: `battleBegins`, public, carrying the `armiesPlaced` payload as today plus the monster count. The client's turn popup and log use it to announce the reveal.
+- No new battle-start event. The existing public `armiesPlaced` event marks the battle start. When a Co-op game goes from Draft to Active, the client clears its log and re-fetches the event history from sequence 0, which is how the hidden history fills in.
 
 ### Snapshots
 
@@ -86,7 +86,7 @@ Hidden information applies while the lifecycle is `lobby`, or `draft` with engin
 - **Void Lord only:** a "Place monsters" button opens the board in setup mode in `GameExperience`. This is a local view switch; the lifecycle is still `lobby`.
 - The setup board reuses `GameTable` + `VoidLordSetup`:
   - a "Back to war room" link;
-  - a slim war-room banner: hero count, ready count and "waiting for host", or a Start button for a host who is also the Void Lord;
+  - a slim war-room status line: hero count, ready count and "you confirm once the host begins". Start stays in the war room;
   - a live budget readout that can show over-budget in a warning colour;
   - no Confirm button in the lobby.
 - **Hero players:** the war room is unchanged apart from a status line, "The Void Lord is preparing the horde", shown when a Void Lord exists.
@@ -101,7 +101,7 @@ Hidden information applies while the lifecycle is `lobby`, or `draft` with engin
 
 ### Battle start
 
-Both sides switch to the normal `GameTable`. The turn popup shows a "Battle begins" notice from the `battleBegins` event.
+Both sides switch to the normal `GameTable`. The existing turn popup announces the first hero's turn, and the log fills in from the re-fetch.
 
 ## Errors
 
