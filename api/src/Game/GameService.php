@@ -303,7 +303,9 @@ final class GameService
         }
     }
 
-    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
+    /** Preparation events everyone may see: they only report that a side is finished. */
+    private const PUBLIC_PREP_EVENTS = ['setupConfirmed', 'armiesPlaced'];
+    private const LOBBY_COMMANDS =['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
 
     private const NAMING_LIFECYCLES = ['lobby', 'setup', 'draft'];
 
@@ -474,7 +476,7 @@ final class GameService
         $this->bumpVersion($game['id'], $currentVersion, $newVersion);
         $this->saveState($game['id'], $newVersion, $result['state']);
         foreach ($result['events'] as $event) {
-            $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
+            $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes'], 'void');
         }
     }
 
@@ -521,6 +523,9 @@ final class GameService
         if ($state === null || !in_array($game['lifecycle'], ['setup', 'draft', 'active', 'completed'], true)) {
             throw new GameServiceException('illegalLifecycle', 'This command is not legal in the current game phase.', $currentVersion);
         }
+        $concealedSide = ($state['mode'] ?? null) === 'coop' && $state['phase'] === 'prep'
+            ? ($seatId === $state['voidLordSeatId'] ? 'void' : 'heroes')
+            : null;
         try {
             $result = $this->engine->apply(
                 $state,
@@ -544,7 +549,8 @@ final class GameService
         }
         $this->saveState($game['id'], $newVersion, $result['state']);
         foreach ($result['events'] as $event) {
-            $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
+            $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : $concealedSide;
+            $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes'], $side);
         }
     }
 
@@ -633,24 +639,27 @@ final class GameService
 
     public function getEvents(string $gameId, string $identityId, string $seatToken, int $afterSequence): array
     {
-        $this->requireSeatCredential($gameId, $identityId, $seatToken);
-        return $this->eventPage($gameId, $afterSequence);
+        $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
+        return $this->eventPage($gameId, $afterSequence, $membership['role'] === 'voidLord' ? 'void' : 'heroes');
     }
 
-    /** Anyone may read a game's event log by its id; it carries nothing seat-private. */
+    /** Anyone may read a game's event log by its id; before a Co-op battle it carries neither side's preparations. */
     public function getWatchedEvents(string $gameId, int $afterSequence): array
     {
         $this->gameRow($gameId);
-        return $this->eventPage($gameId, $afterSequence);
+        return $this->eventPage($gameId, $afterSequence, null);
     }
 
-    private function eventPage(string $gameId, int $afterSequence): array
+    private function eventPage(string $gameId, int $afterSequence, ?string $side): array
     {
+        $revealed = !in_array($this->gameRow($gameId)['lifecycle'], ['lobby', 'draft'], true);
         $statement = $this->connection->prepare(
             'SELECT sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at
-             FROM game_events WHERE game_id = :game AND sequence > :after ORDER BY sequence LIMIT 200'
+             FROM game_events WHERE game_id = :game AND sequence > :after
+               AND (visible_side IS NULL OR visible_side = :side OR :revealed = :yes)
+             ORDER BY sequence LIMIT 200'
         );
-        $statement->execute(['game' => $gameId, 'after' => $afterSequence]);
+        $statement->execute(['game' => $gameId, 'after' => $afterSequence, 'side' => $side ?? '', 'revealed' => $revealed ? 'y' : 'n', 'yes' => 'y']);
         $events = array_map(static fn(array $event): array => [
             'sequence' => (int)$event['sequence'],
             'version' => (int)$event['version'],
@@ -802,8 +811,13 @@ final class GameService
             $lobbySetup = $state;
             $state = null;
         }
-        $viewerIsVoidLord = $lobbySetup !== null && $lobbySetup['voidLordSeatId'] === $viewer['seatId'];
-        $shown = $lobbySetup !== null ? ($viewerIsVoidLord ? $lobbySetup : null) : $state;
+        $side = self::viewerSide($memberships, $viewer);
+        $concealed = $game['mode'] === 'coop' && ($lobbySetup !== null || ($state['phase'] ?? null) === 'prep');
+        $shown = match (true) {
+            $lobbySetup !== null => $side === 'void' ? $lobbySetup : null,
+            $concealed && $side !== 'void' => self::withoutSide($state, 'void'),
+            default => $state,
+        };
         $scores = [];
         foreach ($memberships as $membership) {
             $scores[$membership['id']] = 0;
@@ -830,9 +844,11 @@ final class GameService
             'viewer' => $viewer,
             'board' => $this->boardProjection($game, $shown),
             'sides' => $state === null ? null : (object)$state['sides'],
-            'setup' => $lobbySetup !== null
-                ? ($viewerIsVoidLord ? $this->setupProjection($lobbySetup) : null)
-                : ($state !== null && ($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->setupProjection($state) : null),
+            'setup' => match (true) {
+                $lobbySetup !== null => $side === 'void' ? $this->setupProjection($lobbySetup) : null,
+                $state !== null && ($state['mode'] ?? 'vanillaPvp') === 'coop' => $concealed && $side !== 'void' ? self::redactedSetup($state) : $this->setupProjection($state),
+                default => null,
+            },
             'turn' => [
                 'round' => $state['turn']['round'] ?? 0,
                 'activeSeatId' => $state['turn']['activeSeatId'] ?? null,
@@ -858,17 +874,21 @@ final class GameService
                 'isHost' => (bool)$seat['is_host'],
                 'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
             ], $memberships),
-            'armies' => $this->armiesProjection($state),
-            'draft' => $state !== null && in_array($state['phase'], ['draft', 'prep'], true) ? (($state['mode'] ?? 'vanillaPvp') === 'coop' ? $this->coopDraftProjection($state) : $this->draftProjection($state)) : null,
+            'armies' => $this->armiesProjection($state, !$concealed || $side === 'heroes'),
+            'draft' => $state !== null && in_array($state['phase'], ['draft', 'prep'], true)
+                ? (($state['mode'] ?? 'vanillaPvp') === 'coop'
+                    ? ($concealed && $side !== 'heroes' ? $this->redactedCoopDraft($state) : $this->coopDraftProjection($state))
+                    : $this->draftProjection($state))
+                : null,
             'units' => $shown === null ? [] : array_values(array_map(fn(array $unit): array => $this->unitProjection($shown, $unit), self::orderedUnits($shown))),
         ];
     }
 
     /** Each seat's army identity, including the Void Lord's horde, for roster names and emblems. */
-    private function armiesProjection(?array $state): ?array
+    private function armiesProjection(?array $state, bool $heroArmies = true): ?array
     {
         $armies = [];
-        foreach ($state['draft']['armyBySeat'] ?? [] as $seatId => $name) {
+        foreach ($heroArmies ? ($state['draft']['armyBySeat'] ?? []) : [] as $seatId => $name) {
             if ($name !== null && ($army = $this->engine->catalog()->army($name)) !== null) {
                 $armies[(string)$seatId] = ['name' => $army['name'], 'emblem' => $army['emblem']];
             }
@@ -1013,6 +1033,44 @@ final class GameService
         return preg_match('/(\d+)$/', $unitId, $match) === 1 ? (int)$match[1] : 0;
     }
 
+    /** 'void' for the Void Lord's seat, 'heroes' for any other player seat, null for spectators. */
+    private static function viewerSide(array $memberships, array $viewer): ?string
+    {
+        if ($viewer['role'] !== 'player' || $viewer['seatId'] === null) {
+            return null;
+        }
+        foreach ($memberships as $seat) {
+            if ((string)$seat['id'] === (string)$viewer['seatId']) {
+                return $seat['role'] === 'voidLord' ? 'void' : 'heroes';
+            }
+        }
+        return null;
+    }
+
+    private static function withoutSide(array $state, string $side): array
+    {
+        $state['units'] = array_filter($state['units'], static fn(array $unit): bool => ($unit['side'] ?? null) !== $side);
+        return $state;
+    }
+
+    /** What the other side may know of the Void Lord's setup: only whether it is finished. */
+    private static function redactedSetup(array $state): array
+    {
+        return ['budget' => 0, 'spent' => 0, 'confirmed' => (bool)$state['setup']['confirmed'], 'spawnZoneHexes' => [], 'roster' => [], 'redacted' => true];
+    }
+
+    /** The draft as the Void Lord and spectators see it during preparation: progress, but no picks. */
+    private function redactedCoopDraft(array $state): array
+    {
+        $projection = $this->coopDraftProjection($state);
+        $projection['heroesBySeat'] = array_map(static fn(): array => [], $projection['heroesBySeat']);
+        $projection['armyBySeat'] = array_map(static fn(): ?string => null, $projection['armyBySeat']);
+        $projection['availableHeroes'] = array_map(static fn(array $hero): array => ['takenBySeatId' => null] + $hero, $projection['availableHeroes']);
+        $projection['availableArmies'] = array_map(static fn(array $army): array => ['takenBySeatId' => null] + $army, $projection['availableArmies']);
+        $projection['redacted'] = true;
+        return $projection;
+    }
+
     private function setupProjection(array $state): array
     {
         $spawn = [];
@@ -1026,6 +1084,7 @@ final class GameService
             'budget' => $state['setup']['budget'],
             'spent' => $state['setup']['spent'],
             'confirmed' => $state['setup']['confirmed'],
+            'redacted' => false,
             'spawnZoneHexes' => $spawn,
             'roster' => array_map(static fn(array $monster): array => [
                 'name' => $monster['name'],
@@ -1058,7 +1117,12 @@ final class GameService
             return null;
         };
         $catalog = $this->engine->catalog();
+        $picksMade = array_sum(array_map('count', $draft['heroesBySeat']))
+            + count(array_filter($draft['armyBySeat'], static fn(?string $army): bool => $army !== null));
         return [
+            'picksMade' => $picksMade,
+            'picksTotal' => 3 * count($state['initiative']['order']),
+            'redacted' => false,
             'initiativeRolls' => $state['initiative']['rolls'],
             'pickingSeatId' => $draft['pickingSeatId'],
             'firstSeatId' => null,
@@ -1216,7 +1280,7 @@ final class GameService
         return $game;
     }
 
-    private function appendEvent(string $gameId, int $version, string $kind, string $actor, array $payload, array $focusHexes = []): void
+    private function appendEvent(string $gameId, int $version, string $kind, string $actor, array $payload, array $focusHexes = [], ?string $visibleSide = null): void
     {
         $sequence = (int)$this->scalar(
             'SELECT COALESCE(MAX(sequence), 0) + 1 FROM game_events WHERE game_id = :game',
@@ -1224,10 +1288,10 @@ final class GameService
         );
         $this->connection->prepare(
             'INSERT INTO game_events
-             (game_id, sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at)
-             VALUES (:game, :sequence, :version, :kind, :actor, :focus, :payload, :created)'
+             (game_id, sequence, version, kind, acting_identity_id, focus_hexes_json, payload_json, created_at, visible_side)
+             VALUES (:game, :sequence, :version, :kind, :actor, :focus, :payload, :created, :side)'
         )->execute([
-            'game' => $gameId, 'sequence' => $sequence, 'version' => $version, 'kind' => $kind, 'actor' => $actor,
+            'game' => $gameId, 'sequence' => $sequence, 'version' => $version, 'kind' => $kind, 'actor' => $actor, 'side' => $visibleSide,
             'focus' => json_encode(array_values($focusHexes), JSON_THROW_ON_ERROR),
             'payload' => json_encode($payload, JSON_THROW_ON_ERROR), 'created' => self::now(),
         ]);
@@ -1235,6 +1299,11 @@ final class GameService
 
     private function writeSnapshot(string $gameId, int $version, array $projection): void
     {
+        if ($projection['mode'] === 'coop' && in_array($projection['lifecycle'], ['lobby', 'draft'], true)
+            && $projection['viewer']['role'] !== 'spectator') {
+            // A stored player view would carry one side's hidden preparations.
+            $projection = $this->spectatorProjection($this->gameRow($gameId));
+        }
         $sql = $this->connection->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'
             ? 'INSERT INTO game_snapshots (game_id, version, state_json, updated_at) VALUES (:game, :version, :state, :updated)
                ON DUPLICATE KEY UPDATE version = VALUES(version), state_json = VALUES(state_json), updated_at = VALUES(updated_at)'
