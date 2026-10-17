@@ -11,15 +11,33 @@
                IsSpectator="@(!Projection.Viewer.CanCommand)"
                IsFinished="@(Projection.Result is not null)"
                OnLeave="OnReturnToWarRoom" />
-    <header class="turn-ribbon">
+    <header class="turn-ribbon @RibbonState" data-turn="@RibbonState">
         <div>
             <span class="mode-mark" aria-hidden="true">⚔</span>
             <strong>@ModeLabel(Projection.Mode)</strong>
         </div>
-        <p data-testid="turn-status">@TurnStatus</p>
-        <p data-testid="viewer-role" class="viewer-role">
-            @(Projection.Viewer.CanCommand ? "Commanding" : "Spectating")
+        <p class="turn-status" data-testid="turn-status">
+            @if (ActiveEmblem is { } activeEmblem)
+            {
+                <img class="turn-emblem" data-testid="turn-emblem" src="@activeEmblem" alt="" />
+            }
+            <span>@TurnStatus</span>
         </p>
+        <div class="ribbon-end">
+            @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endTurn"))
+            {
+                <button type="button"
+                        class="ribbon-end-turn"
+                        data-action="@action.Kind"
+                        disabled="@IsBusy"
+                        @onclick="() => Send(action.Kind, ActionPayload(action))">
+                    @ActionLabel(action.Kind)
+                </button>
+            }
+            <p data-testid="viewer-role" class="viewer-role">
+                @(Projection.Viewer.CanCommand ? "Commanding" : "Spectating")
+            </p>
+        </div>
     </header>
 
     <section class="battlefield-panel" aria-label="Game board" @onkeydown="OnBoardKey">
@@ -396,7 +414,7 @@
                 {
                     <p>Select one of your units on the board.</p>
                 }
-                @foreach (var action in Projection.LegalActions.Where(action => action.Kind is "endActivation" or "endTurn"))
+                @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endActivation"))
                 {
                     <button type="button"
                             class="action-button"
@@ -627,6 +645,15 @@
     }
 
     private bool IsMyTurn => Projection.Viewer.SeatId is not null && Projection.Turn.ActiveSeatId == Projection.Viewer.SeatId;
+
+    // Gold while the viewer holds the turn, red while anyone else does; no colour change in setup or once decided
+    private string? RibbonState =>
+        InSetup || Projection.Result is not null || Projection.Turn.ActiveSeatId is null ? null
+        : IsMyTurn ? "my-turn" : "their-turn";
+
+    private string? ActiveEmblem =>
+        InSetup || Projection.Result is not null || Projection.Turn.ActiveSeatId is not { } active ? null
+        : CatalogImages.Resolve(ImageBaseUrl, Projection.Armies?.GetValueOrDefault(active)?.Emblem);
 
     private UnitProjection? SelectedUnit => UnitById(_selectedUnitId);
 

@@ -30,7 +30,16 @@
 .command-rail h2 { font-family: Georgia, "Times New Roman", serif; letter-spacing: .015em; }
 .turn-ribbon p { margin: 0; }
 .mode-mark { margin-right: .55rem; color: #ddbf76; }
-.viewer-role { justify-self: end; }
+.turn-ribbon { transition: background-color 300ms ease, color 300ms ease; }
+.turn-ribbon.their-turn { background: #8f1d22; }
+.turn-ribbon.my-turn { color: #24180a; background: #d4af37; border-bottom-color: #7a5a1c; }
+.turn-ribbon.my-turn .mode-mark { color: #681e24; }
+.turn-status { display: inline-flex; align-items: center; gap: .5rem; }
+.turn-emblem { flex: none; width: 2rem; height: 2rem; object-fit: contain; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45)); }
+.ribbon-end { justify-self: end; display: inline-flex; align-items: center; gap: .75rem; }
+.ribbon-end-turn { min-height: 2.4rem; padding: .3rem .95rem; color: #f8f0dc; background: var(--oxblood); border: 1px solid #f0cf7a; font-weight: 700; letter-spacing: .02em; box-shadow: 0 .15rem .4rem rgba(0, 0, 0, .35); }
+.ribbon-end-turn:hover:not(:disabled) { background: #85262d; }
+.ribbon-end-turn:disabled { opacity: .6; }
 
 .battlefield-panel {
     position: relative;

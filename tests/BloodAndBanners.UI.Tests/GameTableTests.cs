@@ -143,6 +143,40 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void The_turn_ribbon_turns_gold_on_your_turn_and_red_otherwise_and_shows_the_active_army()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Armies = new Dictionary<string, SeatArmyProjection>
+            {
+                ["seat-red"] = new("Blackmaw", "/images/armies/blackmaw.svg"),
+                ["seat-blue"] = new("Sol Invictus", "/images/armies/sol-invictus.svg"),
+            },
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        var ribbon = cut.Find(".turn-ribbon");
+        Assert.Contains("my-turn", ribbon.ClassList);
+        Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", cut.Find("[data-testid=turn-emblem]").GetAttribute("src"));
+        Assert.NotNull(ribbon.QuerySelector("button[data-action=endTurn]"));
+        Assert.Null(cut.Find(".command-rail").QuerySelector("button[data-action=endTurn]"));
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, projection with
+        {
+            Turn = projection.Turn with { ActiveSeatId = "seat-blue" },
+            LegalActions = [],
+        }));
+
+        ribbon = cut.Find(".turn-ribbon");
+        Assert.Contains("their-turn", ribbon.ClassList);
+        Assert.DoesNotContain("my-turn", ribbon.ClassList);
+        Assert.Equal("https://example.test/blood/images/armies/sol-invictus.svg", cut.Find("[data-testid=turn-emblem]").GetAttribute("src"));
+        Assert.Empty(cut.FindAll("button[data-action=endTurn]"));
+    }
+
+    [Fact]
     public void Board_tokens_prefer_the_avatar_image_and_fall_back_to_the_card_image()
     {
         var projection = BattleFixtures.Projection();
