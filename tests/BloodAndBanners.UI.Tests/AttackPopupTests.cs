@@ -1,6 +1,7 @@
 namespace BloodAndBanners.UI.Tests;
 
 using System.Text.Json;
+using System.Threading.Channels;
 using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
 using BloodAndBanners.UI.Services;
@@ -70,7 +71,7 @@ public sealed class AttackPopupTests : BunitContext
     }
 
     [Fact]
-    public void A_live_attack_shows_hidden_dice_then_rolls_then_settles_on_the_real_faces()
+    public async Task A_live_attack_shows_hidden_dice_then_rolls_then_settles_on_the_real_faces()
     {
         var stages = new StageClock();
         var cut = Render<AttackPopup>(parameters => parameters
@@ -85,20 +86,20 @@ public sealed class AttackPopupTests : BunitContext
         Assert.Contains("Standing in water −1", cut.Find("[data-pool=defense]").TextContent);
         Assert.Empty(cut.FindAll("[data-testid=attack-popup-summary]"));
 
-        stages.Next();
-        cut.WaitForAssertion(() => Assert.Equal(5, cut.FindAll(".die-rolling").Count));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Equal(5, cut.FindAll(".die-rolling").Count));
 
-        stages.Next();
-        cut.WaitForAssertion(() => Assert.Equal("2 swords vs 1 shield → 1 wound", cut.Find("[data-testid=attack-popup-summary]").TextContent));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Equal("2 swords vs 1 shield → 1 wound", cut.Find("[data-testid=attack-popup-summary]").TextContent));
         Assert.Equal(["sword", "sword", "blank"], cut.FindAll("[data-pool=power] .die").Select(die => die.GetAttribute("data-face")));
         Assert.Empty(cut.FindAll(".attack-popup-card.fallen"));
 
-        stages.Next();
-        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=attack-popup]")));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Empty(cut.FindAll("[data-testid=attack-popup]")));
     }
 
     [Fact]
-    public void A_defeated_defenders_card_falls_after_the_dice_settle()
+    public async Task A_defeated_defenders_card_falls_after_the_dice_settle()
     {
         var stages = new StageClock();
         var cut = Render<AttackPopup>(parameters => parameters
@@ -111,17 +112,18 @@ public sealed class AttackPopupTests : BunitContext
                 Event(2, 1, "unitDefeated", """{"unitId":"s2-u1"}"""),
             }));
 
-        stages.Next();
-        stages.Next();
-        cut.WaitForAssertion(() => Assert.Contains("Grunt is defeated", cut.Find("[data-testid=attack-popup-summary]").TextContent));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Equal(5, cut.FindAll(".die-rolling").Count));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Grunt is defeated", cut.Find("[data-testid=attack-popup-summary]").TextContent));
         Assert.Empty(cut.FindAll(".attack-popup-card.fallen"));
 
-        stages.Next();
-        cut.WaitForAssertion(() => Assert.Equal("s2-u1", cut.Find(".attack-popup-card.fallen").GetAttribute("data-unit-id")));
+        await stages.NextAsync();
+        await cut.WaitForAssertionAsync(() => Assert.Equal("s2-u1", cut.Find(".attack-popup-card.fallen").GetAttribute("data-unit-id")));
     }
 
     [Fact]
-    public void Queued_attacks_follow_one_another_and_the_close_button_skips_ahead()
+    public async Task Queued_attacks_follow_one_another_and_the_close_button_skips_ahead()
     {
         var stages = new StageClock();
         var cut = Render<AttackPopup>(parameters => parameters
@@ -134,10 +136,10 @@ public sealed class AttackPopupTests : BunitContext
         Assert.Contains("1 more attack", cut.Find(".attack-popup-queue").TextContent);
 
         cut.Find("[data-testid=attack-popup-close]").Click();
-        Assert.Equal("2", cut.Find("[data-testid=attack-popup]").GetAttribute("data-sequence"));
+        await cut.WaitForAssertionAsync(() => Assert.Equal("2", cut.Find("[data-testid=attack-popup]").GetAttribute("data-sequence")));
 
         cut.Find("[data-testid=attack-popup-close]").Click();
-        Assert.Empty(cut.FindAll("[data-testid=attack-popup]"));
+        await cut.WaitForAssertionAsync(() => Assert.Empty(cut.FindAll("[data-testid=attack-popup]")));
     }
 
     private static GameEvent Event(long sequence, long version, string kind, string payload) =>
@@ -146,30 +148,21 @@ public sealed class AttackPopupTests : BunitContext
     /// <summary>Holds each popup stage open until the test advances it.</summary>
     private sealed class StageClock
     {
-        private readonly Queue<TaskCompletionSource> _waiting = new();
+        private readonly Channel<TaskCompletionSource> _waiting = Channel.CreateUnbounded<TaskCompletionSource>();
 
         public Task Delay(TimeSpan time, CancellationToken token)
         {
             var stage = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             token.Register(() => stage.TrySetCanceled(token));
-            lock (_waiting)
-            {
-                _waiting.Enqueue(stage);
-            }
+            _waiting.Writer.TryWrite(stage);
             return stage.Task;
         }
 
-        public void Next()
+        public async Task NextAsync()
         {
-            TaskCompletionSource? stage = null;
-            SpinWait.SpinUntil(() =>
-            {
-                lock (_waiting)
-                {
-                    return _waiting.TryDequeue(out stage);
-                }
-            }, TimeSpan.FromSeconds(2));
-            Assert.NotNull(stage);
+            // Yield while the renderer schedules the next stage instead of blocking its continuation.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var stage = await _waiting.Reader.ReadAsync(timeout.Token);
             stage.SetResult();
         }
     }
