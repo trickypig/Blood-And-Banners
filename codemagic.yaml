@@ -1,4 +1,129 @@
 workflows:
+  ios-testflight:
+    name: Blood & Banners iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      # Name of the App Store Connect API key as added in the Codemagic UI
+      # (Teams/Personal Account -> Integrations -> App Store Connect).
+      # This integration is account-level and shared across apps: the same
+      # Apple team API key signs HouseRules, PlayMaker and Goldulf's Goons, so we
+      # reuse it rather than registering the same .p8 under another name.
+      app_store_connect: House Rules
+    environment:
+      groups:
+        # Codemagic variable group that must contain CERTIFICATE_PRIVATE_KEY
+        # (the PEM private key used to create/fetch the distribution certificate).
+        - ios_signing
+      vars:
+        DOTNET_PROJECT: "src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj"
+        TARGET_FRAMEWORK: "net10.0-ios"
+        BUNDLE_ID: "com.trickypig.bloodandbanners"
+      # Match Goldulf’s Goons. Keep Xcode compatible with the MAUI iOS workload.
+      xcode: 26.6
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+    scripts:
+      - name: Install .NET 10 SDK and MAUI workload
+        script: |
+          set -euo pipefail
+          # The Codemagic macOS image does not put a .NET 10 SDK on PATH, so
+          # install it explicitly with Microsoft's official script, then make it
+          # available to this and all later build steps via $CM_ENV.
+          curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          chmod +x /tmp/dotnet-install.sh
+          /tmp/dotnet-install.sh --channel 10.0 --install-dir "$HOME/.dotnet"
+          export PATH="$HOME/.dotnet:$PATH"
+          echo "PATH=$HOME/.dotnet:$PATH" >> "$CM_ENV"
+          dotnet --version
+          dotnet workload install maui
+      - name: Run tests
+        script: |
+          set -euo pipefail
+          # Validate shared contracts and Razor UI before signing or uploading.
+          dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj --configuration Release
+          dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj --configuration Release
+      - name: Set up code signing (create cert + profile if missing)
+        script: |
+          set -euo pipefail
+          # Initialize the build keychain, then fetch signing files via the
+          # App Store Connect integration above. --create registers/creates the
+          # App Store provisioning profile for the bundle ID if it does not yet
+          # exist, and downloads it (plus the distribution certificate that was
+          # generated in the Codemagic UI) onto the build machine.
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
+            --create
+          keychain add-certificates
+      - name: Extract signing identity and profile name
+        script: |
+          set -euo pipefail
+          # dotnet publish needs the certificate common name and the
+          # provisioning profile NAME (not UUID). Extract both and persist
+          # them to $CM_ENV so the next script can use them.
+          CERT_NAME=$(keychain list-certificates \
+            | jq -r '[.[] | select(.common_name | test("Distribution")) | .common_name][0] // empty')
+          test -n "$CERT_NAME" || { echo "No distribution signing identity found." >&2; exit 1; }
+          PROFILE_PATH=$(find "$HOME/Library/MobileDevice/Provisioning Profiles" -name "*.mobileprovision" -print -quit)
+          test -n "$PROFILE_PATH" || { echo "No provisioning profile found." >&2; exit 1; }
+          PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name raw -)
+          echo "Using certificate: $CERT_NAME"
+          echo "Using provisioning profile: $PROFILE_NAME"
+          echo "CERT_NAME=$CERT_NAME" >> "$CM_ENV"
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$CM_ENV"
+      - name: Compute next build number from TestFlight
+        script: |
+          set -euo pipefail
+          # Look up the app's numeric App Store id from its bundle id, then ask
+          # TestFlight for the highest build number already uploaded and add 1.
+          # The app record must already exist in App Store Connect.
+          # The CLI returns 0 when the app has no TestFlight builds yet.
+          APP_ID=$(app-store-connect apps list \
+            --bundle-id-identifier "$BUNDLE_ID" \
+            --strict-match-identifier \
+            --json | jq -r '.[0].id')
+          if [[ -z "$APP_ID" || "$APP_ID" == "null" ]]; then
+            echo "Create an App Store Connect app for $BUNDLE_ID before building." >&2
+            exit 1
+          fi
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_ID" --platform IOS)
+          if [[ ! "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "Invalid TestFlight build number: $LATEST_BUILD_NUMBER" >&2
+            exit 1
+          fi
+          BUILD_NUMBER=$(( ${LATEST_BUILD_NUMBER:-0} + 1 ))
+          echo "Next build number: $BUILD_NUMBER"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$CM_ENV"
+      - name: Build and sign iOS app
+        script: |
+          set -euo pipefail
+          # Publish only the MAUI head; its shared project references build too.
+          dotnet publish "$DOTNET_PROJECT" \
+            -f "$TARGET_FRAMEWORK" \
+            -c Release \
+            -p:ArchiveOnBuild=true \
+            -p:BuildIpa=true \
+            -p:ApplicationId="$BUNDLE_ID" \
+            -p:ApplicationVersion="$BUILD_NUMBER" \
+            -p:RuntimeIdentifier=ios-arm64 \
+            -p:CodesignKey="$CERT_NAME" \
+            -p:CodesignProvision="$PROFILE_NAME"
+    artifacts:
+      - "**/*.ipa"
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload for internal TestFlight testing; external beta review is separate.
+        submit_to_testflight: false
+        submit_to_app_store: false
+
   quality-and-android:
     name: Quality and Android
     instance_type: mac_mini_m2

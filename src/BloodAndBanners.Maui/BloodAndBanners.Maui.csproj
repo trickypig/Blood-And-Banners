@@ -33,6 +33,7 @@
 
         <!-- App Identifier -->
         <ApplicationId>com.trickypig.bloodandbanners.game</ApplicationId>
+        <ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">com.trickypig.bloodandbanners</ApplicationId>
 
         <!-- Versions -->
         <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>

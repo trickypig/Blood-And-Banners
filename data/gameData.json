@@ -1250,7 +1250,7 @@
                         {
                             "name": "Frightening Presence",
                             "type": "Essence",
-                            "description": "All adjacent non-hero enemy units get -1 Power"
+                            "description": "All adjacent non-hero, non-boss enemy units get -1 Power"
                         }
                     ]
                 },

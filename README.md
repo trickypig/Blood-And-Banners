@@ -153,6 +153,22 @@ Invite links open in the Android app through verified App Links. `.well-known/as
 The `quality-and-android` workflow in `codemagic.yaml` builds Release Android APK artifacts. It does not configure a private release keystore or upload to Google Play; use the signed publish procedure above for distribution.
 
 
+## Build the iOS app with Codemagic
+
+The `ios-testflight` workflow in `codemagic.yaml` follows Goldulf’s Goons: it installs .NET 10 and MAUI on a Mac, runs the shared contract/UI tests, signs an `ios-arm64` Release IPA, and uploads it to App Store Connect for internal TestFlight testing. The iOS bundle ID is `com.trickypig.bloodandbanners`; Android keeps `com.trickypig.bloodandbanners.game`.
+
+Before the first build:
+
+1. Register the explicit bundle ID `com.trickypig.bloodandbanners` in Apple Developer and create its app record in App Store Connect. The workflow can create the App Store provisioning profile, but does not create the App Store Connect app record.
+2. Add this repository to the same Codemagic team as Goldulf’s Goons. Give the app access to the shared **House Rules** App Store Connect integration and the **ios_signing** variable group containing the secret `CERTIFICATE_PRIVATE_KEY` for the existing distribution certificate. Keep signing keys out of the repository.
+3. Select **Blood & Banners iOS TestFlight** and start a build. Pushes to `main` also trigger it once the Codemagic webhook is connected.
+
+The workflow queries this app’s latest TestFlight build number and increments it; failed lookups stop the build rather than reuse a number. Avoid overlapping release builds for this app. `ApplicationDisplayVersion` remains the version set in the MAUI project. The workflow uses Xcode `26.6`, matching the sibling configuration; keep it compatible with the installed MAUI iOS workload when updating tooling.
+
+The iOS `Info.plist` declares `ITSAppUsesNonExemptEncryption=false`, so each build includes the export-compliance answer for the app’s current use of platform HTTPS and secure storage. Reassess this declaration if the app or a dependency introduces non-exempt encryption. See [Apple’s encryption declaration guidance](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption).
+
+Download the signed `.ipa` from Codemagic’s build artifacts. After Apple processes the upload, configure internal testers in App Store Connect. External beta review and public App Store release are not enabled by this workflow. The existing `ios-check` workflow remains a simulator compile check. A signed archive and upload require a real Codemagic Mac build; local YAML validation cannot verify Apple credentials or provisioning.
+
 ## Verify
 
 ```powershell
