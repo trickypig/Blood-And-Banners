@@ -221,12 +221,12 @@ public sealed class GameExperienceTests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
 
         var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
-        Assert.True(SpinWait.SpinUntil(() => api.PollBlocked.Task.IsCompleted, TimeSpan.FromSeconds(5)));
+        await api.PollBlocked.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        cut.Find("[data-menu=toggle]").Click();
-        cut.Find("[data-menu=leave]").Click();
-        cut.Find("[data-menu=confirmLeave]").Click();
-        cut.WaitForAssertion(() => Assert.DoesNotContain("Muster your host", cut.Markup));
+        await cut.Find("[data-menu=toggle]").ClickAsync(new());
+        await cut.Find("[data-menu=leave]").ClickAsync(new());
+        await cut.Find("[data-menu=confirmLeave]").ClickAsync(new());
+        await cut.WaitForAssertionAsync(() => Assert.DoesNotContain("Muster your host", cut.Markup));
 
         api.PollGate.SetResult();
         await Task.Delay(300);
