@@ -105,7 +105,11 @@
 }
 
 .seat__role { font-weight: 700; color: #b48cff; letter-spacing: .04em; }
-.seat__assign, .role-order { font: inherit; }
+.role-order { font: inherit; background: #3a3b34; box-shadow: inset .3rem 0 #b48cff; }
+.role-order:hover:not(:disabled) { background: #45463e; }
+.seat__assign { justify-self: start; padding: .3rem .7rem; font: inherit; font-size: .85rem; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; cursor: pointer; }
+.seat__assign:hover { background: #3a3a33; }
+.seat__assign:disabled { opacity: .45; cursor: not-allowed; }
 .seat .seat__side { display: grid; justify-items: end; gap: .4rem; }
 .seat__remove { padding: .3rem .7rem; font: inherit; font-size: .85rem; color: #e4dcc7; background: transparent; border: 1px solid #6a6252; cursor: pointer; }
 .seat__remove:hover { background: #3a3a33; }
