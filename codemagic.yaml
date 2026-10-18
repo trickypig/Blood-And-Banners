@@ -11,10 +11,11 @@ workflows:
       # reuse it rather than registering the same .p8 under another name.
       app_store_connect: House Rules
     environment:
-      groups:
-        # Codemagic variable group that must contain CERTIFICATE_PRIVATE_KEY
-        # (the PEM private key used to create/fetch the distribution certificate).
-        - ios_signing
+      # Reuse matching files stored under Team settings > Code signing identities.
+      # Codemagic installs the certificate/private key and profile before scripts run.
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.trickypig.bloodandbanners
       vars:
         DOTNET_PROJECT: "src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj"
         TARGET_FRAMEWORK: "net10.0-ios"
@@ -47,20 +48,6 @@ workflows:
           # Validate shared contracts and Razor UI before signing or uploading.
           dotnet test tests/BloodAndBanners.Contracts.Tests/BloodAndBanners.Contracts.Tests.csproj --configuration Release
           dotnet test tests/BloodAndBanners.UI.Tests/BloodAndBanners.UI.Tests.csproj --configuration Release
-      - name: Set up code signing (create cert + profile if missing)
-        script: |
-          set -euo pipefail
-          # Initialize the build keychain, then fetch signing files via the
-          # App Store Connect integration above. --create registers/creates the
-          # App Store provisioning profile for the bundle ID if it does not yet
-          # exist, and downloads it (plus the distribution certificate that was
-          # generated in the Codemagic UI) onto the build machine.
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
-            --type IOS_APP_STORE \
-            --certificate-key @env:CERTIFICATE_PRIVATE_KEY \
-            --create
-          keychain add-certificates
       - name: Extract signing identity and profile name
         script: |
           set -euo pipefail
