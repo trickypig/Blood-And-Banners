@@ -11,3 +11,7 @@
 .tier--elite { color: #9cc3df; }
 .void-setup__over { color: var(--danger, #e06c5a); font-weight: 600; }
 .void-setup__back { justify-self: start; font: inherit; color: #f8f0dc; background: var(--oxblood, #681e24); border: 1px solid #b18b48; padding: .4rem .7rem; cursor: pointer; }
+.void-setup__ahead { color: #e9c46a; }
+.void-setup__war-room { display: flex; flex-wrap: wrap; gap: .4rem; }
+.void-setup__ready-toggle { font: inherit; color: #f8f0dc; background: #2b2a25; border: 1px solid #b18b48; padding: .4rem .7rem; cursor: pointer; }
+.void-setup__ready-toggle:disabled { opacity: .6; cursor: not-allowed; }

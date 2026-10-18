@@ -450,6 +450,7 @@ final class GameService
             ? CoopMode::lobbySetup(Board::fromScenario($definition), $voidLord, $budget)
             : CoopMode::handOver($state, $voidLord);
         $state['setup']['budget'] = $budget;
+        $state['setup']['cap'] = CoopMode::budget($definition['coop'] ?? [], CoopMode::MAX_HERO_PLAYERS);
         $this->saveState($game['id'], $version, $state);
     }
 
@@ -1092,6 +1093,7 @@ final class GameService
         return [
             'budget' => $state['setup']['budget'],
             'spent' => $state['setup']['spent'],
+            'maxBudget' => $state['setup']['cap'] ?? null,
             'confirmed' => $state['setup']['confirmed'],
             'redacted' => false,
             'spawnZoneHexes' => $spawn,

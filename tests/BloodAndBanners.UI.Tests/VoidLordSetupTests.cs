@@ -124,22 +124,36 @@ public sealed class VoidLordSetupTests : BunitContext
     }
 
     [Fact]
-    public void Over_budget_shows_a_warning_and_the_lobby_hides_confirm()
+    public void In_the_war_room_going_over_the_current_budget_is_a_notice_and_the_roster_affords_up_to_a_full_table()
     {
         var back = 0;
         var cut = Render<VoidLordSetup>(p => p
-            .Add(c => c.Setup, Setup(spent: 14))
+            .Add(c => c.Setup, Setup(spent: 14) with { MaxBudget = 36 })
             .Add(c => c.IsVoidLord, true)
-            .Add(c => c.ShowConfirm, false)
-            .Add(c => c.ShowBackToWarRoom, true)
-            .Add(c => c.StatusLine, "War room · 1 hero, 0 ready")
+            .Add(c => c.InWarRoom, true)
             .Add(c => c.OnBackToWarRoom, () => back++));
 
-        Assert.Contains("Over budget by 2", cut.Find("[data-testid=setup-over-budget]").TextContent);
+        Assert.Contains("14 / 12 · up to 36 with 4 heroes", cut.Find("[data-testid=setup-budget]").TextContent);
+        var notice = cut.Find("[data-testid=setup-over-budget]");
+        Assert.Contains("Over the current budget by 2", notice.TextContent);
+        Assert.NotEqual("alert", notice.GetAttribute("role"));
+        Assert.False(cut.Find("[data-monster='Frost Wyrm']").HasAttribute("disabled"));
         Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
-        Assert.Contains("War room · 1 hero, 0 ready", cut.Find("[data-testid=setup-status]").TextContent);
         cut.Find("[data-action=back-to-war-room]").Click();
         Assert.Equal(1, back);
+    }
+
+    [Fact]
+    public void After_the_start_over_budget_is_a_warning()
+    {
+        var cut = Render<VoidLordSetup>(p => p
+            .Add(c => c.Setup, Setup(spent: 14))
+            .Add(c => c.IsVoidLord, true));
+
+        var warning = cut.Find("[data-testid=setup-over-budget]");
+        Assert.Contains("Over budget by 2", warning.TextContent);
+        Assert.Equal("alert", warning.GetAttribute("role"));
+        Assert.True(cut.Find("[data-monster='Ice Wolf']").HasAttribute("disabled"));
     }
 
     [Fact]
@@ -147,41 +161,107 @@ public sealed class VoidLordSetupTests : BunitContext
     {
         var cut = Render<VoidLordSetup>(p => p
             .Add(c => c.Setup, Setup(spent: 3) with { Confirmed = true })
-            .Add(c => c.IsVoidLord, true)
-            .Add(c => c.StatusLine, "Waiting for the heroes to finish drafting · 2/3 picks"));
+            .Add(c => c.IsVoidLord, true));
 
         Assert.NotNull(cut.Find("[data-testid=setup-ready]"));
         Assert.Empty(cut.FindAll("[data-monster]"));
         Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
     }
 
-    [Fact]
-    public void During_the_draft_the_void_lord_keeps_the_setup_board_with_hero_progress()
+    private static GameProjection DraftTable(bool confirmed, int picksMade)
     {
-        var projection = SetupTable("seat-void", new LegalAction("confirmSetup", null, [])) with { Lifecycle = GameLifecycle.Draft };
-        projection = projection with
+        var projection = SetupTable("seat-void", confirmed ? [] : [new LegalAction("confirmSetup", null, [])]) with { Lifecycle = GameLifecycle.Draft };
+        return projection with
         {
-            Draft = new DraftProjection(new Dictionary<string, IReadOnlyList<int>>(), "seat-hero", null,
+            Setup = projection.Setup! with { Confirmed = confirmed },
+            Draft = new DraftProjection(new Dictionary<string, IReadOnlyList<int>>(), picksMade < 3 ? "seat-hero" : null, null,
                 new Dictionary<string, int?>(), new Dictionary<string, string?>(), new Dictionary<string, string?>(), [], [])
-            { PicksMade = 2, PicksTotal = 3, Redacted = true },
+            { PicksMade = picksMade, PicksTotal = 3, Redacted = true },
         };
-        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection));
-
-        Assert.Contains("Heroes drafting · 2/3 picks", cut.Find("[data-testid=setup-status]").TextContent);
-        Assert.NotNull(cut.Find("[data-action=confirmSetup]"));
     }
 
     [Fact]
-    public void In_the_war_room_the_setup_board_offers_the_way_back_and_no_confirm()
+    public void During_the_draft_the_banner_shows_hero_progress_and_carries_the_unleash_button()
     {
-        var projection = SetupTable("seat-void", new LegalAction("placeMonster", null, ["5,0"])) with { Lifecycle = GameLifecycle.Lobby };
-        var back = 0;
-        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection).Add(c => c.OnBackToWarRoom, () => back++));
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, DraftTable(confirmed: false, picksMade: 2))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
 
-        Assert.Contains("War room · 1 hero, 1 ready", cut.Find("[data-testid=setup-status]").TextContent);
+        Assert.Contains("Heroes drafting · 2/3 picks", cut.Find("[data-testid=turn-status]").TextContent);
+        cut.Find(".turn-ribbon [data-action=confirmSetup]").Click();
+        Assert.Equal(["confirmSetup"], sent.Select(request => request.Kind));
+        Assert.Empty(cut.FindAll("[data-testid=setup-status]"));
+    }
+
+    [Fact]
+    public void The_banner_tells_the_void_lord_when_the_heroes_are_done_or_still_going()
+    {
+        var done = Render<GameTable>(p => p.Add(c => c.Projection, DraftTable(confirmed: false, picksMade: 3)));
+        Assert.Contains("The heroes are ready · 3/3 picks", done.Find("[data-testid=turn-status]").TextContent);
+
+        var waiting = Render<GameTable>(p => p.Add(c => c.Projection, DraftTable(confirmed: true, picksMade: 2)));
+        Assert.Contains("Waiting for the heroes · 2/3 picks", waiting.Find("[data-testid=turn-status]").TextContent);
+        Assert.Empty(waiting.FindAll("[data-action=confirmSetup]"));
+    }
+
+    private static GameProjection WarRoomTable(bool host = true, bool heroReady = true) =>
+        SetupTable("seat-void", new LegalAction("placeMonster", null, ["5,0"])) with
+        {
+            Lifecycle = GameLifecycle.Lobby,
+            Viewer = new ViewerPermissions("player", "seat-void", true, host),
+            Memberships =
+            [
+                new MembershipProjection("seat-void", 1, true, host) { Role = "voidLord" },
+                new MembershipProjection("seat-hero", 2, heroReady, !host),
+            ],
+        };
+
+    [Fact]
+    public void In_the_war_room_the_host_void_lord_begins_the_incursion_from_the_banner()
+    {
+        var back = 0;
+        var started = 0;
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, WarRoomTable())
+            .Add(c => c.OnBackToWarRoom, () => back++)
+            .Add(c => c.OnStart, () => started++));
+
+        Assert.Contains("War room · 1 hero, 1 ready", cut.Find("[data-testid=turn-status]").TextContent);
         Assert.Empty(cut.FindAll("[data-action=confirmSetup]"));
+        cut.Find(".turn-ribbon [data-action=start-game]").Click();
+        Assert.Equal(1, started);
         cut.Find("[data-action=back-to-war-room]").Click();
         Assert.Equal(1, back);
+    }
+
+    [Fact]
+    public void Begin_waits_for_every_banner_and_says_why()
+    {
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, WarRoomTable(heroReady: false)));
+
+        Assert.True(cut.Find("[data-action=start-game]").HasAttribute("disabled"));
+        Assert.Contains("Waiting for 1 commander to ready up", cut.Find("[data-testid=start-note]").TextContent);
+    }
+
+    [Fact]
+    public void A_void_lord_who_is_not_the_host_waits_for_the_host()
+    {
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, WarRoomTable(host: false)));
+
+        Assert.Empty(cut.FindAll("[data-action=start-game]"));
+        Assert.Contains("Waiting for the host to begin the incursion", cut.Find("[data-testid=start-note]").TextContent);
+    }
+
+    [Fact]
+    public void The_void_lord_readies_from_the_setup_board()
+    {
+        var readies = new List<bool>();
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, WarRoomTable())
+            .Add(c => c.OnReadyChanged, (bool ready) => readies.Add(ready)));
+
+        var toggle = cut.Find("[data-action=toggle-ready]");
+        Assert.Contains("Stand down", toggle.TextContent);
+        toggle.Click();
+        Assert.Equal([false], readies);
     }
 
     [Fact]

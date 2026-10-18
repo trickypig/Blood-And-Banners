@@ -142,6 +142,9 @@ public sealed record SetupProjection(
 {
     /// <summary>True for a viewer on the other side: only <see cref="Confirmed"/> is real.</summary>
     public bool Redacted { get; init; }
+
+    /// <summary>In the war room: the most the Void Lord may place before the roster is locked (a full table). Null once the budget is final.</summary>
+    public int? MaxBudget { get; init; }
 }
 
 public sealed record GameProjection(

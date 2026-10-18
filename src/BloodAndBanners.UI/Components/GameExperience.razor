@@ -33,7 +33,9 @@ else if (_game.Lifecycle == GameLifecycle.Lobby && _placingMonsters && VoidLordP
                InviteBaseUri="@InviteBaseUri"
                OnCommand="SubmitGameCommand"
                OnReturnToWarRoom="LeaveWarRoom"
-               OnBackToWarRoom="() => _placingMonsters = false" />
+               OnBackToWarRoom="() => _placingMonsters = false"
+               OnStart="StartGame"
+               OnReadyChanged="SetReady" />
 }
 else if (_game.Lifecycle == GameLifecycle.Lobby)
 {

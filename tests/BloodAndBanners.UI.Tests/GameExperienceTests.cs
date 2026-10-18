@@ -653,8 +653,10 @@ public sealed class GameExperienceTests : BunitContext
             return Task.FromResult(Readied ?? throw new InvalidOperationException());
         }
 
+        public GameProjection? Started { get; set; }
+
         public Task<GameProjection> StartGameAsync(CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            Task.FromResult(Started ?? throw new NotSupportedException());
 
         public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
             Task.FromResult(new BoardProjection(0, 0, []));
@@ -688,6 +690,42 @@ public sealed class GameExperienceTests : BunitContext
         cut.WaitForElement("[data-testid=setup-budget]");
         cut.Find("[data-action=back-to-war-room]").Click();
         cut.WaitForElement("[data-action=place-monsters]");
+    }
+
+    [Fact]
+    public void The_host_void_lord_begins_from_the_monster_board_and_stays_on_it_to_confirm()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = CoopVoidLord(GameLifecycle.Lobby, actions: new LegalAction("setReady", null, [])),
+            Started = CoopVoidLord(GameLifecycle.Draft, version: 10, actions: new LegalAction("confirmSetup", null, [])),
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForElement("[data-action=place-monsters]").Click();
+        cut.WaitForElement(".turn-ribbon [data-action=start-game]").Click();
+        cut.WaitForElement(".turn-ribbon [data-action=confirmSetup]");
+        Assert.Empty(cut.FindAll("[data-action=place-monsters]"));
+    }
+
+    [Fact]
+    public void The_void_lord_readies_from_the_monster_board()
+    {
+        var api = new FakeSessionCoordinator
+        {
+            Reconnected = CoopVoidLord(GameLifecycle.Lobby, actions: new LegalAction("setReady", null, [])),
+            Readied = CoopVoidLord(GameLifecycle.Lobby, version: 10, actions: new LegalAction("setReady", null, [])),
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForElement("[data-action=place-monsters]").Click();
+        cut.WaitForElement("[data-action=toggle-ready]").Click();
+        cut.WaitForAssertion(() => Assert.Equal((9L, false), api.ReadyRequest));
+        cut.WaitForElement("[data-testid=setup-budget]");
     }
 
     [Fact]

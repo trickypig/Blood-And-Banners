@@ -24,6 +24,26 @@
             <span>@TurnStatus</span>
         </p>
         <div class="ribbon-end">
+            @if (ShowBeginButton)
+            {
+                <button type="button"
+                        class="ribbon-end-turn"
+                        data-action="start-game"
+                        disabled="@(!LobbyRules.CanStart(Projection) || IsBusy)"
+                        @onclick="() => OnStart.InvokeAsync()">
+                    Begin the incursion
+                </button>
+            }
+            @if (ShowUnleashButton)
+            {
+                <button type="button"
+                        class="ribbon-end-turn"
+                        data-action="confirmSetup"
+                        disabled="@(!Projection.LegalActions.Any(action => action.Kind == "confirmSetup") || IsBusy)"
+                        @onclick='() => Send("confirmSetup", new { })'>
+                    Unleash the horde
+                </button>
+            }
             @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endTurn"))
             {
                 <button type="button"
@@ -286,15 +306,14 @@
             <VoidLordSetup Setup="Projection.Setup!"
                            IsVoidLord="SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId)"
                            SelectedMonster="@_selectedMonster"
-                           CanConfirm='Projection.LegalActions.Any(action => action.Kind == "confirmSetup")'
                            IsBusy="IsBusy"
                            ImageBaseUrl="@ImageBaseUrl"
                            MonstersPlaced="Projection.Units.Count"
                            OnSelectMonster="SelectMonster"
-                           OnConfirm='() => Send("confirmSetup", new { })'
-                           StatusLine="@SetupStatus"
-                           ShowConfirm="@(Projection.Lifecycle != GameLifecycle.Lobby)"
-                           ShowBackToWarRoom="@(Projection.Lifecycle == GameLifecycle.Lobby)"
+                           InWarRoom="@(Projection.Lifecycle == GameLifecycle.Lobby)"
+                           ViewerReady="@(Projection.Memberships.FirstOrDefault(member => member.SeatId == Projection.Viewer.SeatId)?.Ready ?? false)"
+                           StartNote="@StartNote"
+                           OnReadyChanged="OnReadyChanged"
                            OnBackToWarRoom="OnBackToWarRoom" />
         }
 
@@ -523,6 +542,13 @@
     [Parameter]
     public EventCallback OnBackToWarRoom { get; set; }
 
+    /// <summary>The host begins the match from the Void Lord's war-room board.</summary>
+    [Parameter]
+    public EventCallback OnStart { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnReadyChanged { get; set; }
+
     [Parameter]
     public string InviteBaseUri { get; set; } = string.Empty;
 
@@ -683,6 +709,7 @@
                 && Projection.Lifecycle is GameLifecycle.Lobby or GameLifecycle.Draft
                 && SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId)));
 
+    // Simultaneous Co-op prep: the banner carries the war room or draft progress instead of the setup title
     private string? SetupStatus
     {
         get
@@ -690,16 +717,29 @@
             if (Projection.Lifecycle == GameLifecycle.Lobby)
             {
                 var heroes = Projection.Memberships.Where(member => member.Role != "voidLord").ToList();
-                return $"War room · {heroes.Count} {(heroes.Count == 1 ? "hero" : "heroes")}, {heroes.Count(member => member.Ready)} ready · you confirm once the host begins";
+                return $"War room · {heroes.Count} {(heroes.Count == 1 ? "hero" : "heroes")}, {heroes.Count(member => member.Ready)} ready";
             }
             if (Projection.Lifecycle == GameLifecycle.Draft && Projection.Draft is { } draft)
             {
                 var picks = $"{draft.PicksMade}/{draft.PicksTotal} picks";
-                return Projection.Setup!.Confirmed ? $"Waiting for the heroes to finish drafting · {picks}" : $"Heroes drafting · {picks}";
+                return Projection.Setup!.Confirmed ? $"Waiting for the heroes · {picks}"
+                    : draft.PicksMade >= draft.PicksTotal ? $"The heroes are ready · {picks}"
+                    : $"Heroes drafting · {picks}";
             }
             return null;
         }
     }
+
+    private bool InWarRoomSetup => InSetup && Projection.Lifecycle == GameLifecycle.Lobby;
+
+    private bool ShowBeginButton => InWarRoomSetup && Projection.Viewer.IsHost;
+
+    private bool ShowUnleashButton => InSetup && Projection.Lifecycle != GameLifecycle.Lobby
+        && !Projection.Setup!.Confirmed && SeatNames.IsVoidLord(Projection, Projection.Viewer.SeatId);
+
+    private string? StartNote => !InWarRoomSetup ? null
+        : !Projection.Viewer.IsHost ? "Waiting for the host to begin the incursion."
+        : LobbyRules.StartBlocker(Projection);
 
     private IReadOnlyList<string> PlaceableHexes => !InSetup || _selectedMonster is null
         ? []
@@ -714,7 +754,7 @@
         {
             if (InSetup)
             {
-                return "Setup · The Void Lord summons the horde";
+                return SetupStatus ?? "Setup · The Void Lord summons the horde";
             }
             var round = $"Round {Projection.Turn.Round}";
             if (Projection.Result is not null)

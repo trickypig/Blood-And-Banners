@@ -56,13 +56,19 @@ final class CoopSetup
             && AbilityRegistry::isPlayable($ability['name']);
     }
 
+    /** In the war room the Void Lord may build toward a full table; the real budget binds once the roster is locked. */
+    private static function placementLimit(array $state): int
+    {
+        return (int)($state['setup']['cap'] ?? $state['setup']['budget']);
+    }
+
     public function legalActions(array $state, string $seatId): array
     {
         if ($seatId !== $state['voidLordSeatId'] || $state['setup']['confirmed']) {
             return [];
         }
         $actions = [];
-        $remaining = $state['setup']['budget'] - $state['setup']['spent'];
+        $remaining = self::placementLimit($state) - $state['setup']['spent'];
         foreach ($this->catalog->monsters() as $monster) {
             $free = self::freeSpawnHexes($state, $monster);
             if ($free !== [] && self::cost($monster) <= $remaining) {
@@ -106,7 +112,7 @@ final class CoopSetup
                 self::fail('hexNotEnterable');
             }
             $cost = self::cost($monster);
-            if ($state['setup']['spent'] + $cost > $state['setup']['budget']) {
+            if ($state['setup']['spent'] + $cost > self::placementLimit($state)) {
                 self::fail('budgetExceeded');
             }
             $unitId = 'v-m' . $state['setup']['nextMonster'];

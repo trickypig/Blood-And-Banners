@@ -177,6 +177,8 @@ final class CoopMode implements ModeRules
         return ['start' => $start, 'facing' => $facing[0], 'spawn' => $spawn];
     }
 
+    public const MAX_HERO_PLAYERS = 4;
+
     /** Tier points for the Void Lord: base points plus a share per hero player. */
     public static function budget(array $rules, int $heroPlayers): int
     {

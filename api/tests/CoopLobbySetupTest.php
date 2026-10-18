@@ -18,6 +18,23 @@ function coop_lobby_place(array $match, string $who, string $monster): array
     return vanilla_submit($match, $who, 'placeMonster', ['monster' => $monster, 'hex' => coop_lobby_spawn($view, $monster)]);
 }
 
+/** A hex the wolf could take in $before that is still empty in $after. */
+function coop_lobby_free_wolf_hex(array $before, array $after): string
+{
+    $taken = array_column($after['units'], 'hex');
+    return array_values(array_diff(coop_lobby_wolf_hexes($before), $taken))[0];
+}
+
+function coop_lobby_wolf_hexes(array $projection): array
+{
+    foreach ($projection['legalActions'] as $action) {
+        if ($action['kind'] === 'placeMonster' && ($action['monster'] ?? null) === 'Test Wolf') {
+            return $action['targetHexes'];
+        }
+    }
+    return [];
+}
+
 function coop_lobby_state_count(array $match): int
 {
     $statement = $match['db']->prepare('SELECT COUNT(*) FROM game_states WHERE game_id = :game');
@@ -50,7 +67,7 @@ function coop_lobby_setup_tests(): array
             $match['games']->leaveGame($match['gameId'], $match['hero1']['identity'], $match['hero1']['token']);
             $after = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             expect_same([4, 12, 3], [$after['setup']['budget'], $after['setup']['spent'], count($after['units'])], 'over budget, monsters stay');
-            expect_true(!in_array('placeMonster', array_column($after['legalActions'], 'kind'), true), 'nothing more is affordable');
+            expect_true(in_array('placeMonster', array_column($after['legalActions'], 'kind'), true), 'the war room still lets the void lord run ahead of the budget');
             $guest = $match['auth']->createGuest('coop-late-' . bin2hex(random_bytes(4)));
             $match['games']->joinGame($match['gameId'], $guest['identityId']);
             expect_same(12, $match['games']->getGame($match['gameId'], $match['host']['identity'])['setup']['budget'], 'a join grows it back');
@@ -86,6 +103,36 @@ function coop_lobby_setup_tests(): array
             expect_same(1, coop_lobby_state_count($match), 'the board is stored');
             $match['games']->leaveGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             expect_same(0, coop_lobby_state_count($match), 'the empty room takes the board with it');
+        },
+
+        'the war room lets the void lord go over the current budget, up to a full table' => static function (): void {
+            $match = coop_service_match(1);
+            $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            expect_same([12, 36], [$claimed['setup']['budget'], $claimed['setup']['maxBudget']], 'one hero now, four at most: 4 + 8 × 4');
+            foreach (range(1, 9) as $ignored) {
+                $placed = coop_lobby_place($match, 'host', 'Test Wyrm');
+            }
+            expect_same([12, 36], [$placed['setup']['budget'], $placed['setup']['spent']], 'nine wyrms fill the largest budget');
+            expect_true(!in_array('placeMonster', array_column($placed['legalActions'], 'kind'), true), 'nothing fits past a full table');
+            $free = coop_lobby_free_wolf_hex($claimed, $placed);
+            expect_game_error('budgetExceeded', static fn() => vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => $free]));
+        },
+
+        'after the start the budget is strict again' => static function (): void {
+            $match = coop_service_match(1);
+            $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            foreach (range(1, 4) as $ignored) {
+                coop_lobby_place($match, 'host', 'Test Wyrm');
+            }
+            coop_ready_all($match);
+            $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            expect_same([12, 16, null], [$started['setup']['budget'], $started['setup']['spent'], $started['setup']['maxBudget']], 'over the final budget');
+            $kinds = array_column($started['legalActions'], 'kind');
+            expect_true(!in_array('placeMonster', $kinds, true) && !in_array('confirmSetup', $kinds, true), 'no placement or confirm while over');
+            expect_true(in_array('removeMonster', $kinds, true), 'removal is how to get back under');
+            $free = coop_lobby_free_wolf_hex($claimed, $started);
+            expect_game_error('budgetExceeded', static fn() => vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => $free]));
+            expect_game_error('budgetExceeded', static fn() => vanilla_submit($match, 'host', 'confirmSetup', []));
         },
 
         'start carries the lobby horde into prep and opens the draft' => static function (): void {

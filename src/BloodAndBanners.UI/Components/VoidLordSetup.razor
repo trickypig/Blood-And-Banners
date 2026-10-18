@@ -10,13 +10,19 @@
     }
     else
     {
-        @if (ShowBackToWarRoom)
+        @if (InWarRoom)
         {
-            <button type="button" class="void-setup__back" data-action="back-to-war-room" @onclick="() => OnBackToWarRoom.InvokeAsync()">Back to war room</button>
-        }
-        @if (!string.IsNullOrEmpty(StatusLine))
-        {
-            <p class="void-setup__status" data-testid="setup-status" role="status">@StatusLine</p>
+            <div class="void-setup__war-room">
+                <button type="button" class="void-setup__back" data-action="back-to-war-room" @onclick="() => OnBackToWarRoom.InvokeAsync()">Back to war room</button>
+                <button type="button" class="void-setup__ready-toggle" data-action="toggle-ready" disabled="@IsBusy" @onclick="() => OnReadyChanged.InvokeAsync(!ViewerReady)">
+                    @(ViewerReady ? "Stand down" : "Ready your banner")
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(StartNote))
+            {
+                <p class="void-setup__status" data-testid="start-note" role="status">@StartNote</p>
+            }
+            <p class="void-setup__hint">You confirm the horde once the host begins.</p>
         }
         @if (Setup.Confirmed)
         {
@@ -24,9 +30,13 @@
         }
         else
         {
-            <p class="void-setup__budget" data-testid="setup-budget" role="status">Budget @Setup.Spent / @Setup.Budget</p>
+            <p class="void-setup__budget" data-testid="setup-budget" role="status">Budget @Setup.Spent / @Setup.Budget@(Setup.MaxBudget is { } most ? $" · up to {most} with 4 heroes" : null)</p>
             <meter min="0" max="@Setup.Budget" value="@Setup.Spent" aria-label="Budget spent"></meter>
-            @if (Setup.Spent > Setup.Budget)
+            @if (Setup.Spent > Setup.Budget && Setup.MaxBudget is not null)
+            {
+                <p class="void-setup__ahead" data-testid="setup-over-budget">Over the current budget by @(Setup.Spent - Setup.Budget). Fine for now; you'll need to be within budget to confirm.</p>
+            }
+            else if (Setup.Spent > Setup.Budget)
             {
                 <p class="void-setup__over" data-testid="setup-over-budget" role="alert">Over budget by @(Setup.Spent - Setup.Budget) — remove monsters before you confirm.</p>
             }
@@ -44,7 +54,7 @@
                 <ul class="void-setup__roster">
                     @foreach (var monster in biome.OrderBy(monster => TierOrder(monster.Tier)).ThenBy(monster => monster.Name))
                     {
-                        var affordable = monster.Cost <= Setup.Budget - Setup.Spent;
+                        var affordable = monster.Cost <= (Setup.MaxBudget ?? Setup.Budget) - Setup.Spent;
                         <li>
                             <button type="button"
                                     data-monster="@monster.Name"
@@ -63,12 +73,6 @@
                     }
                 </ul>
             }
-            @if (ShowConfirm)
-            {
-                <button type="button" class="action-button" data-action="confirmSetup" disabled="@(!CanConfirm || IsBusy)" @onclick="() => OnConfirm.InvokeAsync()">
-                    Unleash the horde
-                </button>
-            }
         }
     }
 </section>
@@ -77,15 +81,15 @@
     [Parameter, EditorRequired] public SetupProjection Setup { get; set; } = default!;
     [Parameter] public bool IsVoidLord { get; set; }
     [Parameter] public string? SelectedMonster { get; set; }
-    [Parameter] public bool CanConfirm { get; set; }
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public string? ImageBaseUrl { get; set; }
     [Parameter] public int MonstersPlaced { get; set; }
     [Parameter] public EventCallback<string> OnSelectMonster { get; set; }
-    [Parameter] public EventCallback OnConfirm { get; set; }
-    [Parameter] public string? StatusLine { get; set; }
-    [Parameter] public bool ShowConfirm { get; set; } = true;
-    [Parameter] public bool ShowBackToWarRoom { get; set; }
+    /// <summary>The war room is still open: the board offers the way back and the Void Lord's own readiness.</summary>
+    [Parameter] public bool InWarRoom { get; set; }
+    [Parameter] public bool ViewerReady { get; set; }
+    [Parameter] public string? StartNote { get; set; }
+    [Parameter] public EventCallback<bool> OnReadyChanged { get; set; }
     [Parameter] public EventCallback OnBackToWarRoom { get; set; }
 
     private static int TierOrder(string tier) => tier switch { "common" => 0, "elite" => 1, "boss" => 2, _ => 3 };

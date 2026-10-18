@@ -223,11 +223,9 @@
 
     private bool IsCoop => Projection.Mode == GameMode.Coop;
 
-    private int VoidLordCount => Projection.Memberships.Count(seat => seat.Role == "voidLord");
+    private int VoidLordCount => LobbyRules.VoidLordCount(Projection);
 
-    private bool CanStart =>
-        Projection.Memberships.Count >= 2 && Projection.Memberships.All(seat => seat.Ready)
-        && (!IsCoop || (VoidLordCount == 1 && Projection.Memberships.Count - VoidLordCount >= 1));
+    private bool CanStart => LobbyRules.CanStart(Projection);
 
     private string ReadySummary
     {
