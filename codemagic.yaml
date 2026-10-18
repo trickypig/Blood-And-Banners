@@ -20,8 +20,8 @@ workflows:
         DOTNET_PROJECT: "src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj"
         TARGET_FRAMEWORK: "net10.0-ios"
         BUNDLE_ID: "com.trickypig.bloodandbanners"
-      # Match Goldulf’s Goons. Keep Xcode compatible with the MAUI iOS workload.
-      xcode: 26.6
+      # .NET iOS 27.0.10722 requires Xcode 27.0.
+      xcode: "27.0"
     triggering:
       events:
         - push
