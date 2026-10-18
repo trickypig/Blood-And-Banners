@@ -143,6 +143,38 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void The_rail_shows_one_army_or_the_log_at_a_time_chosen_by_emblem_tabs()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Armies = new Dictionary<string, SeatArmyProjection>
+            {
+                ["seat-red"] = new("Blackmaw", "/images/armies/blackmaw.svg"),
+                ["seat-blue"] = new("Sol Invictus", null),
+            },
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        Assert.Equal(["seat-red", "seat-blue", "log"], cut.FindAll("[role=tab]").Select(tab => tab.GetAttribute("data-rail-tab")));
+        Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", cut.Find("[data-rail-tab=seat-red] img").GetAttribute("src"));
+        Assert.Equal("true", cut.Find("[data-rail-tab=seat-red]").GetAttribute("aria-selected"));
+        Assert.False(cut.Find(".roster.seat-1").HasAttribute("hidden"));
+        Assert.True(cut.Find(".roster.seat-2").HasAttribute("hidden"));
+        Assert.True(cut.Find("#rail-panel-log").HasAttribute("hidden"));
+
+        cut.Find("[data-rail-tab=seat-blue]").Click();
+        Assert.True(cut.Find(".roster.seat-1").HasAttribute("hidden"));
+        Assert.False(cut.Find(".roster.seat-2").HasAttribute("hidden"));
+
+        cut.Find("[data-rail-tab=log]").Click();
+        Assert.Equal("true", cut.Find("[data-rail-tab=log]").GetAttribute("aria-selected"));
+        Assert.False(cut.Find("#rail-panel-log").HasAttribute("hidden"));
+        Assert.Equal(2, cut.FindAll(".roster[hidden]").Count);
+    }
+
+    [Fact]
     public void The_turn_ribbon_turns_gold_on_your_turn_and_red_otherwise_and_shows_the_active_army()
     {
         var projection = BattleFixtures.Projection() with

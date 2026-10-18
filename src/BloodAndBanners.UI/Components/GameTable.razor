@@ -450,10 +450,41 @@
             </section>
         }
 
-        <section class="rosters" aria-label="Armies">
-            @foreach (var seat in Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId))
+        @{ var railSeats = Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId).ToList(); }
+        @{ var railTab = ActiveRailTab(railSeats); }
+        <div class="rail-tabs" role="tablist" aria-label="Armies and battle log">
+            @foreach (var seat in railSeats)
             {
-                <div class="roster @SeatClass(seat.SeatId)">
+                var tabEmblem = CatalogImages.Resolve(ImageBaseUrl, Projection.Armies?.GetValueOrDefault(seat.SeatId)?.Emblem);
+                <button type="button" role="tab" class="rail-tab @SeatClass(seat.SeatId)" data-rail-tab="@seat.SeatId"
+                        id="rail-tab-@seat.SeatId" aria-controls="rail-panel-@seat.SeatId"
+                        aria-selected="@(railTab == seat.SeatId ? "true" : "false")" tabindex="@(railTab == seat.SeatId ? 0 : -1)"
+                        title="@RosterTitle(seat)" aria-label="@RosterTitle(seat)" @onclick="() => _railTab = seat.SeatId">
+                    @if (tabEmblem is not null)
+                    {
+                        <img src="@tabEmblem" alt="" />
+                    }
+                    else
+                    {
+                        <span class="rail-tab-initial" aria-hidden="true">@RosterTitle(seat)[..1]</span>
+                    }
+                </button>
+            }
+            <button type="button" role="tab" class="rail-tab log-tab" data-rail-tab="log"
+                    id="rail-tab-log" aria-controls="rail-panel-log"
+                    aria-selected="@(railTab == LogTab ? "true" : "false")" tabindex="@(railTab == LogTab ? 0 : -1)"
+                    title="Battle log" aria-label="Battle log" @onclick="() => _railTab = LogTab">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 3h10a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1h11v1a1 1 0 0 0 2 0V5H6z" />
+                    <path d="M8 7h7v1.6H8zM8 10.5h7v1.6H8zM8 14h5v1.6H8z" />
+                </svg>
+            </button>
+        </div>
+
+        <section class="rosters" aria-label="Armies">
+            @foreach (var seat in railSeats)
+            {
+                <div class="roster @SeatClass(seat.SeatId)" role="tabpanel" id="rail-panel-@seat.SeatId" aria-labelledby="rail-tab-@seat.SeatId" hidden="@(railTab != seat.SeatId)">
                     @{ var army = Projection.Armies?.GetValueOrDefault(seat.SeatId); }
                     <div class="roster-head">
                         @if (CatalogImages.Resolve(ImageBaseUrl, army?.Emblem) is { } emblem)
@@ -495,7 +526,9 @@
             }
         </section>
 
-        <CombatLog Projection="Projection" Events="Events" />
+        <div class="rail-log" role="tabpanel" id="rail-panel-log" aria-labelledby="rail-tab-log" hidden="@(railTab != LogTab)">
+            <CombatLog Projection="Projection" Events="Events" />
+        </div>
         <AttackPopup Projection="Projection" Events="Events" LiveAfterSequence="LiveAfterSequence" ImageBaseUrl="@ImageBaseUrl" />
         <TurnPopup Projection="Projection" />
     </aside>
@@ -1502,6 +1535,14 @@
     }
 
     private string SeatName(string seatId) => SeatNames.Display(Projection, seatId);
+
+    private const string LogTab = "log";
+
+    private string? _railTab;
+
+    // The rail shows one army roster or the battle log at a time; it opens on the viewer's own army.
+    private string? ActiveRailTab(IReadOnlyList<MembershipProjection> seats) =>
+        _railTab == LogTab || seats.Any(seat => seat.SeatId == _railTab) ? _railTab : seats.FirstOrDefault()?.SeatId ?? LogTab;
 
     private string RosterTitle(MembershipProjection seat) =>
         IsCoop
