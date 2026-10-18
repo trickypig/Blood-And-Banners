@@ -70,7 +70,7 @@ workflows:
           # Look up the app's numeric App Store id from its bundle id, then ask
           # TestFlight for the highest build number already uploaded and add 1.
           # The app record must already exist in App Store Connect.
-          # The CLI returns 0 when the app has no TestFlight builds yet.
+          # A successful lookup returns empty output when there are no builds yet.
           APP_ID=$(app-store-connect apps list \
             --bundle-id-identifier "$BUNDLE_ID" \
             --strict-match-identifier \
@@ -80,6 +80,7 @@ workflows:
             exit 1
           fi
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_ID" --platform IOS)
+          LATEST_BUILD_NUMBER=${LATEST_BUILD_NUMBER:-0}
           if [[ ! "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
             echo "Invalid TestFlight build number: $LATEST_BUILD_NUMBER" >&2
             exit 1
