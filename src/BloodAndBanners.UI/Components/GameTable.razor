@@ -695,6 +695,7 @@
         if (_selectedUnitId is null && Projection.Turn.ActiveUnitId is { } active && Selectable(active))
         {
             _selectedUnitId = active;
+            ShowArmyTabOf(active);
         }
         if (_targeting is { } aiming && !AbilityActions(_selectedUnitId ?? string.Empty).Any(action => action.Ability == aiming.Ability))
         {
@@ -979,6 +980,7 @@
             ClearMovementState();
         }
         _selectedUnitId = selected;
+        ShowArmyTabOf(hex.OccupantId);
     }
 
     private const int ChainReach = 5;
@@ -1544,6 +1546,15 @@
     private string? ActiveRailTab(IReadOnlyList<MembershipProjection> seats) =>
         _railTab == LogTab || seats.Any(seat => seat.SeatId == _railTab) ? _railTab : seats.FirstOrDefault()?.SeatId ?? LogTab;
 
+    // Clicking a unit, or the turn picking one for you, brings its army's roster into view.
+    private void ShowArmyTabOf(string? unitId)
+    {
+        if (UnitById(unitId)?.SeatId is { } seatId && Projection.Memberships.Any(seat => seat.SeatId == seatId))
+        {
+            _railTab = seatId;
+        }
+    }
+
     private string RosterTitle(MembershipProjection seat) =>
         IsCoop
             ? seat.SeatId == Projection.Viewer.SeatId ? "Your army"
@@ -1670,6 +1681,7 @@
             return;
         }
         _spotlitUnitId = unit.UnitId;
+        ShowArmyTabOf(unit.UnitId);
         if (!IsBusy && !InSetup && Projection.PendingChoice is null && _targeting is null
             && unit.UnitId != _selectedUnitId && Selectable(unit.UnitId))
         {

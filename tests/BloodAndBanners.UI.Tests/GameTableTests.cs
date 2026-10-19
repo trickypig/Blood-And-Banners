@@ -175,6 +175,21 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void The_rail_tab_follows_the_unit_clicked_on_the_board()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, BattleFixtures.Projection()));
+        cut.Find("[data-rail-tab=log]").Click();
+
+        cut.Find("[data-hex='3,4']").Click();
+        Assert.Equal("true", cut.Find("[data-rail-tab=seat-blue]").GetAttribute("aria-selected"));
+        Assert.False(cut.Find(".roster.seat-2").HasAttribute("hidden"));
+
+        cut.Find("[data-hex='1,4']").Click();
+        Assert.Equal("true", cut.Find("[data-rail-tab=seat-red]").GetAttribute("aria-selected"));
+        Assert.True(cut.Find(".roster.seat-2").HasAttribute("hidden"));
+    }
+
+    [Fact]
     public void The_turn_ribbon_turns_gold_on_your_turn_and_red_otherwise_and_shows_the_active_army()
     {
         var projection = BattleFixtures.Projection() with
