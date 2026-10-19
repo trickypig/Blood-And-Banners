@@ -296,7 +296,7 @@
         }
     </section>
 
-    <aside class="command-rail" aria-label="Game commands">
+    <aside class="command-rail @(_railOpen ? "rail-open" : null)" aria-label="Game commands">
         @if (!string.IsNullOrEmpty(ErrorMessage))
         {
             <p class="rail-error" role="alert">@ErrorMessage</p>
@@ -451,6 +451,30 @@
             </section>
         }
 
+        @if (!InSetup && !ShowsUnitCard)
+        {
+            var recent = CombatLogFormatter.Recent(Events, Projection, 3);
+            <section class="recent-log" aria-label="Latest in the battle" data-testid="recent-log">
+                @if (recent.Count == 0)
+                {
+                    <p>No blows struck yet.</p>
+                }
+                else
+                {
+                    <ol>
+                        @foreach (var line in recent)
+                        {
+                            <li data-event="@line.Kind">@line.Text</li>
+                        }
+                    </ol>
+                }
+            </section>
+        }
+
+        @if (_railOpen)
+        {
+            <div class="rail-backdrop" data-testid="rail-backdrop" @onclick="() => _railOpen = false"></div>
+        }
         @{ var railSeats = Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId).ToList(); }
         @{ var railTab = ActiveRailTab(railSeats); }
         <div class="rail-tabs" role="tablist" aria-label="Armies and battle log">
@@ -460,7 +484,7 @@
                 <button type="button" role="tab" class="rail-tab @SeatClass(seat.SeatId)" data-rail-tab="@seat.SeatId"
                         id="rail-tab-@seat.SeatId" aria-controls="rail-panel-@seat.SeatId"
                         aria-selected="@(railTab == seat.SeatId ? "true" : "false")" tabindex="@(railTab == seat.SeatId ? 0 : -1)"
-                        title="@RosterTitle(seat)" aria-label="@RosterTitle(seat)" @onclick="() => _railTab = seat.SeatId">
+                        title="@RosterTitle(seat)" aria-label="@RosterTitle(seat)" @onclick="() => ToggleRailTab(seat.SeatId)">
                     @if (tabEmblem is not null)
                     {
                         <img src="@tabEmblem" alt="" />
@@ -474,7 +498,7 @@
             <button type="button" role="tab" class="rail-tab log-tab" data-rail-tab="log"
                     id="rail-tab-log" aria-controls="rail-panel-log"
                     aria-selected="@(railTab == LogTab ? "true" : "false")" tabindex="@(railTab == LogTab ? 0 : -1)"
-                    title="Battle log" aria-label="Battle log" @onclick="() => _railTab = LogTab">
+                    title="Battle log" aria-label="Battle log" @onclick="() => ToggleRailTab(LogTab)">
                 <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M6 3h10a2 2 0 0 1 2 2v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-1h11v1a1 1 0 0 0 2 0V5H6z" />
                     <path d="M8 7h7v1.6H8zM8 10.5h7v1.6H8zM8 14h5v1.6H8z" />
@@ -1545,6 +1569,26 @@
     private string? ActiveRailTab(IReadOnlyList<MembershipProjection> seats) =>
         _railTab == LogTab || seats.Any(seat => seat.SeatId == _railTab) ? _railTab : seats.FirstOrDefault()?.SeatId ?? LogTab;
 
+    // On phones the tab strip opens its panel over the board; tapping the open tab again closes it.
+    private bool _railOpen;
+
+    private void ToggleRailTab(string tab)
+    {
+        var current = ActiveRailTab(Projection.Memberships.OrderByDescending(seat => seat.SeatId == Projection.Viewer.SeatId).ToList());
+        if (_railOpen && current == tab)
+        {
+            _railOpen = false;
+            return;
+        }
+        _railTab = tab;
+        _railOpen = true;
+    }
+
+    // The phone layout's lower third shows the selected unit's card, or the latest log lines when there isn't one.
+    private bool ShowsUnitCard =>
+        SelectedUnit is not null && Projection.Viewer.CanCommand
+        && Projection.PendingChoice?.SeatId != Projection.Viewer.SeatId && Projection.PendingChoiceSummary is null;
+
     // Clicking a unit, or the turn picking one for you, brings its army's roster into view.
     private void ShowArmyTabOf(string? unitId)
     {
@@ -1680,6 +1724,7 @@
             return;
         }
         _spotlitUnitId = unit.UnitId;
+        _railOpen = false;
         ShowArmyTabOf(unit.UnitId);
         if (!IsBusy && !InSetup && Projection.PendingChoice is null && _targeting is null
             && unit.UnitId != _selectedUnitId && Selectable(unit.UnitId))

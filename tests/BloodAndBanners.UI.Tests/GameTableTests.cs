@@ -203,6 +203,47 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Rail_tabs_open_a_panel_that_the_same_tab_or_the_backdrop_closes()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, BattleFixtures.Projection()));
+        Assert.DoesNotContain("rail-open", cut.Find(".command-rail").ClassList);
+        Assert.Empty(cut.FindAll("[data-testid=rail-backdrop]"));
+
+        cut.Find("[data-rail-tab=seat-blue]").Click();
+        Assert.Contains("rail-open", cut.Find(".command-rail").ClassList);
+        Assert.False(cut.Find(".roster.seat-2").HasAttribute("hidden"));
+
+        cut.Find("[data-rail-tab=log]").Click();
+        Assert.Contains("rail-open", cut.Find(".command-rail").ClassList);
+        Assert.False(cut.Find("#rail-panel-log").HasAttribute("hidden"));
+
+        cut.Find("[data-rail-tab=log]").Click();
+        Assert.DoesNotContain("rail-open", cut.Find(".command-rail").ClassList);
+
+        cut.Find("[data-rail-tab=seat-red]").Click();
+        cut.Find("[data-testid=rail-backdrop]").Click();
+        Assert.DoesNotContain("rail-open", cut.Find(".command-rail").ClassList);
+        Assert.Empty(cut.FindAll("[data-testid=rail-backdrop]"));
+    }
+
+    [Fact]
+    public void The_rail_shows_the_last_three_log_lines_until_a_unit_is_selected()
+    {
+        var events = Enumerable.Range(1, 4).Select(round => new GameEvent(round, round, "turnEnded", null, [],
+            JsonSerializer.Deserialize<JsonElement>($$"""{"seatId":"seat-blue","nextSeatId":"seat-red","round":{{round}}}"""), DateTimeOffset.UnixEpoch)).ToArray();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, BattleFixtures.Projection())
+            .Add(component => component.Events, events));
+
+        Assert.Equal(["Round 4: Your turn.", "Round 3: Your turn.", "Round 2: Your turn."],
+            cut.FindAll("[data-testid=recent-log] li").Select(line => line.TextContent));
+
+        cut.Find("[data-hex='1,4']").Click();
+        Assert.NotNull(cut.Find("[data-testid=selected-unit]"));
+        Assert.Empty(cut.FindAll("[data-testid=recent-log]"));
+    }
+
+    [Fact]
     public void The_rail_tab_follows_the_unit_clicked_on_the_board()
     {
         var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, BattleFixtures.Projection()));

@@ -177,6 +177,8 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     .rail-log:not([hidden]) { flex: 1 1 auto; min-height: 10rem; display: flex; flex-direction: column; }
     .rail-log ::deep .combat-log { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
     .rail-log ::deep .combat-log ol { flex: 1 1 auto; min-height: 0; max-height: none; }
+    /* The phone-only glance at the log and the popup backdrop */
+    .recent-log, .rail-backdrop { display: none; }
 }
 
 @media (max-width: 760px) {
@@ -192,6 +194,65 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     .action-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     /* Only the order buttons pair up; the heading, hint and selected unit take the full width */
     .action-tray > :not(.action-button) { grid-column: 1 / -1; }
+
+    /* Ribbon on top, the tab strip pinned to the bottom, and the board over the rail at two thirds to one */
+    .game-table {
+        --strip: 3.4rem;
+        box-sizing: border-box;
+        height: 100vh;
+        height: 100dvh;
+        grid-template: auto minmax(0, 2fr) minmax(0, 1fr) / 1fr;
+        overflow: hidden;
+        padding-bottom: calc(var(--strip) + env(safe-area-inset-bottom, 0px));
+    }
+    .battlefield-panel, .hex-board { min-height: 0; }
+    .command-rail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .6rem .75rem; }
+    .command-rail section + section { margin-top: .75rem; padding-top: .6rem; }
+    .rail-tabs {
+        position: fixed;
+        z-index: 22;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        box-sizing: border-box;
+        height: calc(var(--strip) + env(safe-area-inset-bottom, 0px));
+        margin: 0;
+        padding: 0 .75rem env(safe-area-inset-bottom, 0px);
+        flex-wrap: nowrap;
+        justify-content: center;
+        align-items: center;
+        gap: .5rem;
+        overflow-x: auto;
+        background: #292a28;
+        border-top: 2px solid var(--brass);
+    }
+    .rail-tab { flex: none; }
+    /* Tab panels stay shut until a tab is tapped, then open as a sheet over the board */
+    .rosters, .rail-log { display: none; }
+    .command-rail.rail-open .rosters:not([hidden]),
+    .command-rail.rail-open .rail-log:not([hidden]) {
+        position: fixed;
+        z-index: 21;
+        left: .5rem;
+        right: .5rem;
+        bottom: calc(var(--strip) + env(safe-area-inset-bottom, 0px) + .5rem);
+        max-height: 60dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        margin: 0;
+        padding: .8rem 1rem;
+        background: #292a28;
+        border: 1px solid #d2ae66;
+        box-shadow: 0 .6rem 1.5rem rgba(0, 0, 0, .55);
+    }
+    .command-rail.rail-open .rosters:not([hidden]) { display: grid; }
+    .command-rail.rail-open .rail-log:not([hidden]) { display: block; }
+    .rail-log ::deep .combat-log ol { max-height: none; }
+    .rail-backdrop { position: fixed; z-index: 20; inset: 0; background: rgba(12, 12, 10, .4); }
+    .recent-log ol { margin: 0; padding-left: 1.1rem; }
+    .recent-log li { padding: .1rem 0; font-size: .9rem; line-height: 1.3; color: #c9c2b2; }
+    .recent-log li:first-child { color: #ede8da; }
+    .recent-log p { margin: 0; font-size: .9rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
