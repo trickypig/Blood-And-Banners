@@ -487,17 +487,11 @@
                 <div class="roster @SeatClass(seat.SeatId)" role="tabpanel" id="rail-panel-@seat.SeatId" aria-labelledby="rail-tab-@seat.SeatId" hidden="@(railTab != seat.SeatId)">
                     @{ var army = Projection.Armies?.GetValueOrDefault(seat.SeatId); }
                     <div class="roster-head">
-                        @if (CatalogImages.Resolve(ImageBaseUrl, army?.Emblem) is { } emblem)
+                        <h2>@RosterTitle(seat)</h2>
+                        @if (army is not null)
                         {
-                            <img class="army-emblem" src="@emblem" alt="" />
+                            <span class="army-name">@army.Name</span>
                         }
-                        <div>
-                            <h2>@RosterTitle(seat)</h2>
-                            @if (army is not null)
-                            {
-                                <span class="army-name">@army.Name</span>
-                            }
-                        </div>
                     </div>
                     <ul>
                         @foreach (var unit in Projection.Units.Where(unit => unit.SeatId == seat.SeatId))

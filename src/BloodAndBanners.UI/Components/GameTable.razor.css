@@ -118,13 +118,13 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .unit-card { padding: .65rem .8rem; background: #1f201d; border: 1px solid #5a5548; }
 .unit-card h3 { margin: 0 0 .35rem; font-family: Georgia, serif; color: #f0cf7a; }
 .unit-card p { margin: .15rem 0; }
-.rail-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #5a5548; }
+.rail-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: 1rem; padding-top: .85rem; border-top: 1px solid #5a5548; }
 .rail-tabs:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.rail-tab { display: grid; place-items: center; width: 2.9rem; height: 2.9rem; padding: .25rem; color: #c9c2b2; background: #1f201d; border: 1px solid #4a463a; border-bottom-width: 3px; border-radius: .25rem; cursor: pointer; opacity: .65; }
+.rail-tab { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; padding: .2rem; color: #c9c2b2; background: #1f201d; border: 1px solid #4a463a; border-bottom-width: 3px; border-radius: .25rem; cursor: pointer; opacity: .65; }
 .rail-tab:hover { opacity: .9; }
 .rail-tab[aria-selected="true"] { opacity: 1; background: #373830; border-color: #d2ae66; }
 .rail-tab img { width: 100%; height: 100%; object-fit: contain; }
-.rail-tab svg { width: 1.6rem; height: 1.6rem; fill: currentColor; }
+.rail-tab svg { width: 1.4rem; height: 1.4rem; fill: currentColor; }
 .rail-tab-initial { font: 700 1.25rem Georgia, serif; }
 .rail-tab.seat-1 { border-bottom-color: #e2a29a; color: #e2a29a; }
 .rail-tab.seat-2 { border-bottom-color: #9cc3df; color: #9cc3df; }
@@ -133,11 +133,11 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .rail-tab.seat-5 { border-bottom-color: #e0a8e2; color: #e0a8e2; }
 .rail-tab.seat-void { border-bottom-color: #b48cff; color: #b48cff; }
 .rail-tab.log-tab[aria-selected="true"] { color: #f0cf7a; }
-.rosters, .rail-log { margin-top: .9rem; }
+.rosters, .rail-log { margin-top: .6rem; }
 .rosters { display: grid; gap: 1rem; }
-.roster-head { display: flex; align-items: center; gap: .6rem; }
-.roster-head .army-emblem { flex: none; width: 2.75rem; height: 2.75rem; }
-.army-name { display: block; margin-top: -.35rem; margin-bottom: .45rem; color: #c9c2b2; font-size: .85rem; }
+.roster-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5rem; margin-bottom: .35rem; }
+.command-rail .roster-head h2 { margin: 0; }
+.army-name { color: #c9c2b2; font-size: .85rem; }
 .roster ul { margin: 0; padding: 0; list-style: none; }
 .roster li { padding: .2rem 0; border-bottom: 1px solid #3c3a33; }
 .roster-unit { display: flex; justify-content: space-between; width: 100%; padding: 0; color: inherit; font: inherit; text-align: left; text-decoration: inherit; background: none; border: 0; cursor: pointer; }

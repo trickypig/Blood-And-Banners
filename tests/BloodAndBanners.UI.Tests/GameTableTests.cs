@@ -135,10 +135,12 @@ public sealed partial class GameTableTests : BunitContext
             .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
 
         var mine = cut.Find(".roster.seat-1");
-        Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", mine.QuerySelector("img.army-emblem")?.GetAttribute("src"));
+        Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", cut.Find("[data-rail-tab=seat-red] img").GetAttribute("src"));
+        Assert.Null(mine.QuerySelector("img"));
         Assert.Equal("Blackmaw", mine.QuerySelector(".army-name")?.TextContent);
         var rival = cut.Find(".roster.seat-2");
-        Assert.Null(rival.QuerySelector("img.army-emblem"));
+        Assert.Null(cut.Find("[data-rail-tab=seat-blue]").QuerySelector("img"));
+        Assert.Equal("R", cut.Find("[data-rail-tab=seat-blue] .rail-tab-initial").TextContent);
         Assert.Equal("Sol Invictus", rival.QuerySelector(".army-name")?.TextContent);
     }
 
