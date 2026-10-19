@@ -251,7 +251,8 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     .command-rail.rail-open .rosters:not([hidden]) { display: grid; }
     .command-rail.rail-open .rail-log:not([hidden]) { display: block; }
     .rail-log ::deep .combat-log ol { max-height: none; }
-    .rail-backdrop { position: fixed; z-index: 20; inset: 0; background: rgba(12, 12, 10, .4); }
+    /* Clear, so the board stays fully visible behind the sheet; it only catches the tap that closes it */
+    .rail-backdrop { position: fixed; z-index: 20; inset: 0; background: transparent; }
     .recent-log ol { margin: 0; padding-left: 1.1rem; }
     .recent-log li { padding: .1rem 0; font-size: .9rem; line-height: 1.3; color: #c9c2b2; }
     .recent-log li:first-child { color: #ede8da; }
