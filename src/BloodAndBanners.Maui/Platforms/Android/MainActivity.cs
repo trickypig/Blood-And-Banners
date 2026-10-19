@@ -2,6 +2,7 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
+using AndroidX.Core.View;
 
 namespace BloodAndBanners.Maui;
 
@@ -20,6 +21,7 @@ public class MainActivity : MauiAppCompatActivity
 	protected override void OnCreate(Bundle? savedInstanceState)
 	{
 		base.OnCreate(savedInstanceState);
+		HideNavigationBar();
 		// A restored activity replays its original intent; only a fresh launch carries a new link.
 		if (savedInstanceState is null)
 		{
@@ -31,6 +33,31 @@ public class MainActivity : MauiAppCompatActivity
 	{
 		base.OnNewIntent(intent);
 		ReceiveLink(intent);
+	}
+
+	public override void OnWindowFocusChanged(bool hasFocus)
+	{
+		base.OnWindowFocusChanged(hasFocus);
+		// Dialogs, the keyboard and app switching can bring the bar back; hide it again on return.
+		if (hasFocus)
+		{
+			HideNavigationBar();
+		}
+	}
+
+	/// <summary>
+	/// Game-style immersive mode: the back/home/recents bar stays hidden until the player swipes up
+	/// from the bottom edge, then slides away again. The status bar stays, with light icons on the dark page.
+	/// </summary>
+	private void HideNavigationBar()
+	{
+		if (Window is not { DecorView: { } decor } window || WindowCompat.GetInsetsController(window, decor) is not { } controller)
+		{
+			return;
+		}
+		controller.SystemBarsBehavior = WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe;
+		controller.Hide(WindowInsetsCompat.Type.NavigationBars());
+		controller.AppearanceLightStatusBars = false;
 	}
 
 	private static void ReceiveLink(Intent? intent)
