@@ -481,7 +481,7 @@
             </button>
         </div>
 
-        <section class="rosters" aria-label="Armies">
+        <section class="rosters" aria-label="Armies" hidden="@(railTab == LogTab)">
             @foreach (var seat in railSeats)
             {
                 <div class="roster @SeatClass(seat.SeatId)" role="tabpanel" id="rail-panel-@seat.SeatId" aria-labelledby="rail-tab-@seat.SeatId" hidden="@(railTab != seat.SeatId)">

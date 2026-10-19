@@ -137,6 +137,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .rail-tab.log-tab[aria-selected="true"] { color: #f0cf7a; }
 .rosters, .rail-log { margin-top: .6rem; }
 .rosters { display: grid; gap: 1rem; }
+.rosters[hidden] { display: none; }
 .roster-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .5rem; margin-bottom: .35rem; }
 .command-rail .roster-head h2 { margin: 0; }
 .army-name { color: #c9c2b2; font-size: .85rem; }
@@ -153,9 +154,9 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .roster li.selected { color: #fff3aa; font-weight: 600; background: rgba(255, 215, 0, .16); box-shadow: inset .25rem 0 0 #ffd700; padding-left: .5rem; }
 .roster.seat-1 h2 { color: #e2a29a; }
 .roster.seat-2 h2 { color: #9cc3df; }
-.rail-log ::deep .combat-log h2 { margin: 0 0 .8rem; font-family: Georgia, "Times New Roman", serif; font-size: 1.2rem; letter-spacing: .015em; color: #ddbf76; }
-.rail-log ::deep .combat-log ol { margin: 0; padding-left: 1.1rem; max-height: 22rem; overflow: auto; }
-.rail-log ::deep .combat-log li { padding: .2rem 0; line-height: 1.35; }
+.rail-log ::deep .combat-log h2 { margin: 0 0 .35rem; font-family: Georgia, "Times New Roman", serif; font-size: 1.2rem; letter-spacing: .015em; color: #ddbf76; }
+.rail-log ::deep .combat-log ol { margin: 0; padding-left: 1.1rem; max-height: 60vh; overflow: auto; }
+.rail-log ::deep .combat-log li { padding: .1rem 0; font-size: .9rem; line-height: 1.3; }
 .match-end { position: fixed; inset: 0; z-index: 10; display: grid; place-content: center; gap: 1rem; text-align: center; color: #f6efdd; background: rgba(12, 12, 10, .82); }
 .match-end h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(2.5rem, 9vw, 5rem); color: #f0cf7a; }
 .match-end button { justify-self: center; min-height: 3rem; padding: .6rem 1.4rem; color: #f8f0dc; background: var(--oxblood); border: 1px solid #b18b48; }
@@ -171,7 +172,11 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     }
     .battlefield-panel { min-height: 0; }
     .hex-board { min-height: 0; }
-    .command-rail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+    .command-rail { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+    /* The log takes whatever height the rail has left and scrolls inside it */
+    .rail-log:not([hidden]) { flex: 1 1 auto; min-height: 10rem; display: flex; flex-direction: column; }
+    .rail-log ::deep .combat-log { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .rail-log ::deep .combat-log ol { flex: 1 1 auto; min-height: 0; max-height: none; }
 }
 
 @media (max-width: 760px) {
