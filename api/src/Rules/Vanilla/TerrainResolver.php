@@ -11,6 +11,18 @@ final class TerrainResolver
     public static function enter(array $state, string $unitId, string $from, string $to, string $movementKind, ?array $direction, RandomSource $random, array &$events): array
     {
         $state['units'][$unitId]['hex'] = $to;
+        $drop = $state['board'][$from]['elevation'] - $state['board'][$to]['elevation'];
+        if ($movementKind === 'voluntary' && $drop >= 2 && !Terrain::hasTrait($state, $unitId, 'Flying')) {
+            $roll = (new CustomDice())->roll($drop, $random);
+            $events[] = MatchEngine::event('terrainDamage', [$to], [
+                'unitId' => $unitId, 'terrain' => 'fall', 'cause' => 'fall', 'dice' => $drop,
+                'faces' => $roll['faces'], 'wounds' => $roll['swords'], 'hex' => $to,
+            ]);
+            $state = Wounds::apply($state, $unitId, $roll['swords'], $events, $random);
+            if ($state['phase'] !== 'active' || $state['units'][$unitId]['hex'] === null) {
+                return ['state' => $state, 'stop' => true];
+            }
+        }
         $type = Terrain::type($state['board'][$to]);
         if ($type !== 'ice' && (UnitConditions::has($state, $unitId, 'Unsteady') || UnitConditions::has($state, $unitId, 'Slipping'))) {
             $state = self::clearIce($state, $unitId, $events, true);

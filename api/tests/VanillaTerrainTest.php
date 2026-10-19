@@ -201,7 +201,53 @@ function vanilla_terrain_tests(): array
                 vanilla_unit('a1', 'seat-a', '0,0', ['move' => 3]),
                 vanilla_unit('b1', 'seat-b', null),
             ]);
-            expect_same(null, Movement::canonical($waterDescent, 'a1', '1,0', 3), 'the water climb penalty does not legalize a two-level descent');
+            expect_same(2, Movement::canonical($waterDescent, 'a1', '1,0', 3)['cost'] ?? null, 'descending out of water retains its movement cost');
+            expect_same(2, Movement::canonical($waterDescent, 'a1', '1,0', 3)['hazards'][0]['dice'] ?? null, 'a two-level descent out of water risks two fall dice');
+        },
+
+        'movement climbs one level per hex throughout a five hex move' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 0, '1,0' => 1, '2,0' => 2, '3,0' => 3, '4,0' => 4, '5,0' => 5]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 5]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $option = Movement::canonical($state, 'a1', '5,0');
+            expect_same(['1,0', '2,0', '3,0', '4,0', '5,0'], $option['path'] ?? null, 'each adjacent one-level climb is legal');
+            expect_same(5, $option['cost'] ?? null, 'five climbs cost five movement');
+            expect_same([], $option['hazards'] ?? null, 'gradual climbing causes no fall damage');
+            expect_same(null, Movement::canonical($state, 'a1', '5,0', 4), 'the movement budget still limits the path');
+            $result = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '5,0']);
+            expect_same('5,0', $result['state']['units']['a1']['hex'], 'the move command reaches five levels above its origin');
+
+            $state['board']['3,0']['elevation'] = 4;
+            expect_same(null, Movement::canonical($state, 'a1', '5,0'), 'a two-level step midway through the route blocks walkers');
+            $state['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 5]);
+            expect_true(Movement::canonical($state, 'a1', '5,0') !== null, 'Flying can cross the two-level step');
+        },
+
+        'voluntary steep descents project and resolve fall damage before continuing' => static function (): void {
+            $state = vanilla_battle(vanilla_board(['0,0' => 3, '1,0' => 0, '2,0' => 1]), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2, 'hp' => 9, 'defense' => 9]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $option = Movement::canonical($state, 'a1', '2,0');
+            expect_same(['1,0', '2,0'], $option['path'] ?? null, 'the path may descend steeply then climb one level');
+            expect_same([['kind' => 'damage', 'terrain' => 'fall', 'hex' => '1,0', 'dice' => 3, 'forced' => false, 'stops' => false]], $option['hazards'] ?? null, 'the preview warns of one die per level dropped');
+            $result = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '2,0']], [1, 1, 1]);
+            expect_same('2,0', $result['state']['units']['a1']['hex'], 'a surviving unit completes its route');
+            expect_same(3, $result['state']['units']['a1']['wounds'], 'fall dice bypass Defense');
+
+            $state['units']['a1']['hp'] = 1;
+            $lethal = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => ['1,0', '2,0']], [1, 1, 1]);
+            expect_same(null, $lethal['state']['units']['a1']['hex'], 'a lethal fall defeats the mover before the next hex');
+
+            $state['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 2]);
+            expect_same([], Movement::canonical($state, 'a1', '2,0')['hazards'] ?? null, 'Flying descends without fall damage');
+            $flying = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '2,0']);
+            expect_same(0, $flying['state']['units']['a1']['wounds'], 'Flying rolls no fall dice');
+
+            $state['units']['a1'] = vanilla_unit('a1', 'seat-a', '0,0', ['move' => 2]);
+            $state['board']['0,0']['elevation'] = 1;
+            expect_same([], Movement::canonical($state, 'a1', '2,0')['hazards'] ?? null, 'a one-level descent is safe');
         },
 
         'poison stops while lava accumulates per hex and Flying crosses but cannot land' => static function (): void {

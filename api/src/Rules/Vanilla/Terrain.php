@@ -82,7 +82,7 @@ final class Terrain
         if (self::type($destination) === 'ice' && $rise > 0) {
             return false;
         }
-        if ($movementKind === 'slip' && $rise < 0) {
+        if (in_array($movementKind, ['voluntary', 'slip'], true) && $rise < 0) {
             return true;
         }
         $leavingWater = self::type($source) === 'water' && !self::ignored($state, $unitId, 'water', $movementKind);

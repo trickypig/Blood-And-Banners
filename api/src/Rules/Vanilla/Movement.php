@@ -44,6 +44,13 @@ final class Movement
                 $candidate['cost'] += $stepCost;
                 $candidate['visited'][$next] = true;
                 $hazards = Terrain::hazards($state, $unitId, $next, 'voluntary');
+                $drop = $state['board'][$current['hex']]['elevation'] - $state['board'][$next]['elevation'];
+                if ($drop >= 2 && !Terrain::hasTrait($state, $unitId, 'Flying')) {
+                    array_unshift($hazards, [
+                        'kind' => 'damage', 'terrain' => 'fall', 'hex' => $next,
+                        'dice' => $drop, 'forced' => false, 'stops' => false,
+                    ]);
+                }
                 $candidate['hazards'] = [...$candidate['hazards'], ...$hazards];
                 $candidate['damage'] += array_sum(array_column($hazards, 'dice'));
                 $terminal = Terrain::stopsVoluntary($state, $unitId, $next);
