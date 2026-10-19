@@ -94,16 +94,62 @@ public sealed class BoardViewportTests
     }
 
     [Fact]
-    public void Ensure_visible_moves_only_when_every_focus_point_is_outside()
+    public void Framing_stays_still_while_the_focus_and_its_companions_are_in_view()
     {
-        var viewport = ReadyViewport();
+        var viewport = LargeBoardAtFullScale();
         var initial = viewport.Center;
 
-        viewport.EnsureVisible([initial, new ViewportPoint(5000, 5000)]);
+        Assert.False(viewport.Frame([new ViewportPoint(1000, 700)], [new ViewportPoint(1200, 800)]));
         Assert.Equal(initial, viewport.Center);
+    }
 
-        viewport.EnsureVisible([new ViewportPoint(2000, 1800), new ViewportPoint(2200, 2000)]);
-        Assert.Equal(new ViewportPoint(2100, 1900), viewport.Center);
+    [Fact]
+    public void Framing_near_the_board_edge_keeps_the_edge_at_the_screen_edge()
+    {
+        var viewport = LargeBoardAtFullScale();
+
+        Assert.True(viewport.Frame([new ViewportPoint(50, 1450)]));
+        Assert.Equal(new ViewportPoint(300, 1300), viewport.Center);
+    }
+
+    [Fact]
+    public void Framing_keeps_the_companion_in_view_when_both_fit()
+    {
+        var viewport = LargeBoardAtFullScale();
+
+        viewport.Frame([new ViewportPoint(1600, 300)], [new ViewportPoint(1250, 300)]);
+        Assert.Equal(new ViewportPoint(1550, 300), viewport.Center);
+        Assert.True(viewport.VisibleWorld.Contains(new ViewportPoint(1250, 300)));
+    }
+
+    [Fact]
+    public void Framing_drops_a_companion_that_cannot_fit_beside_the_focus()
+    {
+        var viewport = LargeBoardAtFullScale();
+
+        viewport.Frame([new ViewportPoint(1600, 300)], [new ViewportPoint(400, 300)]);
+        Assert.Equal(new ViewportPoint(1600, 300), viewport.Center);
+    }
+
+    [Fact]
+    public void Framing_shifts_off_centre_to_show_more_nearby_units()
+    {
+        var viewport = LargeBoardAtFullScale();
+
+        viewport.Frame([new ViewportPoint(1600, 300)], nearby: [new ViewportPoint(1290, 300), new ViewportPoint(1280, 300), new ViewportPoint(1900, 1400)]);
+        Assert.Equal(new ViewportPoint(1580, 300), viewport.Center);
+    }
+
+    [Fact]
+    public void Framing_centres_a_board_smaller_than_the_screen()
+    {
+        var viewport = ReadyViewport();
+        viewport.ZoomAt(new ViewportPoint(300, 200), 1 / viewport.Scale);
+        viewport.ZoomAt(new ViewportPoint(300, 200), .5);
+        viewport.PanBy(-500, 0);
+
+        viewport.Frame([new ViewportPoint(700, 300)]);
+        Assert.Equal(new ViewportPoint(400, 300), viewport.Center);
     }
 
     [Fact]
@@ -118,6 +164,15 @@ public sealed class BoardViewportTests
 
         viewport.ResetForGame("game-b", new WorldRect(100, 200, 800, 600), 600, 400);
         Assert.Equal(new ViewportPoint(500, 500), viewport.Center);
+    }
+
+    // A 2000×1500 board seen 600×400 at a time
+    private static BoardViewport LargeBoardAtFullScale()
+    {
+        var viewport = new BoardViewport();
+        viewport.ResetForGame("game-a", new WorldRect(0, 0, 2000, 1500), 600, 400);
+        viewport.ZoomAt(new ViewportPoint(300, 200), 1 / viewport.Scale);
+        return viewport;
     }
 
     private static BoardViewport ReadyViewport()

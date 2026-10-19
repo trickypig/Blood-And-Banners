@@ -701,10 +701,9 @@
             new WorldRect(0, 0, layout.Width, layout.Height),
             _viewport.ContainerWidth,
             _viewport.ContainerHeight);
-        var focusPoints = FocusPoints();
         if (_followEvents)
         {
-            _viewport.EnsureVisible(focusPoints);
+            FrameEvents();
         }
         if (_lastGameId != Projection.GameId || _lastProjectionVersion != Projection.Version)
         {
@@ -762,7 +761,15 @@
 
     private string? SelectedHex => _selectedUnitId is null ? null : Index.OccupiedHex.GetValueOrDefault(_selectedUnitId);
 
-    private List<ViewportPoint> FocusPoints() => FocusHexes
+    // Frames the latest event, keeping the acting unit and as many other units as fit in view
+    private void FrameEvents() => _viewport.Frame(HexPoints(FocusHexes), ActingUnitPoints(), UnitPoints(), BoardLayout.Size);
+
+    private List<ViewportPoint> ActingUnitPoints(string? except = null) =>
+        Projection.Turn.ActiveUnitId is { } active && active != except && UnitById(active)?.Hex is { } hex ? HexPoints([hex]) : [];
+
+    private List<ViewportPoint> UnitPoints() => HexPoints(Projection.Units.Select(unit => unit.Hex).OfType<string>());
+
+    private List<ViewportPoint> HexPoints(IEnumerable<string> hexes) => hexes
         .Select(key => Index.TileByKey.GetValueOrDefault(key))
         .OfType<HexTile>()
         .Select(tile => new ViewportPoint(tile.X, tile.Y))
@@ -1724,8 +1731,7 @@
     private async Task ResumeFollowing()
     {
         _followEvents = true;
-        var focusPoints = FocusPoints();
-        _viewport.EnsureVisible(focusPoints);
+        FrameEvents();
         await OnFollowEvents.InvokeAsync();
     }
 
@@ -1749,7 +1755,7 @@
             _selectedUnitId = unit.UnitId;
         }
         await MeasureBoard();
-        if (_viewport.EnsureVisible([new ViewportPoint(tile.X, tile.Y)], BoardLayout.Size))
+        if (_viewport.Frame([new ViewportPoint(tile.X, tile.Y)], ActingUnitPoints(unit.UnitId), UnitPoints(), BoardLayout.Size))
         {
             await PauseFollowing();
         }

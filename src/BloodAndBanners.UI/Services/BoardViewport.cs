@@ -196,18 +196,109 @@ public sealed class BoardViewport
         return true;
     }
 
-    /// <summary>Centres on the focus points unless one already sits at least <paramref name="margin"/> world units inside the view.</summary>
-    public bool EnsureVisible(IReadOnlyList<ViewportPoint> focusPoints, double margin = 0)
+    /// <summary>
+    /// Pans, without zooming, so the <paramref name="focus"/> points are in view, along with the
+    /// <paramref name="companions"/> when they all fit. The view stays still while those are already in view.
+    /// Otherwise it picks the spot that also shows the most <paramref name="nearby"/> points, keeps the board's
+    /// edge at the screen's edge rather than showing empty space past it, and leans towards the focus.
+    /// </summary>
+    public bool Frame(
+        IReadOnlyList<ViewportPoint> focus,
+        IReadOnlyList<ViewportPoint>? companions = null,
+        IReadOnlyList<ViewportPoint>? nearby = null,
+        double margin = 0)
     {
-        var visible = VisibleWorld;
-        var inset = Math.Min(Math.Max(0, margin), Math.Min(visible.Width, visible.Height) / 2);
-        var safe = new WorldRect(visible.X + inset, visible.Y + inset, visible.Width - 2 * inset, visible.Height - 2 * inset);
-        if (focusPoints.Count == 0 || focusPoints.Any(safe.Contains))
+        if (focus.Count == 0)
         {
             return false;
         }
-        Center = new ViewportPoint(focusPoints.Average(point => point.X), focusPoints.Average(point => point.Y));
+        var halfWidth = ContainerWidth / Scale / 2;
+        var halfHeight = ContainerHeight / Scale / 2;
+        var inset = Math.Min(Math.Max(0, margin), Math.Min(halfWidth, halfHeight));
+        var reachX = halfWidth - inset;
+        var reachY = halfHeight - inset;
+
+        // Keep the companions only when they fit on screen together with the focus.
+        List<ViewportPoint> kept = [.. focus, .. companions ?? []];
+        if (!Fits(kept, reachX, reachY))
+        {
+            kept = [.. focus];
+        }
+        if (kept.All(point => Shows(Center, point, reachX, reachY)))
+        {
+            return false;
+        }
+
+        var centroid = new ViewportPoint(focus.Average(point => point.X), focus.Average(point => point.Y));
+        if (!Fits(kept, reachX, reachY))
+        {
+            var (left, right) = BoardRange(BoardBounds.Left, BoardBounds.Right, halfWidth);
+            var (top, bottom) = BoardRange(BoardBounds.Top, BoardBounds.Bottom, halfHeight);
+            Center = new ViewportPoint(Math.Clamp(centroid.X, left, right), Math.Clamp(centroid.Y, top, bottom));
+            return true;
+        }
+
+        // Centres that keep every kept point in view, narrowed to centres that keep the board filling the screen.
+        var (minX, maxX) = Narrow(kept.Max(point => point.X) - reachX, kept.Min(point => point.X) + reachX, BoardBounds.Left, BoardBounds.Right, halfWidth);
+        var (minY, maxY) = Narrow(kept.Max(point => point.Y) - reachY, kept.Min(point => point.Y) + reachY, BoardBounds.Top, BoardBounds.Bottom, halfHeight);
+        var ideal = new ViewportPoint(Math.Clamp(centroid.X, minX, maxX), Math.Clamp(centroid.Y, minY, maxY));
+
+        var others = (nearby ?? []).Where(point => !kept.Contains(point)).ToList();
+        var xs = Candidates(ideal.X, minX, maxX, others.Select(point => point.X), reachX);
+        var ys = Candidates(ideal.Y, minY, maxY, others.Select(point => point.Y), reachY);
+        var best = ideal;
+        var bestCount = others.Count(point => Shows(ideal, point, reachX, reachY));
+        var bestDistance = 0.0;
+        foreach (var x in xs)
+        {
+            foreach (var y in ys)
+            {
+                var candidate = new ViewportPoint(x, y);
+                var count = others.Count(point => Shows(candidate, point, reachX, reachY));
+                var distance = Distance(candidate, ideal);
+                if (count > bestCount || (count == bestCount && distance < bestDistance))
+                {
+                    (best, bestCount, bestDistance) = (candidate, count, distance);
+                }
+            }
+        }
+        Center = best;
         return true;
+    }
+
+    private static bool Fits(IReadOnlyList<ViewportPoint> points, double reachX, double reachY) =>
+        points.Max(point => point.X) - points.Min(point => point.X) <= 2 * reachX
+        && points.Max(point => point.Y) - points.Min(point => point.Y) <= 2 * reachY;
+
+    private static bool Shows(ViewportPoint center, ViewportPoint point, double reachX, double reachY) =>
+        Math.Abs(point.X - center.X) <= reachX + 1e-6 && Math.Abs(point.Y - center.Y) <= reachY + 1e-6;
+
+    // Centres along one axis that keep the board's edges at or past the screen's edges; a board narrower
+    // than the screen is centred instead.
+    private static (double Min, double Max) BoardRange(double boardMin, double boardMax, double half) =>
+        boardMax - boardMin >= 2 * half
+            ? (boardMin + half, boardMax - half)
+            : ((boardMin + boardMax) / 2, (boardMin + boardMax) / 2);
+
+    // The visibility range narrowed to the board range, or left as it is when the two do not overlap.
+    private static (double Min, double Max) Narrow(double min, double max, double boardMin, double boardMax, double half)
+    {
+        var (lower, upper) = BoardRange(boardMin, boardMax, half);
+        var narrowedMin = Math.Max(min, lower);
+        var narrowedMax = Math.Min(max, upper);
+        return narrowedMin <= narrowedMax ? (narrowedMin, narrowedMax) : (min, max);
+    }
+
+    // The ideal spot, the range ends, and every centre where a nearby point enters or leaves the view.
+    private static List<double> Candidates(double ideal, double min, double max, IEnumerable<double> others, double reach)
+    {
+        List<double> values = [ideal, min, max];
+        foreach (var value in others)
+        {
+            values.Add(value - reach);
+            values.Add(value + reach);
+        }
+        return values.Select(value => Math.Clamp(value, min, max)).Distinct().ToList();
     }
 
     public ViewportPoint ScreenToWorld(ViewportPoint screenPoint)
