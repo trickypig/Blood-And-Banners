@@ -1324,7 +1324,9 @@
             {
                 return _view.Destinations.Contains(key) ? "destination" : null;
             }
-            var state = _view.Aimed.Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
+            // Units already picked leave the candidate list, so they get their own, stronger mark
+            var picked = Index.HexByKey.GetValueOrDefault(key)?.OccupantId is { } occupant && PickedIndex(occupant) >= 0;
+            var state = picked ? "picked-target" : _view.Aimed.Contains(key) ? (TargetsAlly(key) ? "ally-target" : "ability-target") : null;
             if (_view.Push.Contains(key))
             {
                 return $"{state} push-path".Trim();

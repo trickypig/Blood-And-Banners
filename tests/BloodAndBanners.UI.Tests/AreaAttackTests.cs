@@ -55,7 +55,10 @@ public sealed class AreaAttackTests : BunitContext
         cut.Find("[data-hex='5,0']").Click();
         cut.Find("[data-hex='2,0']").Click();
         Assert.Empty(sent);
+        Assert.Contains("picked-target", cut.Find("[data-hex='3,-1']").ClassList);
         cut.Find("[data-action=undoTarget]").Click();
+        Assert.DoesNotContain("picked-target", cut.Find("[data-hex='3,-1']").ClassList);
+        Assert.Contains("picked-target", cut.Find("[data-hex='2,0']").ClassList);
         cut.Find("[data-action=confirmTargets]").Click();
         var command = Assert.Single(sent);
         Assert.Equal("specialAttack", command.Kind);

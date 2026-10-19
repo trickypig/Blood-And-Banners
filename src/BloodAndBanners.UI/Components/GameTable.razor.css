@@ -275,6 +275,8 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .targeting-banner button { min-height: 2rem; padding: .2rem .6rem; color: #f6f0df; background: #373830; border: 0; }
 @media (max-width: 760px) { .targeting-banner { top: 4rem; left: .75rem; right: auto; } }
 .hex.ability-target .hex-outline { fill: rgba(255, 107, 90, .3); stroke: #ff6b5a; stroke-width: 3.5; }
+.hex.picked-target .hex-outline { fill: rgba(214, 38, 26, .55); stroke: #ffd6cf; stroke-width: 4; }
+.hex.picked-target .chain-mark { fill: #ffd6cf; font-size: 16px; stroke: #8f160d; stroke-width: 4; }
 .hex.ally-target .hex-outline { fill: rgba(240, 207, 122, .3); stroke: #f0cf7a; stroke-width: 3.5; }
 .hex.splash .hex-outline { fill: rgba(255, 140, 60, .35); stroke: #ff8c3c; stroke-dasharray: 5 3; stroke-width: 2.5; }
 .effect-marker { font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #000; stroke-width: 2; }

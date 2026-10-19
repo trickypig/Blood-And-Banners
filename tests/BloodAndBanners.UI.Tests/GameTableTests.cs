@@ -687,6 +687,7 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("[data-hex='2,0']").Click();
 
         Assert.Equal("1", cut.Find("[data-hex='2,0'] .chain-mark").TextContent);
+        Assert.Contains("picked-target", cut.Find("[data-hex='2,0']").ClassList);
         Assert.Contains("ability-target", cut.Find("[data-hex='4,0']").ClassList);
         Assert.Contains("ability-target", cut.Find("[data-hex='5,0']").ClassList);
         Assert.DoesNotContain("ability-target", cut.Find("[data-hex='7,0']").ClassList);
