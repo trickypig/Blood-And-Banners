@@ -863,6 +863,7 @@ final class GameService
                 'round' => $state['turn']['round'] ?? 0,
                 'activeSeatId' => $state['turn']['activeSeatId'] ?? null,
                 'activationsRemaining' => $state === null ? 0 : Turn::activationsRemaining($state),
+                'activationAllowance' => $state === null || $state['phase'] !== 'active' ? 0 : (int)($state['turn']['allowance'] ?? 0),
                 'activeUnitId' => $state['turn']['activeUnitId'] ?? null,
                 'respondingToSeatId' => $state !== null && ($state['mode'] ?? null) === 'coop' && $state['phase'] === 'active' && $state['turn']['slot'] % 2 === 1
                     ? $state['initiative']['order'][intdiv($state['turn']['slot'], 2)]

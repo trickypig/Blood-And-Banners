@@ -153,7 +153,7 @@ function vanilla_match_service_tests(): array
             );
             expect_same('/images/units/red_spear_nobg.png', $projection['units'][1]['avatarImage'], 'units carry their background-free map avatar');
             expect_same(null, $projection['units'][0]['avatarImage'], 'cards without an avatar project null');
-            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activeUnitId' => null, 'respondingToSeatId' => null], $projection['turn'], 'the host opens round one');
+            expect_same(['round' => 1, 'activeSeatId' => $match['host']['seat'], 'activationsRemaining' => 4, 'activationAllowance' => 4, 'activeUnitId' => null, 'respondingToSeatId' => null], $projection['turn'], 'the host opens round one');
             $captain = array_values(array_filter($projection['units'], static fn(array $unit): bool => $unit['name'] === 'Test Captain'))[0];
             expect_same(
                 [['name' => 'Shield Wall', 'type' => 'Ability', 'description' => 'Grant one adjacent unit +1 Defense until the start of your next turn', 'playable' => true, 'usedThisTurn' => false]],

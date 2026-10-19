@@ -403,6 +403,44 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Between_activations_the_orders_panel_counts_activations_and_asks_for_a_unit()
+    {
+        var projection = BattleFixtures.Projection() with { Turn = new TurnProjection(2, "seat-red", 3) { ActivationAllowance = 4 } };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Equal("Your turn: 3/4 activations remaining. Select one of your units on the board.", cut.Find("[data-testid=turn-prompt]").TextContent);
+        Assert.Empty(cut.FindAll("[data-testid=active-unit]"));
+        Assert.Empty(cut.FindAll(".action-tray h2"));
+    }
+
+    [Fact]
+    public void An_acting_unit_heads_the_orders_panel_with_a_done_button_above_its_card()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Turn = new TurnProjection(2, "seat-red", 3) { ActiveUnitId = "s1-u3", ActivationAllowance = 4 },
+            LegalActions = [.. projection.LegalActions, new LegalAction("endActivation", "s1-u3", [])],
+        };
+
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        Assert.Equal("Active Unit: Ranger", cut.Find("[data-testid=active-unit] h2").TextContent);
+        Assert.Empty(cut.FindAll("[data-testid=turn-prompt]"));
+        Assert.Empty(cut.FindAll("[data-testid=selected-unit] h3"));
+        Assert.NotNull(cut.Find("[data-testid=active-unit] + [data-testid=selected-unit]"));
+
+        var done = cut.Find("[data-testid=active-unit] [data-action=endActivation]");
+        Assert.Equal("Done", done.TextContent.Trim());
+        done.Click();
+        Assert.Equal("endActivation", sent.Single().Kind);
+    }
+
+    [Fact]
     public void Units_that_have_acted_this_turn_are_marked_on_the_board_and_in_the_army_list()
     {
         var projection = BattleFixtures.Projection();

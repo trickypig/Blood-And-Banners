@@ -404,11 +404,33 @@
         else if (Projection.Viewer.CanCommand)
         {
             <section class="action-tray" aria-label="Your orders">
-                <h2>Your orders</h2>
+                @if (ActingUnit is { } acting)
+                {
+                    <div class="active-unit-head" data-testid="active-unit">
+                        <h2>Active Unit: @acting.Name</h2>
+                        @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endActivation"))
+                        {
+                            <button type="button"
+                                    class="action-button"
+                                    data-action="@action.Kind"
+                                    disabled="@IsBusy"
+                                    @onclick="() => Send(action.Kind, ActionPayload(action))">
+                                @ActionLabel(action.Kind)
+                            </button>
+                        }
+                    </div>
+                }
+                else if (IsMyTurn)
+                {
+                    <p class="turn-prompt" data-testid="turn-prompt">Your turn: @ActivationsLeft activations remaining. Select one of your units on the board.</p>
+                }
                 @if (SelectedUnit is { } selected)
                 {
                     <article class="unit-card" data-testid="selected-unit">
-                        <h3>@selected.Name</h3>
+                        @if (selected.UnitId != ActingUnit?.UnitId)
+                        {
+                            <h3>@selected.Name</h3>
+                        }
                         <p class="unit-stats">
                             @foreach (var (stat, label, baseValue, effective) in StatRows(selected))
                             {
@@ -433,20 +455,6 @@
                             <p class="inactive-abilities" data-testid="inactive-abilities">Not yet in play: @string.Join(", ", selected.InactiveAbilities.Select(ability => ability.Name))</p>
                         }
                     </article>
-                }
-                else if (IsMyTurn)
-                {
-                    <p>Select one of your units on the board.</p>
-                }
-                @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endActivation"))
-                {
-                    <button type="button"
-                            class="action-button"
-                            data-action="@action.Kind"
-                            disabled="@IsBusy"
-                            @onclick="() => Send(action.Kind, ActionPayload(action))">
-                        @ActionLabel(action.Kind)
-                    </button>
                 }
             </section>
         }
@@ -743,6 +751,13 @@
         : CatalogImages.Resolve(ImageBaseUrl, Projection.Armies?.GetValueOrDefault(active)?.Emblem);
 
     private UnitProjection? SelectedUnit => UnitById(_selectedUnitId);
+
+    // The viewer's unit that is mid-activation; null between activations or on someone else's turn
+    private UnitProjection? ActingUnit => IsMyTurn ? UnitById(Projection.Turn.ActiveUnitId) : null;
+
+    private string ActivationsLeft => Projection.Turn.ActivationAllowance > 0
+        ? $"{Projection.Turn.ActivationsRemaining}/{Projection.Turn.ActivationAllowance}"
+        : $"{Projection.Turn.ActivationsRemaining}";
 
     private string? SelectedHex => _selectedUnitId is null ? null : Index.OccupiedHex.GetValueOrDefault(_selectedUnitId);
 
@@ -1900,7 +1915,7 @@
 
     private static string ActionLabel(string kind) => kind switch
     {
-        "endActivation" => "End activation",
+        "endActivation" => "Done",
         "endTurn" => "End turn",
         _ => Humanize(kind),
     };

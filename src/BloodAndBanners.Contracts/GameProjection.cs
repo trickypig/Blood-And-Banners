@@ -46,6 +46,7 @@ public sealed record TurnProjection(
     int ActivationsRemaining)
 {
     public string? ActiveUnitId { get; init; }
+    public int ActivationAllowance { get; init; }
     public string? RespondingToSeatId { get; init; }
 }
 
