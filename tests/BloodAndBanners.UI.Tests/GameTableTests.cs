@@ -441,6 +441,26 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Clicking_the_active_unit_name_brings_the_acting_unit_back_into_focus()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Turn = new TurnProjection(2, "seat-red", 3) { ActiveUnitId = "s1-u3", ActivationAllowance = 4 },
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        // Look at a rival, then jump back to the unit that is acting.
+        cut.Find("[data-roster-unit=s2-u1] [data-focus-unit]").Click();
+        Assert.Contains("spotlit", cut.Find("[data-hex='3,4']").ClassList);
+
+        cut.Find("[data-testid=active-unit] [data-focus-active]").Click();
+        Assert.Contains("spotlit", cut.Find("[data-hex='1,4']").ClassList);
+        Assert.Contains("selected", cut.Find("[data-hex='1,4']").ClassList);
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+    }
+
+    [Fact]
     public void Units_that_have_acted_this_turn_are_marked_on_the_board_and_in_the_army_list()
     {
         var projection = BattleFixtures.Projection();

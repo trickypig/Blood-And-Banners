@@ -407,7 +407,8 @@
                 @if (ActingUnit is { } acting)
                 {
                     <div class="active-unit-head" data-testid="active-unit">
-                        <h2>Active Unit: @acting.Name</h2>
+                        <h2>Active Unit: <button type="button" class="active-unit-name" data-focus-active disabled="@(acting.Hex is null)"
+                                                     title="@(acting.Hex is null ? null : "Show on the battlefield")" @onclick="() => FocusUnit(acting)">@acting.Name</button></h2>
                         @foreach (var action in Projection.LegalActions.Where(action => action.Kind == "endActivation"))
                         {
                             <button type="button"
