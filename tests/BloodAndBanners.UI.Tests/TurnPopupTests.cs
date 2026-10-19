@@ -53,6 +53,31 @@ public sealed class TurnPopupTests : BunitContext
     }
 
     [Fact]
+    public void A_held_notice_waits_until_released_and_an_attack_starting_mid_notice_defers_it()
+    {
+        var timer = new ManualTimer();
+        var game = BattleFixtures.Projection();
+        var cut = Render<TurnPopup>(parameters => parameters
+            .Add(component => component.Projection, game)
+            .Add(component => component.Delay, timer.Delay));
+        var blue = game with { Turn = new TurnProjection(2, "seat-blue", 3) };
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, blue).Add(component => component.Held, true));
+        Assert.Empty(cut.FindAll("[data-testid=turn-popup]"));
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, blue).Add(component => component.Held, false));
+        Assert.Equal("Rival's turn", cut.Find(".turn-popup h2").TextContent);
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, blue).Add(component => component.Held, true));
+        Assert.Empty(cut.FindAll("[data-testid=turn-popup]"));
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, blue).Add(component => component.Held, false));
+        Assert.Equal("Rival's turn", cut.Find(".turn-popup h2").TextContent);
+        timer.Fire();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=turn-popup]")));
+    }
+
+    [Fact]
     public void Switching_to_another_game_or_ending_the_battle_shows_no_notice()
     {
         var game = BattleFixtures.Projection();

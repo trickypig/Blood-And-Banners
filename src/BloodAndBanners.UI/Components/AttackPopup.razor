@@ -69,6 +69,10 @@
     [Parameter]
     public string? ImageBaseUrl { get; set; }
 
+    /// <summary>Raised when the popup starts or stops showing attacks, so other notices can wait their turn.</summary>
+    [Parameter]
+    public EventCallback<bool> OnShowingChanged { get; set; }
+
     /// <summary>Replaces the timed stages, so tests can step the popup by hand.</summary>
     [Parameter]
     public Func<TimeSpan, CancellationToken, Task>? Delay { get; set; }
@@ -80,6 +84,7 @@
     private PopupPhase _phase;
     private long _watermark = long.MinValue;
     private CancellationTokenSource? _stages;
+    private bool _reportedShowing;
 
     protected override void OnParametersSet()
     {
@@ -107,9 +112,11 @@
         if (!_queue.TryDequeue(out var next))
         {
             _current = null;
+            ReportShowing(false);
             return;
         }
         _current = next;
+        ReportShowing(true);
         _phase = PopupPhase.Hidden;
         _stages = new CancellationTokenSource();
         _ = PlayAsync(next, _stages.Token);
@@ -140,6 +147,15 @@
         }
         catch (OperationCanceledException)
         {
+        }
+    }
+
+    private void ReportShowing(bool showing)
+    {
+        if (_reportedShowing != showing)
+        {
+            _reportedShowing = showing;
+            _ = OnShowingChanged.InvokeAsync(showing);
         }
     }
 

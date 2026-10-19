@@ -175,6 +175,32 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void An_attack_that_ends_the_turn_plays_before_the_turn_notice()
+    {
+        var game = BattleFixtures.Projection();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, game)
+            .Add(component => component.LiveAfterSequence, 0L));
+        var attack = """{"unitId":"s1-u3","targetUnitId":"s2-u1","attackFaces":["sword"],"defenseFaces":["blank"],"wounds":1}""";
+        var events = new[]
+        {
+            new GameEvent(1, game.Version + 1, "attackResolved", null, [], JsonSerializer.Deserialize<JsonElement>(attack), DateTimeOffset.UnixEpoch),
+            new GameEvent(2, game.Version + 1, "turnEnded", null, [], JsonSerializer.Deserialize<JsonElement>("""{"seatId":"seat-red","nextSeatId":"seat-blue","round":2}"""), DateTimeOffset.UnixEpoch),
+        };
+
+        cut.Render(parameters => parameters
+            .Add(component => component.Projection, game with { Version = game.Version + 1, Turn = new TurnProjection(2, "seat-blue", 3) })
+            .Add(component => component.Events, events)
+            .Add(component => component.LiveAfterSequence, 0L));
+        Assert.NotNull(cut.Find("[data-testid=attack-popup]"));
+        Assert.Empty(cut.FindAll("[data-testid=turn-popup]"));
+
+        cut.Find("[data-testid=attack-popup-close]").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Rival's turn", cut.Find(".turn-popup h2").TextContent));
+        Assert.Empty(cut.FindAll("[data-testid=attack-popup]"));
+    }
+
+    [Fact]
     public void The_rail_tab_follows_the_unit_clicked_on_the_board()
     {
         var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, BattleFixtures.Projection()));

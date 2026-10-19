@@ -529,8 +529,9 @@
         <div class="rail-log" role="tabpanel" id="rail-panel-log" aria-labelledby="rail-tab-log" hidden="@(railTab != LogTab)">
             <CombatLog Projection="Projection" Events="Events" />
         </div>
-        <AttackPopup Projection="Projection" Events="Events" LiveAfterSequence="LiveAfterSequence" ImageBaseUrl="@ImageBaseUrl" />
-        <TurnPopup Projection="Projection" />
+        <AttackPopup Projection="Projection" Events="Events" LiveAfterSequence="LiveAfterSequence" ImageBaseUrl="@ImageBaseUrl"
+                     OnShowingChanged="showing => _attackShowing = showing" />
+        <TurnPopup Projection="Projection" Held="_attackShowing" />
     </aside>
 
     @if (Projection.Result is { } result)
@@ -1541,6 +1542,9 @@
     private const string LogTab = "log";
 
     private string? _railTab;
+
+    // A turn notice waits behind the attack popup, so an attack that ends the turn plays out first.
+    private bool _attackShowing;
 
     // The rail shows one army roster or the battle log at a time; it opens on the viewer's own army.
     private string? ActiveRailTab(IReadOnlyList<MembershipProjection> seats) =>

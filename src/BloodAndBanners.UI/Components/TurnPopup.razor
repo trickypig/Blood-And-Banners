@@ -25,6 +25,10 @@
     [Parameter, EditorRequired]
     public GameProjection Projection { get; set; } = default!;
 
+    /// <summary>While true (an attack popup is playing) the notice waits, and shows in full once released.</summary>
+    [Parameter]
+    public bool Held { get; set; }
+
     /// <summary>Replaces the timer, so tests can close the notice by hand.</summary>
     [Parameter]
     public Func<TimeSpan, CancellationToken, Task>? Delay { get; set; }
@@ -34,9 +38,25 @@
     private string? _gameId;
     private string? _seatId;
     private TurnNotice? _shown;
+    private TurnNotice? _waiting;
     private CancellationTokenSource? _timer;
 
     protected override void OnParametersSet()
+    {
+        NoticeTurnChange();
+        if (Held && _shown is { } interrupted)
+        {
+            Close();
+            _waiting = interrupted;
+        }
+        else if (!Held && _waiting is { } waiting)
+        {
+            _waiting = null;
+            Show(waiting);
+        }
+    }
+
+    private void NoticeTurnChange()
     {
         var seat = Projection.Lifecycle is GameLifecycle.Setup or GameLifecycle.Lobby or GameLifecycle.Draft || Projection.Result is not null ? null : Projection.Turn.ActiveSeatId;
         if (_gameId != Projection.GameId)
@@ -93,6 +113,7 @@
     {
         StopTimer();
         _shown = null;
+        _waiting = null;
     }
 
     private void StopTimer()
