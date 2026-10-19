@@ -82,9 +82,22 @@
 .taken-by { font-weight: 700; color: #f0cf7a; }
 button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 
-@media (max-width: 520px) {
-    .card-grid,
-    .army-grid { grid-template-columns: 1fr; }
+/* Phones: each roster is one swipeable row, so heroes and armies read as two distinct strips. */
+@media (max-width: 760px) {
+    .card-grid {
+        display: flex;
+        gap: .75rem;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        scroll-padding-inline: .1rem;
+        padding: .1rem .1rem .6rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--brass) transparent;
+    }
+    .card-grid > .draft-card { flex: 0 0 min(15rem, 72vw); scroll-snap-align: start; }
+    .army-grid > .draft-card { flex-basis: min(18rem, 82vw); }
+    .draft-card img { max-height: 16rem; }
 }
 
 .draft-card ::deep .ability-list { text-align: left; }
