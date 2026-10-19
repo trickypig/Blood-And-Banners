@@ -10,9 +10,10 @@
                InviteBaseUri="@InviteBaseUri"
                IsSpectator="@(!Projection.Viewer.CanCommand)"
                IsFinished="@(Projection.Result is not null)"
-               OnLeave="OnReturnToWarRoom" />
+               OnLeave="OnReturnToWarRoom"
+               Details="@([ModeLabel(Projection.Mode), Projection.Viewer.CanCommand ? "Commanding" : "Spectating"])" />
     <header class="turn-ribbon @RibbonState" data-turn="@RibbonState">
-        <div>
+        <div class="ribbon-mode">
             <span class="mode-mark" aria-hidden="true">⚔</span>
             <strong>@ModeLabel(Projection.Mode)</strong>
         </div>

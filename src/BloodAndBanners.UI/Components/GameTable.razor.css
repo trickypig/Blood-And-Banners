@@ -181,8 +181,13 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 
 @media (max-width: 760px) {
     .game-table { grid-template: auto minmax(25rem, 1fr) auto / 1fr; }
-    .turn-ribbon { grid-template-columns: 1fr auto; row-gap: .15rem; }
-    .turn-ribbon [data-testid="turn-status"] { grid-column: 1 / -1; grid-row: 2; }
+    /* One line on phones: the mode and your role move into the match menu, End Turn sits beside it */
+    .turn-ribbon { grid-template-columns: minmax(0, 1fr) auto; gap: .6rem; padding-left: .75rem; }
+    .turn-ribbon .ribbon-mode,
+    .turn-ribbon .viewer-role { display: none; }
+    .turn-status { min-width: 0; }
+    .turn-status span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .turn-emblem { width: 1.75rem; height: 1.75rem; }
     .command-rail { border-left: 0; border-top: 2px solid var(--brass); }
     .action-tray { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     /* Only the order buttons pair up; the heading, hint and selected unit take the full width */

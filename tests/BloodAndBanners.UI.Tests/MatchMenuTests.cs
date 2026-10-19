@@ -34,6 +34,22 @@ public sealed class MatchMenuTests : BunitContext
     }
 
     [Fact]
+    public void Match_details_show_as_read_only_text_at_the_top_of_the_menu()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<MatchMenu>(parameters => parameters
+            .Add(menu => menu.GameId, "game 7")
+            .Add(menu => menu.Details, ["Vanilla duel", "Spectating"]));
+
+        cut.Find("[data-menu=toggle]").Click();
+
+        var details = cut.Find("[data-menu=details]");
+        Assert.Equal(["Vanilla duel", "Spectating"], details.QuerySelectorAll("span").Select(span => span.TextContent));
+        Assert.Empty(details.QuerySelectorAll("button"));
+        Assert.Equal("details", cut.Find(".match-menu-panel").FirstElementChild?.GetAttribute("data-menu"));
+    }
+
+    [Fact]
     public void Copy_link_copies_the_watch_url_and_copy_id_copies_the_bare_id()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;

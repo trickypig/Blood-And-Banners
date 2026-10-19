@@ -16,6 +16,15 @@
     {
         <div class="match-menu-backdrop" data-menu="backdrop" @onclick="Close"></div>
         <div class="match-menu-panel" role="menu">
+            @if (Details.Count > 0)
+            {
+                <div class="match-menu-details" role="none" data-menu="details">
+                    @foreach (var detail in Details)
+                    {
+                        <span>@detail</span>
+                    }
+                </div>
+            }
             <button type="button" role="menuitem" data-menu="copyLink" @onclick="CopyLink">Copy Link</button>
             <button type="button" role="menuitem" data-menu="copyGameId" @onclick="CopyGameId">Copy Game ID</button>
             @if (_confirming)
@@ -56,6 +65,10 @@
 
     [Parameter]
     public EventCallback OnLeave { get; set; }
+
+    /// <summary>Read-only facts about the match (mode, your role) for screens too narrow to show them elsewhere.</summary>
+    [Parameter]
+    public IReadOnlyList<string> Details { get; set; } = [];
 
     private bool _open;
     private bool _confirming;
