@@ -20,8 +20,9 @@ workflows:
         DOTNET_PROJECT: "src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj"
         TARGET_FRAMEWORK: "net10.0-ios"
         BUNDLE_ID: "com.trickypig.bloodandbanners"
-      # .NET iOS 27.0.10722 requires Xcode 27.0.
-      xcode: "27.0"
+      # Keep this paired with the pinned SDK/workload set in install_dotnet_ios.
+      # https://github.com/dotnet/macios/releases/tag/dotnet-10.0.1xx-xcode27.1-10018
+      xcode: "27.1"
     triggering:
       events:
         - push
@@ -29,19 +30,28 @@ workflows:
         - pattern: main
           include: true
     scripts:
-      - name: Install .NET 10 SDK and MAUI workload
+      - &install_dotnet_ios
+        name: Install pinned .NET 10 SDK and MAUI workload
         script: |
           set -euo pipefail
-          # The Codemagic macOS image does not put a .NET 10 SDK on PATH, so
-          # install it explicitly with Microsoft's official script, then make it
-          # available to this and all later build steps via $CM_ENV.
+          # Update these together with Xcode in both iOS workflow environments.
+          # Workload set 10.0.402.1 contains iOS 27.1.10018, requiring Xcode 27.1.
+          DOTNET_SDK_VERSION="10.0.402"
+          DOTNET_WORKLOAD_VERSION="10.0.402.1"
+          # Use a dedicated install directory so preinstalled/cached newer SDKs
+          # cannot override the pinned SDK. Persist it for subsequent build steps.
+          export DOTNET_ROOT="$HOME/.dotnet-blood-ios/$DOTNET_SDK_VERSION"
           curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
           chmod +x /tmp/dotnet-install.sh
-          /tmp/dotnet-install.sh --channel 10.0 --install-dir "$HOME/.dotnet"
-          export PATH="$HOME/.dotnet:$PATH"
-          echo "PATH=$HOME/.dotnet:$PATH" >> "$CM_ENV"
-          dotnet --version
-          dotnet workload install maui
+          /tmp/dotnet-install.sh --version "$DOTNET_SDK_VERSION" --install-dir "$DOTNET_ROOT"
+          export PATH="$DOTNET_ROOT:$PATH"
+          echo "DOTNET_ROOT=$DOTNET_ROOT" >> "$CM_ENV"
+          echo "PATH=$DOTNET_ROOT:$PATH" >> "$CM_ENV"
+          xcodebuild -version
+          test "$(dotnet --version)" = "$DOTNET_SDK_VERSION"
+          dotnet workload install maui --version "$DOTNET_WORKLOAD_VERSION"
+          dotnet --info
+          dotnet workload --info
       - name: Run tests
         script: |
           set -euo pipefail
@@ -140,9 +150,11 @@ workflows:
     name: iOS compile check
     instance_type: mac_mini_m2
     max_build_duration: 60
+    environment:
+      # Same toolchain as the signed TestFlight build.
+      xcode: "27.1"
     scripts:
-      - name: Restore workloads
-        script: dotnet workload restore src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj
+      - *install_dotnet_ios
       - name: Build iOS simulator
         script: dotnet build src/BloodAndBanners.Maui/BloodAndBanners.Maui.csproj -c Release -f net10.0-ios -p:RuntimeIdentifier=iossimulator-arm64
 
