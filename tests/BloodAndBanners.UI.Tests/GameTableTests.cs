@@ -414,6 +414,33 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Empty(cut.FindAll(".action-tray h2"));
     }
 
+    [Theory]
+    [InlineData(true, false, 3, GameMode.VanillaPvp, true)]
+    [InlineData(false, false, 3, GameMode.VanillaPvp, false)]
+    [InlineData(true, true, 3, GameMode.VanillaPvp, false)]
+    [InlineData(true, false, 2, GameMode.VanillaPvp, false)]
+    [InlineData(true, false, 3, GameMode.Coop, false)]
+    public void The_final_activation_explains_when_the_hero_is_required(bool heroAlive, bool heroActivated, int othersActivated, GameMode mode, bool heroRequired)
+    {
+        var projection = BattleFixtures.Projection();
+        var unit = projection.Units[0];
+        projection = projection with
+        {
+            Mode = mode,
+            Turn = new TurnProjection(2, "seat-red", 1) { ActivationAllowance = 4 },
+            Units = [
+                .. projection.Units,
+                unit with { UnitId = "hero", IsHero = true, Hex = heroAlive ? "2,4" : null, Wounds = heroAlive ? 0 : unit.Hp, ActivatedThisTurn = heroActivated },
+                .. Enumerable.Range(0, othersActivated).Select(index => unit with { UnitId = $"spent-{index}", Hex = null, ActivatedThisTurn = true }),
+            ],
+        };
+
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        var hint = heroRequired ? " (must be hero)" : "";
+        Assert.Equal($"Your turn: 1/4 activations remaining{hint}. Select one of your units on the board.", cut.Find("[data-testid=turn-prompt]").TextContent);
+    }
+
     [Fact]
     public void An_acting_unit_heads_the_orders_panel_with_a_done_button_above_its_card()
     {

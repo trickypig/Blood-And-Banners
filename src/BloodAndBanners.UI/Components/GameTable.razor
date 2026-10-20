@@ -423,7 +423,7 @@
                 }
                 else if (IsMyTurn)
                 {
-                    <p class="turn-prompt" data-testid="turn-prompt">Your turn: @ActivationsLeft activations remaining. Select one of your units on the board.</p>
+                    <p class="turn-prompt" data-testid="turn-prompt">Your turn: @ActivationsLeft activations remaining@(MustActivateHero ? " (must be hero)" : ""). Select one of your units on the board.</p>
                 }
                 @if (SelectedUnit is { } selected)
                 {
@@ -758,6 +758,11 @@
     private string ActivationsLeft => Projection.Turn.ActivationAllowance > 0
         ? $"{Projection.Turn.ActivationsRemaining}/{Projection.Turn.ActivationAllowance}"
         : $"{Projection.Turn.ActivationsRemaining}";
+
+    private bool MustActivateHero => Projection.Mode == GameMode.VanillaPvp
+        && Projection.Turn.ActivationsRemaining == 1
+        && Projection.Units.Any(unit => unit.SeatId == Projection.Viewer.SeatId && unit.IsHero && unit.Hex is not null && !unit.ActivatedThisTurn)
+        && Projection.Units.Count(unit => unit.SeatId == Projection.Viewer.SeatId && !unit.IsHero && unit.ActivatedThisTurn) >= 3;
 
     private string? SelectedHex => _selectedUnitId is null ? null : Index.OccupiedHex.GetValueOrDefault(_selectedUnitId);
 
