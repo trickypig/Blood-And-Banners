@@ -16,7 +16,7 @@ final class Movement
         $budget ??= Stats::effective($state, $unitId, 'move');
         $occupants = self::occupants($state);
         $frontier = [['hex' => $unit['hex'], 'path' => [], 'cost' => 0, 'hazards' => [], 'damage' => 0, 'visited' => [$unit['hex'] => true]]];
-        $bestState = [$unit['hex'] => [0, 0, '']];
+        $bestState = [$unit['hex'] => [0 => [0, 0, '']]];
         $options = [];
         while ($frontier !== []) {
             usort($frontier, static fn(array $left, array $right): int => self::rank($left) <=> self::rank($right));
@@ -69,8 +69,10 @@ final class Movement
                     continue;
                 }
                 $rank = self::rank($candidate);
-                if (!isset($bestState[$candidate['hex']]) || $rank < $bestState[$candidate['hex']]) {
-                    $bestState[$candidate['hex']] = $rank;
+                // Retain each movement cost: a shorter risky route may be the only
+                // way to reach a farther destination within the remaining budget.
+                if (!isset($bestState[$candidate['hex']][$candidate['cost']]) || $rank < $bestState[$candidate['hex']][$candidate['cost']]) {
+                    $bestState[$candidate['hex']][$candidate['cost']] = $rank;
                     $frontier[] = $candidate;
                 }
             }
@@ -189,12 +191,12 @@ final class Movement
 
     private static function rank(array $state): array
     {
-        return [$state['cost'], $state['damage'], implode('|', $state['path'])];
+        return [$state['damage'], $state['cost'], implode('|', $state['path'])];
     }
 
     private static function optionRank(array $option): array
     {
-        return [$option['cost'], array_sum(array_column($option['hazards'], 'dice')), implode('|', $option['path'])];
+        return [array_sum(array_column($option['hazards'], 'dice')), $option['cost'], implode('|', $option['path'])];
     }
 
     private static function occupants(array $state): array

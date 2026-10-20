@@ -275,6 +275,36 @@ function vanilla_terrain_tests(): array
             expect_same(null, Movement::canonical($lava, 'a1', '1,0', 4), 'Flying cannot voluntarily end on lava');
         },
 
+        'movement prefers a safe lava detour within budget and retains shorter risky routes' => static function (): void {
+            $state = vanilla_battle(vanilla_board(
+                ['0,0' => 0, '1,0' => 0, '2,0' => 0, '3,0' => 0, '4,0' => 0, '0,1' => 0, '1,1' => 0],
+                [],
+                ['1,0' => ['biome' => 'lava', 'terrain' => 'lava']]
+            ), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 4]),
+                vanilla_unit('b1', 'seat-b', null),
+            ]);
+            $safe = Movement::canonical($state, 'a1', '3,0');
+            expect_same(['0,1', '1,1', '2,0', '3,0'], $safe['path'] ?? null, 'four safe steps beat the three-step lava shortcut');
+            expect_same(4, $safe['cost'] ?? null, 'the detour uses all four moves');
+            expect_same([], $safe['hazards'] ?? null, 'the detour avoids lava damage');
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'path' => $safe['path']]);
+            expect_same('3,0', $moved['state']['units']['a1']['hex'], 'the previewed safe route is accepted by the move command');
+            expect_same(0, $moved['state']['units']['a1']['wounds'], 'the detour rolls no damage');
+
+            $short = Movement::canonical($state, 'a1', '3,0', 3);
+            expect_same(['1,0', '2,0', '3,0'], $short['path'] ?? null, 'the lava shortcut remains available when the detour is out of budget');
+            expect_same(5, array_sum(array_column($short['hazards'], 'dice')), 'the shortcut still warns about lava damage');
+
+            $far = Movement::canonical($state, 'a1', '4,0');
+            expect_same(['1,0', '2,0', '3,0', '4,0'], $far['path'] ?? null, 'a safer route to an intermediate hex must not discard the only affordable route farther on');
+
+            $state['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Lava Walker'], ['move' => 4]);
+            expect_same(['1,0', '2,0', '3,0'], Movement::canonical($state, 'a1', '3,0')['path'] ?? null, 'lava immunity makes the shorter route safe');
+            $state['units']['a1'] = terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 4]);
+            expect_same(['1,0', '2,0', '3,0'], Movement::canonical($state, 'a1', '3,0')['path'] ?? null, 'Flying also uses the safe shortcut');
+        },
+
         'Flying ignores ice and may descend any number of levels' => static function (): void {
             $paint = ['1,0' => ['biome' => 'ice', 'terrain' => 'ice']];
             $state = vanilla_battle(vanilla_board(['0,0' => 4, '1,0' => 0], [], $paint), [
