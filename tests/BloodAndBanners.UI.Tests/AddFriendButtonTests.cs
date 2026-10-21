@@ -55,6 +55,27 @@ public sealed class AddFriendButtonTests : BunitContext
     }
 
     [Fact]
+    public void Hidden_for_spectators_without_a_seat()
+    {
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession(FakeAccountSession.Account()));
+        var cut = Render<AddFriendButton>(p => p.Add(c => c.GameId, "g1").Add(c => c.Seat, Seat()));
+        Assert.Empty(cut.FindAll("[data-add-friend]"));
+    }
+
+    [Fact]
+    public void Other_api_failures_leave_the_button_in_place()
+    {
+        var session = new FakeAccountSession(FakeAccountSession.Account());
+        session.FakeApi.FriendFailure = new GameApiException(HttpStatusCode.BadRequest, "cannotFriendSeat", "x");
+        Services.AddSingleton<IAccountSession>(session);
+        var cut = RenderFor(Seat());
+
+        cut.Find("button[data-add-friend]").Click();
+
+        Assert.Equal("Add friend", cut.Find("button[data-add-friend]").TextContent.Trim());
+    }
+
+    [Fact]
     public void An_already_requested_conflict_still_shows_requested()
     {
         var session = new FakeAccountSession(FakeAccountSession.Account());

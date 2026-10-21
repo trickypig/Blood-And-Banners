@@ -27,7 +27,7 @@
                     }
                 </div>
             }
-            @if (SignedIn && Members.Any(member => member.IsAccount && member.SeatId != ViewerSeatId))
+            @if (SignedIn && ViewerSeatId is not null && Members.Any(member => member.IsAccount && member.SeatId != ViewerSeatId))
             {
                 <div class="match-menu-commanders" role="none" data-menu="commanders">
                     @foreach (var member in Members.Where(member => member.SeatId != ViewerSeatId))

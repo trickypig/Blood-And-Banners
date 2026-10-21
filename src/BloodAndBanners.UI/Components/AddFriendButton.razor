@@ -30,7 +30,7 @@
     // Optional so screens and tests without account services still work.
     private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
 
-    private bool Visible => Account?.Current is not null && Seat.IsAccount && Seat.SeatId != ViewerSeatId;
+    private bool Visible => Account?.Current is not null && ViewerSeatId is not null && Seat.IsAccount && Seat.SeatId != ViewerSeatId;
 
     private async Task Send()
     {
@@ -50,6 +50,7 @@
         }
         catch (HttpRequestException)
         {
+            // Any other API failure (GameApiException derives from this) leaves the button; no exception escapes.
             // The button stays; the player can try again.
         }
         finally

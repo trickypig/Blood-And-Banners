@@ -39,6 +39,18 @@ public sealed class MatchMenuTests : BunitContext
     }
 
     [Fact]
+    public void Spectators_see_no_commanders_section()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession(FakeAccountSession.Account()));
+        var cut = Render<MatchMenu>(p => p
+            .Add(m => m.GameId, "g1")
+            .Add(m => m.Members, new List<MembershipProjection> { new("seat-2", 2, true, false) { Name = "Bryn", IsAccount = true } }));
+        cut.Find("[data-menu=toggle]").Click();
+        Assert.Empty(cut.FindAll("[data-menu=commanders]"));
+    }
+
+    [Fact]
     public void Guests_see_no_commanders_section()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
