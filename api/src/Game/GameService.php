@@ -693,8 +693,11 @@ final class GameService
             $this->connection->beginTransaction();
         }
         try {
-            $this->connection->prepare('UPDATE game_memberships SET identity_id = :to WHERE identity_id = :from')
-                ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
+            $this->connection->prepare(
+                'UPDATE game_memberships SET identity_id = :to
+                 WHERE identity_id = :from
+                   AND game_id NOT IN (SELECT game_id FROM (SELECT game_id FROM game_memberships WHERE identity_id = :to2) AS seated)'
+            )->execute(['to' => $toIdentityId, 'from' => $fromIdentityId, 'to2' => $toIdentityId]);
             $this->connection->prepare('UPDATE games SET host_identity_id = :to WHERE host_identity_id = :from')
                 ->execute(['to' => $toIdentityId, 'from' => $fromIdentityId]);
             $this->connection->prepare('UPDATE game_events SET acting_identity_id = :to WHERE acting_identity_id = :from')

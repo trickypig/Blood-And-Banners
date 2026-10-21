@@ -140,7 +140,13 @@ final class AuthService
         }
     }
 
-    private function issuePair(string $kind, string $identityId, string $deviceId): array
+    public function logout(string $refreshToken): void
+    {
+        $this->connection->prepare('UPDATE refresh_tokens SET revoked_at = :revoked WHERE token_hash = :hash AND revoked_at IS NULL')
+            ->execute(['revoked' => self::now(), 'hash' => hash('sha256', $refreshToken)]);
+    }
+
+    public function issuePair(string $kind, string $identityId, string $deviceId): array
     {
         $refreshToken = TokenCodec::randomOpaqueToken();
         $statement = $this->connection->prepare(

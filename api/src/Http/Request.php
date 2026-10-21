@@ -13,6 +13,7 @@ final class Request
         array $headers = [],
         public readonly array $body = [],
         public readonly array $query = [],
+        public readonly string $clientIp = '',
     ) {
         $this->headers = array_change_key_case($headers, CASE_LOWER);
     }

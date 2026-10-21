@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Http;
 
+use BloodAndBanners\Account\AccountException;
+use BloodAndBanners\Account\AccountService;
+use BloodAndBanners\Account\FriendService;
 use BloodAndBanners\Auth\AuthService;
+use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Game\GameService;
 use BloodAndBanners\Game\GameServiceException;
 use DomainException;
@@ -17,6 +21,9 @@ final class Application
     public function __construct(
         private readonly AuthService $auth,
         private readonly GameService $games,
+        private readonly ?EmailSignInService $signIn = null,
+        private readonly ?AccountService $accounts = null,
+        private readonly ?FriendService $friends = null,
     ) {
     }
 
@@ -48,6 +55,24 @@ final class Application
                     (string)($request->body['password'] ?? ''),
                     (string)($request->body['deviceId'] ?? '')
                 ));
+            }
+            if ($request->method === 'POST' && $request->path === '/api/v1/auth/email/start') {
+                $this->service($this->signIn)->start((string)($request->body['email'] ?? ''), $request->clientIp);
+                return new Response(202, ['sent' => true]);
+            }
+            if ($request->method === 'POST' && $request->path === '/api/v1/auth/email/verify') {
+                $signIn = $this->service($this->signIn);
+                $deviceId = (string)($request->body['deviceId'] ?? '');
+                $guestId = $this->optionalGuestId($request);
+                $transfer = fn(string $from, string $to) => $this->games->transferIdentity($from, $to);
+                $token = (string)($request->body['token'] ?? '');
+                return new Response(200, $token !== ''
+                    ? $signIn->verifyToken($token, $deviceId, $guestId, $transfer)
+                    : $signIn->verifyCode((string)($request->body['email'] ?? ''), (string)($request->body['code'] ?? ''), $deviceId, $guestId, $transfer));
+            }
+            if ($request->method === 'POST' && $request->path === '/api/v1/auth/logout') {
+                $this->auth->logout((string)($request->body['refreshToken'] ?? ''));
+                return new Response(204, []);
             }
 
             if (preg_match('#^/api/v1/spectate/([^/]+)/commands$#', $request->path) === 1 && $request->method === 'POST') {
@@ -178,6 +203,8 @@ final class Application
                 default => 422,
             };
             return $this->error($status, $error->errorCode, $error->getMessage(), $error->currentVersion, $error->recovery);
+        } catch (AccountException $error) {
+            return $this->error($error->status, $error->errorCode, $error->getMessage());
         } catch (DomainException $error) {
             $status = str_contains($error->getMessage(), 'Token') ? 401 : 422;
             return $this->error($status, $error->getMessage(), 'The request could not be authorized.');
@@ -193,6 +220,39 @@ final class Application
             throw new DomainException('accessTokenRequired');
         }
         return $this->auth->authenticate($token);
+    }
+
+    /** A guest bearer token on sign-in means "bring my current seat along"; anything else is ignored. */
+    private function optionalGuestId(Request $request): ?string
+    {
+        $token = $request->bearerToken();
+        if ($token === null) {
+            return null;
+        }
+        try {
+            $principal = $this->auth->authenticate($token);
+        } catch (DomainException) {
+            return null;
+        }
+        return ($principal['kind'] ?? '') === 'guest' ? (string)$principal['identityId'] : null;
+    }
+
+    /**
+     * @template T of object
+     * @param T|null $service
+     * @return T
+     */
+    private function service(?object $service): object
+    {
+        return $service ?? throw new \RuntimeException('Account services are not configured.');
+    }
+
+    private function requireUser(array $principal): string
+    {
+        if (($principal['kind'] ?? '') !== 'user') {
+            throw new AccountException(403, 'accountRequired', 'Sign in to use this.');
+        }
+        return (string)$principal['identityId'];
     }
 
     private function upgradeResponse(Request $request): ?Response

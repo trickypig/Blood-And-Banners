@@ -45,6 +45,7 @@ final class RequestFactory
             $headers,
             is_array($body) ? $body : [],
             $query,
+            clientIp: (string)($server['REMOTE_ADDR'] ?? ''),
         );
     }
 }
