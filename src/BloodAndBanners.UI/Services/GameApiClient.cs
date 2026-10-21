@@ -203,7 +203,7 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         return request;
     }
 
-    private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
+    internal static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)
         {
@@ -214,7 +214,7 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
             ?? throw new JsonException("The API returned an empty JSON response.");
     }
 
-    private static async Task<GameApiException> ErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    internal static async Task<GameApiException> ErrorAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         ApiError? error = null;
         try
