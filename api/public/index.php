@@ -1,17 +1,25 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Account\AccountService;
+use BloodAndBanners\Account\FriendService;
 use BloodAndBanners\Auth\AuthService;
+use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Database\ConnectionFactory;
 use BloodAndBanners\Game\GameService;
 use BloodAndBanners\Http\Application;
 use BloodAndBanners\Http\RequestFactory;
+use BloodAndBanners\Mail\LogMailer;
 
 require dirname(__DIR__) . '/autoload.php';
 
 $connection = ConnectionFactory::fromEnvironment();
 $signingKey = getenv('BLOOD_BANNERS_SIGNING_KEY') ?: '';
-$application = new Application(new AuthService($connection, $signingKey), new GameService($connection));
+$auth = new AuthService($connection, $signingKey);
+$friends = new FriendService($connection);
+$publicUrl = getenv('BLOOD_BANNERS_PUBLIC_URL') ?: 'http://localhost:5016';
+$signIn = new EmailSignInService($connection, $auth, new LogMailer(dirname(__DIR__) . '/var/mail.log'), $publicUrl);
+$application = new Application($auth, new GameService($connection), $signIn, new AccountService($connection, $friends), $friends);
 
 $rawBody = file_get_contents('php://input');
 $response = $application->handle(RequestFactory::fromHttp(

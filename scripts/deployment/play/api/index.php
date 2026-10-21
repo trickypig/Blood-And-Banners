@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Account\AccountService;
+use BloodAndBanners\Account\FriendService;
 use BloodAndBanners\Auth\AuthService;
+use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Config\AppConfig;
 use BloodAndBanners\Database\ConnectionFactory;
 use BloodAndBanners\Game\GameService;
@@ -9,6 +12,7 @@ use BloodAndBanners\Http\Application;
 use BloodAndBanners\Http\Gateway;
 use BloodAndBanners\Http\RequestFactory;
 use BloodAndBanners\Http\Response;
+use BloodAndBanners\Mail\MailerFactory;
 
 $bloodRoot = dirname(__DIR__, 3);
 $apiRoot = $bloodRoot . '/server/api';
@@ -23,9 +27,20 @@ try {
         $response = new Response(204, []);
     } else {
         $connection = ConnectionFactory::fromConfig($config);
+        $auth = new AuthService($connection, $config->signingKey);
+        $friends = new FriendService($connection);
+        $signIn = new EmailSignInService(
+            $connection,
+            $auth,
+            MailerFactory::fromConfig($config, $bloodRoot . '/server/mail.log'),
+            $config->publicUrl,
+        );
         $application = new Application(
-            new AuthService($connection, $config->signingKey),
+            $auth,
             new GameService($connection),
+            $signIn,
+            new AccountService($connection, $friends),
+            $friends,
         );
         $httpHeaders = function_exists('getallheaders') ? getallheaders() : [];
         if (!is_array($httpHeaders)) {
