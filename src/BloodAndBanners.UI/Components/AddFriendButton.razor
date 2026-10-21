@@ -1,0 +1,60 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@inject IServiceProvider ServiceProvider
+
+@if (Visible)
+{
+    @if (Seat.IsFriend)
+    {
+        <span class="add-friend add-friend--done" data-add-friend>Friend</span>
+    }
+    else if (Seat.FriendRequested || _sent)
+    {
+        <span class="add-friend add-friend--done" data-add-friend>Requested</span>
+    }
+    else
+    {
+        <button type="button" class="add-friend" data-add-friend disabled="@_busy" @onclick="Send">Add friend</button>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public string GameId { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public MembershipProjection Seat { get; set; } = default!;
+    [Parameter] public string? ViewerSeatId { get; set; }
+
+    private bool _sent;
+    private bool _busy;
+
+    // Optional so screens and tests without account services still work.
+    private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
+
+    private bool Visible => Account?.Current is not null && Seat.IsAccount && Seat.SeatId != ViewerSeatId;
+
+    private async Task Send()
+    {
+        if (Account is not { } account)
+        {
+            return;
+        }
+        _busy = true;
+        try
+        {
+            await account.CallAsync(identity => account.Api.RequestFriendFromSeatAsync(identity, GameId, Seat.SeatId));
+            _sent = true;
+        }
+        catch (GameApiException error) when (error.Code is "alreadyRequested" or "alreadyFriends")
+        {
+            _sent = true;
+        }
+        catch (HttpRequestException)
+        {
+            // The button stays; the player can try again.
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

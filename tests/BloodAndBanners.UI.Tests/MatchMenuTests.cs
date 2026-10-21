@@ -1,6 +1,9 @@
+using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
+using BloodAndBanners.UI.Services;
 using Bunit;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 namespace BloodAndBanners.UI.Tests;
@@ -14,6 +17,35 @@ public sealed class MatchMenuTests : BunitContext
             .Add(menu => menu.IsSpectator, spectator)
             .Add(menu => menu.IsFinished, finished)
             .Add(menu => menu.OnLeave, () => onLeave?.Invoke()));
+
+    [Fact]
+    public void Signed_in_players_see_the_commanders_with_add_friend()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession(FakeAccountSession.Account()));
+        var cut = Render<MatchMenu>(p => p
+            .Add(m => m.GameId, "g1")
+            .Add(m => m.ViewerSeatId, "seat-1")
+            .Add(m => m.Members, new List<MembershipProjection>
+            {
+                new("seat-1", 1, true, true) { Name = "Ash", IsAccount = true },
+                new("seat-2", 2, true, false) { Name = "Bryn", IsAccount = true },
+            }));
+
+        cut.Find("[data-menu=toggle]").Click();
+
+        Assert.Contains("Bryn", cut.Find("[data-menu=commanders]").TextContent);
+        Assert.Single(cut.FindAll("button[data-add-friend]"));
+    }
+
+    [Fact]
+    public void Guests_see_no_commanders_section()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = RenderMenu();
+        cut.Find("[data-menu=toggle]").Click();
+        Assert.Empty(cut.FindAll("[data-menu=commanders]"));
+    }
 
     [Fact]
     public void The_menu_is_closed_until_toggled_and_offers_the_three_items()

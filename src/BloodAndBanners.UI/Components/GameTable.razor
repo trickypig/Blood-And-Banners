@@ -11,6 +11,8 @@
                IsSpectator="@(!Projection.Viewer.CanCommand)"
                IsFinished="@(Projection.Result is not null)"
                OnLeave="OnReturnToWarRoom"
+               Members="@Projection.Memberships"
+               ViewerSeatId="@Projection.Viewer.SeatId"
                Details="@([ModeLabel(Projection.Mode), Projection.Viewer.CanCommand ? "Commanding" : "Spectating"])" />
     <header class="turn-ribbon @RibbonState" data-turn="@RibbonState">
         <div class="ribbon-mode">

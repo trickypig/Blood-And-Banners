@@ -66,6 +66,7 @@
                     {
                         <div>
                             <strong>@(string.IsNullOrEmpty(seat.Name) ? $"Commander {seat.SeatIndex}" : seat.Name) @ViewerLabel(seat)</strong>
+                            <AddFriendButton GameId="@Projection.GameId" Seat="seat" ViewerSeatId="@Projection.Viewer.SeatId" />
                             <span>@(seat.IsHost ? "Host" : "Player")</span>
                             @if (SeatNames.IsVoidLord(Projection, seat.SeatId))
                             {

@@ -5,10 +5,14 @@ using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Components;
 using BloodAndBanners.UI.Services;
 using Bunit;
+using Microsoft.Extensions.DependencyInjection;
 
 public sealed class WarRoomLobbyTests : BunitContext
 {
-    private static GameProjection CoopLobby(string viewer, bool isHost, string? voidLord, params string[] actions) => new(
+    private static GameProjection CoopLobby(string viewer, bool isHost, string? voidLord, params string[] actions) =>
+        CoopLobby(viewer, isHost, voidLord, false, actions);
+
+    private static GameProjection CoopLobby(string viewer, bool isHost, string? voidLord, bool secondIsAccount, params string[] actions) => new(
         "game-1", 3, GameLifecycle.Lobby, GameMode.Coop,
         new ViewerPermissions("player", viewer, true, isHost),
         new BoardProjection(0, 0, []),
@@ -20,9 +24,20 @@ public sealed class WarRoomLobbyTests : BunitContext
         Memberships =
         [
             new MembershipProjection("seat-1", 1, true, true) { Role = voidLord == "seat-1" ? "voidLord" : "player" },
-            new MembershipProjection("seat-2", 2, true, false) { Role = voidLord == "seat-2" ? "voidLord" : "player" },
+            new MembershipProjection("seat-2", 2, true, false) { Role = voidLord == "seat-2" ? "voidLord" : "player", IsAccount = secondIsAccount },
         ],
     };
+
+    [Fact]
+    public void Signed_in_viewers_can_friend_account_seats_in_the_war_room()
+    {
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession(FakeAccountSession.Account()));
+        var cut = Render<WarRoomLobby>(parameters => parameters
+            .Add(c => c.Projection, CoopLobby("seat-1", true, null, secondIsAccount: true, "setReady")));
+
+        Assert.Single(cut.FindAll("[data-seat='2'] button[data-add-friend]"));
+        Assert.Empty(cut.FindAll("[data-seat='1'] [data-add-friend]"));
+    }
 
     [Fact]
     public void A_member_can_claim_the_void_lord_and_start_waits_for_one()

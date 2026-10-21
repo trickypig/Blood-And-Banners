@@ -6,7 +6,9 @@
     <MatchMenu GameId="@Projection.GameId"
                InviteBaseUri="@InviteBaseUri"
                IsSpectator="@(!Projection.Viewer.CanCommand)"
-               OnLeave="OnReturnToWarRoom" />
+               OnLeave="OnReturnToWarRoom"
+               Members="@Projection.Memberships"
+               ViewerSeatId="@Projection.Viewer.SeatId" />
     <header class="draft-ribbon">
         <div>
             <p class="draft-eyebrow">Vanilla duel · @Projection.ScenarioName</p>

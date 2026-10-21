@@ -1,8 +1,10 @@
 @namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
 @using BloodAndBanners.UI.Services
 @using Microsoft.JSInterop
 @implements IDisposable
 @inject IJSRuntime JS
+@inject IServiceProvider ServiceProvider
 
 <div class="match-menu" @onkeydown="OnKey">
     <button type="button"
@@ -22,6 +24,18 @@
                     @foreach (var detail in Details)
                     {
                         <span>@detail</span>
+                    }
+                </div>
+            }
+            @if (SignedIn && Members.Any(member => member.IsAccount && member.SeatId != ViewerSeatId))
+            {
+                <div class="match-menu-commanders" role="none" data-menu="commanders">
+                    @foreach (var member in Members.Where(member => member.SeatId != ViewerSeatId))
+                    {
+                        <div class="match-menu-commander">
+                            <span>@(string.IsNullOrEmpty(member.Name) ? $"Commander {member.SeatIndex}" : member.Name)</span>
+                            <AddFriendButton GameId="@GameId" Seat="member" ViewerSeatId="@ViewerSeatId" />
+                        </div>
                     }
                 </div>
             }
@@ -69,6 +83,14 @@
     /// <summary>Read-only facts about the match (mode, your role) for screens too narrow to show them elsewhere.</summary>
     [Parameter]
     public IReadOnlyList<string> Details { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<MembershipProjection> Members { get; set; } = [];
+
+    [Parameter]
+    public string? ViewerSeatId { get; set; }
+
+    private bool SignedIn => (ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession)?.Current is not null;
 
     private bool _open;
     private bool _confirming;

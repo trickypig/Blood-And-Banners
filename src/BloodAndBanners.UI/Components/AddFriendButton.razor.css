@@ -1,0 +1,12 @@
+.add-friend {
+    font-size: .8rem;
+    padding: .15rem .6rem;
+    border-radius: 999px;
+}
+
+span.add-friend--done {
+    padding: .15rem 0;
+    opacity: .7;
+    border: 0;
+    background: none;
+}

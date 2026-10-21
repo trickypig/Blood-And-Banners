@@ -18,3 +18,10 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     /* Wide screens show these in the turn ribbon */
     .match-menu-details { display: none; }
 }
+
+.match-menu-commander {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+}
