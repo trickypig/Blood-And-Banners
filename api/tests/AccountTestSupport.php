@@ -36,7 +36,7 @@ function account_context(?Closure $clock = null): array
     $mailer = new MemoryMailer();
     $signIn = new EmailSignInService($db, $auth, $mailer, 'https://blood.test/play', $clock, static fn(string $line): bool => true);
     $friends = new FriendService($db);
-    return ['app' => new Application($auth, new GameService($db), $signIn, new AccountService($db), $friends), 'db' => $db, 'mailer' => $mailer];
+    return ['app' => new Application($auth, new GameService($db), $signIn, new AccountService($db, $friends), $friends), 'db' => $db, 'mailer' => $mailer];
 }
 
 function mailed_code(MemoryMailer $mailer): string

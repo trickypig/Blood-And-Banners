@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Game;
 
+use BloodAndBanners\Account\FriendService;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\SecureRandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
@@ -855,10 +856,10 @@ final class GameService
             'seatId' => $viewerSeat['id'] ?? null,
             'isHost' => $game['host_identity_id'] === $identityId,
             'canCommand' => true,
-        ]);
+        ], $identityId);
     }
 
-    private function buildProjection(array $game, array $memberships, array $viewer): array
+    private function buildProjection(array $game, array $memberships, array $viewer, ?string $viewerId = null): array
     {
         $state = $this->loadState($game['id']);
         $state = $state === null ? null : MatchEngine::normalize($state);
@@ -892,6 +893,7 @@ final class GameService
             static fn(array $action): array => $action + ['ability' => null],
             $legalActions
         );
+        $accountFlags = $this->accountFlags($memberships, $viewerId);
         return [
             'gameId' => $game['id'],
             'version' => (int)$game['version'],
@@ -931,7 +933,7 @@ final class GameService
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
                 'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
-            ], $memberships),
+            ] + $accountFlags[(string)$seat['identity_id']], $memberships),
             'armies' => $this->armiesProjection($state, !$concealed || $side === 'heroes'),
             'draft' => $state !== null && in_array($state['phase'], ['draft', 'prep'], true)
                 ? (($state['mode'] ?? 'vanillaPvp') === 'coop'
@@ -1292,6 +1294,32 @@ final class GameService
             'id' => self::id(), 'game' => $gameId, 'identity' => $identityId, 'seat' => $seatIndex,
             'role' => 'player', 'host' => $isHost ? 1 : 0, 'token' => hash('sha256', $seatToken), 'joined' => self::now(),
         ]);
+    }
+
+    /** @return array<string, array{isAccount: bool, isFriend: bool, friendRequested: bool}> keyed by identity id. */
+    private function accountFlags(array $memberships, ?string $viewerId): array
+    {
+        $ids = array_values(array_unique(array_map(static fn(array $seat): string => (string)$seat['identity_id'], $memberships)));
+        $accounts = [];
+        if ($ids !== []) {
+            $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+            $statement = $this->connection->prepare("SELECT id FROM users WHERE id IN ({$placeholders})");
+            $statement->execute($ids);
+            $accounts = array_fill_keys(array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)), true);
+        }
+        $viewerIsAccount = $viewerId !== null && isset($accounts[$viewerId]);
+        $friendService = new FriendService($this->connection);
+        $friends = $viewerIsAccount ? array_fill_keys($friendService->friendIds($viewerId), true) : [];
+        $requested = $viewerIsAccount ? array_fill_keys($friendService->requestedIds($viewerId), true) : [];
+        $flags = [];
+        foreach ($ids as $id) {
+            $flags[$id] = [
+                'isAccount' => isset($accounts[$id]),
+                'isFriend' => isset($friends[$id]),
+                'friendRequested' => isset($requested[$id]),
+            ];
+        }
+        return $flags;
     }
 
     private function memberships(string $gameId): array

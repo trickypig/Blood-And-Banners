@@ -110,6 +110,9 @@ final class Application
                     ? $accounts->profile($userId)
                     : $accounts->updateDisplayName($userId, (string)($request->body['displayName'] ?? '')));
             }
+            if ($request->method === 'GET' && $request->path === '/api/v1/account/games') {
+                return new Response(200, $this->service($this->accounts)->games($this->requireUser($principal)));
+            }
             if (str_starts_with($request->path, '/api/v1/friends')) {
                 $me = $this->requireUser($principal);
                 $friends = $this->service($this->friends);
