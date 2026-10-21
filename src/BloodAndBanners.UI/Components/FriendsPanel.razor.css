@@ -1,0 +1,19 @@
+.friends-panel { min-width: 0; border-top: 1px solid #5b5548; color: #e9e3d2; }
+.friends-panel h3 { display: flex; align-items: center; gap: .6rem; margin: 0; padding: 1rem .75rem .6rem; color: #d0ad66; font: 700 1.1rem Georgia, serif; }
+.friends-panel__badge { display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 .35rem; color: #1c1b18; background: #d0ad66; border-radius: 999px; font: 700 .8rem system-ui, sans-serif; }
+.friends-panel form { padding: 0 .75rem .75rem; }
+.friends-panel label { display: block; margin-bottom: .5rem; color: #bdb6a7; font-size: .9rem; }
+.friends-panel form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.friends-panel input { min-width: 0; padding: .7rem; color: #f2ead8; background: #191a17; border: 1px solid #5b5548; font: .9rem ui-monospace, monospace; }
+.friends-panel input:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.friends-panel ul { margin: 0; padding: 0; list-style: none; }
+.friends-panel li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; padding: .7rem .75rem; border-top: 1px solid #5b5548; }
+.friends-panel li > span { flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+.friends-panel button { padding: .55rem 1rem; color: #f6edda; background: #681e24; border: 1px solid #a6813a; font: inherit; cursor: pointer; }
+.friends-panel button.ghost { background: transparent; }
+.friends-panel button.danger { background: #8b3236; }
+.friends-panel button:hover:not(:disabled) { background: #7b252b; }
+.friends-panel button.ghost:hover:not(:disabled) { background: #302e29; }
+.friends-panel button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.friends-panel button:disabled { opacity: .5; cursor: wait; }
+.friends-panel__error { margin: 0 .75rem .75rem; padding: .7rem; color: #fff0e6; background: #681e24; border-left: .25rem solid #d0ad66; }

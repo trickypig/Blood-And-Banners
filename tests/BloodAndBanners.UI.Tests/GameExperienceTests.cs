@@ -825,4 +825,25 @@ public sealed class GameExperienceTests : BunitContext
 
         cut.WaitForAssertion(() => Assert.Contains("That sign-in link has expired", cut.Markup));
     }
-}
+
+    [Fact]
+    public void Resuming_a_game_you_were_removed_from_explains_it()
+    {
+        var sessions = new FakeSessionCoordinator
+        {
+            ResumeFailure = new GameApiException(System.Net.HttpStatusCode.NotFound, "gameNotFound", "gone")
+        };
+        var account = new FakeAccountSession(FakeAccountSession.Account());
+        account.FakeApi.Games = new AccountGames(
+            [new AccountGameRow("kicked", GameMode.VanillaPvp, "Four Corners", GameLifecycle.Lobby, [], false, "")], []);
+        Services.AddSingleton<IGameSessionCoordinator>(sessions);
+        Services.AddSingleton<IAccountSession>(account);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.WaitForAssertion(() => cut.Find("[data-game=kicked] button[data-action=resume-game]").Click());
+
+        cut.WaitForAssertion(() => Assert.Contains("You no longer hold a seat in that game.", cut.Markup));
+        Assert.Equal("kicked", sessions.ResumeRequest);
+        Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]"));
+    }}

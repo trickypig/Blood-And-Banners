@@ -1,0 +1,11 @@
+.account-home { display: grid; grid-template-columns: 1fr; gap: 1.5rem; align-self: start; color: #e9e3d2; }
+.account-home > ::deep .friends-panel { grid-column: 1 / -1; }
+
+@media (min-width: 761px) {
+    /* Sits under the mode list in the start page's second column. */
+    .account-home { grid-column: 2; }
+}
+
+@media (min-width: 901px) {
+    .account-home { grid-template-columns: 1fr 1fr; }
+}

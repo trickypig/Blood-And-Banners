@@ -1,0 +1,103 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@implements IDisposable
+@inject IServiceProvider ServiceProvider
+
+@if (Account?.Current is not null)
+{
+    <section class="account-home" data-account-home>
+        <AccountGamesList Title="Your games" Rows="_games.Yours" Mine="true" IsBusy="IsBusy"
+                          EmptyText="No unfinished games." OnResume="OnResume" />
+        <AccountGamesList Title="Friends' games" Rows="_games.Friends" IsBusy="IsBusy"
+                          EmptyText="@(_friends.Friends.Count == 0 ? "Add a friend to see their games here." : "None of your friends are in a game right now.")"
+                          OnJoin="OnJoin" OnWatch="OnWatch" />
+        <FriendsPanel Friends="_friends" OnChanged="FriendsChanged" />
+    </section>
+}
+
+@code {
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback<string> OnResume { get; set; }
+    [Parameter] public EventCallback<string> OnJoin { get; set; }
+    [Parameter] public EventCallback<string> OnWatch { get; set; }
+    [Parameter] public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(10);
+
+    private readonly CancellationTokenSource _stop = new();
+    private AccountGames _games = new([], []);
+    private FriendsList _friends = new([], [], []);
+
+    // Optional so the start page and tests without account services still work.
+    private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Account is not { } account)
+        {
+            return;
+        }
+        account.Changed += OnAccountChanged;
+        await account.LoadAsync();
+        await RefreshAsync();
+        _ = PollAsync(_stop.Token);
+    }
+
+    private async Task PollAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(PollInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+            // The page went away between ticks.
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (Account is not { Current: not null } account)
+        {
+            _games = new([], []);
+            _friends = new([], [], []);
+            return;
+        }
+        try
+        {
+            _games = await account.CallAsync(identity => account.Api.GetGamesAsync(identity, _stop.Token), _stop.Token);
+            _friends = await account.CallAsync(identity => account.Api.GetFriendsAsync(identity, _stop.Token), _stop.Token);
+        }
+        catch (Exception) when (!_stop.IsCancellationRequested)
+        {
+            // Keep the last lists; the next poll tries again.
+        }
+    }
+
+    private void FriendsChanged(FriendsList updated) => _friends = updated;
+
+    private void OnAccountChanged() => InvokeAsync(async () =>
+    {
+        await RefreshAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose()
+    {
+        _stop.Cancel();
+        if (Account is { } account)
+        {
+            account.Changed -= OnAccountChanged;
+        }
+    }
+}

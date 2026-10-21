@@ -1,0 +1,60 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<section class="account-games" aria-label="@Title">
+    <h3>@Title</h3>
+    @if (Rows.Count == 0)
+    {
+        <p class="account-games__empty">@EmptyText</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var row in Rows)
+            {
+                <li data-game="@row.GameId">
+                    <div class="account-games__what">
+                        <strong>@row.ScenarioName</strong>
+                        <span>@GameModeLabels.For(row.Mode)</span>
+                        <span class="account-games__badge">@LifecycleLabel(row.Lifecycle)</span>
+                    </div>
+                    <div class="account-games__who">
+                        @string.Join(" · ", row.Seats.Select(seat => string.IsNullOrEmpty(seat.Name) ? $"Commander {seat.SeatIndex}" : seat.Name))
+                    </div>
+                    @if (Mine)
+                    {
+                        <button type="button" data-action="resume-game" disabled="@IsBusy" @onclick="() => OnResume.InvokeAsync(row.GameId)">Resume</button>
+                    }
+                    else if (row.CanJoin)
+                    {
+                        <button type="button" data-action="join-friend-game" disabled="@IsBusy" @onclick="() => OnJoin.InvokeAsync(row.GameId)">Join</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="ghost" data-action="watch-friend-game" disabled="@IsBusy" @onclick="() => OnWatch.InvokeAsync(row.GameId)">Watch</button>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public IReadOnlyList<AccountGameRow> Rows { get; set; } = [];
+    [Parameter] public bool Mine { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string EmptyText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnResume { get; set; }
+    [Parameter] public EventCallback<string> OnJoin { get; set; }
+    [Parameter] public EventCallback<string> OnWatch { get; set; }
+
+    private static string LifecycleLabel(GameLifecycle lifecycle) => lifecycle switch
+    {
+        GameLifecycle.Lobby => "War room",
+        GameLifecycle.Draft => "Drafting",
+        GameLifecycle.Setup => "Setting up",
+        _ => "In battle",
+    };
+}

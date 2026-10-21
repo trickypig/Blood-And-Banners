@@ -1,0 +1,16 @@
+.account-games { min-width: 0; border-top: 1px solid #5b5548; }
+.account-games h3 { margin: 0; padding: 1rem .75rem .6rem; color: #d0ad66; font: 700 1.1rem Georgia, serif; }
+.account-games ul { margin: 0; padding: 0; list-style: none; }
+.account-games li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; padding: .85rem .75rem; border-bottom: 1px solid #5b5548; }
+.account-games__what { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .6rem; flex: 1 1 12rem; min-width: 0; }
+.account-games__what strong { color: #f2ead8; font: 700 1.05rem Georgia, serif; }
+.account-games__what span { color: #aaa394; font-size: .85rem; }
+.account-games__badge { padding: .1rem .4rem; color: #d0ad66 !important; border: 1px solid #514d43; font-size: .75rem !important; }
+.account-games__who { flex: 1 1 100%; order: 3; color: #c5bdad; font-size: .9rem; overflow-wrap: anywhere; }
+.account-games__empty { margin: 0; padding: .85rem .75rem; color: #aaa394; line-height: 1.45; }
+.account-games button { margin-left: auto; padding: .55rem 1rem; color: #f6edda; background: #681e24; border: 1px solid #a6813a; font: inherit; cursor: pointer; }
+.account-games button.ghost { background: transparent; }
+.account-games button:hover:not(:disabled) { background: #7b252b; }
+.account-games button.ghost:hover:not(:disabled) { background: #302e29; }
+.account-games button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.account-games button:disabled { opacity: .5; cursor: wait; }

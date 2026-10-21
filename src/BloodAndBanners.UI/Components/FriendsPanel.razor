@@ -1,0 +1,125 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@inject IAccountSession Account
+
+<section class="friends-panel" aria-labelledby="friends-title">
+    <h3 id="friends-title">
+        Friends
+        @if (Friends.Incoming.Count > 0)
+        {
+            <span class="friends-panel__badge" data-friends="badge" aria-label="@($"{Friends.Incoming.Count} friend requests")">@Friends.Incoming.Count</span>
+        }
+    </h3>
+
+    <form data-friends="add" @onsubmit="Add" @onsubmit:preventDefault>
+        <label for="friend-email">Add a friend by email</label>
+        <div>
+            <input id="friend-email" data-friends="email" type="email" @bind="_email" @bind:event="oninput" disabled="@_busy" />
+            <button type="submit" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">Send request</button>
+        </div>
+    </form>
+    @if (_error is not null)
+    {
+        <p class="friends-panel__error" role="alert" data-friends="error">@_error</p>
+    }
+
+    @if (Friends.Incoming.Count > 0)
+    {
+        <ul class="friends-panel__incoming">
+            @foreach (var request in Friends.Incoming)
+            {
+                <li>
+                    <span><strong>@request.DisplayName</strong> wants to be friends</span>
+                    <button type="button" data-friend-accept="@request.RequestId" disabled="@_busy" @onclick="() => Change(i => Account.Api.AcceptFriendAsync(i, request.RequestId))">Accept</button>
+                    <button type="button" class="ghost" data-friend-decline="@request.RequestId" disabled="@_busy" @onclick="() => Change(i => Account.Api.DeclineFriendAsync(i, request.RequestId))">Decline</button>
+                </li>
+            }
+        </ul>
+    }
+
+    <ul class="friends-panel__list" data-friends="list">
+        @foreach (var friend in Friends.Friends)
+        {
+            <li>
+                <span>@friend.DisplayName</span>
+                @if (_confirmRemove == friend.UserId)
+                {
+                    <button type="button" class="danger" data-friend-confirm-remove="@friend.UserId" disabled="@_busy" @onclick="() => Change(i => Account.Api.RemoveFriendAsync(i, friend.UserId))">Confirm remove</button>
+                    <button type="button" class="ghost" @onclick="() => _confirmRemove = null">Keep</button>
+                }
+                else
+                {
+                    <button type="button" class="ghost" data-friend-remove="@friend.UserId" @onclick="() => _confirmRemove = friend.UserId">Remove</button>
+                }
+            </li>
+        }
+    </ul>
+
+    @if (Friends.Outgoing.Count > 0)
+    {
+        <ul class="friends-panel__outgoing">
+            @foreach (var request in Friends.Outgoing)
+            {
+                <li>
+                    <span>Waiting for <strong>@request.Label</strong></span>
+                    <button type="button" class="ghost" data-friend-cancel="@request.RequestId" disabled="@_busy" @onclick="() => Change(i => Account.Api.DeclineFriendAsync(i, request.RequestId))">Cancel</button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public FriendsList Friends { get; set; } = new([], [], []);
+    [Parameter] public EventCallback<FriendsList> OnChanged { get; set; }
+
+    private string _email = string.Empty;
+    private string? _confirmRemove;
+    private string? _error;
+    private bool _busy;
+
+    private async Task Add()
+    {
+        var email = _email.Trim();
+        if (await Change(i => Account.Api.RequestFriendAsync(i, email)))
+        {
+            _email = string.Empty;
+        }
+    }
+
+    private async Task<bool> Change(Func<AuthSession, Task<FriendsList>> call)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var updated = await Account.CallAsync(call);
+            _confirmRemove = null;
+            await OnChanged.InvokeAsync(updated);
+            return true;
+        }
+        catch (GameApiException error)
+        {
+            _error = error.Code switch
+            {
+                "alreadyFriends" => "You're already friends.",
+                "alreadyRequested" => "You already sent that request.",
+                "cannotFriendSelf" => "That's your own address.",
+                "invalidEmail" => "Enter a valid email address.",
+                "requestNotFound" or "friendNotFound" => "That request has changed. The list will refresh shortly.",
+                _ => "That didn't work. Check your connection and try again.",
+            };
+            return false;
+        }
+        catch (HttpRequestException)
+        {
+            _error = "That didn't work. Check your connection and try again.";
+            return false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

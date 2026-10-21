@@ -112,7 +112,22 @@ else
 
     private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
 
-    private Task ResumeGame(string gameId) => Task.CompletedTask;
+    private Task ResumeGame(string gameId) => RunCommand(async () =>
+    {
+        _generation++;
+        _watchOffer = null;
+        try
+        {
+            ApplyProjection(await Sessions.ResumeAccountGameAsync(gameId, _pollCancellation.Token));
+        }
+        catch (GameApiException error) when (error.StatusCode == HttpStatusCode.NotFound)
+        {
+            _error = "You no longer hold a seat in that game.";
+            return;
+        }
+        _status = null;
+        StartPolling();
+    }, "That game could not be resumed. Check your connection and try again.");
 
     private readonly CancellationTokenSource _pollCancellation = new();
     private GameProjection? _game;

@@ -253,11 +253,5 @@
     private string ViewerLabel(MembershipProjection seat) =>
         seat.SeatId == Projection.Viewer.SeatId ? "(You)" : string.Empty;
 
-    private static string ModeLabel(GameMode mode) => mode switch
-    {
-        GameMode.VanillaPvp => "Vanilla duel",
-        GameMode.Coop => "Void incursion",
-        GameMode.BattleRoyale => "Battle royale",
-        _ => mode.ToString()
-    };
+    private static string ModeLabel(GameMode mode) => GameModeLabels.For(mode);
 }
