@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use BloodAndBanners\Account\AccountService;
 use BloodAndBanners\Auth\AuthService;
 use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Database\ConnectionFactory;
@@ -33,7 +34,7 @@ function account_context(?Closure $clock = null): array
     $auth = new AuthService($db, 'test-signing-key-with-at-least-32-bytes');
     $mailer = new MemoryMailer();
     $signIn = new EmailSignInService($db, $auth, $mailer, 'https://blood.test/play', $clock, static fn(string $line): bool => true);
-    return ['app' => new Application($auth, new GameService($db), $signIn), 'db' => $db, 'mailer' => $mailer];
+    return ['app' => new Application($auth, new GameService($db), $signIn, new AccountService($db)), 'db' => $db, 'mailer' => $mailer];
 }
 
 function mailed_code(MemoryMailer $mailer): string
@@ -65,4 +66,17 @@ function sign_in(array $ctx, string $email, string $device = 'device-1', array $
     ]));
     expect_same(200, $verify->status, 'verify should succeed: ' . json_encode($verify->body));
     return $verify->body;
+}
+
+function create_game(array $ctx, array $session, string $mode = 'vanillaPvp', string $scenario = 'Four Corners'): array
+{
+    $created = $ctx['app']->handle(new Request('POST', '/api/v1/games', bearer($session), ['mode' => $mode, 'scenarioName' => $scenario]));
+    expect_same(201, $created->status, 'game created');
+    return $created->body;
+}
+
+function set_display_name(array $ctx, array $session, string $name): void
+{
+    $response = $ctx['app']->handle(new Request('PUT', '/api/v1/account', bearer($session), ['displayName' => $name]));
+    expect_same(200, $response->status, 'name set');
 }

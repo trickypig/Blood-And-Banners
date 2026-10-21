@@ -65,6 +65,7 @@ final class GameService
                 'revision' => $scenario['revisionId'], 'host' => $hostIdentityId, 'created' => $now, 'updated' => $now,
             ]);
             $this->insertMembership($gameId, $hostIdentityId, 1, true, $seatToken);
+            $this->presetCommanderName($gameId, $hostIdentityId);
             $projection = $this->projection($gameId, $hostIdentityId);
             $this->writeSnapshot($gameId, 1, $projection);
             $this->connection->commit();
@@ -75,8 +76,50 @@ final class GameService
         }
     }
 
+    public static function seatLimit(string $mode): int
+    {
+        return $mode === 'vanillaPvp' ? 2 : 5;
+    }
+
+    /** Gives a signed-in member their seat on this device: a fresh seat token replaces the old one everywhere. */
+    public function resumeSeat(string $gameId, string $identityId): array
+    {
+        $this->gameRow($gameId);
+        $seatToken = self::token();
+        $statement = $this->connection->prepare(
+            'UPDATE game_memberships SET seat_token_hash = :hash WHERE game_id = :game AND identity_id = :identity'
+        );
+        $statement->execute(['hash' => hash('sha256', $seatToken), 'game' => $gameId, 'identity' => $identityId]);
+        if ($statement->rowCount() !== 1) {
+            throw new GameServiceException('gameNotFound', 'You do not hold a seat in that game.');
+        }
+        return $this->projection($gameId, $identityId) + ['seatToken' => $seatToken];
+    }
+
+    /** A signed-in commander's seat starts with their display name, unless another seat already uses it. */
+    private function presetCommanderName(string $gameId, string $identityId): void
+    {
+        $statement = $this->connection->prepare("SELECT display_name FROM users WHERE id = :id AND display_name <> ''");
+        $statement->execute(['id' => $identityId]);
+        $name = $statement->fetchColumn();
+        if (!is_string($name)) {
+            return;
+        }
+        foreach ($this->memberships($gameId) as $seat) {
+            if ($seat['commander_name'] !== null && preg_match('/^' . preg_quote((string)$seat['commander_name'], '/') . '$/iu', $name) === 1) {
+                return;
+            }
+        }
+        $this->connection->prepare(
+            'UPDATE game_memberships SET commander_name = :name WHERE game_id = :game AND identity_id = :identity AND commander_name IS NULL'
+        )->execute(['name' => $name, 'game' => $gameId, 'identity' => $identityId]);
+    }
+
     public function joinGame(string $gameId, string $identityId): array
     {
+        if ((int)$this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game AND identity_id = :identity', ['game' => $gameId, 'identity' => $identityId]) > 0) {
+            return $this->resumeSeat($gameId, $identityId);
+        }
         $this->connection->beginTransaction();
         try {
             $game = $this->gameRow($gameId);
@@ -84,7 +127,7 @@ final class GameService
                 throw new GameServiceException('gameAlreadyStarted', 'Only lobby games can be joined.', (int)$game['version']);
             }
             $count = (int)$this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game', ['game' => $gameId]);
-            $maximum = $game['mode'] === 'vanillaPvp' ? 2 : 5;
+            $maximum = self::seatLimit($game['mode']);
             if ($count >= $maximum) {
                 throw new GameServiceException('gameFull', 'This game has no open player seats.', (int)$game['version']);
             }
@@ -95,6 +138,7 @@ final class GameService
             }
             $seatToken = self::token();
             $this->insertMembership($gameId, $identityId, $seatIndex, false, $seatToken);
+            $this->presetCommanderName($gameId, $identityId);
             $version = (int)$game['version'] + 1;
             $this->bumpVersion($gameId, (int)$game['version'], $version);
             $this->syncLobbySetup($game, $version);

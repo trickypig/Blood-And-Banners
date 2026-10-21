@@ -103,6 +103,16 @@ final class Application
             }
 
             $principal = $this->principal($request);
+            if ($request->path === '/api/v1/account' && in_array($request->method, ['GET', 'PUT'], true)) {
+                $userId = $this->requireUser($principal);
+                $accounts = $this->service($this->accounts);
+                return new Response(200, $request->method === 'GET'
+                    ? $accounts->profile($userId)
+                    : $accounts->updateDisplayName($userId, (string)($request->body['displayName'] ?? '')));
+            }
+            if (preg_match('#^/api/v1/games/([^/]+)/resume$#', $request->path, $matches) === 1 && $request->method === 'POST') {
+                return new Response(200, $this->seatSession($this->games->resumeSeat($matches[1], $this->requireUser($principal))));
+            }
             if ($request->method === 'POST' && $request->path === '/api/v1/auth/convert') {
                 if ($principal['kind'] !== 'guest') {
                     throw new DomainException('guestIdentityRequired');
