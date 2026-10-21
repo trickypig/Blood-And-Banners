@@ -790,4 +790,39 @@ public sealed class GameExperienceTests : BunitContext
         cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2), TimeSpan.FromSeconds(10));
         Assert.Equal([0L, 0L], api.EventRequests.Take(2));
     }
+
+    [Fact]
+    public void A_sign_in_link_is_verified_on_load_and_reported()
+    {
+        var sessions = new FakeSessionCoordinator();
+        var account = new FakeAccountSession { NameAfterVerify = "Ash" };
+        Services.AddSingleton<IGameSessionCoordinator>(sessions);
+        Services.AddSingleton<IAccountSession>(account);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var handled = false;
+
+        var cut = Render<GameExperience>(p => p
+            .Add(c => c.ClientKind, "web")
+            .Add(c => c.InitialSignInToken, "tok-1")
+            .Add(c => c.OnSignInLinkHandled, () => handled = true));
+
+        cut.WaitForAssertion(() => Assert.Contains("Signed in as Ash", cut.Markup));
+        Assert.Contains("link:tok-1", account.Calls);
+        Assert.True(handled);
+    }
+
+    [Fact]
+    public void An_expired_sign_in_link_explains_what_to_do()
+    {
+        Services.AddSingleton<IGameSessionCoordinator>(new FakeSessionCoordinator());
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession
+        {
+            VerifyFailure = new GameApiException(System.Net.HttpStatusCode.BadRequest, "invalidCode", "x")
+        });
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var cut = Render<GameExperience>(p => p.Add(c => c.InitialSignInToken, "old"));
+
+        cut.WaitForAssertion(() => Assert.Contains("That sign-in link has expired", cut.Markup));
+    }
 }

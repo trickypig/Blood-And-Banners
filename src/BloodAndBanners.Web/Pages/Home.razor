@@ -11,11 +11,13 @@
 <GameExperience ClientKind="web"
                 InitialJoinCode="@InviteLinks.GameIdFromUri(Navigation.Uri)"
                 InitialWatchCode="@InviteLinks.WatchGameIdFromUri(Navigation.Uri)"
+                InitialSignInToken="@InviteLinks.SignInTokenFromUri(Navigation.Uri)"
                 InviteBaseUri="@Navigation.BaseUri"
                 ImageBaseUrl="@Configuration["ImageBaseUrl"]"
-                OnStoppedWatching="ClearWatchLink" />
+                OnStoppedWatching="ClearLink"
+                OnSignInLinkHandled="ClearLink" />
 
 @code {
-    // Drop ?watch= from the address so a reload does not start watching again.
-    private void ClearWatchLink() => Navigation.NavigateTo(Navigation.BaseUri, replace: true);
+    // Drop ?watch= or ?signin= from the address so a reload does not repeat it.
+    private void ClearLink() => Navigation.NavigateTo(Navigation.BaseUri, replace: true);
 }

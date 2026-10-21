@@ -1,0 +1,65 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+@implements IDisposable
+@inject IServiceProvider ServiceProvider
+
+@if (Account is not null)
+{
+    <div class="account-chip">
+        @if (Account.Current is { } signedIn)
+        {
+            @if (string.IsNullOrEmpty(signedIn.DisplayName))
+            {
+                <SignInPanel DeviceId="@signedIn.DeviceId" StartAtName="true" />
+            }
+            else
+            {
+                <span data-account="chip">Signed in as <strong>@signedIn.DisplayName</strong></span>
+                <button type="button" class="ghost" data-account="sign-out" @onclick="SignOut">Sign out</button>
+            }
+        }
+        else if (_signInDeviceId is not null)
+        {
+            <SignInPanel DeviceId="@_signInDeviceId" OnDone="() => _signInDeviceId = null" OnCancel="() => _signInDeviceId = null" />
+        }
+        else
+        {
+            <button type="button" class="ghost" data-account="sign-in" @onclick="BeginSignIn">Sign in</button>
+            <span class="account-chip__hint">to add friends and resume games on any device</span>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string ClientKind { get; set; } = "client";
+
+    /// <summary>Minted once when the panel opens, so re-renders keep the same device id.</summary>
+    private string? _signInDeviceId;
+
+    // Optional so screens and tests without account services still work.
+    private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Account is { } account)
+        {
+            account.Changed += OnChanged;
+            await account.LoadAsync();
+        }
+    }
+
+    private void BeginSignIn() => _signInDeviceId = $"{ClientKind}-{Guid.NewGuid():N}";
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private Task SignOut() => Account?.SignOutAsync() ?? Task.CompletedTask;
+
+    public void Dispose()
+    {
+        if (Account is { } account)
+        {
+            account.Changed -= OnChanged;
+        }
+    }
+}

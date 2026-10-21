@@ -12,6 +12,8 @@ public static class InviteLinks
 
     public static string? WatchGameIdFromUri(string uri) => QueryValue(uri, "watch");
 
+    public static string? SignInTokenFromUri(string uri) => QueryValue(uri, "signin");
+
     private static string? QueryValue(string uri, string key)
     {
         var query = new Uri(uri, UriKind.Absolute).Query.TrimStart('?');

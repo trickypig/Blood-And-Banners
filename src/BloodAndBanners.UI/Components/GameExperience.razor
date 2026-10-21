@@ -6,10 +6,14 @@
 @implements IAsyncDisposable
 @inject IGameSessionCoordinator Sessions
 @inject IJSRuntime JS
+@inject IServiceProvider ServiceProvider
 
 @if (_game is null)
 {
-    <QuickStart IsBusy="_isBusy"
+    <QuickStart ClientKind="@ClientKind"
+                StatusMessage="@_status"
+                OnResume="ResumeGame"
+                IsBusy="_isBusy"
                 ErrorMessage="@_error"
                 InitialJoinCode="@InitialJoinCode"
                 LoadBoard="LoadScenarioBoard"
@@ -98,6 +102,18 @@ else
     [Parameter]
     public EventCallback OnStoppedWatching { get; set; }
 
+    /// <summary>A token from an emailed sign-in link; verified once on load.</summary>
+    [Parameter]
+    public string? InitialSignInToken { get; set; }
+
+    /// <summary>Raised after the sign-in link was used, so the host page can drop it from its address.</summary>
+    [Parameter]
+    public EventCallback OnSignInLinkHandled { get; set; }
+
+    private IAccountSession? Account => ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession;
+
+    private Task ResumeGame(string gameId) => Task.CompletedTask;
+
     private readonly CancellationTokenSource _pollCancellation = new();
     private GameProjection? _game;
     private readonly List<GameEvent> _events = [];
@@ -120,6 +136,22 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrWhiteSpace(InitialSignInToken) && Account is { } account)
+        {
+            try
+            {
+                var signedIn = await account.VerifyLinkAsync(InitialSignInToken!, DeviceId(), _pollCancellation.Token);
+                _status = string.IsNullOrEmpty(signedIn.DisplayName)
+                    ? "You are signed in. Choose your name above."
+                    : $"Signed in as {signedIn.DisplayName}.";
+            }
+            catch (Exception) when (!_pollCancellation.IsCancellationRequested)
+            {
+                _error = "That sign-in link has expired or was already used. Request a new code.";
+            }
+            await OnSignInLinkHandled.InvokeAsync();
+        }
+
         _isBusy = true;
         var watching = !string.IsNullOrWhiteSpace(InitialWatchCode);
         try

@@ -1,0 +1,7 @@
+.account-chip { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1.25rem; font-size: .9rem; color: #bdb6a7; }
+.account-chip strong { color: #f2ead8; }
+.account-chip button.ghost { padding: .45rem .8rem; color: #f6edda; background: transparent; border: 1px solid #a6813a; font: inherit; cursor: pointer; }
+.account-chip button.ghost:hover { background: #302e29; }
+.account-chip button.ghost:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.account-chip__hint { color: #aaa394; }
+.account-chip ::deep .sign-in { flex: 1 1 100%; margin-bottom: 0; }

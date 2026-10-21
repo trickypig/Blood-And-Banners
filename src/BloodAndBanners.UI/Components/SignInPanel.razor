@@ -1,0 +1,158 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+@implements IDisposable
+@inject IAccountSession Account
+
+<section class="sign-in" aria-labelledby="sign-in-title" data-signin="panel">
+    <h2 id="sign-in-title">@(_step == Step.Name ? "Name your commander" : "Sign in")</h2>
+    @if (_step == Step.Email)
+    {
+        <form data-signin="email-form" @onsubmit="SendCode" @onsubmit:preventDefault>
+            <label for="signin-email">Email address</label>
+            <input id="signin-email" data-signin="email" type="email" autocomplete="email"
+                   @bind="_email" @bind:event="oninput" disabled="@_busy" />
+            <div class="sign-in__actions">
+                <button type="submit" disabled="@(_busy || string.IsNullOrWhiteSpace(_email))">Send code</button>
+                <button type="button" class="ghost" @onclick="OnCancel">Not now</button>
+            </div>
+        </form>
+    }
+    else if (_step == Step.Code)
+    {
+        <form data-signin="code-form" @onsubmit="VerifyCode" @onsubmit:preventDefault>
+            <p>We sent a 6-digit code to <strong>@_email</strong>. You can also open the link in that email.</p>
+            <label for="signin-code">Code</label>
+            <input id="signin-code" data-signin="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                   @bind="_code" @bind:event="oninput" disabled="@_busy" />
+            <div class="sign-in__actions">
+                <button type="submit" disabled="@(_busy || _code.Trim().Length != 6)">Sign in</button>
+                <button type="button" class="ghost" data-signin="resend" disabled="@(_busy || _resendLocked)" @onclick="SendCode">Resend</button>
+                <button type="button" class="ghost" data-signin="change-email" @onclick="ChangeEmail">Use a different email</button>
+            </div>
+        </form>
+    }
+    else
+    {
+        <form data-signin="name-form" @onsubmit="SaveName" @onsubmit:preventDefault>
+            <p>Choose the name other commanders will see.</p>
+            <label for="signin-name">Name</label>
+            <input id="signin-name" data-signin="name" maxlength="24" @bind="_name" @bind:event="oninput" disabled="@_busy" />
+            <div class="sign-in__actions">
+                <button type="submit" disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">Save name</button>
+            </div>
+        </form>
+    }
+    @if (_error is not null)
+    {
+        <p class="sign-in__error" role="alert">@_error</p>
+    }
+</section>
+
+@code {
+    private enum Step { Email, Code, Name }
+
+    [Parameter, EditorRequired]
+    public string DeviceId { get; set; } = string.Empty;
+
+    /// <summary>Skips straight to naming, for an account that is signed in but unnamed.</summary>
+    [Parameter]
+    public bool StartAtName { get; set; }
+
+    [Parameter]
+    public EventCallback OnDone { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private Step _step = Step.Email;
+    private string _email = string.Empty;
+    private string _code = string.Empty;
+    private string _name = string.Empty;
+    private bool _busy;
+    private bool _resendLocked;
+    private string? _error;
+    private CancellationTokenSource? _resendTimer;
+
+    protected override void OnInitialized()
+    {
+        if (StartAtName)
+        {
+            _step = Step.Name;
+        }
+    }
+
+    private Task SendCode() => Run(async () =>
+    {
+        await Account.StartSignInAsync(_email.Trim());
+        _step = Step.Code;
+        LockResend();
+    });
+
+    private Task VerifyCode() => Run(async () =>
+    {
+        var account = await Account.VerifyCodeAsync(_email.Trim(), _code.Trim(), DeviceId);
+        if (string.IsNullOrEmpty(account.DisplayName))
+        {
+            _step = Step.Name;
+            return;
+        }
+        await OnDone.InvokeAsync();
+    });
+
+    private Task SaveName() => Run(async () =>
+    {
+        await Account.SetDisplayNameAsync(_name.Trim());
+        await OnDone.InvokeAsync();
+    });
+
+    private void ChangeEmail()
+    {
+        _step = Step.Email;
+        _code = string.Empty;
+        _error = null;
+    }
+
+    private void LockResend()
+    {
+        _resendTimer?.Cancel();
+        _resendTimer = new CancellationTokenSource();
+        _resendLocked = true;
+        var token = _resendTimer.Token;
+        _ = Task.Delay(TimeSpan.FromSeconds(30), token).ContinueWith(_ => InvokeAsync(() =>
+        {
+            _resendLocked = false;
+            StateHasChanged();
+        }), TaskContinuationOptions.OnlyOnRanToCompletion);
+    }
+
+    private async Task Run(Func<Task> action)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await action();
+        }
+        catch (GameApiException error)
+        {
+            _error = error.Code switch
+            {
+                "invalidCode" => "That code is wrong or has expired. Check the email or request a new code.",
+                "tooManyRequests" => "Too many sign-in emails. Wait a few minutes and try again.",
+                "invalidEmail" => "Enter a valid email address.",
+                "invalidDisplayName" => "Names must be 1 to 24 characters.",
+                _ => "Sign-in failed. Check your connection and try again.",
+            };
+        }
+        catch (HttpRequestException)
+        {
+            _error = "Sign-in failed. Check your connection and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public void Dispose() => _resendTimer?.Cancel();
+}

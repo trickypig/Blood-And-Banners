@@ -4,6 +4,7 @@
 
 <section class="quick-start" aria-labelledby="quick-start-title">
     <div class="intro-copy">
+        <AccountChip ClientKind="@ClientKind" />
         <p class="game-name">Blood &amp; Banners</p>
         <h1 id="quick-start-title">Take the field.</h1>
         <p>
@@ -11,6 +12,11 @@
             then let the server keep every move, roll, and victory honest.
         </p>
     </div>
+
+    @if (StatusMessage is not null)
+    {
+        <p class="status" role="status">@StatusMessage</p>
+    }
 
     @if (!_choosingBattlefield)
     {
@@ -116,6 +122,16 @@
 </section>
 
 @code {
+    [Parameter]
+    public string ClientKind { get; set; } = "client";
+
+    [Parameter]
+    public string? StatusMessage { get; set; }
+
+    /// <summary>Raised with a game id when a signed-in player resumes one of their games.</summary>
+    [Parameter]
+    public EventCallback<string> OnResume { get; set; }
+
     [Parameter]
     public bool IsBusy { get; set; }
 

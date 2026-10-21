@@ -60,6 +60,7 @@
 .join-room input:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
 .connection-note, .connection-error { grid-column: 2; margin: 0; padding: .85rem; }
 .connection-note { color: #d0ad66; }
+.status { margin: 0 0 1rem; padding: .85rem; color: #e9e3d2; background: #292824; border-left: .25rem solid #a6813a; }
 .connection-error { color: #fff0e6; background: #681e24; border-left: .25rem solid #d0ad66; }
 .join-room button.watch { background: transparent; border-left: 0; }
 .connection-error p { margin: 0; }

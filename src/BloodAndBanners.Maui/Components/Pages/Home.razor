@@ -9,14 +9,17 @@
                 ClientKind="maui"
                 InitialJoinCode="@_joinCode"
                 InitialWatchCode="@_watchCode"
+                InitialSignInToken="@_signInToken"
                 InviteBaseUri="https://blood.trickypig.com/play/"
                 ImageBaseUrl="https://blood.trickypig.com/"
-                OnStoppedWatching="() => _watchCode = null" />
+                OnStoppedWatching="() => _watchCode = null"
+                OnSignInLinkHandled="() => _signInToken = null" />
 
 @code {
     private int _linkCount;
     private string? _joinCode;
     private string? _watchCode;
+    private string? _signInToken;
 
     protected override void OnInitialized()
     {
@@ -39,6 +42,7 @@
     {
         _joinCode = InviteLinks.GameIdFromUri(uri);
         _watchCode = InviteLinks.WatchGameIdFromUri(uri);
+        _signInToken = InviteLinks.SignInTokenFromUri(uri);
     }
 
     public void Dispose() => IncomingLinks.Received -= OnLinkReceived;

@@ -1,0 +1,14 @@
+.sign-in { margin: 0 0 1.4rem; padding: .9rem .75rem 1rem; color: #e9e3d2; background: #191a17; border: 1px solid #5b5548; border-left: .25rem solid #a6813a; }
+.sign-in h2 { margin: 0 0 .7rem; color: #f2ead8; font: 700 1.25rem Georgia, serif; }
+.sign-in p { margin: 0 0 .7rem; color: #bdb6a7; line-height: 1.5; font-size: .95rem; }
+.sign-in label { display: block; margin-bottom: .45rem; color: #d0ad66; font: 700 .95rem Georgia, serif; }
+.sign-in input { display: block; box-sizing: border-box; width: 100%; min-width: 0; padding: .8rem; color: #f2ead8; background: #121311; border: 1px solid #5b5548; font: .95rem ui-monospace, monospace; }
+.sign-in input:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.sign-in__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.sign-in button { padding: .7rem 1rem; color: #f6edda; background: #681e24; border: 1px solid #a6813a; font: inherit; cursor: pointer; }
+.sign-in button.ghost { background: transparent; }
+.sign-in button:hover:not(:disabled) { background: #7b252b; }
+.sign-in button.ghost:hover:not(:disabled) { background: #302e29; }
+.sign-in button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: .15rem; }
+.sign-in button:disabled { opacity: .5; cursor: default; }
+.sign-in__error { margin: .75rem 0 0; padding: .6rem .75rem; color: #fff0e6; background: #681e24; border-left: .25rem solid #d0ad66; }

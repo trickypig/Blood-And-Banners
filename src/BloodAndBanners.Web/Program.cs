@@ -11,6 +11,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 builder.Services.AddScoped<IGameApiClient, GameApiClient>();
+builder.Services.AddScoped<IAccountApiClient, AccountApiClient>();
+builder.Services.AddScoped<IAccountStore, JsonAccountStore>();
+builder.Services.AddScoped<IAccountSession, AccountSession>();
 builder.Services.AddScoped<IKeyValueStore>(services =>
 {
     var js = services.GetRequiredService<IJSRuntime>();
