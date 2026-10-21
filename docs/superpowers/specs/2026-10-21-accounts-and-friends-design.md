@@ -37,7 +37,7 @@ Migration `005_accounts` comes in `.mysql.sql` and `.sqlite.sql` versions.
   - Columns: `id`, `email`, `code_hash`, `token_hash UNIQUE`, `attempts INTEGER DEFAULT 0`, `client_ip`, `expires_at`, `consumed_at NULL`, `created_at`.
   - Index on `(email, created_at)` and on `(client_ip, created_at)`.
 - `friendships` table:
-  - Columns: `id`, `requester_user_id`, `addressee_user_id NULL`, `addressee_email`, `status` (`'pending'` or `'accepted'`), `created_at`, `responded_at NULL`.
+  - Columns: `id`, `requester_user_id`, `addressee_user_id NULL`, `addressee_email`, `status` (`'pending'` or `'accepted'`), `from_game` (0/1, whether the request came from a shared game), `created_at`, `responded_at NULL`.
   - Unique on `(requester_user_id, addressee_email)`, plus indexes on `addressee_user_id` and `addressee_email`.
   - `addressee_email` is always stored normalized (trimmed and lowercased).
   - A pair has at most one row: before inserting, the service checks for a row in either direction.
@@ -50,9 +50,9 @@ Migration `005_accounts` comes in `.mysql.sql` and `.sqlite.sql` versions.
 - New `AppConfig` keys, all optional:
   - `SMTP_HOST`, `SMTP_PORT` (default 465), `SMTP_USER`, `SMTP_PASS`.
   - `MAIL_FROM` (default `noreply@trickypig.com`).
-  - `APP_PUBLIC_URL`, the origin used in links (default `https://blood.trickypig.com`).
+  - `APP_PUBLIC_URL`, the game's public root used in links (default `https://blood.trickypig.com/play`).
 - The password exists only in the server's config file.
-- PHPMailer's `src/PHPMailer.php`, `SMTP.php` and `Exception.php`, plus its LICENSE, are vendored under `api/lib/PHPMailer/`. `autoload.php` maps the `PHPMailer\PHPMailer\` namespace to that folder.
+- PHPMailer's `src/PHPMailer.php`, `SMTP.php` and `Exception.php`, plus its LICENSE, are vendored under `api/src/Vendor/PHPMailer/`, so the release build copies them with the rest of `src`. `autoload.php` maps the `PHPMailer\PHPMailer\` namespace to that folder.
 - A send failure is logged server-side. The client still gets the normal `202`, but `auth/email/start` is not counted as successful for rate-limit purposes.
 
 ### Sign-in routes (no auth required)
@@ -61,7 +61,7 @@ Migration `005_accounts` comes in `.mysql.sql` and `.sqlite.sql` versions.
 - The address is validated with `FILTER_VALIDATE_EMAIL` after normalizing.
 - **Rate limits:** 3 challenges per email per 15 minutes and 20 per IP per hour. Over the limit, the route returns `429 tooManyRequests`.
 - Otherwise it creates a challenge with a random 6-digit code and a random 32-byte token. Both are stored as SHA-256 hashes, and the challenge expires after 15 minutes.
-- It mails "Your Blood & Banners sign-in code: 123456", with the link `{APP_PUBLIC_URL}/signin?token=…`.
+- It mails "Your Blood & Banners sign-in code: 123456", with the link `{APP_PUBLIC_URL}/?signin=…` (same query-parameter style as `?join=` and `?watch=`).
 - It always responds `202 {}` for a valid address, whether or not an account exists.
 - `Request` gains `clientIp`, taken from `REMOTE_ADDR`.
 
@@ -110,7 +110,7 @@ Migration `005_accounts` comes in `.mysql.sql` and `.sqlite.sql` versions.
   ```
 
   The `label` on an outgoing request is the other person's display name if they have an account and their user ID was already known to the requester (the request came from a game). Otherwise it is the email the requester typed.
-- `POST /api/v1/friends/requests` takes `{email}` or `{gameId, seatIndex}`.
+- `POST /api/v1/friends/requests` takes `{email}` or `{gameId, seatId}`.
   - **The game form** requires both users to hold seats in that game and the target seat to belong to a `user` identity. Otherwise it returns `400 cannotFriendSeat`. The requester is never shown the target's email address.
   - **Errors:** your own address or ID returns `400 cannotFriendSelf`. Already being friends returns `409 alreadyFriends`. An existing outgoing request returns `409 alreadyRequested`.
   - **Mutual request:** if the other user already has a pending request to you, that row becomes `accepted` and no new row is inserted.
@@ -152,9 +152,9 @@ New DTOs in `BloodAndBanners.Contracts`, each with golden JSON fixtures in `test
   3. If the account has no display name yet, a name field.
   4. Done.
 - Server errors map to inline text: `invalidCode`, `tooManyRequests`, and a generic fallback.
-- **The `/signin?token=…` route** verifies the token on load, shows a short result, then goes to the start page. Android App Links already claim `blood.trickypig.com`, so the link opens the app; the code path covers any case where it doesn't.
+- **The `?signin=…` link** is read by the web and MAUI home pages, like `?join=`. The token is verified on load, a short result is shown, and the parameter is dropped from the address. Android App Links already claim `blood.trickypig.com/play`, so the link opens the app; the code path covers any case where it doesn't.
 - **Guest carry-over:** when a guest seat session exists at sign-in, the verify call sends the guest bearer token so the seat moves to the account.
-- **Commander-name prefill:** the account's display name replaces the `bloodAndBanners.commanderName` localStorage value as the prefill when signed in.
+- **Commander-name prefill:** the server pre-sets a signed-in seat's name from the display name, so the existing localStorage prefill doesn't apply to it; no client change is needed.
 
 ### Start page (signed in)
 
@@ -222,5 +222,4 @@ When the viewer is a signed-in user, the War Room lobby seat list and the ☰ ma
 
 - **Server config:** add `SMTP_HOST=smtp.ionos.com`, `SMTP_PORT=465`, `SMTP_USER=noreply@trickypig.com`, `SMTP_PASS=…` (supplied by the user at deploy time), `MAIL_FROM=noreply@trickypig.com` and `APP_PUBLIC_URL=https://blood.trickypig.com`.
 - **Migration:** migration 005 runs through the existing migrator.
-- **Static host:** the `/signin` path must be served by the SPA fallback on the static host. Check the rewrite rules during deploy.
-- **APK:** rebuild it so the sign-in route is handled in-app.
+- **APK:** rebuild it so `?signin=` links are handled in-app.
