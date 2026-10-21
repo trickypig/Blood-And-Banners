@@ -9,6 +9,7 @@ internal sealed class FakeAccountApiClient : IAccountApiClient
     public AuthSession Verified { get; set; } = new("u1", "user", "access-1", "refresh-1") { DisplayName = "" };
     public Exception? VerifyFailure { get; set; }
     public Exception? StartFailure { get; set; }
+    public Exception? LogoutFailure { get; set; }
     public AccountGames Games { get; set; } = new([], []);
     public FriendsList Friends { get; set; } = new([], [], []);
     public GameSeatSession? Resumed { get; set; }
@@ -43,7 +44,7 @@ internal sealed class FakeAccountApiClient : IAccountApiClient
     public Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)
     {
         Calls.Add($"logout:{refreshToken}");
-        return Task.CompletedTask;
+        return LogoutFailure is null ? Task.CompletedTask : Task.FromException(LogoutFailure);
     }
 
     public Task<AccountProfile> UpdateDisplayNameAsync(AuthSession session, string displayName, CancellationToken cancellationToken = default) =>

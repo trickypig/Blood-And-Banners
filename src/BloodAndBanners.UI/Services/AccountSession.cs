@@ -52,9 +52,9 @@ public sealed class AccountSession(
             {
                 await accountApi.LogoutAsync(current.Identity.RefreshToken);
             }
-            catch (HttpRequestException)
+            catch (Exception)
             {
-                // Signing out locally still works when the server cannot be told.
+                // Signing out locally still works when the server cannot be told (including timeouts).
             }
         }
         await ForgetAsync();

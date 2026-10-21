@@ -174,6 +174,21 @@ public sealed class AccountSessionTests
     }
 
     [Fact]
+    public async Task Sign_out_still_forgets_locally_when_the_logout_call_is_cancelled()
+    {
+        var api = new FakeAccountApiClient { LogoutFailure = new TaskCanceledException() };
+        var identity = new AuthSession("u1", "user", "access-1", "refresh-1");
+        var store = new MemoryAccountStore { Current = new StoredAccount("web-1", identity, "Ash") };
+        var session = new AccountSession(api, new RefreshingGameApi(), store, new MemoryGames());
+        await session.LoadAsync();
+
+        await session.SignOutAsync();
+
+        Assert.Null(store.Current);
+        Assert.Null(session.Current);
+    }
+
+    [Fact]
     public async Task Json_store_round_trips_under_the_account_key()
     {
         var values = new Dictionary<string, string>();
