@@ -13,3 +13,16 @@ spl_autoload_register(static function (string $class): void {
         require $path;
     }
 });
+
+spl_autoload_register(static function (string $class): void {
+    $prefix = 'PHPMailer\\PHPMailer\\';
+    if (!str_starts_with($class, $prefix)) {
+        return;
+    }
+
+    $path = __DIR__ . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Vendor' . DIRECTORY_SEPARATOR
+        . 'PHPMailer' . DIRECTORY_SEPARATOR . substr($class, strlen($prefix)) . '.php';
+    if (is_file($path)) {
+        require $path;
+    }
+});

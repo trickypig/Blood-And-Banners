@@ -17,6 +17,12 @@ final class AppConfig
         public readonly string $signingKey,
         public readonly string $appEnvironment,
         public readonly string $corsOrigin,
+        public readonly string $smtpHost = '',
+        public readonly int $smtpPort = 465,
+        public readonly string $smtpUser = '',
+        public readonly string $smtpPassword = '',
+        public readonly string $mailFrom = 'noreply@trickypig.com',
+        public readonly string $publicUrl = 'https://blood.trickypig.com/play',
     ) {
     }
 
@@ -70,6 +76,12 @@ final class AppConfig
             $signingKey,
             trim($values['APP_ENV'] ?? 'production'),
             $corsOrigin,
+            trim($values['SMTP_HOST'] ?? ''),
+            (int)(trim($values['SMTP_PORT'] ?? '') ?: 465),
+            trim($values['SMTP_USER'] ?? ''),
+            $values['SMTP_PASS'] ?? '',
+            trim($values['MAIL_FROM'] ?? '') ?: 'noreply@trickypig.com',
+            rtrim(trim($values['APP_PUBLIC_URL'] ?? '') ?: 'https://blood.trickypig.com/play', '/'),
         );
     }
 
