@@ -1,0 +1,9 @@
+@namespace BloodAndBanners.UI.Components
+
+<img class="stat-icon" src="@($"_content/BloodAndBanners.UI/icons/{FileName}")" alt="@Label" title="@Label" />
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? File { get; set; }
+    private string FileName => File ?? $"Stat_{(Label == "HP" ? "Health" : Label)}.png";
+}

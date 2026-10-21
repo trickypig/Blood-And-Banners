@@ -11,6 +11,31 @@ public sealed class AttackPopupTests : BunitContext
 {
     private const string Hit = """{"unitId":"s1-u3","targetUnitId":"s2-u1","ability":null,"attackFaces":["sword","sword","blank"],"defenseFaces":["shield","blank"],"wounds":1,"attackBase":2,"attackModifiers":[{"source":"Rally","amount":1}],"defenseBase":3,"defenseModifiers":[{"source":"Standing in water","amount":-1}]}""";
 
+    [Theory]
+    [InlineData(0, 3, 0)]
+    [InlineData(1, 2, 1)]
+    [InlineData(3, 0, 3)]
+    [InlineData(5, 0, 3)]
+    public void Combat_cards_show_full_and_empty_hearts(int wounds, int full, int empty)
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { Hp = 3, Wounds = wounds }, .. projection.Units.Skip(1)],
+        };
+        var stages = new StageClock();
+        var cut = Render<AttackPopup>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.LiveAfterSequence, 0L)
+            .Add(component => component.Delay, stages.Delay)
+            .Add(component => component.Events, new[] { Event(1, 1, "attackResolved", Hit) }));
+
+        var health = cut.Find("[data-unit-id=s1-u3] .health-hearts");
+        Assert.Equal($"{full} of 3 HP remaining", health.GetAttribute("aria-label"));
+        Assert.Equal(full, health.QuerySelectorAll("img[src$='Stat_Health.png']").Length);
+        Assert.Equal(empty, health.QuerySelectorAll("img[src$='Heart_Empty.png']").Length);
+    }
+
     [Fact]
     public void Summaries_count_swords_shields_wounds_and_defeat() =>
         Assert.Equal("2 swords vs 1 shield → 1 wound → Grunt is defeated", AttackReport.Summarize(2, 0, 1, 0, 1, "Grunt"));

@@ -78,7 +78,10 @@ public sealed class DraftTableTests : BunitContext
 
         var armyCard = cut.Find("button[data-army='Blackmaw']").TextContent;
 
-        Assert.Contains("Grunt M2 R1 P4 D3 HP5", armyCard);
+        Assert.Contains("Grunt", armyCard);
+        var stats = cut.FindAll("button[data-army='Blackmaw'] .stat-line > span");
+        Assert.Equal(["2", "1", "4", "3", "5"], stats.Take(5).Select(stat => stat.TextContent.Trim()));
+        Assert.Equal(["Move", "Range", "Power", "Defense", "HP"], stats.Take(5).Select(stat => stat.QuerySelector("img")!.GetAttribute("alt")));
         Assert.DoesNotContain("@unit.", armyCard);
     }
 

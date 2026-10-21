@@ -197,7 +197,7 @@
             <h3>@(unit?.Name ?? unitId)</h3>
             @if (unit is not null)
             {
-                <p class="attack-popup-wounds">Wounds @unit.Wounds / @unit.Hp</p>
+                <HealthHearts Hp="unit.Hp" Wounds="unit.Wounds" />
                 @foreach (var condition in unit.Conditions)
                 {
                     var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty, condition.Data.Level);

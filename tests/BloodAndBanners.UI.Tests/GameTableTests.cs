@@ -136,7 +136,7 @@ public sealed partial class GameTableTests : BunitContext
 
         var mine = cut.Find(".roster.seat-1");
         Assert.Equal("https://example.test/blood/images/armies/blackmaw.svg", cut.Find("[data-rail-tab=seat-red] img").GetAttribute("src"));
-        Assert.Null(mine.QuerySelector("img"));
+        Assert.Null(mine.QuerySelector("img[src$='blackmaw.svg']"));
         Assert.Equal("Blackmaw", mine.QuerySelector(".army-name")?.TextContent);
         var rival = cut.Find(".roster.seat-2");
         Assert.Null(cut.Find("[data-rail-tab=seat-blue]").QuerySelector("img"));
@@ -227,7 +227,7 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
-    public void The_rail_shows_the_last_three_log_lines_until_a_unit_is_selected()
+    public void The_rail_keeps_the_last_three_log_lines_when_a_unit_is_selected()
     {
         var events = Enumerable.Range(1, 4).Select(round => new GameEvent(round, round, "turnEnded", null, [],
             JsonSerializer.Deserialize<JsonElement>($$"""{"seatId":"seat-blue","nextSeatId":"seat-red","round":{{round}}}"""), DateTimeOffset.UnixEpoch)).ToArray();
@@ -240,7 +240,7 @@ public sealed partial class GameTableTests : BunitContext
 
         cut.Find("[data-hex='1,4']").Click();
         Assert.NotNull(cut.Find("[data-testid=selected-unit]"));
-        Assert.Empty(cut.FindAll("[data-testid=recent-log]"));
+        Assert.Contains("with-unit-card", cut.Find("[data-testid=recent-log]").ClassList);
     }
 
     [Fact]
@@ -363,9 +363,10 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("selected", cut.Find("[data-hex='1,4']").ClassList);
         Assert.Equal("Ranger", cut.Find("[data-testid=selected-unit] h3").TextContent);
 
-        // A rival can be looked at but not commanded, so the selection stays put and the rival is spotlit instead.
+        // A rival's card can also be inspected without issuing an order.
         cut.Find("[data-roster-unit=s2-u1] [data-focus-unit]").Click();
-        Assert.Contains("selected", cut.Find("[data-roster-unit=s1-u3]").ClassList);
+        Assert.Contains("selected", cut.Find("[data-roster-unit=s2-u1]").ClassList);
+        Assert.Equal("Grunt", cut.Find("[data-testid=selected-unit] h3").TextContent);
         Assert.Contains("spotlit", cut.Find("[data-hex='3,4']").ClassList);
         Assert.Single(cut.FindAll("[data-hex='3,4'] .token-spotlight"));
         Assert.Single(cut.FindAll(".token-spotlight"));
@@ -376,6 +377,89 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Empty(cut.FindAll(".spotlit, .token-spotlight"));
         Assert.DoesNotContain("highlighted", cut.Find("[data-roster-unit=s2-u1]").ClassList);
         Assert.True(cut.Find("[data-roster-unit=s2-u2] [data-focus-unit]").HasAttribute("disabled"));
+    }
+
+    [Theory]
+    [InlineData(true, true, "s1-u3", "1,4", "Ranger")]
+    [InlineData(true, false, "s1-u3", "1,4", "Ranger")]
+    [InlineData(true, true, "s2-u1", "3,4", "Grunt")]
+    [InlineData(true, false, "s2-u1", "3,4", "Grunt")]
+    [InlineData(false, true, "s1-u3", "1,4", "Ranger")]
+    [InlineData(false, false, "s2-u1", "3,4", "Grunt")]
+    public void Units_can_be_inspected_outside_your_turn(bool canCommand, bool fromRoster, string unitId, string hex, string name)
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection() with
+        {
+            Viewer = new ViewerPermissions(canCommand ? "player" : "spectator", canCommand ? "seat-red" : null, canCommand, canCommand),
+            Turn = new TurnProjection(2, "seat-blue", 3),
+            LegalActions = [],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        cut.Find(fromRoster ? $"[data-roster-unit='{unitId}'] [data-focus-unit]" : $"[data-hex='{hex}']").Click();
+
+        Assert.Equal(name, cut.Find("[data-testid=selected-unit] h3").TextContent);
+        Assert.Contains("with-unit-card", cut.Find("[data-testid=recent-log]").ClassList);
+        Assert.Empty(cut.FindAll("[data-use-ability], [data-testid=active-unit]"));
+        Assert.Empty(sent);
+
+        cut.Render(parameters => parameters.Add(component => component.Projection, projection with { Version = 22 }));
+        Assert.Equal(name, cut.Find("[data-testid=selected-unit] h3").TextContent);
+    }
+
+    [Fact]
+    public void The_latest_three_events_stay_between_the_active_unit_and_army_tabs()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Turn = new TurnProjection(2, "seat-red", 3) { ActiveUnitId = "s1-u3" },
+        };
+        var events = Enumerable.Range(1, 4).Select(index => new GameEvent(
+            index, index, "unitDefeated", null, [],
+            JsonSerializer.Deserialize<JsonElement>(index == 4 ? """{"unitId":"s2-u1"}""" : """{"unitId":"s2-u2"}"""),
+            DateTimeOffset.UnixEpoch)).ToArray();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.Events, events));
+
+        Assert.NotNull(cut.Find(".action-tray:has([data-testid=active-unit]) + [data-testid=recent-log] + .rail-tabs"));
+        var lines = cut.FindAll("[data-testid=recent-log] li");
+        Assert.Equal(3, lines.Count);
+        Assert.Equal("Grunt is defeated.", lines[0].TextContent);
+        Assert.Equal("Brute is defeated.", lines[1].TextContent);
+        Assert.Equal("Brute is defeated.", lines[2].TextContent);
+
+        cut.Find("[data-rail-tab=log]").Click();
+        Assert.Equal(3, cut.FindAll("[data-testid=recent-log] li").Count);
+        Assert.Equal(4, cut.FindAll(".rail-log .combat-log li").Count);
+    }
+
+    [Fact]
+    public void A_rivals_detail_card_shows_their_army_emblem_before_the_name()
+    {
+        var projection = BattleFixtures.Projection() with
+        {
+            Armies = new Dictionary<string, SeatArmyProjection>
+            {
+                ["seat-red"] = new("Blackmaw", "/images/armies/blackmaw.svg"),
+                ["seat-blue"] = new("Sol Invictus", "/images/armies/sol.svg"),
+            },
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.ImageBaseUrl, "https://example.test/blood/"));
+
+        cut.Find("[data-hex='3,4']").Click();
+        var heading = cut.Find("[data-testid=selected-unit] h3");
+        Assert.Equal("Grunt", heading.TextContent.Trim());
+        Assert.Equal("https://example.test/blood/images/armies/sol.svg", heading.FirstElementChild!.GetAttribute("src"));
+        Assert.Equal("Sol Invictus", heading.FirstElementChild.GetAttribute("alt"));
+
+        cut.Find("[data-hex='1,4']").Click();
+        Assert.Empty(cut.FindAll("[data-testid=selected-unit] h3 img"));
     }
 
     [Fact]
@@ -480,6 +564,8 @@ public sealed partial class GameTableTests : BunitContext
         // Look at a rival, then jump back to the unit that is acting.
         cut.Find("[data-roster-unit=s2-u1] [data-focus-unit]").Click();
         Assert.Contains("spotlit", cut.Find("[data-hex='3,4']").ClassList);
+        Assert.Equal("Grunt", cut.Find("[data-testid=selected-unit] h3").TextContent);
+        Assert.Equal("Ranger", cut.Find("[data-testid=active-unit] [data-focus-active]").TextContent);
 
         cut.Find("[data-testid=active-unit] [data-focus-active]").Click();
         Assert.Contains("spotlit", cut.Find("[data-hex='1,4']").ClassList);
@@ -600,7 +686,8 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("[data-hex='1,4']").Click();
 
         var defense = cut.Find("[data-testid=selected-unit] [data-stat='defense']");
-        Assert.Equal("Defense 2 → 4", defense.TextContent.Trim());
+        Assert.Equal("2 → 4", defense.TextContent.Trim());
+        Assert.Equal("Defense", defense.QuerySelector("img")!.GetAttribute("alt"));
         Assert.Contains("Shield Wall +1 until your next turn", defense.GetAttribute("title"));
         Assert.NotNull(cut.Find("[data-testid=selected-unit] li[data-ability='Evasion']"));
     }

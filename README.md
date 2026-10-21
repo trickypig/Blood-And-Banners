@@ -11,6 +11,17 @@ This repository now contains the first runnable vertical slice of the server-aut
 
 ## Run locally
 
+### Browse optional image libraries
+
+Open `images/.temp/index.html` in a browser to browse PictoIcon 64 and Fantasy
+Icons on separate, compact pages. Each gallery has a sticky black/white
+background toggle; Fantasy Icons are grouped by folder. Click an icon to open
+its original image.
+
+After adding or changing files in these libraries, rebuild the galleries from
+the repository root with `python scripts/build-image-galleries.py`. The image
+libraries and generated pages remain in the ignored `images/.temp/` folder.
+
 Start the PHP API with a development SQLite database:
 
 ```powershell

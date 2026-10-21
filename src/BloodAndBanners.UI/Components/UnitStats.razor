@@ -1,0 +1,17 @@
+@namespace BloodAndBanners.UI.Components
+
+<span class="stat-line">
+    <span><StatIcon Label="Move" />@Move</span>
+    <span><StatIcon Label="Range" />@Range</span>
+    <span><StatIcon Label="Power" />@Power</span>
+    <span><StatIcon Label="Defense" />@Defense</span>
+    <span><StatIcon Label="HP" />@Hp</span>
+</span>
+
+@code {
+    [Parameter] public int Move { get; set; }
+    [Parameter] public int Range { get; set; }
+    [Parameter] public int Power { get; set; }
+    [Parameter] public int Defense { get; set; }
+    [Parameter] public int Hp { get; set; }
+}

@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
+    <Content Include="../../images/icons/*" Link="wwwroot/icons/%(Filename)%(Extension)"
+             ContentRoot="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../images/'))"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -401,7 +401,7 @@
                 }
             </section>
         }
-        else if (Projection.Viewer.CanCommand)
+        else if (Projection.Viewer.CanCommand || SelectedUnit is not null)
         {
             <section class="action-tray" aria-label="Your orders">
                 @if (ActingUnit is { } acting)
@@ -430,22 +430,30 @@
                     <article class="unit-card" data-testid="selected-unit">
                         @if (selected.UnitId != ActingUnit?.UnitId)
                         {
-                            <h3>@selected.Name</h3>
+                            <h3>
+                                @if (selected.SeatId != Projection.Viewer.SeatId
+                                    && Projection.Armies?.GetValueOrDefault(selected.SeatId) is { } army
+                                    && CatalogImages.Resolve(ImageBaseUrl, army.Emblem) is { } emblem)
+                                {
+                                    <img class="unit-army-emblem" src="@emblem" alt="@army.Name" />
+                                }
+                                @selected.Name
+                            </h3>
                         }
                         <p class="unit-stats">
                             @foreach (var (stat, label, baseValue, effective) in StatRows(selected))
                             {
                                 <span data-stat="@stat" title="@EffectSources(selected, stat)" class="@(effective > baseValue ? "raised" : effective < baseValue ? "lowered" : null)">
-                                    @label @baseValue@(effective != baseValue ? $" → {effective}" : null)
+                                    <StatIcon Label="@label" />@baseValue@(effective != baseValue ? $" → {effective}" : null)
                                 </span>
                             }
+                            <span data-stat="health" aria-label="@(RemainingHp(selected) + " HP")"><StatIcon Label="HP" />@RemainingHp(selected)</span>
                         </p>
                         @foreach (var condition in selected.Conditions)
                         {
                             var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty, condition.Data.Level);
                             <p class="unit-condition" data-condition="@condition.Name">@ConditionLabel(condition) — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires, condition.Name)</p>
                         }
-                        <p>Wounds @selected.Wounds / @selected.Hp</p>
                         <AbilityList Abilities="selected.Abilities"
                                      Actions="AbilityActions(selected.UnitId)"
                                      ActiveAbility="@_targeting?.Ability"
@@ -460,10 +468,10 @@
             </section>
         }
 
-        @if (!InSetup && !ShowsUnitCard)
+        @if (!InSetup)
         {
             var recent = CombatLogFormatter.Recent(Events, Projection, 3);
-            <section class="recent-log" aria-label="Latest in the battle" data-testid="recent-log">
+            <section class="recent-log @(ShowsUnitCard ? "with-unit-card" : null)" aria-label="Latest in the battle" data-testid="recent-log">
                 @if (recent.Count == 0)
                 {
                     <p>No blows struck yet.</p>
@@ -545,7 +553,7 @@
                                             break;
                                     }
                                 </span>
-                                <span>@(unit.Hp - unit.Wounds)/@unit.Hp</span>
+                                <span class="roster-health" aria-label="@(RemainingHp(unit) + " HP")"><StatIcon Label="HP" />@RemainingHp(unit)</span>
                                 </button>
                             </li>
                         }
@@ -657,7 +665,7 @@
         return sources.Count == 0 ? null : string.Join("; ", sources);
     }
 
-    private IReadOnlyList<LegalAction> AbilityActions(string unitId) => Projection.LegalActions
+    private IReadOnlyList<LegalAction> AbilityActions(string unitId) => !Projection.Viewer.CanCommand ? [] : Projection.LegalActions
         .Where(action => action.UnitId == unitId && (action.Kind is "specialAttack" or "useAbility" or "moveAbility"))
         .ToList();
 
@@ -716,7 +724,7 @@
             _lastGameId = Projection.GameId;
             _lastProjectionVersion = Projection.Version;
         }
-        if (_selectedUnitId is not null && !Selectable(_selectedUnitId))
+        if (_selectedUnitId is not null && !Inspectable(_selectedUnitId))
         {
             _selectedUnitId = null;
         }
@@ -871,7 +879,9 @@
          || Projection.Units.Any(unit => unit.UnitId == unitId && unit.SeatId == Projection.Viewer.SeatId && unit.Hex is not null
              && unit.Conditions.Any(condition => condition.Name is "Petrified" or "Entrapped" or "Pan Pipes" or "Charmed")));
 
-    private IReadOnlyList<string> Targets(string kind) => _selectedUnitId is null
+    private bool Inspectable(string unitId) => UnitById(unitId)?.Hex is not null || Selectable(unitId);
+
+    private IReadOnlyList<string> Targets(string kind) => !Projection.Viewer.CanCommand || _selectedUnitId is null
         ? []
         : Projection.LegalActions
             .Where(action => action.Kind == kind && action.UnitId == _selectedUnitId)
@@ -885,13 +895,17 @@
             return;
         }
         _spotlitUnitId = null;
-        if (!Projection.Viewer.CanCommand || IsBusy)
+        if (IsBusy)
         {
             return;
         }
         var key = HexKey(hex);
         if (InSetup)
         {
+            if (!Projection.Viewer.CanCommand)
+            {
+                return;
+            }
             var removal = Projection.LegalActions.FirstOrDefault(action => action.Kind == "removeMonster" && action.TargetHexes.Contains(key));
             if (removal is not null)
             {
@@ -1022,7 +1036,7 @@
                 return;
             }
         }
-        var selected = hex.OccupantId is { } occupant && Selectable(occupant) ? occupant : null;
+        var selected = hex.OccupantId is { } occupant && Inspectable(occupant) ? occupant : null;
         if (_selectedUnitId != selected)
         {
             ClearMovementState();
@@ -1616,8 +1630,9 @@
 
     // The phone layout's lower third shows the selected unit's card, or the latest log lines when there isn't one.
     private bool ShowsUnitCard =>
-        SelectedUnit is not null && Projection.Viewer.CanCommand
-        && Projection.PendingChoice?.SeatId != Projection.Viewer.SeatId && Projection.PendingChoiceSummary is null;
+        SelectedUnit is not null && !InSetup
+        && (Projection.PendingChoice is null || Projection.PendingChoice.SeatId != Projection.Viewer.SeatId)
+        && Projection.PendingChoiceSummary is null;
 
     // Clicking a unit, or the turn picking one for you, brings its army's roster into view.
     private void ShowArmyTabOf(string? unitId)
@@ -1743,8 +1758,7 @@
     }
 
     /// <summary>
-    /// An army-list click: selects the unit when a board click on it would, and pans the board to it
-    /// when it is out of view. Other units are only shown, so looking at a rival keeps your selection.
+    /// An army-list click inspects the unit and pans the board to it when it is out of view.
     /// </summary>
     private async Task FocusUnit(UnitProjection unit)
     {
@@ -1756,7 +1770,7 @@
         _railOpen = false;
         ShowArmyTabOf(unit.UnitId);
         if (!IsBusy && !InSetup && Projection.PendingChoice is null && _targeting is null
-            && unit.UnitId != _selectedUnitId && Selectable(unit.UnitId))
+            && unit.UnitId != _selectedUnitId && Inspectable(unit.UnitId))
         {
             ClearMovementState();
             _selectedUnitId = unit.UnitId;
@@ -1843,8 +1857,10 @@
     private static string SafeId(string value) =>
         System.Text.RegularExpressions.Regex.Replace(value.ToLowerInvariant(), "[^a-z0-9-]", "-");
 
+    private static int RemainingHp(UnitProjection unit) => Math.Clamp(unit.Hp - unit.Wounds, 0, Math.Max(0, unit.Hp));
+
     private static int HealthPercent(UnitProjection unit) =>
-        unit.Hp <= 0 ? 0 : (unit.Hp - unit.Wounds) * 100 / unit.Hp;
+        unit.Hp <= 0 ? 0 : RemainingHp(unit) * 100 / unit.Hp;
 
     private static string HexKey(HexProjection hex) => $"{hex.Q},{hex.R}";
 

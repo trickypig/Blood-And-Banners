@@ -1,0 +1,15 @@
+@namespace BloodAndBanners.UI.Components
+
+<span class="health-hearts" role="img" aria-label="@($"{Remaining} of {Maximum} HP remaining")" title="@($"{Remaining} of {Maximum} HP remaining")">
+    @for (var i = 0; i < Maximum; i++)
+    {
+        <span aria-hidden="true"><StatIcon Label="HP" File="@(i < Remaining ? "Stat_Health.png" : "Heart_Empty.png")" /></span>
+    }
+</span>
+
+@code {
+    [Parameter] public int Hp { get; set; }
+    [Parameter] public int Wounds { get; set; }
+    private int Maximum => Math.Max(0, Hp);
+    private int Remaining => Math.Clamp(Hp - Wounds, 0, Maximum);
+}

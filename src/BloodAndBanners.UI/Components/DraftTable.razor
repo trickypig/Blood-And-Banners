@@ -112,7 +112,7 @@
                         <img src="@heroImage" alt="" loading="lazy" />
                     }
                     <strong>@hero.Name</strong>
-                    <span class="stat-line">Move @hero.Move · Range @hero.Range · Power @hero.Power · Defense @hero.Defense · HP @hero.Hp</span>
+                    <UnitStats Move="hero.Move" Range="hero.Range" Power="hero.Power" Defense="hero.Defense" Hp="hero.Hp" />
                     <AbilityList Abilities="hero.Abilities" />
                     @if (taken)
                     {
@@ -148,7 +148,7 @@
                     <ul>
                         @foreach (var unit in army.Units)
                         {
-                            <li>@unit.Name <small>M@(unit.Move) R@(unit.Range) P@(unit.Power) D@(unit.Defense) HP@(unit.Hp)</small><AbilityList Abilities="unit.Abilities" /></li>
+                            <li>@unit.Name <UnitStats Move="unit.Move" Range="unit.Range" Power="unit.Power" Defense="unit.Defense" Hp="unit.Hp" /><AbilityList Abilities="unit.Abilities" /></li>
                         }
                     </ul>
                     @if (taken)

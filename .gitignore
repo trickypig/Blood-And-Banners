@@ -8,6 +8,7 @@
 *.suo
 api/var/*.sqlite
 api/var/*.sqlite-*
+images/.temp/
 
 # Local agent notes and skills
 .agents/
