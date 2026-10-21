@@ -30,10 +30,10 @@ public sealed class AccountSession(
         accountApi.StartEmailSignInAsync(email, cancellationToken);
 
     public Task<StoredAccount> VerifyCodeAsync(string email, string code, string deviceId, CancellationToken cancellationToken = default) =>
-        CompleteAsync(deviceId, guest => accountApi.VerifyEmailCodeAsync(email, code, deviceId, guest, cancellationToken));
+        CompleteAsync(deviceId, guest => accountApi.VerifyEmailCodeAsync(email, code, deviceId, guest, cancellationToken), cancellationToken);
 
     public Task<StoredAccount> VerifyLinkAsync(string token, string deviceId, CancellationToken cancellationToken = default) =>
-        CompleteAsync(deviceId, guest => accountApi.VerifyEmailLinkAsync(token, deviceId, guest, cancellationToken));
+        CompleteAsync(deviceId, guest => accountApi.VerifyEmailLinkAsync(token, deviceId, guest, cancellationToken), cancellationToken);
 
     public async Task<StoredAccount> SetDisplayNameAsync(string displayName, CancellationToken cancellationToken = default)
     {
@@ -85,7 +85,7 @@ public sealed class AccountSession(
             // A seat held by this account carries the same tokens; keep it in step so neither copy goes stale.
             if (await games.LoadAsync() is { } game && game.Identity.IdentityId == refreshed.IdentityId)
             {
-                await games.SaveAsync(game with { Identity = updated.Identity });
+                await games.SaveAsync(game with { DeviceId = updated.DeviceId, Identity = updated.Identity });
             }
             return updated.Identity;
         }
@@ -108,7 +108,7 @@ public sealed class AccountSession(
         }
     }
 
-    private async Task<StoredAccount> CompleteAsync(string deviceId, Func<AuthSession?, Task<AuthSession>> verify)
+    private async Task<StoredAccount> CompleteAsync(string deviceId, Func<AuthSession?, Task<AuthSession>> verify, CancellationToken cancellationToken)
     {
         var game = await games.LoadAsync();
         var guest = game?.Identity.Kind == "guest" ? game.Identity : null;
@@ -117,8 +117,16 @@ public sealed class AccountSession(
         await SaveAsync(account);
         if (guest is not null && game is not null)
         {
-            // The server moved the guest's seat to the account; the seat token is unchanged.
-            await games.SaveAsync(game with { DeviceId = deviceId, Identity = identity });
+            // The server moves the guest's seat only when the account holds none in that game, so ask for the
+            // account's own seat; if that fails the guest identity and its seat token keep working.
+            try
+            {
+                var resumed = await accountApi.ResumeGameAsync(identity, game.GameId, cancellationToken);
+                await games.SaveAsync(new StoredGameSession(deviceId, identity, resumed.Game.GameId, resumed.SeatToken));
+            }
+            catch (HttpRequestException)
+            {
+            }
         }
         return account;
     }

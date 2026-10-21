@@ -60,6 +60,7 @@ public sealed class AccountSessionTests
         var api = new FakeAccountApiClient();
         var store = new MemoryAccountStore();
         var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
+        api.Resumed = new GameSeatSession(Projection("game-1"), "account-seat");
         var session = new AccountSession(api, new RefreshingGameApi(), store, games);
 
         var account = await session.VerifyCodeAsync("me@example.com", "123456", "web-1");
@@ -68,8 +69,37 @@ public sealed class AccountSessionTests
         Assert.Equal("web-1", account.DeviceId);
         Assert.Equal(account, store.Current);
         Assert.Equal("u1", games.Current!.Identity.IdentityId);
-        Assert.Equal("seat-secret", games.Current.SeatToken);
+        Assert.Equal("account-seat", games.Current.SeatToken);
+        Assert.Equal("web-1", games.Current.DeviceId);
+        Assert.Contains("resume:game-1", api.Calls);
     }
+
+    [Fact]
+    public async Task A_failed_resume_leaves_the_guest_seat_untouched()
+    {
+        var api = new FakeAccountApiClient { ResumeFailure = new GameApiException(HttpStatusCode.NotFound, "notFound", "gone") };
+        var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
+        var session = new AccountSession(api, new RefreshingGameApi(), new MemoryAccountStore(), games);
+
+        await session.VerifyCodeAsync("me@example.com", "123456", "web-1");
+
+        Assert.Equal("g1", games.Current!.Identity.IdentityId);
+        Assert.Equal("seat-secret", games.Current.SeatToken);
+        Assert.Equal("web-old", games.Current.DeviceId);
+    }
+
+    private static GameProjection Projection(string gameId) => new(
+        gameId,
+        1,
+        GameLifecycle.Lobby,
+        GameMode.VanillaPvp,
+        new ViewerPermissions("player", "seat-1", true, true),
+        new BoardProjection(0, 0, []),
+        new TurnProjection(0, null, 0),
+        null,
+        [],
+        new Dictionary<string, int> { ["seat-1"] = 0 },
+        null);
 
     [Fact]
     public async Task A_401_refreshes_once_and_retries_and_updates_both_stores()
