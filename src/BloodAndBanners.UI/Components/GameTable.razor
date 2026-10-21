@@ -172,7 +172,7 @@
                     {
                         <polygon class="hex-shade" points="@tile.TopPoints"
                                  fill="@(hex.Elevation > 0 ? "#fff" : "#000")"
-                                 fill-opacity="@Num(Math.Min(.6, Math.Abs(hex.Elevation) * .08))" />
+                                 fill-opacity="@Num(ElevationShade(hex.Elevation))" />
                     }
                     <polygon class="hex-outline" points="@tile.TopPoints" />
                     @if (PathStep(key) is { } pathStep)
@@ -1843,6 +1843,12 @@
     }
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    // Raised tiles lighten gently so the common 0..+8 range stays readable (+8 tops out at .28);
+    // sunken tiles keep the original steeper darkening.
+    private static double ElevationShade(int elevation) => elevation > 0
+        ? Math.Min(8, elevation) * .035
+        : Math.Min(.6, -elevation * .08);
 
     // One pattern per terrain image in use; variant 0 (the primary) keeps the plain id.
     private static string TerrainPatternId(HexProjection hex) =>
