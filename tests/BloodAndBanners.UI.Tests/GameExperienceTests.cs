@@ -535,6 +535,18 @@ public sealed class GameExperienceTests : BunitContext
 
     private sealed class FakeSessionCoordinator : IGameSessionCoordinator
     {
+        public GameProjection? Resumed { get; init; }
+        public Exception? ResumeFailure { get; init; }
+        public string? ResumeRequest { get; private set; }
+
+        public Task<GameProjection> ResumeAccountGameAsync(string gameId, CancellationToken cancellationToken = default)
+        {
+            ResumeRequest = gameId;
+            return ResumeFailure is not null
+                ? Task.FromException<GameProjection>(ResumeFailure)
+                : Task.FromResult(Resumed ?? throw new InvalidOperationException("Resume not configured."));
+        }
+
         public GameProjection? Reconnected { get; init; }
         public GameProjection? LaterReconnected { get; init; }
         /// <summary>How many reconnects return <see cref="Reconnected"/> before <see cref="LaterReconnected"/> takes over.</summary>

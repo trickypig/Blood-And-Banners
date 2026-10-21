@@ -6,6 +6,9 @@ public interface IGameSessionCoordinator
 {
     Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default);
     Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, CancellationToken cancellationToken = default);
+
+    /// <summary>Takes up the signed-in account's seat in a game on this device.</summary>
+    Task<GameProjection> ResumeAccountGameAsync(string gameId, CancellationToken cancellationToken = default);
     Task<GameProjection> JoinGuestGameAsync(string deviceId, string gameId, CancellationToken cancellationToken = default);
     Task<GameProjection> WatchAsync(string gameId, CancellationToken cancellationToken = default);
     Task<GameProjection?> ReconnectAsync(CancellationToken cancellationToken = default);

@@ -330,6 +330,61 @@ public sealed class GameSessionCoordinatorTests
         Assert.Equal((identity, "game-1", "seat-secret", "seat-2"), api.RemoveRequest);
     }
 
+    [Fact]
+    public async Task Signed_in_players_create_games_as_their_account_without_a_guest()
+    {
+        var account = new FakeAccountSession(FakeAccountSession.Account());
+        var api = new FakeGameApiClient { Created = new GameSeatSession(Projection("game-1"), "seat-secret") };
+        var store = new MemoryGameSessionStore();
+        var coordinator = new GameSessionCoordinator(api, store, account);
+
+        await coordinator.CreateGuestGameAsync("web-new", GameMode.VanillaPvp, "Four Corners");
+
+        Assert.Equal("u1", store.Current!.Identity.IdentityId);
+        Assert.Equal("web-1", store.Current.DeviceId);
+    }
+
+    [Fact]
+    public async Task Signed_out_players_still_get_a_guest()
+    {
+        var guest = new AuthSession("guest-1", "guest", "a", "r");
+        var api = new FakeGameApiClient { Guest = guest, Joined = new GameSeatSession(Projection("game-1"), "seat") };
+        var store = new MemoryGameSessionStore();
+        var coordinator = new GameSessionCoordinator(api, store, new FakeAccountSession());
+
+        await coordinator.JoinGuestGameAsync("web-1", "game-1");
+
+        Assert.Equal(guest, store.Current!.Identity);
+    }
+
+    [Fact]
+    public async Task Resuming_saves_the_fresh_seat_token()
+    {
+        var account = new FakeAccountSession(FakeAccountSession.Account());
+        account.FakeApi.Resumed = new GameSeatSession(Projection("game-9"), "fresh-seat");
+        var store = new MemoryGameSessionStore();
+        var coordinator = new GameSessionCoordinator(new FakeGameApiClient(), store, account);
+
+        var projection = await coordinator.ResumeAccountGameAsync("game-9");
+
+        Assert.Equal("game-9", projection.GameId);
+        Assert.Equal(new StoredGameSession("web-1", account.Current!.Identity, "game-9", "fresh-seat"), store.Current);
+    }
+
+    [Fact]
+    public async Task Reconnect_uses_the_accounts_newer_tokens_for_its_own_seat()
+    {
+        var stale = new AuthSession("u1", "user", "old-access", "old-refresh");
+        var account = new FakeAccountSession(FakeAccountSession.Account());
+        var api = new FakeGameApiClient { Reconnected = Projection("game-1") };
+        var store = new MemoryGameSessionStore { Current = new StoredGameSession("web-1", stale, "game-1", "seat") };
+        var coordinator = new GameSessionCoordinator(api, store, account);
+
+        await coordinator.ReconnectAsync();
+
+        Assert.Equal("access-1", api.ReconnectRequest!.Value.Identity.AccessToken);
+    }
+
     private sealed class MemoryGameSessionStore : IGameSessionStore
     {
         public StoredGameSession? Current { get; set; }

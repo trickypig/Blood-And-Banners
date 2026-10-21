@@ -5,7 +5,8 @@ namespace BloodAndBanners.UI.Services;
 
 public sealed class GameSessionCoordinator(
     IGameApiClient api,
-    IGameSessionStore store) : IGameSessionCoordinator
+    IGameSessionStore store,
+    IAccountSession? account = null) : IGameSessionCoordinator
 {
     /// <summary>The game being watched; while set, reads use the public watch routes and the saved seat is left alone.</summary>
     private string? _watchedGameId;
@@ -13,43 +14,90 @@ public sealed class GameSessionCoordinator(
     public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) =>
         api.GetScenarioBoardAsync(scenarioName, cancellationToken);
 
-    public async Task<GameProjection> CreateGuestGameAsync(
+    public Task<GameProjection> CreateGuestGameAsync(
         string deviceId,
         GameMode mode,
         string scenarioName,
-        CancellationToken cancellationToken = default)
-    {
-        _watchedGameId = null;
-        var identity = await api.CreateGuestAsync(deviceId, cancellationToken);
-        var gameSession = await api.CreateGameAsync(identity, mode, scenarioName, cancellationToken);
-        await store.SaveAsync(new StoredGameSession(
-            deviceId,
-            identity,
-            gameSession.Game.GameId,
-            gameSession.SeatToken));
-        return gameSession.Game;
-    }
+        CancellationToken cancellationToken = default) =>
+        OpenSeatAsync(deviceId, identity => api.CreateGameAsync(identity, mode, scenarioName, cancellationToken), cancellationToken);
 
-    public async Task<GameProjection> JoinGuestGameAsync(
+    public Task<GameProjection> JoinGuestGameAsync(
         string deviceId,
         string gameId,
         CancellationToken cancellationToken = default)
     {
-        _watchedGameId = null;
         var normalizedGameId = gameId.Trim();
         if (normalizedGameId.Length == 0)
         {
             throw new ArgumentException("A game code is required.", nameof(gameId));
         }
+        return OpenSeatAsync(deviceId, identity => api.JoinGameAsync(identity, normalizedGameId, cancellationToken), cancellationToken);
+    }
 
-        var identity = await api.CreateGuestAsync(deviceId, cancellationToken);
-        var gameSession = await api.JoinGameAsync(identity, normalizedGameId, cancellationToken);
-        await store.SaveAsync(new StoredGameSession(
-            deviceId,
-            identity,
-            gameSession.Game.GameId,
-            gameSession.SeatToken));
-        return gameSession.Game;
+    public async Task<GameProjection> ResumeAccountGameAsync(string gameId, CancellationToken cancellationToken = default)
+    {
+        var signedIn = account is null ? null : await account.LoadAsync();
+        if (signedIn is null)
+        {
+            throw new InvalidOperationException("Sign in to resume a game.");
+        }
+        return await OpenSeatAsync(signedIn.DeviceId, identity => account!.Api.ResumeGameAsync(identity, gameId.Trim(), cancellationToken), cancellationToken);
+    }
+
+    /// <summary>Opens a seat as the signed-in account when there is one, otherwise as a fresh guest, and remembers it.</summary>
+    private async Task<GameProjection> OpenSeatAsync(
+        string deviceId,
+        Func<AuthSession, Task<GameSeatSession>> open,
+        CancellationToken cancellationToken)
+    {
+        _watchedGameId = null;
+        var signedIn = account is null ? null : await account.LoadAsync();
+        AuthSession identity;
+        GameSeatSession seat;
+        if (signedIn is null)
+        {
+            identity = await api.CreateGuestAsync(deviceId, cancellationToken);
+            seat = await open(identity);
+        }
+        else
+        {
+            AuthSession? used = null;
+            seat = await account!.CallAsync(async current =>
+            {
+                used = current;
+                return await open(current);
+            }, cancellationToken);
+            identity = used!;
+            deviceId = signedIn.DeviceId;
+        }
+        await store.SaveAsync(new StoredGameSession(deviceId, identity, seat.Game.GameId, seat.SeatToken));
+        return seat.Game;
+    }
+
+    /// <summary>A seat held by the signed-in account always uses the account's newest tokens.</summary>
+    private async ValueTask<StoredGameSession?> LoadSessionAsync()
+    {
+        var session = await store.LoadAsync();
+        if (session is null || account is null || session.Identity.Kind != "user")
+        {
+            return session;
+        }
+        var signedIn = await account.LoadAsync();
+        return signedIn is not null && signedIn.Identity.IdentityId == session.Identity.IdentityId
+            ? session with { Identity = signedIn.Identity }
+            : session;
+    }
+
+    private async Task<AuthSession> RefreshSessionAsync(StoredGameSession session, CancellationToken cancellationToken)
+    {
+        if (account?.Current is { } signedIn && signedIn.Identity.IdentityId == session.Identity.IdentityId)
+        {
+            // The account refresh also rewrites the stored seat.
+            return await account.RefreshAsync(session.Identity.AccessToken, cancellationToken);
+        }
+        var refreshed = await api.RefreshAsync(session.Identity.RefreshToken, session.DeviceId, cancellationToken);
+        await store.SaveAsync(session with { Identity = refreshed });
+        return refreshed;
     }
 
     public async Task<GameProjection> WatchAsync(string gameId, CancellationToken cancellationToken = default)
@@ -118,7 +166,7 @@ public sealed class GameSessionCoordinator(
 
     public async Task<bool> LeaveSeatAsync(CancellationToken cancellationToken = default)
     {
-        var session = await store.LoadAsync();
+        var session = await LoadSessionAsync();
         if (session is null)
         {
             return true;
@@ -131,7 +179,7 @@ public sealed class GameSessionCoordinator(
             }
             catch (HttpRequestException error) when (error.StatusCode is HttpStatusCode.Unauthorized)
             {
-                var refreshed = await api.RefreshAsync(session.Identity.RefreshToken, session.DeviceId, cancellationToken);
+                var refreshed = await RefreshSessionAsync(session, cancellationToken);
                 await api.LeaveGameAsync(refreshed, session.GameId, session.SeatToken, cancellationToken);
             }
             return true;
@@ -174,7 +222,7 @@ public sealed class GameSessionCoordinator(
             return await api.WatchGameAsync(watched, cancellationToken);
         }
 
-        var session = await store.LoadAsync();
+        var session = await LoadSessionAsync();
         if (session is null)
         {
             return null;
@@ -190,16 +238,11 @@ public sealed class GameSessionCoordinator(
         }
         catch (HttpRequestException error) when (error.StatusCode is HttpStatusCode.Unauthorized)
         {
-            var refreshedIdentity = await api.RefreshAsync(
-                session.Identity.RefreshToken,
-                session.DeviceId,
-                cancellationToken);
-            var refreshedSession = session with { Identity = refreshedIdentity };
-            await store.SaveAsync(refreshedSession);
+            var refreshedIdentity = await RefreshSessionAsync(session, cancellationToken);
             return await api.ReconnectAsync(
                 refreshedIdentity,
-                refreshedSession.GameId,
-                refreshedSession.SeatToken,
+                session.GameId,
+                session.SeatToken,
                 cancellationToken);
         }
     }
@@ -210,7 +253,7 @@ public sealed class GameSessionCoordinator(
         {
             throw new InvalidOperationException("Spectators cannot give orders.");
         }
-        return await store.LoadAsync()
+        return await LoadSessionAsync()
             ?? throw new InvalidOperationException("No game session is saved on this device.");
     }
 }
