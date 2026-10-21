@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use BloodAndBanners\Account\AccountService;
+use BloodAndBanners\Account\FriendService;
 use BloodAndBanners\Auth\AuthService;
 use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Database\ConnectionFactory;
@@ -34,7 +35,8 @@ function account_context(?Closure $clock = null): array
     $auth = new AuthService($db, 'test-signing-key-with-at-least-32-bytes');
     $mailer = new MemoryMailer();
     $signIn = new EmailSignInService($db, $auth, $mailer, 'https://blood.test/play', $clock, static fn(string $line): bool => true);
-    return ['app' => new Application($auth, new GameService($db), $signIn, new AccountService($db)), 'db' => $db, 'mailer' => $mailer];
+    $friends = new FriendService($db);
+    return ['app' => new Application($auth, new GameService($db), $signIn, new AccountService($db), $friends), 'db' => $db, 'mailer' => $mailer];
 }
 
 function mailed_code(MemoryMailer $mailer): string
@@ -79,4 +81,11 @@ function set_display_name(array $ctx, array $session, string $name): void
 {
     $response = $ctx['app']->handle(new Request('PUT', '/api/v1/account', bearer($session), ['displayName' => $name]));
     expect_same(200, $response->status, 'name set');
+}
+
+function befriend(array $ctx, array $a, array $b, string $bEmail): void
+{
+    $ctx['app']->handle(new Request('POST', '/api/v1/friends/requests', bearer($a), ['email' => $bEmail]));
+    $incoming = $ctx['app']->handle(new Request('GET', '/api/v1/friends', bearer($b)))->body['incoming'];
+    $ctx['app']->handle(new Request('POST', "/api/v1/friends/requests/{$incoming[0]['requestId']}/accept", bearer($b)));
 }

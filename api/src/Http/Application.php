@@ -110,6 +110,25 @@ final class Application
                     ? $accounts->profile($userId)
                     : $accounts->updateDisplayName($userId, (string)($request->body['displayName'] ?? '')));
             }
+            if (str_starts_with($request->path, '/api/v1/friends')) {
+                $me = $this->requireUser($principal);
+                $friends = $this->service($this->friends);
+                if ($request->method === 'GET' && $request->path === '/api/v1/friends') {
+                    return new Response(200, $friends->list($me));
+                }
+                if ($request->method === 'POST' && $request->path === '/api/v1/friends/requests') {
+                    $gameId = (string)($request->body['gameId'] ?? '');
+                    return new Response(200, $gameId !== ''
+                        ? $friends->requestFromSeat($me, $gameId, (string)($request->body['seatId'] ?? ''))
+                        : $friends->requestByEmail($me, (string)($request->body['email'] ?? '')));
+                }
+                if ($request->method === 'POST' && preg_match('#^/api/v1/friends/requests/([^/]+)/(accept|decline)$#', $request->path, $matches) === 1) {
+                    return new Response(200, $matches[2] === 'accept' ? $friends->accept($me, $matches[1]) : $friends->decline($me, $matches[1]));
+                }
+                if ($request->method === 'DELETE' && preg_match('#^/api/v1/friends/([^/]+)$#', $request->path, $matches) === 1) {
+                    return new Response(200, $friends->remove($me, $matches[1]));
+                }
+            }
             if (preg_match('#^/api/v1/games/([^/]+)/resume$#', $request->path, $matches) === 1 && $request->method === 'POST') {
                 return new Response(200, $this->seatSession($this->games->resumeSeat($matches[1], $this->requireUser($principal))));
             }
