@@ -119,6 +119,30 @@ function email_sign_in_tests(): array
             $ctx['app']->handle(new Request('POST', "/api/v1/games/{$created['game']['gameId']}/join", bearer($guest)));
             $again = sign_in($ctx, 'twice@example.com', 'device-2', bearer($guest));
             expect_same($user['identityId'], $again['identityId'], 'same account, no 500');
+            $seats = $ctx['db']->prepare('SELECT identity_id FROM game_memberships WHERE game_id = :game');
+            $seats->execute(['game' => $created['game']['gameId']]);
+            $holders = $seats->fetchAll(PDO::FETCH_COLUMN);
+            expect_same(2, count($holders), 'both seats remain');
+            expect_true(in_array($guest['identityId'], $holders, true), 'guest seat left as-is');
+            expect_true(in_array($user['identityId'], $holders, true), 'account seat kept');
+        },
+
+        'a wrong code after a successful verify does not reopen the consumed challenge' => static function (): void {
+            $ctx = account_context();
+            $ctx['app']->handle(new Request('POST', '/api/v1/auth/email/start', body: ['email' => 'once@example.com']));
+            $code = mailed_code($ctx['mailer']);
+            $token = mailed_token($ctx['mailer']);
+            $wrong = $code === '000000' ? '111111' : '000000';
+            $ok = $ctx['app']->handle(new Request('POST', '/api/v1/auth/email/verify', body: ['email' => 'once@example.com', 'code' => $code, 'deviceId' => 'd']));
+            expect_same(200, $ok->status, 'code verifies');
+            $ctx['app']->handle(new Request('POST', '/api/v1/auth/email/verify', body: ['email' => 'once@example.com', 'code' => $wrong, 'deviceId' => 'd']));
+            // Replays the guarded wrong-guess UPDATE against the consumed row, as a stale parallel request would.
+            $ctx['db']->exec("UPDATE login_challenges SET consumed_at = CASE WHEN attempts + 1 >= 5 THEN '2000-01-01 00:00:00' ELSE consumed_at END, attempts = attempts + 1 WHERE consumed_at IS NULL");
+            $row = $ctx['db']->query('SELECT consumed_at, attempts FROM login_challenges')->fetch();
+            expect_true($row['consumed_at'] !== null, 'challenge stays consumed');
+            expect_same(0, (int)$row['attempts'], 'consumed challenge is not counted further');
+            $replay = $ctx['app']->handle(new Request('POST', '/api/v1/auth/email/verify', body: ['token' => $token, 'deviceId' => 'd']));
+            expect_same(400, $replay->status, 'link token stays dead');
         },
 
         'logout revokes the refresh token' => static function (): void {

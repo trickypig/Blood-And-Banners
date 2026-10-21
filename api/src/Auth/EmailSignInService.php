@@ -103,13 +103,17 @@ final class EmailSignInService
                 }
             }
             foreach ($challenges as $challenge) {
-                $attempts = (int)$challenge['attempts'] + 1;
-                $this->connection->prepare('UPDATE login_challenges SET attempts = :attempts, consumed_at = :consumed WHERE id = :id')
-                    ->execute([
-                        'attempts' => $attempts,
-                        'consumed' => $attempts >= self::MAX_ATTEMPTS ? self::time($now) : null,
-                        'id' => $challenge['id'],
-                    ]);
+                // Increment in SQL and only while still open, so parallel guesses cannot lose counts or reopen a consumed challenge.
+                // consumed_at is assigned first: MySQL evaluates SET left to right, so `attempts` is still the old value here.
+                // The limit is an int constant inlined on purpose: a bound PDO parameter is a string and SQLite would compare it as text.
+                $this->connection->prepare(
+                    'UPDATE login_challenges
+                     SET consumed_at = CASE WHEN attempts + 1 >= ' . self::MAX_ATTEMPTS . ' THEN :now ELSE consumed_at END, attempts = attempts + 1
+                     WHERE id = :id AND consumed_at IS NULL'
+                )->execute([
+                    'now' => self::time($now),
+                    'id' => $challenge['id'],
+                ]);
             }
             $this->connection->commit();
             throw self::invalid();
