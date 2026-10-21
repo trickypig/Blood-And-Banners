@@ -1,0 +1,2 @@
+{"yours":[{"gameId":"g1","mode":"vanillaPvp","scenarioName":"Four Corners","lifecycle":"active","seats":[{"seatIndex":1,"name":"Ash","isFriend":false},{"seatIndex":2,"name":null,"isFriend":true}],"canJoin":false,"updatedAt":"2026-10-21 10:00:00"}],
+ "friends":[{"gameId":"g2","mode":"coop","scenarioName":"Void Reaches","lifecycle":"lobby","seats":[{"seatIndex":1,"name":"Fen","isFriend":true}],"canJoin":true,"updatedAt":"2026-10-21 09:00:00"}]}

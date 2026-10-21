@@ -115,6 +115,14 @@ public sealed record MembershipProjection(
     public string Role { get; init; } = "player";
 
     public string? Name { get; init; }
+
+    public bool IsAccount { get; init; }
+
+    /// <summary>True when the viewing account is already friends with this seat's account.</summary>
+    public bool IsFriend { get; init; }
+
+    /// <summary>True when the viewing account has a pending friend request out to this seat's account.</summary>
+    public bool FriendRequested { get; init; }
 }
 
 public sealed record SideProjection(string Kind, IReadOnlyList<string> SeatIds);
