@@ -76,6 +76,19 @@ public sealed class AddFriendButtonTests : BunitContext
     }
 
     [Fact]
+    public void Non_http_failures_leave_the_button_in_place()
+    {
+        var session = new FakeAccountSession(FakeAccountSession.Account());
+        session.FakeApi.FriendFailure = new TaskCanceledException();
+        Services.AddSingleton<IAccountSession>(session);
+        var cut = RenderFor(Seat());
+
+        cut.Find("button[data-add-friend]").Click();
+
+        Assert.Equal("Add friend", cut.Find("button[data-add-friend]").TextContent.Trim());
+    }
+
+    [Fact]
     public void An_already_requested_conflict_still_shows_requested()
     {
         var session = new FakeAccountSession(FakeAccountSession.Account());

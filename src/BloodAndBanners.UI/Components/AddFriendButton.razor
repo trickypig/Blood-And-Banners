@@ -50,8 +50,11 @@
         }
         catch (HttpRequestException)
         {
-            // Any other API failure (GameApiException derives from this) leaves the button; no exception escapes.
-            // The button stays; the player can try again.
+            // Any API failure (GameApiException derives from this) leaves the button; the player can try again.
+        }
+        catch (Exception)
+        {
+            // Non-HTTP failures (a vanished session, a timeout) also leave the button in place.
         }
         finally
         {
