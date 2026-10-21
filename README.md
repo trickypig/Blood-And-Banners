@@ -55,6 +55,26 @@ The development PWA reads `wwwroot/appsettings.Development.json` and calls the A
 
 This slice implements Vanilla duel rules and abilities. Co-op and Battle Royale still open their current direct scenarios, but their complete mode-specific rules are not yet playable.
 
+### Sign in and friends (optional)
+
+Signing in is optional; guests can keep playing with game codes and QR invites. To try accounts locally:
+
+1. Start the API and PWA as above. Choose **Sign in** on the start page and enter any email address.
+2. Without `SMTP_HOST`, the API writes sign-in emails to `api/var/mail.log`. Copy the 6-digit code from there (or open the `?signin=` link).
+3. Pick a display name. It becomes your commander name in new games.
+4. In a second browser profile, sign in with another address.
+5. Add each other by email from the **Friends** panel, or choose **Add friend** next to a signed-in commander in the war room or the ☰ menu. The other player accepts, or sends a request back.
+6. The start page lists **Your games**, which you can **Resume** on any device, and **Friends' games**. **Join** a friend's open war room; otherwise **Watch** the match.
+
+Production mail goes through IONOS SMTP. Add these keys to the server `.env` (never commit the password):
+
+    SMTP_HOST=smtp.ionos.com
+    SMTP_PORT=465
+    SMTP_USER=noreply@trickypig.com
+    SMTP_PASS=…
+    MAIL_FROM=noreply@trickypig.com
+    APP_PUBLIC_URL=https://blood.trickypig.com/play
+
 ### Battlefields, terrain, and board controls
 
 Vanilla duel offers three battlefields before creating the war room:
