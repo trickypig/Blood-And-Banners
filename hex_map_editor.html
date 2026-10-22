@@ -1123,9 +1123,11 @@
                 ctx.fill();
             }
 
-            // Height shading: lighten raised hexes, darken lowered ones
+            // Raised tiles lighten gently up to +8 (28%); sunken tiles keep steeper darkening.
             if (hex.height !== 0) {
-                const alpha = Math.min(0.6, Math.abs(hex.height) * 0.08);
+                const alpha = hex.height > 0
+                    ? Math.min(8, hex.height) * 0.035
+                    : Math.min(0.6, -hex.height * 0.08);
                 ctx.fillStyle = hex.height > 0 ? `rgba(255,255,255,${alpha})` : `rgba(0,0,0,${alpha})`;
                 ctx.fill();
             }
