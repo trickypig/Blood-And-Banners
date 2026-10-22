@@ -152,5 +152,34 @@ function email_sign_in_tests(): array
             $refresh = $ctx['app']->handle(new Request('POST', '/api/v1/auth/refresh', body: ['refreshToken' => $user['refreshToken'], 'deviceId' => 'device-1']));
             expect_same(401, $refresh->status, 'revoked token cannot refresh');
         },
+
+        'email sign-in drops a password set without proof of ownership and its sessions' => static function (): void {
+            $ctx = account_context();
+            // A row as the removed guest-convert route left it: a squatter's password on someone else's email.
+            $ctx['db']->prepare(
+                "INSERT INTO users (id, email, password_hash, display_name, converted_guest_id, created_at)
+                 VALUES ('squatted-user', 'owner@example.com', :hash, 'Squatter', NULL, '2026-01-01 00:00:00')"
+            )->execute(['hash' => password_hash('squatter password', PASSWORD_DEFAULT)]);
+            $squatter = $ctx['app']->handle(new Request('POST', '/api/v1/auth/login', body: [
+                'email' => 'owner@example.com', 'password' => 'squatter password', 'deviceId' => 'squat-device',
+            ]));
+            expect_same(200, $squatter->status, 'precondition: the password works before the owner signs in');
+
+            $owner = sign_in($ctx, 'owner@example.com');
+            expect_same('squatted-user', $owner['identityId'], 'owner takes over the existing row');
+
+            $login = $ctx['app']->handle(new Request('POST', '/api/v1/auth/login', body: [
+                'email' => 'owner@example.com', 'password' => 'squatter password', 'deviceId' => 'squat-device',
+            ]));
+            expect_same('invalidCredentials', $login->body['error']['code'] ?? null, 'password login no longer works');
+            $stale = $ctx['app']->handle(new Request('POST', '/api/v1/auth/refresh', body: [
+                'refreshToken' => $squatter->body['refreshToken'], 'deviceId' => 'squat-device',
+            ]));
+            expect_same(401, $stale->status, 'sessions issued under the password are revoked');
+            $fresh = $ctx['app']->handle(new Request('POST', '/api/v1/auth/refresh', body: [
+                'refreshToken' => $owner['refreshToken'], 'deviceId' => 'device-1',
+            ]));
+            expect_same(200, $fresh->status, 'the new email sign-in session still refreshes');
+        },
     ];
 }

@@ -159,12 +159,21 @@ final class EmailSignInService
         }
 
         $email = (string)$challenge['email'];
-        $statement = $this->connection->prepare('SELECT id, display_name FROM users WHERE email = :email');
+        $statement = $this->connection->prepare('SELECT id, display_name, password_hash FROM users WHERE email = :email');
         $statement->execute(['email' => $email]);
         $user = $statement->fetch();
         if ($user) {
             $userId = (string)$user['id'];
             $displayName = (string)$user['display_name'];
+            if ((string)$user['password_hash'] !== '') {
+                // A password may have been set without proof of owning this email (the removed guest-convert route).
+                // Proving ownership now drops that password and every session issued before this sign-in.
+                $this->connection->prepare("UPDATE users SET password_hash = '' WHERE id = :user")
+                    ->execute(['user' => $userId]);
+                $this->connection->prepare(
+                    "UPDATE refresh_tokens SET revoked_at = :now WHERE identity_kind = 'user' AND identity_id = :user AND revoked_at IS NULL"
+                )->execute(['now' => self::time($now), 'user' => $userId]);
+            }
         } else {
             $userId = bin2hex(random_bytes(16));
             $displayName = '';

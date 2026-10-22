@@ -56,6 +56,10 @@ final class Application
                     (string)($request->body['deviceId'] ?? '')
                 ));
             }
+            if ($request->method === 'POST' && $request->path === '/api/v1/auth/convert') {
+                // Removed: it let a guest claim any email with a password and no proof of ownership.
+                return $this->error(410, 'routeRemoved', 'Create an account by signing in with your email.');
+            }
             if ($request->method === 'POST' && $request->path === '/api/v1/auth/email/start') {
                 $this->service($this->signIn)->start((string)($request->body['email'] ?? ''), $request->clientIp);
                 return new Response(202, ['sent' => true]);
@@ -134,20 +138,6 @@ final class Application
             }
             if (preg_match('#^/api/v1/games/([^/]+)/resume$#', $request->path, $matches) === 1 && $request->method === 'POST') {
                 return new Response(200, $this->seatSession($this->games->resumeSeat($matches[1], $this->requireUser($principal))));
-            }
-            if ($request->method === 'POST' && $request->path === '/api/v1/auth/convert') {
-                if ($principal['kind'] !== 'guest') {
-                    throw new DomainException('guestIdentityRequired');
-                }
-                $account = $this->auth->convertGuest(
-                    $principal['identityId'],
-                    (string)($request->body['email'] ?? ''),
-                    (string)($request->body['password'] ?? ''),
-                    (string)($request->body['displayName'] ?? ''),
-                    (string)($request->body['deviceId'] ?? ''),
-                    fn(string $from, string $to) => $this->games->transferIdentity($from, $to)
-                );
-                return new Response(200, $account);
             }
             if ($request->method === 'GET' && $request->path === '/api/v1/account/matches') {
                 if ($principal['kind'] !== 'user') {

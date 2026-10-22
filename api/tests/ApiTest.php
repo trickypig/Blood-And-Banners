@@ -285,11 +285,11 @@ function api_tests(): array
             expect_same('scenarioNotFound', $missing->body['error']['code'], 'missing scenario error should be explicit');
         },
 
-        'guest conversion carries match history to authenticated account endpoints' => static function (): void {
-            $app = test_application();
+        'guest conversion route is gone and creates nothing' => static function (): void {
+            [$app, $db] = test_application_with_db();
             $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'conversion-api-device']));
             $guestAuthorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
-            $game = $app->handle(new Request('POST', '/api/v1/games', $guestAuthorization, [
+            $app->handle(new Request('POST', '/api/v1/games', $guestAuthorization, [
                 'mode' => 'coop',
                 'scenarioName' => 'Void Reaches',
             ]));
@@ -300,41 +300,23 @@ function api_tests(): array
                 'displayName' => 'API Captain',
                 'deviceId' => 'conversion-api-device',
             ]));
-            $accountAuthorization = ['authorization' => 'Bearer ' . $converted->body['accessToken']];
-            $history = $app->handle(new Request('GET', '/api/v1/account/matches', $accountAuthorization));
+            $anonymous = $app->handle(new Request('POST', '/api/v1/auth/convert', body: [
+                'email' => 'api-captain@example.com',
+                'password' => 'correct horse battery staple',
+            ]));
             $login = $app->handle(new Request('POST', '/api/v1/auth/login', body: [
                 'email' => 'api-captain@example.com',
                 'password' => 'correct horse battery staple',
                 'deviceId' => 'other-device',
             ]));
 
-            expect_same(200, $converted->status, 'guest conversion should succeed');
-            expect_same($game->body['game']['gameId'], $history->body['matches'][0]['gameId'], 'account history should include guest match');
-            expect_same(200, $login->status, 'converted account should support login');
+            expect_same(410, $converted->status, 'guest conversion should be gone');
+            expect_same('routeRemoved', $converted->body['error']['code'], 'removed route should say so');
+            expect_same(410, $anonymous->status, 'the route is gone without a token too');
+            expect_same(0, (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn(), 'no account may be created');
+            expect_same(null, $db->query('SELECT converted_user_id FROM guest_identities LIMIT 1')->fetchColumn(), 'guest stays a guest');
+            expect_same('invalidCredentials', $login->body['error']['code'], 'no password login exists for the email');
         },
-
-        'failed guest conversion rolls back account and membership together' => static function (): void {
-            [$app, $db] = test_application_with_db();
-            $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'atomic-conversion']));
-            $authorization = ['authorization' => 'Bearer ' . $guest->body['accessToken']];
-            $app->handle(new Request('POST', '/api/v1/games', $authorization, [
-                'mode' => 'coop',
-                'scenarioName' => 'Void Reaches',
-            ]));
-            $db->exec("CREATE TRIGGER reject_identity_transfer BEFORE UPDATE ON game_memberships BEGIN SELECT RAISE(ABORT, 'forced failure'); END");
-
-            $response = $app->handle(new Request('POST', '/api/v1/auth/convert', $authorization, [
-                'email' => 'rollback@example.com',
-                'password' => 'correct horse battery staple',
-                'displayName' => 'Rollback Captain',
-                'deviceId' => 'atomic-conversion',
-            ]));
-
-            expect_same(500, $response->status, 'forced transfer failure should fail conversion');
-            expect_same(0, (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn(), 'account insert must roll back');
-            expect_same(null, $db->query('SELECT converted_user_id FROM guest_identities LIMIT 1')->fetchColumn(), 'guest must remain convertible');
-        },
-
         'two commanders can play a vanilla duel to annihilation over HTTP' => static function (): void {
             [$db, $auth] = test_services();
             $app = new Application($auth, new GameService($db, null, new ScriptedRandom(), new \BloodAndBanners\Rules\Vanilla\MatchEngine(test_catalog())));
