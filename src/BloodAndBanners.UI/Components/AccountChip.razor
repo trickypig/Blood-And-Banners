@@ -51,7 +51,15 @@
 
     private void BeginSignIn() => _signInDeviceId = $"{ClientKind}-{Guid.NewGuid():N}";
 
-    private void OnChanged() => InvokeAsync(StateHasChanged);
+    private void OnChanged() => InvokeAsync(() =>
+    {
+        // Once signed in the email form is finished with, so a later sign-out shows the Sign in button again.
+        if (Account?.Current is not null)
+        {
+            _signInDeviceId = null;
+        }
+        StateHasChanged();
+    });
 
     private Task SignOut() => Account?.SignOutAsync() ?? Task.CompletedTask;
 

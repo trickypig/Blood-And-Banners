@@ -144,8 +144,9 @@
                 _ => "Sign-in failed. Check your connection and try again.",
             };
         }
-        catch (HttpRequestException)
+        catch (Exception)
         {
+            // Includes HttpRequestException and timeouts (TaskCanceledException), which would otherwise reach the error UI.
             _error = "Sign-in failed. Check your connection and try again.";
         }
         finally

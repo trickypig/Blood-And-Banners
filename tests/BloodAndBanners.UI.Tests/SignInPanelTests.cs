@@ -76,6 +76,41 @@ public sealed class SignInPanelTests : BunitContext
     }
 
     [Fact]
+    public void A_timeout_shows_the_generic_error_inline()
+    {
+        var session = Register();
+        session.VerifyFailure = new TaskCanceledException("timed out");
+        var cut = Render<SignInPanel>(p => p.Add(c => c.DeviceId, "web-1"));
+
+        cut.Find("input[data-signin=email]").Input("me@example.com");
+        cut.Find("form[data-signin=email-form]").Submit();
+        cut.WaitForAssertion(() => cut.Find("input[data-signin=code]").Input("123456"));
+        cut.Find("form[data-signin=code-form]").Submit();
+
+        cut.WaitForAssertion(() => Assert.Contains("Sign-in failed. Check your connection and try again.", cut.Find("[role=alert]").TextContent));
+        Assert.False(cut.Find("input[data-signin=code]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Account_chip_shows_sign_in_after_a_new_account_names_itself_and_signs_out()
+    {
+        Register();
+        var cut = Render<AccountChip>(p => p.Add(c => c.ClientKind, "web"));
+
+        cut.Find("button[data-account=sign-in]").Click();
+        cut.Find("input[data-signin=email]").Input("me@example.com");
+        cut.Find("form[data-signin=email-form]").Submit();
+        cut.WaitForAssertion(() => cut.Find("input[data-signin=code]").Input("123456"));
+        cut.Find("form[data-signin=code-form]").Submit();
+        cut.WaitForAssertion(() => cut.Find("input[data-signin=name]").Input("Ash"));
+        cut.Find("form[data-signin=name-form]").Submit();
+        cut.WaitForAssertion(() => cut.Find("button[data-account=sign-out]").Click());
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[data-account=sign-in]")));
+        Assert.Empty(cut.FindAll("[data-signin=panel]"));
+    }
+
+    [Fact]
     public void Resend_is_disabled_right_after_sending()
     {
         Register();
