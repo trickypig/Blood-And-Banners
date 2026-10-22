@@ -25,14 +25,26 @@ public sealed class AccountSessionTests
     /// <summary>Only RefreshAsync is used by AccountSession.</summary>
     private sealed class RefreshingGameApi : IGameApiClient
     {
+        /// <summary>Account refreshes; guest refreshes are recorded in <see cref="GuestRefreshes"/>.</summary>
         public int Refreshes { get; private set; }
         public bool Revoked { get; set; }
         public TaskCompletionSource? Gate { get; set; }
+        /// <summary>Runs while an account refresh is in flight, e.g. to let another tab write the shared store.</summary>
+        public Action? DuringRefresh { get; set; }
+        public List<(string RefreshToken, string DeviceId)> GuestRefreshes { get; } = [];
+        public Exception? GuestFailure { get; set; }
 
         public async Task<AuthSession> RefreshAsync(string refreshToken, string deviceId, CancellationToken cancellationToken = default)
         {
+            if (refreshToken.StartsWith("guest-", StringComparison.Ordinal))
+            {
+                GuestRefreshes.Add((refreshToken, deviceId));
+                if (GuestFailure is not null) throw GuestFailure;
+                return new AuthSession("g1", "guest", "guest-access-fresh", "guest-refresh-fresh");
+            }
             Refreshes++;
             if (Gate is not null) await Gate.Task;
+            DuringRefresh?.Invoke();
             if (Revoked) throw new GameApiException(HttpStatusCode.Unauthorized, "invalidRefreshToken", "revoked");
             return new AuthSession("u1", "user", $"access-{Refreshes + 1}", $"refresh-{Refreshes + 1}");
         }
@@ -61,11 +73,13 @@ public sealed class AccountSessionTests
         var store = new MemoryAccountStore();
         var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
         api.Resumed = new GameSeatSession(Projection("game-1"), "account-seat");
-        var session = new AccountSession(api, new RefreshingGameApi(), store, games);
+        var gameApi = new RefreshingGameApi();
+        var session = new AccountSession(api, gameApi, store, games);
 
         var account = await session.VerifyCodeAsync("me@example.com", "123456", "web-1");
 
-        Assert.Same(Guest, api.VerifyGuest);
+        Assert.Equal([("guest-refresh", "web-old")], gameApi.GuestRefreshes);
+        Assert.Equal("guest-access-fresh", api.VerifyGuest!.AccessToken);
         Assert.Equal("web-1", account.DeviceId);
         Assert.Equal(account, store.Current);
         Assert.Equal("u1", games.Current!.Identity.IdentityId);
@@ -75,17 +89,60 @@ public sealed class AccountSessionTests
     }
 
     [Fact]
-    public async Task A_failed_resume_leaves_the_guest_seat_untouched()
+    public async Task A_stale_guest_is_refreshed_before_verify_so_the_seat_carries_over()
     {
-        var api = new FakeAccountApiClient { ResumeFailure = new GameApiException(HttpStatusCode.NotFound, "notFound", "gone") };
+        var api = new FakeAccountApiClient { VerifyFailure = new GameApiException(HttpStatusCode.BadRequest, "invalidCode", "wrong") };
         var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
         var session = new AccountSession(api, new RefreshingGameApi(), new MemoryAccountStore(), games);
 
+        await Assert.ThrowsAsync<GameApiException>(() => session.VerifyCodeAsync("me@example.com", "000000", "web-1"));
+
+        Assert.Equal("guest-access-fresh", api.VerifyGuest!.AccessToken);
+        // The rotated guest tokens are kept, since the old refresh token is now revoked.
+        Assert.Equal(new StoredGameSession("web-old", new AuthSession("g1", "guest", "guest-access-fresh", "guest-refresh-fresh"), "game-1", "seat-secret"), games.Current);
+    }
+
+    [Fact]
+    public async Task A_failed_guest_refresh_signs_in_without_carry_over_and_leaves_the_guest_seat()
+    {
+        var api = new FakeAccountApiClient();
+        var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
+        var gameApi = new RefreshingGameApi { GuestFailure = new GameApiException(HttpStatusCode.Unauthorized, "invalidRefreshToken", "revoked") };
+        var store = new MemoryAccountStore();
+        var session = new AccountSession(api, gameApi, store, games);
+
         await session.VerifyCodeAsync("me@example.com", "123456", "web-1");
 
-        Assert.Equal("g1", games.Current!.Identity.IdentityId);
+        Assert.Single(gameApi.GuestRefreshes);
+        Assert.Contains("code:me@example.com:123456", api.Calls);
+        Assert.Null(api.VerifyGuest);
+        Assert.Equal("u1", store.Current!.Identity.IdentityId);
+        Assert.DoesNotContain(api.Calls, call => call.StartsWith("resume:"));
+        Assert.Equal(new StoredGameSession("web-old", Guest, "game-1", "seat-secret"), games.Current);
+    }
+
+    public static TheoryData<Exception> ResumeFailures => new()
+    {
+        new GameApiException(HttpStatusCode.NotFound, "notFound", "gone"),
+        new TaskCanceledException("timed out"),
+    };
+
+    [Theory]
+    [MemberData(nameof(ResumeFailures))]
+    public async Task A_failed_resume_keeps_the_seat_token_under_the_account(Exception failure)
+    {
+        var api = new FakeAccountApiClient { ResumeFailure = failure };
+        var games = new MemoryGames { Current = new StoredGameSession("web-old", Guest, "game-1", "seat-secret") };
+        var store = new MemoryAccountStore();
+        var session = new AccountSession(api, new RefreshingGameApi(), store, games);
+
+        await session.VerifyCodeAsync("me@example.com", "123456", "web-1");
+
+        Assert.Equal("u1", store.Current!.Identity.IdentityId);
+        Assert.Equal(store.Current.Identity, games.Current!.Identity);
         Assert.Equal("seat-secret", games.Current.SeatToken);
-        Assert.Equal("web-old", games.Current.DeviceId);
+        Assert.Equal("game-1", games.Current.GameId);
+        Assert.Equal("web-1", games.Current.DeviceId);
     }
 
     private static GameProjection Projection(string gameId) => new(
@@ -157,7 +214,51 @@ public sealed class AccountSessionTests
     }
 
     [Fact]
-    public async Task Sign_out_revokes_and_forgets_but_keeps_the_game_seat()
+    public async Task A_second_tab_adopts_tokens_another_tab_already_rotated()
+    {
+        var identity = new AuthSession("u1", "user", "access-1", "refresh-1");
+        var store = new MemoryAccountStore { Current = new StoredAccount("web-1", identity, "Ash") };
+        var games = new MemoryGames { Current = new StoredGameSession("web-1", identity, "game-1", "seat") };
+        var gameApi = new RefreshingGameApi();
+        var tabA = new AccountSession(new FakeAccountApiClient(), gameApi, store, games);
+        var tabB = new AccountSession(new FakeAccountApiClient(), gameApi, store, games);
+        await tabA.LoadAsync();
+        await tabB.LoadAsync();
+        var bChanged = 0;
+        tabB.Changed += () => bChanged++;
+
+        await tabA.RefreshAsync("access-1");
+        var adopted = await tabB.RefreshAsync("access-1");
+
+        Assert.Equal(1, gameApi.Refreshes);
+        Assert.Equal("access-2", adopted.AccessToken);
+        Assert.Equal(store.Current, tabB.Current);
+        Assert.NotNull(store.Current);
+        Assert.Equal("refresh-2", games.Current!.Identity.RefreshToken);
+        Assert.Equal(1, bChanged);
+    }
+
+    [Fact]
+    public async Task A_refresh_rejected_after_another_tab_rotated_adopts_instead_of_signing_out()
+    {
+        var identity = new AuthSession("u1", "user", "access-1", "refresh-1");
+        var store = new MemoryAccountStore { Current = new StoredAccount("web-1", identity, "Ash") };
+        var newer = new StoredAccount("web-1", new AuthSession("u1", "user", "access-9", "refresh-9") { DisplayName = "Ash" }, "Ash");
+        // The other tab saves its rotated pair while this tab's refresh (with the now revoked token) is in flight.
+        var gameApi = new RefreshingGameApi { Revoked = true, DuringRefresh = () => store.Current = newer };
+        var session = new AccountSession(new FakeAccountApiClient(), gameApi, store, new MemoryGames());
+        await session.LoadAsync();
+
+        var adopted = await session.RefreshAsync("access-1");
+
+        Assert.Equal(1, gameApi.Refreshes);
+        Assert.Equal("access-9", adopted.AccessToken);
+        Assert.Equal(newer, session.Current);
+        Assert.Equal(newer, store.Current);
+    }
+
+    [Fact]
+    public async Task Sign_out_revokes_and_forgets_and_clears_a_seat_held_by_the_account()
     {
         var api = new FakeAccountApiClient();
         var identity = new AuthSession("u1", "user", "access-1", "refresh-1");
@@ -170,7 +271,23 @@ public sealed class AccountSessionTests
 
         Assert.Contains("logout:refresh-1", api.Calls);
         Assert.Null(store.Current);
-        Assert.NotNull(games.Current);
+        Assert.Null(games.Current);
+    }
+
+    [Fact]
+    public async Task Sign_out_keeps_a_guest_game_seat()
+    {
+        var identity = new AuthSession("u1", "user", "access-1", "refresh-1");
+        var store = new MemoryAccountStore { Current = new StoredAccount("web-1", identity, "Ash") };
+        var guestSeat = new StoredGameSession("web-1", Guest, "game-1", "seat");
+        var games = new MemoryGames { Current = guestSeat };
+        var session = new AccountSession(new FakeAccountApiClient(), new RefreshingGameApi(), store, games);
+        await session.LoadAsync();
+
+        await session.SignOutAsync();
+
+        Assert.Null(store.Current);
+        Assert.Equal(guestSeat, games.Current);
     }
 
     [Fact]

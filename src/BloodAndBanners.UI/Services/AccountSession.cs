@@ -56,6 +56,11 @@ public sealed class AccountSession(
             {
                 // Signing out locally still works when the server cannot be told (including timeouts).
             }
+            // A seat held by the account carries the refresh token just revoked, so it cannot be used any more.
+            if (await games.LoadAsync() is { } game && game.Identity.IdentityId == current.Identity.IdentityId)
+            {
+                await games.ClearAsync();
+            }
         }
         await ForgetAsync();
     }
@@ -70,6 +75,13 @@ public sealed class AccountSession(
             {
                 return current.Identity;
             }
+            // Another tab sharing the store may already have rotated these tokens (revoking ours); use its pair.
+            if (await store.LoadAsync() is { } stored
+                && stored.Identity.IdentityId == current.Identity.IdentityId
+                && stored.Identity.AccessToken != staleAccessToken)
+            {
+                return Adopt(stored).Identity;
+            }
             AuthSession refreshed;
             try
             {
@@ -77,6 +89,12 @@ public sealed class AccountSession(
             }
             catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.Unauthorized)
             {
+                // Sign out only if the store still holds the token that failed; a newer one means another tab refreshed.
+                var latest = await store.LoadAsync();
+                if (latest is not null && latest.Identity.RefreshToken != current.Identity.RefreshToken)
+                {
+                    return Adopt(latest).Identity;
+                }
                 await ForgetAsync();
                 throw;
             }
@@ -111,24 +129,53 @@ public sealed class AccountSession(
     private async Task<StoredAccount> CompleteAsync(string deviceId, Func<AuthSession?, Task<AuthSession>> verify, CancellationToken cancellationToken)
     {
         var game = await games.LoadAsync();
-        var guest = game?.Identity.Kind == "guest" ? game.Identity : null;
+        AuthSession? guest = null;
+        if (game is not null && game.Identity.Kind == "guest")
+        {
+            // The server ignores an expired guest access token (15 minutes), so refresh it first or the seat stays behind.
+            try
+            {
+                var refreshed = await gameApi.RefreshAsync(game.Identity.RefreshToken, game.DeviceId, cancellationToken);
+                guest = refreshed with { DisplayName = game.Identity.DisplayName };
+                game = game with { Identity = guest };
+                await games.SaveAsync(game);
+            }
+            catch (HttpRequestException)
+            {
+                // Sign in without carrying the guest over; its stored session is left as it was.
+            }
+        }
         var identity = await verify(guest);
         var account = new StoredAccount(deviceId, identity, identity.DisplayName ?? string.Empty);
         await SaveAsync(account);
         if (guest is not null && game is not null)
         {
             // The server moves the guest's seat only when the account holds none in that game, so ask for the
-            // account's own seat; if that fails the guest identity and its seat token keep working.
+            // account's own seat.
             try
             {
                 var resumed = await accountApi.ResumeGameAsync(identity, game.GameId, cancellationToken);
                 await games.SaveAsync(new StoredGameSession(deviceId, identity, resumed.Game.GameId, resumed.SeatToken));
             }
-            catch (HttpRequestException)
+            catch (Exception)
             {
+                // The guest identity was converted by verify, so it is spent; keep the seat token under the account.
+                await games.SaveAsync(game with { DeviceId = deviceId, Identity = identity });
             }
         }
         return account;
+    }
+
+    /// <summary>Takes up an account another tab saved to the shared store.</summary>
+    private StoredAccount Adopt(StoredAccount stored)
+    {
+        if (stored != Current)
+        {
+            Current = stored;
+            _loaded = true;
+            Changed?.Invoke();
+        }
+        return stored;
     }
 
     private async Task SaveAsync(StoredAccount account)
