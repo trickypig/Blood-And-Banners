@@ -1,6 +1,6 @@
 Options -Indexes
 SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
-LimitRequestBody 1048576
+LimitRequestBody 3145728
 
 RewriteEngine On
 RewriteBase /play/

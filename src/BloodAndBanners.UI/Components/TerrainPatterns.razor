@@ -1,0 +1,22 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+
+<defs>
+    @foreach (var hex in Hexes.DistinctBy(h => TerrainArt.PatternId(h, IdPrefix)))
+    {
+        <pattern id="@TerrainArt.PatternId(hex, IdPrefix)" patternContentUnits="objectBoundingBox" width="1" height="1">
+            <rect width="1" height="1" fill="@TerrainArt.Color(hex.Biome)" />
+            @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(hex.Biome, hex.Terrain, TerrainArt.Variant(hex.Q, hex.R))) is { } image)
+            {
+                <image href="@image" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
+            }
+        </pattern>
+    }
+</defs>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<HexProjection> Hexes { get; set; } = [];
+    [Parameter] public string? ImageBaseUrl { get; set; }
+    [Parameter] public string IdPrefix { get; set; } = "bb-terrain-";
+}

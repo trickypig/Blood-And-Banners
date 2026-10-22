@@ -12,6 +12,7 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 builder.Services.AddScoped<IGameApiClient, GameApiClient>();
 builder.Services.AddScoped<IAccountApiClient, AccountApiClient>();
+builder.Services.AddScoped<IMapApiClient, MapApiClient>();
 builder.Services.AddScoped<IAccountStore, JsonAccountStore>();
 builder.Services.AddScoped<IAccountSession, AccountSession>();
 builder.Services.AddScoped<IKeyValueStore>(services =>

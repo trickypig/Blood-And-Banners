@@ -21,6 +21,7 @@ public static class MauiProgram
 		});
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IGameApiClient, BloodAndBanners.UI.Services.GameApiClient>();
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IAccountApiClient, BloodAndBanners.UI.Services.AccountApiClient>();
+		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IMapApiClient, BloodAndBanners.UI.Services.MapApiClient>();
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IAccountStore, BloodAndBanners.UI.Services.JsonAccountStore>();
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IAccountSession, BloodAndBanners.UI.Services.AccountSession>();
 		builder.Services.AddSingleton<BloodAndBanners.UI.Services.IKeyValueStore>(_ =>

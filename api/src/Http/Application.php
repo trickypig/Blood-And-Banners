@@ -10,6 +10,8 @@ use BloodAndBanners\Auth\AuthService;
 use BloodAndBanners\Auth\EmailSignInService;
 use BloodAndBanners\Game\GameService;
 use BloodAndBanners\Game\GameServiceException;
+use BloodAndBanners\Scenario\ScenarioService;
+use BloodAndBanners\Scenario\MapException;
 use DomainException;
 use Throwable;
 
@@ -24,6 +26,7 @@ final class Application
         private readonly ?EmailSignInService $signIn = null,
         private readonly ?AccountService $accounts = null,
         private readonly ?FriendService $friends = null,
+        private readonly ?ScenarioService $maps = null,
     ) {
     }
 
@@ -107,6 +110,20 @@ final class Application
             }
 
             $principal = $this->principal($request);
+            if ($request->path === '/api/v1/account/maps' && in_array($request->method, ['GET', 'POST'], true)) {
+                $owner = $this->requireUser($principal);
+                $maps = $this->service($this->maps);
+                return $request->method === 'GET'
+                    ? new Response(200, $maps->listOwned($owner))
+                    : new Response(201, $maps->createOwned($owner, $request->jsonValue('definition')));
+            }
+            if (preg_match('#^/api/v1/account/maps/([^/]+)$#', $request->path, $matches) === 1 && in_array($request->method, ['GET', 'PUT'], true)) {
+                $owner = $this->requireUser($principal);
+                $maps = $this->service($this->maps);
+                return new Response(200, $request->method === 'GET'
+                    ? $maps->loadOwned($matches[1], $owner)
+                    : $maps->saveOwned($matches[1], $owner, is_string($request->body['expectedRevisionId'] ?? null) ? $request->body['expectedRevisionId'] : '', $request->jsonValue('definition')));
+            }
             if ($request->path === '/api/v1/account' && in_array($request->method, ['GET', 'PUT'], true)) {
                 $userId = $this->requireUser($principal);
                 $accounts = $this->service($this->accounts);
@@ -225,6 +242,8 @@ final class Application
                 default => 422,
             };
             return $this->error($status, $error->errorCode, $error->getMessage(), $error->currentVersion, $error->recovery);
+        } catch (MapException $error) {
+            return $this->error($error->status, $error->errorCode, $error->getMessage());
         } catch (AccountException $error) {
             return $this->error($error->status, $error->errorCode, $error->getMessage());
         } catch (DomainException $error) {

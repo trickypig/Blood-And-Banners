@@ -19,7 +19,7 @@ $auth = new AuthService($connection, $signingKey);
 $friends = new FriendService($connection);
 $publicUrl = getenv('BLOOD_BANNERS_PUBLIC_URL') ?: 'http://localhost:5016';
 $signIn = new EmailSignInService($connection, $auth, new LogMailer(dirname(__DIR__) . '/var/mail.log'), $publicUrl);
-$application = new Application($auth, new GameService($connection), $signIn, new AccountService($connection, $friends), $friends);
+$application = new Application($auth, new GameService($connection), $signIn, new AccountService($connection, $friends), $friends, new BloodAndBanners\Scenario\ScenarioService($connection));
 
 $rawBody = file_get_contents('php://input');
 $response = $application->handle(RequestFactory::fromHttp(

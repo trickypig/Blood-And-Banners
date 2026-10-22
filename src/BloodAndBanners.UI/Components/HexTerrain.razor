@@ -1,0 +1,19 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+
+@if (Tile.Lift > 0)
+{
+    <path class="hex-side" d="@Tile.SidePath" />
+    <path class="hex-side-edges" d="@Tile.SideEdges" />
+}
+<polygon class="hex-top" points="@Tile.TopPoints" fill="url(#@PatternId)" />
+@if (Tile.Hex.Elevation != 0)
+{
+    <polygon class="hex-shade" points="@Tile.TopPoints" fill="@(Tile.Hex.Elevation > 0 ? "#fff" : "#000")"
+             fill-opacity="@TerrainArt.ElevationShade(Tile.Hex.Elevation).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)" />
+}
+
+@code {
+    [Parameter, EditorRequired] public HexTile Tile { get; set; } = default!;
+    [Parameter, EditorRequired] public string PatternId { get; set; } = "";
+}

@@ -214,6 +214,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/deployment-package.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/deploy-game-script.ps1
 ```
 
+## Map editor
+
+Open `/editor` locally or <https://blood.trickypig.com/play/editor> in production. The old static editor URL redirects there. Anyone can create and edit maps, import legacy offset or axial JSON, and export files without signing in. Signed-in users can also save, load, and save copies of their own private maps. A stale save offers reload or Save as instead of overwriting another tab's edits.
+
+Saved maps use immutable scenario revisions. Editing access is owner-only; custom-game creation and public/shared map browsing are future features. Scenario JSON exports preserve objectives, placements, scoring, and extra metadata when the legacy editor format cannot represent them. The Blazor editor and game share terrain art, geometry, and elevation shading.
+
+Publishing this change requires the normal game release (UI plus API); publishing the static redirect alone does not install the new editor. No database migration is needed.
+
 ## Production configuration
 
 The public game is deployed at <https://blood.trickypig.com/play/> without replacing the existing static pages. The release uses two allowlisted roots beneath the account directory:

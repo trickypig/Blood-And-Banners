@@ -1,0 +1,6 @@
+.saved-maps { border-top: 1px solid #665b41; margin-top: 1rem; padding-top: 1rem; }
+h2 { font: 600 1.15rem Georgia, serif; color: #f0cf7a; }
+.saved-map { display: flex; align-items: center; gap: .65rem; justify-content: space-between; padding: .7rem 0; border-bottom: 1px solid #423e35; }
+small { display: block; color: #bab5a8; margin-top: .25rem; }
+button { color: #f4e4b6; background: #39382f; border: 1px solid #8c7950; padding: .45rem .65rem; border-radius: .25rem; }
+button:disabled { opacity: .5; }

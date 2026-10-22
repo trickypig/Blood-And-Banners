@@ -83,7 +83,7 @@ try {
         'Options -Indexes',
         'SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1',
         'RewriteBase /play/',
-        'LimitRequestBody 1048576',
+        'LimitRequestBody 3145728',
         'Cache-Control "no-cache"',
         'Cache-Control "public, max-age=31536000, immutable"'
     )) {

@@ -41,6 +41,7 @@ try {
             $signIn,
             new AccountService($connection, $friends),
             $friends,
+            new BloodAndBanners\Scenario\ScenarioService($connection),
         );
         $httpHeaders = function_exists('getallheaders') ? getallheaders() : [];
         if (!is_array($httpHeaders)) {

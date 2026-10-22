@@ -1,0 +1,155 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+@using BloodAndBanners.UI.Services
+@using Microsoft.AspNetCore.Components.Forms
+
+<main class="map-editor">
+    <header>
+        <div><h1>Hex Map Editor</h1><p>Design your battlefield for Blood &amp; Banners</p></div>
+        <AccountChip />
+    </header>
+    <div class="editor-layout">
+        <aside>
+            <section aria-label="Map settings">
+                <h2>Map settings</h2>
+                <label for="map-name">Map name</label>
+                <input id="map-name" maxlength="120" value="@_document.Definition.Name" @oninput="Rename" disabled="@_busy" />
+                <div class="dimensions">
+                    <label>Columns<input type="number" min="5" max="30" @bind="_columns" disabled="@_busy" /></label>
+                    <label>Rows<input type="number" min="5" max="30" @bind="_rows" disabled="@_busy" /></label>
+                </div>
+                <div class="buttons">
+                    <button type="button" data-action="new" disabled="@_busy" @onclick="RequestNew">New map</button>
+                    <button type="button" data-action="clear" disabled="@_busy" @onclick="RequestClear">Clear</button>
+                    <button type="button" data-action="export" disabled="@_busy" @onclick="Export">Export JSON</button>
+                    <label class="file-button">Import JSON<InputFile OnChange="Import" accept=".json,application/json" disabled="@_busy" /></label>
+                </div>
+                @if (_document.HasScenarioMetadata)
+                {
+                    <p class="hint">Export uses scenario JSON to preserve this map's objectives, placements, and settings.</p>
+                }
+            </section>
+            <section aria-label="Editing tools">
+                <h2>Tools</h2>
+                <div class="buttons">
+                    @foreach (var (tool, label) in Tools)
+                    {
+                        <button type="button" data-tool="@tool" aria-pressed="@(_tool == tool ? "true" : "false")" @onclick="() => _tool = tool">@label</button>
+                    }
+                </div>
+                @if (_tool == "paint")
+                {
+                    <h3>Biome</h3>
+                    <div class="biomes">
+                        @foreach (var biome in TerrainArt.BiomeNames)
+                        {
+                            <button type="button" data-biome="@biome" aria-pressed="@(_biome == biome ? "true" : "false")"
+                                    style="--biome: @TerrainArt.Color(biome)" @onclick="() => SelectBiome(biome)">@Display(biome)</button>
+                        }
+                    </div>
+                    <label for="terrain">Terrain</label>
+                    <select id="terrain" value="@_terrains[_biome]" @onchange="e => _terrains[_biome] = e.Value!.ToString()!">
+                        @foreach (var terrain in TerrainArt.Terrains(_biome)) { <option value="@terrain">@Display(terrain)</option> }
+                    </select>
+                    <p class="hint">Click the selected biome again to cycle its terrain.</p>
+                }
+                else if (_tool == "height")
+                {
+                    <div class="buttons">
+                        @foreach (var action in new[] { "raise", "lower", "reset" })
+                        {
+                            <button type="button" data-height="@action" aria-pressed="@(_heightAction == action ? "true" : "false")" @onclick="() => _heightAction = action">@Display(action)</button>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <label for="player-start">Player start</label>
+                    <select id="player-start" @bind="_player">
+                        <option value="0">Remove start</option>
+                        @for (var player = 1; player <= 4; player++) { <option value="@player">Player @player</option> }
+                    </select>
+                }
+            </section>
+            <section class="hex-info" aria-label="Selected hex">
+                <h2>Selected hex</h2>
+                @if (_document.SelectedHex is { } selected)
+                {
+                    <p>@selected.Q, @selected.R · @Display(selected.Biome) / @Display(selected.Terrain)</p>
+                    <p>Height: @selected.Elevation · Start: @(selected.PlayerStart?.ToString() ?? "none")</p>
+                }
+                else { <p>Click a hex to edit it.</p> }
+            </section>
+            @if (Account.Current is not null)
+            {
+                <div class="buttons">
+                    <button type="button" data-action="save" disabled="@_busy" @onclick="() => Save(false)">Save</button>
+                    <button type="button" data-action="save-as" disabled="@_busy" @onclick="() => Save(true)">Save as new map</button>
+                </div>
+                <SavedMapsPanel Maps="_maps" IsBusy="_busy" OnLoad="RequestLoad" OnRefresh="RefreshMaps" />
+            }
+            else
+            {
+                <p class="hint">Sign in to save maps to your account. Editing and JSON import/export are available to everyone.</p>
+            }
+        </aside>
+        <section class="map-panel" aria-label="Map canvas">
+            <div class="toolbar">
+                <div class="buttons">
+                    <button type="button" aria-label="Zoom out" @onclick="() => Zoom(-.1)" disabled="@(_zoom <= .5)">−</button>
+                    <button type="button" aria-label="Reset zoom" @onclick="() => _zoom = 1">Reset zoom</button>
+                    <button type="button" aria-label="Zoom in" @onclick="() => Zoom(.1)" disabled="@(_zoom >= 2)">+</button>
+                </div>
+                <span>@(_document.IsDirty ? "Unsaved changes" : "Ready") · @((int)Math.Round(_zoom * 100))%</span>
+            </div>
+            <p role="status">@_status</p>
+            @if (_error is not null)
+            {
+                <div role="alert"><p>@_error</p>
+                    @if (_conflict && _document.SavedSummary is { } saved)
+                    {
+                        <button type="button" data-action="reload" disabled="@_busy" @onclick="() => RequestLoad(saved.ScenarioId)">Reload saved map</button>
+                    }
+                </div>
+            }
+            <div class="map-scroll" tabindex="0" aria-label="Scrollable map">
+                <svg class="editor-board" viewBox="0 0 @Num(Layout.Width) @Num(Layout.Height)"
+                     style="width: @Num(_zoom * 100)%; min-width: @Num(420 * _zoom)px;" role="group" aria-label="Editable battlefield">
+                    <TerrainPatterns Hexes="_hexes" ImageBaseUrl="@ImageBaseUrl" IdPrefix="editor-terrain-" />
+                    @foreach (var tile in Layout.Tiles)
+                    {
+                        var hex = tile.Hex;
+                        <g @key="(hex.Q, hex.R)" role="button" tabindex="0" data-hex="@($"{hex.Q},{hex.R}")"
+                           class="editor-hex @(_document.Selection == (hex.Q, hex.R) ? "selected" : "")"
+                           aria-label="@($"Hex {hex.Q}, {hex.R}, {hex.Biome} {hex.Terrain}, height {hex.Elevation}")"
+                           aria-disabled="@(_busy ? "true" : "false")" @onclick="() => Edit(hex.Q, hex.R)"
+                           @onkeydown="e => HexKey(e, hex.Q, hex.R)">
+                            <HexTerrain Tile="tile" PatternId="@TerrainArt.PatternId(hex, "editor-terrain-")" />
+                            <polygon class="hex-outline" points="@tile.TopPoints" />
+                            @if (hex.Elevation != 0)
+                            {
+                                <!text class="height-label" x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)" fill="@TerrainArt.LabelColor(hex.Biome)">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
+                            }
+                            @if (hex.PlayerStart is { } start)
+                            {
+                                <circle class="start-marker" cx="@Num(tile.X)" cy="@Num(tile.Y + 10)" r="13" fill="@StartColor(start)" />
+                                <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
+                            }
+                        </g>
+                    }
+                </svg>
+            </div>
+        </section>
+    </div>
+    @if (_pending is not null)
+    {
+        <div class="confirm-backdrop">
+            <section class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="discard-title">
+                <h2 id="discard-title">Discard unsaved changes?</h2>
+                <p>Export your map first if you want to keep a local copy.</p>
+                <button type="button" data-action="keep-editing" @onclick="() => _pending = null">Keep editing</button>
+                <button type="button" data-action="discard" @onclick="Discard">Discard changes</button>
+            </section>
+        </div>
+    }
+</main>

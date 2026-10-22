@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BloodAndBanners.Contracts;
 
@@ -9,12 +10,18 @@ public sealed record ScenarioDefinition(
     ScenarioMap Map,
     IReadOnlyList<JsonElement> Placements,
     IReadOnlyList<JsonElement> Objectives,
-    ScenarioScoring Scoring);
+    ScenarioScoring Scoring)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+}
 
 public sealed record ScenarioMap(
     int Columns,
     int Rows,
-    IReadOnlyList<ScenarioHex> Hexes);
+    IReadOnlyList<ScenarioHex> Hexes)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+}
 
 public sealed record ScenarioHex(
     int Q,
@@ -28,11 +35,17 @@ public sealed record ScenarioHex(
     string? Piece,
     string? Object,
     bool Fountain,
-    bool SightBlocker);
+    bool SightBlocker)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+}
 
 public sealed record ScenarioScoring(
     int Target,
     int EnemyHero,
     int Boss,
     int TerrainObject,
-    int CompleteObjectSetBonus);
+    int CompleteObjectSetBonus)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+}

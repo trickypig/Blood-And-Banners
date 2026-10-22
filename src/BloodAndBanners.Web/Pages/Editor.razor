@@ -1,0 +1,8 @@
+@page "/editor"
+@using BloodAndBanners.UI.Components
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+
+<PageTitle>Map Editor · Blood &amp; Banners</PageTitle>
+<nav class="editor-navigation" aria-label="Editor navigation"><a href="./">Back to the game</a></nav>
+<MapEditor ImageBaseUrl="@Configuration["ImageBaseUrl"]" />

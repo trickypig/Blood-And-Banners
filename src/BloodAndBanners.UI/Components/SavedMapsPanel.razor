@@ -1,0 +1,26 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.Contracts
+
+<section aria-label="My maps" class="saved-maps">
+    <h2>My maps</h2>
+    <button type="button" disabled="@IsBusy" @onclick="OnRefresh">Refresh list</button>
+    @if (Maps.Count == 0)
+    {
+        <p>You haven't saved any maps yet.</p>
+    }
+    @foreach (var map in Maps)
+    {
+        <div class="saved-map" @key="map.ScenarioId">
+            <span><strong>@map.Name</strong><small>Revision @map.Revision · @SavedTime(map.UpdatedAt)</small></span>
+            <button type="button" data-load-map="@map.ScenarioId" disabled="@IsBusy" @onclick="() => OnLoad.InvokeAsync(map.ScenarioId)">Load</button>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<SavedMapSummary> Maps { get; set; } = [];
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback<string> OnLoad { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    private static string SavedTime(string value) => DateTimeOffset.TryParse(value, out var time) ? time.ToLocalTime().ToString("g") : value;
+}

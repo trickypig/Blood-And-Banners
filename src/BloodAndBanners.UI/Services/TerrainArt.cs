@@ -12,6 +12,14 @@ public static class TerrainArt
     /// <summary>Images per terrain: the primary plus seven variants.</summary>
     public const int VariantCount = 8;
 
+    public static IEnumerable<string> BiomeNames => Biomes.Keys;
+    public static IReadOnlyList<string> Terrains(string biome) => Biomes[biome].Terrains;
+    public static bool IsValid(string biome, string terrain) => Biomes.TryGetValue(biome, out var art) && art.Terrains.Contains(terrain);
+    public static double ElevationShade(int elevation) => elevation > 0 ? Math.Min(8, elevation) * .035 : Math.Min(.6, -(double)elevation * .08);
+    public static string PatternId(BloodAndBanners.Contracts.HexProjection hex, string prefix = "bb-terrain-") =>
+        prefix + System.Text.RegularExpressions.Regex.Replace($"{hex.Biome}-{hex.Terrain}".ToLowerInvariant(), "[^a-z0-9-]", "-") +
+        (Variant(hex.Q, hex.R) is var variant and > 0 ? $"-v{variant}" : "");
+
     private static readonly Dictionary<string, (string Color, string[] Terrains)> Biomes = new()
     {
         ["plains"] = ("#4a7c4e", ["grass", "roads"]),

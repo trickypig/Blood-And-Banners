@@ -118,18 +118,7 @@
              @onpointerup="EndBoardPointer"
              @onpointercancel="EndBoardPointer"
              aria-label="Battlefield, @Projection.Board.Rows columns by @Projection.Board.Columns rows">
-            <defs>
-                @foreach (var (patternId, terrain) in boardIndex.TerrainPatterns)
-                {
-                    <pattern id="@patternId" patternContentUnits="objectBoundingBox" width="1" height="1">
-                        <rect width="1" height="1" fill="@TerrainArt.Color(terrain.Biome)" />
-                        @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(terrain.Biome, terrain.Terrain, TerrainArt.Variant(terrain.Q, terrain.R))) is { } terrainImage)
-                        {
-                            <image href="@terrainImage" width="1" height="1" preserveAspectRatio="xMidYMid slice" />
-                        }
-                    </pattern>
-                }
-            </defs>
+            <TerrainPatterns Hexes="Projection.Board.Hexes" ImageBaseUrl="@ImageBaseUrl" />
             @if (PreviewedMovement is { } preview)
             {
                 @for (var step = 0; step < preview.Path.Count - 1; step++)
@@ -164,18 +153,7 @@
                    @onmouseleave="Unhover"
                    @onfocus="boardTile.Hover"
                    @onblur="Unhover">
-                    @if (tile.Lift > 0)
-                    {
-                        <path class="hex-side" d="@tile.SidePath" />
-                        <path class="hex-side-edges" d="@tile.SideEdges" />
-                    }
-                    <polygon class="hex-top" points="@tile.TopPoints" fill="url(#@patternId)" />
-                    @if (hex.Elevation != 0)
-                    {
-                        <polygon class="hex-shade" points="@tile.TopPoints"
-                                 fill="@(hex.Elevation > 0 ? "#fff" : "#000")"
-                                 fill-opacity="@Num(ElevationShade(hex.Elevation))" />
-                    }
+                    <HexTerrain Tile="tile" PatternId="@patternId" />
                     <polygon class="hex-outline" points="@tile.TopPoints" />
                     @if (PathStep(key) is { } pathStep)
                     {
@@ -1846,15 +1824,9 @@
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    // Raised tiles lighten gently so the common 0..+8 range stays readable (+8 tops out at .28);
-    // sunken tiles keep the original steeper darkening.
-    private static double ElevationShade(int elevation) => elevation > 0
-        ? Math.Min(8, elevation) * .035
-        : Math.Min(.6, -elevation * .08);
-
     // One pattern per terrain image in use; variant 0 (the primary) keeps the plain id.
     private static string TerrainPatternId(HexProjection hex) =>
-        "bb-terrain-" + SafeId($"{hex.Biome}-{hex.Terrain}") + (TerrainArt.Variant(hex.Q, hex.R) is var variant and > 0 ? $"-v{variant}" : "");
+        TerrainArt.PatternId(hex);
 
     private static readonly double HexHalfHeight = Math.Sqrt(3) / 2 * BoardLayout.Size;
 
