@@ -19,11 +19,94 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public void Toolbar_exposes_all_actions_without_mode_selection()
+    {
+        var cut = Render<MapEditor>();
+        Assert.Empty(cut.FindAll("[data-tool]"));
+        Assert.NotNull(cut.Find("[data-height='raise']"));
+        Assert.NotNull(cut.Find("[data-player='4']"));
+        Assert.NotNull(cut.Find("[data-biome='water']"));
+        cut.Find("[data-height='raise']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-biome='water']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("Water / Open Water", cut.Find(".hex-info").TextContent);
+        Assert.Contains("Height: 1", cut.Find(".hex-info").TextContent);
+        Assert.Empty(cut.FindAll("[data-current-action]"));
+        Assert.Equal("false", cut.Find("[data-height='raise']").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void New_map_dialog_sets_name_and_dimensions_and_tapping_name_renames()
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-name").Input("River pass");
+        cut.Find("#new-map-columns").Change("6");
+        cut.Find("#new-map-rows").Change("5");
+        cut.Find("form").Submit();
+        Assert.Equal(30, cut.FindAll("[data-hex]").Count);
+        Assert.Contains("River pass", cut.Find(".map-name").TextContent);
+        Assert.Equal("River pass", cut.Find("[data-action='rename'] strong").TextContent);
+        Assert.Empty(cut.FindAll("[data-action='rename'] svg"));
+        cut.Find("[data-action='rename']").Click();
+        cut.Find("#map-name").Input("Mountain pass");
+        cut.Find("form").Submit();
+        Assert.Contains("Mountain pass", cut.Find(".map-name").TextContent);
+    }
+
+    [Fact]
+    public void Biome_preview_cycles_and_matches_the_terrain_painted()
+    {
+        var cut = Render<MapEditor>(p => p.Add(c => c.ImageBaseUrl, "https://images.test/"));
+        Assert.EndsWith("/images/terrain/plains-grass.svg", cut.Find("[data-biome='plains'] img").GetAttribute("src"));
+        cut.Find("[data-biome='plains']").Click();
+        Assert.EndsWith("/images/terrain/plains-roads.svg", cut.Find("[data-biome='plains'] img").GetAttribute("src"));
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("Plains / Roads", cut.Find(".hex-info").TextContent);
+        cut.Find("[data-biome='water']").Click();
+        Assert.EndsWith("/images/terrain/water-open-water.svg", cut.Find("[data-biome='water'] img").GetAttribute("src"));
+        cut.Find("[data-biome='water']").Click();
+        Assert.EndsWith("/images/terrain/water-shallow-water.svg", cut.Find("[data-biome='water'] img").GetAttribute("src"));
+        cut.Find("[data-biome='plains']").Click();
+        Assert.Equal("roads", cut.Find("[data-biome='plains']").GetAttribute("data-terrain"));
+        cut.Find("[data-biome='plains']").Click();
+        Assert.EndsWith("/images/terrain/plains-grass.svg", cut.Find("[data-biome='plains'] img").GetAttribute("src"));
+    }
+
+    [Fact]
+    public async Task Editor_navigation_and_account_controls_are_in_the_shared_menu()
+    {
+        _account.NameAfterVerify = "Ash";
+        await _account.VerifyCodeAsync("me@example.test", "123456", "device");
+        var cut = Render<MapEditor>();
+        var menu = cut.Find("details.main-menu");
+        Assert.Equal("./", menu.QuerySelector("[data-menu='game']")!.GetAttribute("href"));
+        Assert.NotNull(menu.QuerySelector("[data-menu='rulebook']"));
+        Assert.NotNull(menu.QuerySelector("[data-account='chip']"));
+        Assert.Equal("Log Out", menu.QuerySelector("[data-account='sign-out']")!.TextContent.Trim());
+        Assert.Empty(cut.FindAll("header [data-account]"));
+        Assert.Single(cut.FindAll("[data-account='sign-out']"));
+        Assert.Empty(cut.FindAll("[data-menu='editor']"));
+    }
+
+    [Fact]
+    public void Opening_sign_in_in_the_editor_menu_keeps_the_current_map()
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-height='raise']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("details [data-account='sign-in']").Click();
+        Assert.NotNull(cut.Find("details [data-signin='email-form']"));
+        Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
+    }
+
+    [Fact]
     public void Anonymous_users_edit_and_export_without_database_calls()
     {
         var cut = Render<MapEditor>();
-        Assert.Empty(cut.FindAll("[data-action='save']"));
-        cut.Find("[data-tool='height']").Click();
+        Assert.True(cut.Find("[data-action='save']").HasAttribute("disabled"));
+        cut.Find("[data-height='raise']").Click();
         cut.Find("[data-hex='0,0']").Click();
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
         cut.Find("[data-action='export']").Click();
@@ -35,11 +118,13 @@ public sealed class MapEditorTests : BunitContext
     public void Dirty_new_map_can_be_cancelled_then_discarded()
     {
         var cut = Render<MapEditor>();
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         cut.Find("[data-action='new']").Click();
+        cut.Find("form").Submit();
         cut.Find("[data-action='keep-editing']").Click();
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
-        cut.Find("[data-action='new']").Click(); cut.Find("[data-action='discard']").Click();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("form").Submit(); cut.Find("[data-action='discard']").Click();
         Assert.DoesNotContain("+1", cut.Find("[data-hex='0,0']").TextContent);
     }
 
@@ -47,10 +132,49 @@ public sealed class MapEditorTests : BunitContext
     public void Player_tool_renders_the_selected_player_number()
     {
         var cut = Render<MapEditor>();
-        cut.Find("[data-tool='player']").Click();
-        cut.Find("#player-start").Change("2");
+        cut.Find("[data-player='2']").Click();
         cut.Find("[data-hex='0,0']").Click();
         Assert.Equal("P2", cut.Find("[data-hex='0,0'] .start-label").TextContent);
+    }
+
+    [Fact]
+    public void Elevation_and_player_actions_apply_without_mode_buttons()
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-height='raise']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='lower']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("Height: 1", cut.Find(".hex-info").TextContent);
+        cut.Find("[data-height='reset']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("Height: 0", cut.Find(".hex-info").TextContent);
+        cut.Find("[data-player='4']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Equal("P4", cut.Find("[data-hex='0,0'] .start-label").TextContent);
+        cut.Find("[data-player='0']").Click();
+        Assert.Equal("true", cut.Find("[data-player='0']").GetAttribute("aria-pressed"));
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Empty(cut.FindAll(".start-label"));
+    }
+
+    [Fact]
+    public void New_map_rejects_invalid_values_and_can_be_closed_without_changes()
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-name").Input(" ");
+        cut.Find("form").Submit();
+        Assert.NotNull(cut.Find("[role='dialog'] [role='alert']"));
+        cut.Find("#new-map-name").Input("Invalid dimensions");
+        cut.Find("#new-map-columns").Change("31");
+        cut.Find("form").Submit();
+        Assert.Contains("between 5 and 30", cut.Find("[role='dialog'] [role='alert']").TextContent);
+        cut.Find("[role='dialog']").KeyDown("Escape");
+        Assert.Empty(cut.FindAll("[role='dialog']"));
+        Assert.Equal(150, cut.FindAll("[data-hex]").Count);
+        Assert.Contains("Ready", cut.Find("[role='status']").TextContent);
     }
 
     [Fact]
@@ -60,7 +184,7 @@ public sealed class MapEditorTests : BunitContext
         var cut = Render<MapEditor>();
         cut.Find("[data-action='save']").Click();
         cut.WaitForAssertion(() => Assert.Contains("Saved", cut.Find("[role='status']").TextContent));
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         cut.Find("[data-action='save']").Click();
         cut.Find("[data-action='save-as']").Click();
         Assert.Equal(new[] { "list", "create", "save:r1", "create" }, _maps.Calls);
@@ -73,7 +197,7 @@ public sealed class MapEditorTests : BunitContext
         await _account.VerifyCodeAsync("me@example.test", "123456", "device");
         var cut = Render<MapEditor>();
         cut.Find("[data-action='save']").Click();
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         _maps.SaveFailure = new GameApiException(System.Net.HttpStatusCode.Conflict, "mapConflict", "Saved elsewhere");
         cut.Find("[data-action='save']").Click();
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
@@ -89,12 +213,12 @@ public sealed class MapEditorTests : BunitContext
         var completion = new TaskCompletionSource<SavedMap>(TaskCreationOptions.RunContinuationsAsynchronously);
         _maps.PendingCreate = completion.Task;
         var cut = Render<MapEditor>();
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         var saving = cut.Find("[data-action='save']").ClickAsync(new());
         await cut.InvokeAsync(() => _account.SignOutAsync());
         completion.SetResult(EditorMapApi.Saved(_maps.Definitions.Last()));
         await saving;
-        Assert.Empty(cut.FindAll("[data-action='save']"));
+        Assert.True(cut.Find("[data-action='save']").HasAttribute("disabled"));
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
         Assert.NotNull(cut.Find("[data-action='export']"));
         await cut.InvokeAsync(() => _account.VerifyCodeAsync("me@example.test", "123456", "device"));
@@ -109,14 +233,22 @@ public sealed class MapEditorTests : BunitContext
         await _account.VerifyCodeAsync("me@example.test", "123456", "device");
         _maps.List = [new("map1", "Crossing", "r1", 1, "2026-10-21T00:00:00Z")];
         var cut = Render<MapEditor>();
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
+        Assert.Empty(cut.FindAll("[data-load-map]"));
+        cut.Find("[data-action='load']").Click();
         cut.Find("[data-load-map='map1']").Click();
         Assert.DoesNotContain("load", _maps.Calls);
         cut.Find("[data-action='keep-editing']").Click();
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
         cut.Find("[data-load-map='map1']").Click(); cut.Find("[data-action='discard']").Click();
         Assert.Single(cut.FindAll("[data-hex]"));
-        Assert.Equal("Crossing", cut.Find("#map-name").GetAttribute("value"));
+        Assert.Contains("Crossing", cut.Find(".map-name").TextContent);
+        Assert.Contains("Loaded Crossing.", cut.Find("[role='status']").TextContent);
+        Assert.DoesNotContain("%", cut.Find("[role='status']").TextContent);
+        cut.Find("[data-height='raise']").Click();
+        Assert.DoesNotContain("Loaded", cut.Find("[role='status']").TextContent);
+        cut.Find("[data-hex]").Click();
+        Assert.Contains("Unsaved changes", cut.Find("[role='status']").TextContent);
     }
 
     [Fact]
@@ -127,9 +259,10 @@ public sealed class MapEditorTests : BunitContext
         var pending = new TaskCompletionSource<SavedMap>(TaskCreationOptions.RunContinuationsAsynchronously);
         _maps.PendingLoad = pending.Task;
         var cut = Render<MapEditor>();
+        cut.Find("[data-action='load']").Click();
         var loading = cut.Find("[data-load-map='map1']").ClickAsync(new());
         await cut.InvokeAsync(() => _account.SignOutAsync());
-        cut.Find("[data-tool='height']").Click(); cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         pending.SetResult(EditorMapApi.Saved(MapFileCodec.Import(MapFileCodecTests.Legacy)));
         await loading;
         Assert.Equal(150, cut.FindAll("[data-hex]").Count);
@@ -155,6 +288,8 @@ public sealed class MapEditorTests : BunitContext
         var cut = Render<MapEditor>();
         await cut.InvokeAsync(() => _account.VerifyCodeAsync("me@example.test", "123456", "device"));
         pending.SetResult(new([new("loaded-id", "My asynchronously loaded map", "r1", 1, "2026-10-21T00:00:00Z")]));
+        cut.WaitForAssertion(() => Assert.False(cut.Find("[data-action='load']").HasAttribute("disabled")));
+        cut.Find("[data-action='load']").Click();
         cut.WaitForAssertion(() =>
         {
             Assert.NotNull(cut.Find("[data-load-map='loaded-id']"));

@@ -806,7 +806,7 @@ public sealed class GameExperienceTests : BunitContext
             .Add(c => c.InitialSignInToken, "tok-1")
             .Add(c => c.OnSignInLinkHandled, () => handled = true));
 
-        cut.WaitForAssertion(() => Assert.Contains("Signed in as Ash", cut.Markup));
+        cut.WaitForAssertion(() => Assert.Equal("Ash", cut.Find("[data-account='chip']").TextContent.Trim()));
         Assert.Contains("link:tok-1", account.Calls);
         Assert.True(handled);
     }

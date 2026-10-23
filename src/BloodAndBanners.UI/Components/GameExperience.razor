@@ -10,10 +10,6 @@
 
 @if (_game is null)
 {
-    @if (ClientKind == "web")
-    {
-        <nav aria-label="Map tools" style="padding: .75rem 1.5rem; background: #232529;"><a href="editor" style="color: #f0cf7a;">Map editor</a></nav>
-    }
     <QuickStart ClientKind="@ClientKind"
                 StatusMessage="@_status"
                 OnResume="ResumeGame"

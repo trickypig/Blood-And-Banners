@@ -14,8 +14,8 @@
             }
             else
             {
-                <span data-account="chip">Signed in as <strong>@signedIn.DisplayName</strong></span>
-                <button type="button" class="ghost" data-account="sign-out" @onclick="SignOut">Sign out</button>
+                <span data-account="chip">@if (!InMenu) { <text>Signed in as </text> }<strong>@signedIn.DisplayName</strong></span>
+                <button type="button" class="ghost" data-account="sign-out" @onclick="SignOut">@(InMenu ? "Log Out" : "Sign out")</button>
             }
         }
         else if (_signInDeviceId is not null)
@@ -25,7 +25,10 @@
         else
         {
             <button type="button" class="ghost" data-account="sign-in" @onclick="BeginSignIn">Sign in</button>
-            <span class="account-chip__hint">to add friends and resume games on any device</span>
+            @if (!InMenu)
+            {
+                <span class="account-chip__hint">to add friends and resume games on any device</span>
+            }
         }
     </div>
 }
@@ -33,6 +36,9 @@
 @code {
     [Parameter]
     public string ClientKind { get; set; } = "client";
+
+    [Parameter]
+    public bool InMenu { get; set; }
 
     /// <summary>Minted once when the panel opens, so re-renders keep the same device id.</summary>
     private string? _signInDeviceId;

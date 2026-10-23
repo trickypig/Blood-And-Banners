@@ -1,0 +1,22 @@
+@namespace BloodAndBanners.UI.Components
+
+<details class="main-menu">
+    <summary aria-label="Main menu" title="Main menu"><span aria-hidden="true">☰</span></summary>
+    <nav aria-label="Main menu">
+        @if (IsEditor)
+        {
+            <a data-menu="game" href="./">Back to the game</a>
+        }
+        else
+        {
+            <a data-menu="editor" href="@(ClientKind == "web" ? "editor" : "https://blood.trickypig.com/play/editor")">Map Editor</a>
+        }
+        <a data-menu="rulebook" href="https://trickypig.com/blood/public/rulebook.html">Rulebook</a>
+        <div class="menu-account"><AccountChip ClientKind="@ClientKind" InMenu="true" /></div>
+    </nav>
+</details>
+
+@code {
+    [Parameter] public string ClientKind { get; set; } = "web";
+    [Parameter] public bool IsEditor { get; set; }
+}

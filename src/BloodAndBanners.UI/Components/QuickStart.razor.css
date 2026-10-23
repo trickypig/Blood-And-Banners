@@ -1,4 +1,5 @@
 .quick-start {
+    position: relative;
     min-height: 100dvh;
     display: grid;
     grid-template-columns: minmax(18rem, 30rem) minmax(22rem, 42rem);
@@ -6,6 +7,7 @@
     align-content: center;
     gap: clamp(2rem, 7vw, 7rem);
     padding: clamp(2rem, 6vw, 6rem);
+    padding-top: max(5.5rem, 6vw);
     color: #e9e3d2;
     background:
         linear-gradient(90deg, rgba(18,18,17,.97), rgba(31,29,27,.9)),

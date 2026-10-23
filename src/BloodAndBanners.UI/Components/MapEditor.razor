@@ -4,105 +4,94 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 <main class="map-editor">
-    <header>
-        <div><h1>Hex Map Editor</h1><p>Design your battlefield for Blood &amp; Banners</p></div>
-        <AccountChip />
-    </header>
-    <div class="editor-layout">
-        <aside>
-            <section aria-label="Map settings">
-                <h2>Map settings</h2>
-                <label for="map-name">Map name</label>
-                <input id="map-name" maxlength="120" value="@_document.Definition.Name" @oninput="Rename" disabled="@_busy" />
-                <div class="dimensions">
-                    <label>Columns<input type="number" min="5" max="30" @bind="_columns" disabled="@_busy" /></label>
-                    <label>Rows<input type="number" min="5" max="30" @bind="_rows" disabled="@_busy" /></label>
-                </div>
-                <div class="buttons">
-                    <button type="button" data-action="new" disabled="@_busy" @onclick="RequestNew">New map</button>
-                    <button type="button" data-action="clear" disabled="@_busy" @onclick="RequestClear">Clear</button>
-                    <button type="button" data-action="export" disabled="@_busy" @onclick="Export">Export JSON</button>
-                    <label class="file-button">Import JSON<InputFile OnChange="Import" accept=".json,application/json" disabled="@_busy" /></label>
-                </div>
-                @if (_document.HasScenarioMetadata)
+    <MainMenu IsEditor="true" />
+    <header><h1>Blood &amp; Banners - Map Editor</h1></header>
+    <div class="editor-workspace">
+        <div class="editor-toolbar" role="toolbar" aria-label="Map editor actions">
+            <div class="toolbar-group" role="group" aria-label="Map files">
+                @foreach (var (action, label) in FileActions)
                 {
-                    <p class="hint">Export uses scenario JSON to preserve this map's objectives, placements, and settings.</p>
-                }
-            </section>
-            <section aria-label="Editing tools">
-                <h2>Tools</h2>
-                <div class="buttons">
-                    @foreach (var (tool, label) in Tools)
+                    if (action == "import")
                     {
-                        <button type="button" data-tool="@tool" aria-pressed="@(_tool == tool ? "true" : "false")" @onclick="() => _tool = tool">@label</button>
+                        <label class="icon-button file-button" title="@label">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath(action)" /></svg>
+                            <InputFile OnChange="Import" accept=".json,application/json" disabled="@_busy" aria-label="Import JSON" />
+                        </label>
                     }
-                </div>
-                @if (_tool == "paint")
+                    else
+                    {
+                        <button type="button" class="icon-button" data-action="@action" title="@FileLabel(action, label)" aria-label="@FileLabel(action, label)"
+                                disabled="@(_busy || (RequiresAccount(action) && Account.Current is null))" @onclick="() => FileAction(action)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath(action)" /></svg>
+                        </button>
+                    }
+                }
+            </div>
+            <div class="toolbar-group biomes" role="group" aria-label="Terrain">
+                @foreach (var biome in TerrainArt.BiomeNames)
                 {
-                    <h3>Biome</h3>
-                    <div class="biomes">
-                        @foreach (var biome in TerrainArt.BiomeNames)
+                    var terrain = _terrains[biome];
+                    var label = $"Paint {Display(biome)}: {Display(terrain)}. Click again to cycle terrain.";
+                    <button type="button" class="icon-button" data-biome="@biome" data-terrain="@terrain" title="@label" aria-label="@label" disabled="@_busy"
+                            aria-pressed="@(_tool == "paint" && _biome == biome ? "true" : "false")" @onclick="() => SelectBiome(biome)">
+                        <span class="terrain-preview" aria-hidden="true" style="background-color: @TerrainArt.Color(biome)">
+                            @if (CatalogImages.Resolve(ImageBaseUrl, TerrainArt.ImagePath(biome, terrain)) is { } preview)
+                            {
+                                <img src="@preview" alt="" draggable="false" />
+                            }
+                        </span>
+                    </button>
+                }
+            </div>
+            <div class="toolbar-group" role="group" aria-label="Elevation">
+                @foreach (var action in new[] { "raise", "lower", "reset" })
+                {
+                    var label = $"{Display(action)} elevation";
+                    <button type="button" class="icon-button" data-height="@action" title="@label" aria-label="@label" disabled="@_busy"
+                            aria-pressed="@(_tool == "height" && _heightAction == action ? "true" : "false")" @onclick="() => SelectHeight(action)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath(action)" /></svg>
+                    </button>
+                }
+            </div>
+            <div class="toolbar-group" role="group" aria-label="Player starts">
+                @foreach (var player in new[] { 1, 2, 3, 4, 0 })
+                {
+                    var label = player == 0 ? "Remove player start" : $"Place player {player} start";
+                    <button type="button" class="icon-button player-button" data-player="@player" title="@label" aria-label="@label" disabled="@_busy"
+                            aria-pressed="@(_tool == "player" && _player == player ? "true" : "false")" @onclick="() => SelectPlayer(player)">
+                        @if (player == 0)
                         {
-                            <button type="button" data-biome="@biome" aria-pressed="@(_biome == biome ? "true" : "false")"
-                                    style="--biome: @TerrainArt.Color(biome)" @onclick="() => SelectBiome(biome)">@Display(biome)</button>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M5 4h14l-3 4 3 4H5m7 4 7 7m0-7-7 7" /></svg>
                         }
-                    </div>
-                    <label for="terrain">Terrain</label>
-                    <select id="terrain" value="@_terrains[_biome]" @onchange="e => _terrains[_biome] = e.Value!.ToString()!">
-                        @foreach (var terrain in TerrainArt.Terrains(_biome)) { <option value="@terrain">@Display(terrain)</option> }
-                    </select>
-                    <p class="hint">Click the selected biome again to cycle its terrain.</p>
+                        else { <span aria-hidden="true" style="--player-color: @StartColor(player)">@($"P{player}")</span> }
+                    </button>
                 }
-                else if (_tool == "height")
+            </div>
+            <div class="toolbar-group" role="group" aria-label="Zoom">
+                @foreach (var action in new[] { "zoom-out", "zoom-reset", "zoom-in" })
                 {
-                    <div class="buttons">
-                        @foreach (var action in new[] { "raise", "lower", "reset" })
-                        {
-                            <button type="button" data-height="@action" aria-pressed="@(_heightAction == action ? "true" : "false")" @onclick="() => _heightAction = action">@Display(action)</button>
-                        }
-                    </div>
+                    var label = action == "zoom-reset" ? "Reset zoom" : action == "zoom-in" ? "Zoom in" : "Zoom out";
+                    <button type="button" class="icon-button" title="@label" aria-label="@label"
+                            disabled="@(action == "zoom-out" && _zoom <= .5 || action == "zoom-in" && _zoom >= 2)" @onclick="() => ChangeZoom(action)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath(action)" /></svg>
+                    </button>
                 }
-                else
-                {
-                    <label for="player-start">Player start</label>
-                    <select id="player-start" @bind="_player">
-                        <option value="0">Remove start</option>
-                        @for (var player = 1; player <= 4; player++) { <option value="@player">Player @player</option> }
-                    </select>
-                }
-            </section>
-            <section class="hex-info" aria-label="Selected hex">
-                <h2>Selected hex</h2>
+            </div>
+        </div>
+        <div class="editor-statusbar">
+            <div class="map-name">
+                <button type="button" class="map-name-button" data-action="rename" title="Rename map" aria-label="Rename map" disabled="@_busy" @onclick="OpenRename"><strong>@_document.Definition.Name</strong></button>
+            </div>
+            <div class="hex-info"><strong>Selected hex:</strong>
                 @if (_document.SelectedHex is { } selected)
                 {
-                    <p>@selected.Q, @selected.R · @Display(selected.Biome) / @Display(selected.Terrain)</p>
-                    <p>Height: @selected.Elevation · Start: @(selected.PlayerStart?.ToString() ?? "none")</p>
+                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")</span>
                 }
-                else { <p>Click a hex to edit it.</p> }
-            </section>
-            @if (Account.Current is not null)
-            {
-                <div class="buttons">
-                    <button type="button" data-action="save" disabled="@_busy" @onclick="() => Save(false)">Save</button>
-                    <button type="button" data-action="save-as" disabled="@_busy" @onclick="() => Save(true)">Save as new map</button>
-                </div>
-                <SavedMapsPanel Maps="_maps" IsBusy="_busy" OnLoad="RequestLoad" OnRefresh="RefreshMaps" />
-            }
-            else
-            {
-                <p class="hint">Sign in to save maps to your account. Editing and JSON import/export are available to everyone.</p>
-            }
-        </aside>
-        <section class="map-panel" aria-label="Map canvas">
-            <div class="toolbar">
-                <div class="buttons">
-                    <button type="button" aria-label="Zoom out" @onclick="() => Zoom(-.1)" disabled="@(_zoom <= .5)">−</button>
-                    <button type="button" aria-label="Reset zoom" @onclick="() => _zoom = 1">Reset zoom</button>
-                    <button type="button" aria-label="Zoom in" @onclick="() => Zoom(.1)" disabled="@(_zoom >= 2)">+</button>
-                </div>
-                <span>@(_document.IsDirty ? "Unsaved changes" : "Ready") · @((int)Math.Round(_zoom * 100))%</span>
+                else { <span>None</span> }
             </div>
-            <p role="status">@_status</p>
+            <div role="status"><strong>Status:</strong> @(_document.IsDirty ? "Unsaved changes" : "Ready")@if (!string.IsNullOrEmpty(_status)) { <span> &middot; @_status</span> }</div>
+        </div>
+        <section class="map-panel" aria-label="Map canvas">
             @if (_error is not null)
             {
                 <div role="alert"><p>@_error</p>
@@ -141,6 +130,39 @@
             </div>
         </section>
     </div>
+    @if (_dialog is not null && _pending is null)
+    {
+        <div class="confirm-backdrop" @onkeydown="DialogKey">
+            <section class="confirm" role="dialog" aria-modal="true" aria-labelledby="editor-dialog-title" tabindex="-1" @ref="_dialogElement">
+                <h2 id="editor-dialog-title">@(_dialog == "new" ? "New map" : _dialog == "load" ? "Load map" : "Rename map")</h2>
+                @if (_dialog == "load")
+                {
+                    <SavedMapsPanel Maps="_maps" IsBusy="_busy" OnLoad="RequestLoad" OnRefresh="RefreshMaps" />
+                    @if (_error is not null) { <p role="alert">@_error</p> }
+                    <button type="button" data-action="close-dialog" @onclick="CloseDialog">Close</button>
+                }
+                else
+                {
+                    <form @onsubmit="SubmitDialog" @onsubmit:preventDefault>
+                        <label for="@(_dialog == "new" ? "new-map-name" : "map-name")">Map name</label>
+                        <input id="@(_dialog == "new" ? "new-map-name" : "map-name")" maxlength="120" required @bind="_draftName" @bind:event="oninput" />
+                        @if (_dialog == "new")
+                        {
+                            <div class="dimensions">
+                                <label for="new-map-columns">Columns<input id="new-map-columns" type="number" min="5" max="30" required @bind="_columns" /></label>
+                                <label for="new-map-rows">Rows<input id="new-map-rows" type="number" min="5" max="30" required @bind="_rows" /></label>
+                            </div>
+                        }
+                        @if (_dialogError is not null) { <p role="alert">@_dialogError</p> }
+                        <div class="buttons">
+                            <button type="button" @onclick="CloseDialog">Cancel</button>
+                            <button type="submit">@(_dialog == "new" ? "Create map" : "Rename")</button>
+                        </div>
+                    </form>
+                }
+            </section>
+        </div>
+    }
     @if (_pending is not null)
     {
         <div class="confirm-backdrop">
