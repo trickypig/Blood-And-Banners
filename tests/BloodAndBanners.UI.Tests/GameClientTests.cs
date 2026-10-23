@@ -8,6 +8,19 @@ namespace BloodAndBanners.UI.Tests;
 public sealed class GameClientTests
 {
     [Theory]
+    [InlineData("https://blood.trickypig.com/play/editor", true)]
+    [InlineData("https://blood.trickypig.com/play/editor/?source=web", true)]
+    [InlineData("https://blood.trickypig.com/play/?join=game1", false)]
+    [InlineData("https://blood.trickypig.com/play/?watch=game1", false)]
+    [InlineData("https://blood.trickypig.com/play/?signin=token", false)]
+    [InlineData("https://blood.trickypig.com/play/editor-other", false)]
+    [InlineData("invalid", false)]
+    public void Editor_links_are_distinguished_from_game_links(string uri, bool expected)
+    {
+        Assert.Equal(expected, InviteLinks.IsEditorUri(uri));
+    }
+
+    [Theory]
     [InlineData("http://localhost:5016/?join=game-123", "game-123")]
     [InlineData("https://game.test/?mode=vanilla&join=game%20code", "game code")]
     [InlineData("https://game.test/", null)]

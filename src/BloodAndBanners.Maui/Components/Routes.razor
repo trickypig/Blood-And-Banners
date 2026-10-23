@@ -1,6 +1,25 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@implements IDisposable
+@inject NavigationManager Navigation
+@using BloodAndBanners.UI.Services
+
+<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    protected override void OnInitialized() => IncomingLinks.Received += OnLinkReceived;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && IncomingLinks.Latest is { } uri) NavigateLink(uri);
+    }
+
+    private void OnLinkReceived(string uri) => _ = InvokeAsync(() => NavigateLink(uri));
+
+    private void NavigateLink(string uri) => Navigation.NavigateTo(InviteLinks.IsEditorUri(uri) ? "editor" : "");
+
+    public void Dispose() => IncomingLinks.Received -= OnLinkReceived;
+}

@@ -3,7 +3,10 @@ param(
     [string]$Configuration = 'Debug',
 
     # The phone's Download folder as mirrored by Windows Cross Device; pass '' to skip the copy.
-    [string]$PhoneDownloads = 'C:\Users\trick\CrossDevice\moto g power 5G - 2024\storage\Download'
+    [string]$PhoneDownloads = 'C:\Users\trick\CrossDevice\moto g power 5G - 2024\storage\Download',
+
+    # Use a full rebuild to recover from stale Android resources or other incremental build issues.
+    [switch]$Rebuild
 )
 
 $ErrorActionPreference = 'Stop'
@@ -19,7 +22,11 @@ if (Test-Path -LiteralPath $outputRoot) {
     Get-ChildItem -LiteralPath $outputRoot -Filter $apkPattern | ForEach-Object { $_.IsReadOnly = $false }
 }
 
-dotnet build $project -f $framework -c $Configuration
+$buildArguments = @('build', $project, '-f', $framework, '-c', $Configuration)
+if ($Rebuild) {
+    $buildArguments += '-t:Rebuild'
+}
+dotnet @buildArguments
 if ($LASTEXITCODE -ne 0) {
     throw "Android build failed with exit code $LASTEXITCODE."
 }

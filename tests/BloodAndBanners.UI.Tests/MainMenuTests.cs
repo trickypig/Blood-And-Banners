@@ -37,10 +37,10 @@ public sealed class MainMenuTests : BunitContext
     }
 
     [Fact]
-    public void Links_work_without_account_services_and_native_editor_uses_web_address()
+    public void Links_work_without_account_services_and_native_editor_stays_in_app()
     {
         var cut = Render<MainMenu>(p => p.Add(c => c.ClientKind, "maui"));
-        Assert.Equal("https://blood.trickypig.com/play/editor", cut.Find("[data-menu='editor']").GetAttribute("href"));
+        Assert.Equal("editor", cut.Find("[data-menu='editor']").GetAttribute("href"));
         Assert.NotNull(cut.Find("[data-menu='rulebook']"));
     }
 }

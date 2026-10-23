@@ -33,6 +33,7 @@
 
     private void OnLinkReceived(string uri) => InvokeAsync(() =>
     {
+        if (InviteLinks.IsEditorUri(uri)) return;
         ReadLink(uri);
         _linkCount++;
         StateHasChanged();

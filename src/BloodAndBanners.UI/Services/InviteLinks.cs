@@ -14,6 +14,10 @@ public static class InviteLinks
 
     public static string? SignInTokenFromUri(string uri) => QueryValue(uri, "signin");
 
+    public static bool IsEditorUri(string uri) =>
+        Uri.TryCreate(uri, UriKind.Absolute, out var link) &&
+        link.AbsolutePath.TrimEnd('/').Equals("/play/editor", StringComparison.OrdinalIgnoreCase);
+
     private static string? QueryValue(string uri, string key)
     {
         var query = new Uri(uri, UriKind.Absolute).Query.TrimStart('?');

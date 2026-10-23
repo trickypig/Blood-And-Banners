@@ -11,6 +11,7 @@ namespace BloodAndBanners.UI.Components;
 
 public partial class MapEditor : IAsyncDisposable
 {
+    [Parameter] public string ClientKind { get; set; } = "web";
     [Parameter] public string? ImageBaseUrl { get; set; }
     [Inject] private IAccountSession Account { get; set; } = default!;
     [Inject] private IMapApiClient MapApi { get; set; } = default!;
