@@ -45,10 +45,15 @@ public sealed class ObstacleTests : BunitContext
         doc.SetPlayerStart(1, 0, 2);
         Assert.Equal((null, false, (int?)2), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker, doc.SelectedHex.PlayerStart));
         Assert.Throws<ArgumentOutOfRangeException>(() => doc.SetObstacle(0, 0, "statue"));
+
+        doc.SetObstacle(2, 0, "rock");
+        doc.Erase(1, 0);
+        doc.Erase(2, 0);
+        Assert.All(doc.Definition.Map.Hexes, h => Assert.Equal((null, false, (int?)null), (h.Object, h.SightBlocker, h.PlayerStart)));
     }
 
     [Fact]
-    public void Editor_add_button_toggles_trees_and_rocks_and_clear_removes_them()
+    public void Editor_add_button_toggles_trees_and_rocks_and_erase_removes_any_object()
     {
         var cut = Render<MapEditor>(parameters => parameters.Add(component => component.ImageBaseUrl, Images));
         var add = () => cut.Find(".obstacle-button");
@@ -68,9 +73,13 @@ public sealed class ObstacleTests : BunitContext
         cut.Find("[data-hex='1,0']").Click();
         Assert.Equal("rock", cut.Find("[data-hex='1,0'] [data-obstacle]").GetAttribute("data-obstacle"));
 
-        cut.Find("[data-action='clear-obstacle']").Click();
+        cut.Find(".player-button").Click();
+        cut.Find("[data-hex='2,0']").Click();
+        cut.Find("[data-action='erase']").Click();
         cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-hex='2,0']").Click();
         Assert.Empty(cut.FindAll("[data-hex='0,0'] [data-obstacle]"));
+        Assert.Empty(cut.FindAll(".start-label"));
         Assert.Single(cut.FindAll("[data-obstacle='rock'] image"));
     }
 

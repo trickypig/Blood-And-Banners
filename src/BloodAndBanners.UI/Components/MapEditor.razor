@@ -66,24 +66,15 @@
                         </button>
                     }
                 </div>
-                <div class="toolbar-group" role="group" aria-label="Player starts">
-                    @foreach (var player in new[] { 1, 2, 3, 4, 0 })
-                    {
-                        var label = player == 0 ? "Remove player start" : $"Place player {player} start";
-                        <button type="button" class="icon-button player-button" data-player="@player" title="@label" aria-label="@label" disabled="@_busy"
-                                aria-pressed="@(_tool == "player" && _player == player ? "true" : "false")" @onclick="() => SelectPlayer(player)">
-                            @if (player == 0)
-                            {
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M5 4h14l-3 4 3 4H5m7 4 7 7m0-7-7 7" /></svg>
-                            }
-                            else { <span aria-hidden="true" style="--player-color: @StartColor(player)">@($"P{player}")</span> }
-                        </button>
-                    }
-                </div>
-                <div class="toolbar-group" role="group" aria-label="Obstacles">
+                <div class="toolbar-group" role="group" aria-label="Map objects">
                     @{
+                        var startLabel = $"Place player {_player} start. Click again to switch to player {NextPlayer}.";
                         var addLabel = $"Add {ObstacleArt.Display(_obstacle)}. Click again to switch to {ObstacleArt.Display(NextObstacle)}.";
                     }
+                    <button type="button" class="icon-button player-button" data-player="@_player" title="@startLabel" aria-label="@startLabel" disabled="@_busy"
+                            aria-pressed="@(_tool == "player" ? "true" : "false")" @onclick="SelectPlayer">
+                        <span aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
+                    </button>
                     <button type="button" class="icon-button obstacle-button" data-obstacle="@_obstacle" title="@addLabel" aria-label="@addLabel" disabled="@_busy"
                             aria-pressed="@(_tool == "obstacle" ? "true" : "false")" @onclick="SelectObstacle">
                         @if (CatalogImages.Resolve(ImageBaseUrl, ObstacleArt.ImagePath(_obstacle)) is { } obstaclePreview)
@@ -92,9 +83,9 @@
                         }
                         else { <span aria-hidden="true">@ObstacleArt.Display(_obstacle)[0]</span> }
                     </button>
-                    <button type="button" class="icon-button" data-action="clear-obstacle" title="Clear obstacles" aria-label="Clear obstacles" disabled="@_busy"
-                            aria-pressed="@(_tool == "clear-obstacle" ? "true" : "false")" @onclick="SelectClearObstacle">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("clear-obstacle")" /></svg>
+                    <button type="button" class="icon-button" data-action="erase" title="Erase objects (start positions and obstacles)" aria-label="Erase objects (start positions and obstacles)" disabled="@_busy"
+                            aria-pressed="@(_tool == "erase" ? "true" : "false")" @onclick="SelectErase">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("erase")" /></svg>
                     </button>
                 </div>
             </div>

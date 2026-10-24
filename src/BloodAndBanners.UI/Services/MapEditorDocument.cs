@@ -59,6 +59,8 @@ public sealed class MapEditorDocument
         Edit(q, r, h => kind is null ? WithoutObstacle(h) : h with { Object = kind, SightBlocker = true, PlayerStart = null });
     }
     // Older maps also block hexes with an art-less flag (crags) or a "statue" object; clearing removes those too.
+    /// <summary>Removes everything standing on the hex (start position and obstacle), leaving its terrain and height.</summary>
+    public void Erase(int q, int r) => Edit(q, r, h => WithoutObstacle(h) with { PlayerStart = null });
     private static ScenarioHex WithoutObstacle(ScenarioHex hex) =>
         hex.SightBlocker || ObstacleArt.IsObstacle(hex.Object) ? hex with { Object = null, SightBlocker = false } : hex;
     public void Clear()

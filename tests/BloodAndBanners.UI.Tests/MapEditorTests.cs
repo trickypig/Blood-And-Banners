@@ -24,7 +24,7 @@ public sealed class MapEditorTests : BunitContext
         var cut = Render<MapEditor>();
         Assert.Empty(cut.FindAll("[data-tool]"));
         Assert.NotNull(cut.Find("[data-height='raise']"));
-        Assert.NotNull(cut.Find("[data-player='4']"));
+        Assert.NotNull(cut.Find("[data-player='1']"));
         Assert.NotNull(cut.Find("[data-biome='water']"));
         cut.Find("[data-height='raise']").Click();
         cut.Find("[data-hex='0,0']").Click();
@@ -132,7 +132,10 @@ public sealed class MapEditorTests : BunitContext
     public void Player_tool_renders_the_selected_player_number()
     {
         var cut = Render<MapEditor>();
-        cut.Find("[data-player='2']").Click();
+        cut.Find(".player-button").Click();
+        Assert.Equal("1", cut.Find(".player-button").GetAttribute("data-player"));
+        cut.Find(".player-button").Click();
+        Assert.Equal("2", cut.Find(".player-button").GetAttribute("data-player"));
         cut.Find("[data-hex='0,0']").Click();
         Assert.Equal("P2", cut.Find("[data-hex='0,0'] .start-label").TextContent);
     }
@@ -150,11 +153,13 @@ public sealed class MapEditorTests : BunitContext
         cut.Find("[data-height='reset']").Click();
         cut.Find("[data-hex='0,0']").Click();
         Assert.Contains("Height: 0", cut.Find(".hex-info").TextContent);
-        cut.Find("[data-player='4']").Click();
+        for (var click = 0; click < 4; click++) cut.Find(".player-button").Click();
         cut.Find("[data-hex='0,0']").Click();
         Assert.Equal("P4", cut.Find("[data-hex='0,0'] .start-label").TextContent);
-        cut.Find("[data-player='0']").Click();
-        Assert.Equal("true", cut.Find("[data-player='0']").GetAttribute("aria-pressed"));
+        cut.Find(".player-button").Click();
+        Assert.Equal("1", cut.Find(".player-button").GetAttribute("data-player"));
+        cut.Find("[data-action='erase']").Click();
+        Assert.Equal("true", cut.Find("[data-action='erase']").GetAttribute("aria-pressed"));
         cut.Find("[data-hex='0,0']").Click();
         Assert.Empty(cut.FindAll(".start-label"));
     }

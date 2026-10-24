@@ -59,14 +59,19 @@ public partial class MapEditor : IAsyncDisposable
         });
     }
     private void SelectHeight(string action) { _tool = "height"; _heightAction = action; _status = ""; }
-    private void SelectPlayer(int player) { _tool = "player"; _player = player; _status = ""; }
+    private int NextPlayer => _player % 4 + 1;
+    private void SelectPlayer()
+    {
+        if (_tool == "player") _player = NextPlayer;
+        _tool = "player"; _status = "";
+    }
     private string NextObstacle => ObstacleArt.Kinds[(ObstacleArt.Kinds.ToList().IndexOf(_obstacle) + 1) % ObstacleArt.Kinds.Count];
     private void SelectObstacle()
     {
         if (_tool == "obstacle") _obstacle = NextObstacle;
         _tool = "obstacle"; _status = "";
     }
-    private void SelectClearObstacle() { _tool = "clear-obstacle"; _status = ""; }
+    private void SelectErase() { _tool = "erase"; _status = ""; }
     private void ChangeZoom(string action) { _status = ""; if (action == "zoom-reset") _zoom = 1; else Zoom(action == "zoom-in" ? .1 : -.1); }
     private static string IconPath(string action) => action switch
     {
@@ -81,12 +86,12 @@ public partial class MapEditor : IAsyncDisposable
         "reset" => "M4 19h16M5 9a7 7 0 1 1 2 6M5 3v6h6",
         "zoom-in" => "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6M6 10h8m-4-4v8",
         "zoom-out" => "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6M6 10h8",
-        "clear-obstacle" => "M9 20H4l-1-4L14 5l6 6-9 9m-6-8 6 6m5 2h6",
+        "erase" => "M9 20H4l-1-4L14 5l6 6-9 9m-6-8 6 6m5 2h6",
         _ => "M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5M9 12h6"
     };
     private readonly Dictionary<string, string> _terrains = TerrainArt.BiomeNames.ToDictionary(b => b, b => TerrainArt.Terrains(b)[0]);
     private string _tool = "paint", _biome = "plains", _heightAction = "raise", _obstacle = ObstacleArt.Kinds[0];
-    private int _player, _columns = 15, _rows = 10;
+    private int _player = 1, _columns = 15, _rows = 10;
     private double _zoom = 1;
     private bool _busy, _conflict, _disposed;
     private string? _error, _accountId;
@@ -202,9 +207,9 @@ public partial class MapEditor : IAsyncDisposable
         _status = "";
         _document.Select(q, r);
         if (_tool == "paint") _document.Paint(q, r, _biome, _terrains[_biome]);
-        else if (_tool == "player") _document.SetPlayerStart(q, r, _player == 0 ? null : _player);
+        else if (_tool == "player") _document.SetPlayerStart(q, r, _player);
         else if (_tool == "obstacle") _document.SetObstacle(q, r, _obstacle);
-        else if (_tool == "clear-obstacle") _document.SetObstacle(q, r, null);
+        else if (_tool == "erase") _document.Erase(q, r);
         else if (_heightAction == "reset") _document.ResetHeight(q, r);
         else _document.AdjustHeight(q, r, _heightAction == "raise" ? 1 : -1);
     }
