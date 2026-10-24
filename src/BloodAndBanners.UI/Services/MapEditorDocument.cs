@@ -44,13 +44,23 @@ public sealed class MapEditorDocument
         if (player is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(player));
         if (!Definition.Map.Hexes.Any(h => h.Q == q && h.R == r)) return;
         Select(q, r);
-        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? h with { PlayerStart = player }
+        // Units deploy around a start, so a start clears any obstacle from its hex.
+        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? (player is null ? h : WithoutObstacle(h)) with { PlayerStart = player }
             : player is not null && h.PlayerStart == player ? h with { PlayerStart = null } : h).ToList();
         if (!hexes.SequenceEqual(Definition.Map.Hexes))
         {
             Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
         }
     }
+    /// <summary>Places a tree or rock obstacle (blocking movement and sight), replacing any start there; null clears the hex's blocker.</summary>
+    public void SetObstacle(int q, int r, string? kind)
+    {
+        if (kind is not null && !ObstacleArt.IsObstacle(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        Edit(q, r, h => kind is null ? WithoutObstacle(h) : h with { Object = kind, SightBlocker = true, PlayerStart = null });
+    }
+    // Older maps also block hexes with an art-less flag (crags) or a "statue" object; clearing removes those too.
+    private static ScenarioHex WithoutObstacle(ScenarioHex hex) =>
+        hex.SightBlocker || ObstacleArt.IsObstacle(hex.Object) ? hex with { Object = null, SightBlocker = false } : hex;
     public void Clear()
     {
         var hexes = Definition.Map.Hexes.Select(h => h with { Biome = "plains", Terrain = "grass", Elevation = 0, PlayerStart = null }).ToList();

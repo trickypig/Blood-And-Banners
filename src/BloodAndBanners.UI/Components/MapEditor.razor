@@ -80,6 +80,23 @@
                         </button>
                     }
                 </div>
+                <div class="toolbar-group" role="group" aria-label="Obstacles">
+                    @{
+                        var addLabel = $"Add {ObstacleArt.Display(_obstacle)}. Click again to switch to {ObstacleArt.Display(NextObstacle)}.";
+                    }
+                    <button type="button" class="icon-button obstacle-button" data-obstacle="@_obstacle" title="@addLabel" aria-label="@addLabel" disabled="@_busy"
+                            aria-pressed="@(_tool == "obstacle" ? "true" : "false")" @onclick="SelectObstacle">
+                        @if (CatalogImages.Resolve(ImageBaseUrl, ObstacleArt.ImagePath(_obstacle)) is { } obstaclePreview)
+                        {
+                            <img src="@obstaclePreview" alt="" draggable="false" />
+                        }
+                        else { <span aria-hidden="true">@ObstacleArt.Display(_obstacle)[0]</span> }
+                    </button>
+                    <button type="button" class="icon-button" data-action="clear-obstacle" title="Clear obstacles" aria-label="Clear obstacles" disabled="@_busy"
+                            aria-pressed="@(_tool == "clear-obstacle" ? "true" : "false")" @onclick="SelectClearObstacle">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("clear-obstacle")" /></svg>
+                    </button>
+                </div>
             </div>
         </div>
         <div class="editor-statusbar">
@@ -91,7 +108,7 @@
             <div class="hex-info"><strong>Selected hex:</strong>
                 @if (_document.SelectedHex is { } selected)
                 {
-                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")</span>
+                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (ObstacleArt.IsObstacle(selected.Object)) { <text> &middot; Obstacle: @ObstacleArt.Display(selected.Object!)</text> } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
                 }
                 else { <span>None</span> }
             </div>
@@ -115,7 +132,7 @@
                         var hex = tile.Hex;
                         <g @key="(hex.Q, hex.R)" role="button" tabindex="0" data-hex="@($"{hex.Q},{hex.R}")"
                            class="editor-hex @(_document.Selection == (hex.Q, hex.R) ? "selected" : "")"
-                           aria-label="@($"Hex {hex.Q}, {hex.R}, {hex.Biome} {hex.Terrain}, height {hex.Elevation}")"
+                           aria-label="@($"Hex {hex.Q}, {hex.R}, {hex.Biome} {hex.Terrain}, height {hex.Elevation}{(ObstacleArt.IsObstacle(hex.Object) ? $", {hex.Object}" : "")}")"
                            aria-disabled="@(_busy ? "true" : "false")" @onclick="() => Edit(hex.Q, hex.R)"
                            @onkeydown="e => HexKey(e, hex.Q, hex.R)">
                             <HexTerrain Tile="tile" PatternId="@TerrainArt.PatternId(hex, "editor-terrain-")" />
@@ -129,6 +146,7 @@
                                 <circle class="start-marker" cx="@Num(tile.X)" cy="@Num(tile.Y + 10)" r="13" fill="@StartColor(start)" />
                                 <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
                             }
+                            <HexObstacle Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
                         </g>
                     }
                 </svg>

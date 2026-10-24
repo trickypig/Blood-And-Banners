@@ -38,6 +38,8 @@ public sealed record HexProjection(
     string? OccupantId)
 {
     public int? PlayerStart { get; init; }
+    /// <summary>The map object on the hex, such as a "tree" or "rock" obstacle.</summary>
+    public string? Object { get; init; }
 }
 
 public sealed record TurnProjection(

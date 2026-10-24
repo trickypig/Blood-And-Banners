@@ -4,6 +4,7 @@ declare(strict_types=1);
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Board;
+use BloodAndBanners\Rules\Vanilla\Combat;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Movement;
 use BloodAndBanners\Rules\Vanilla\Forced;
@@ -162,6 +163,27 @@ function vanilla_terrain_tests(): array
                 $ordinaryEvents
             );
             expect_same(1, count($ordinaryEvents[0]['payload']['defenseFaces']), 'fire should not modify an ordinary defender');
+        },
+
+        'tree and rock obstacles block movement and sight even for flyers' => static function (): void {
+            foreach (Board::OBSTACLES as $obstacle) {
+                $hexes = [];
+                for ($q = 0; $q < 5; $q++) {
+                    $hexes[] = [
+                        'q' => $q, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0,
+                        'object' => $q === 2 ? $obstacle : null, 'sightBlocker' => false,
+                    ];
+                }
+                $board = Board::fromScenario(['map' => ['hexes' => $hexes]]);
+                expect_same(true, $board['2,0']['sightBlocker'], "a {$obstacle} blocks its hex without the flag");
+                $state = vanilla_battle($board, [
+                    terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 4]),
+                    vanilla_unit('b1', 'seat-b', '4,0'),
+                ]);
+                $destinations = array_column(Movement::options($state, 'a1', 4), 'destination');
+                expect_same(['1,0'], $destinations, "a flyer can neither enter nor pass a {$obstacle}");
+                expect_same(false, Combat::visible($state, '0,0', '4,0'), "a {$obstacle} blocks line of sight");
+            }
         },
 
         'canonical options apply water costs stops and climb rules' => static function (): void {
