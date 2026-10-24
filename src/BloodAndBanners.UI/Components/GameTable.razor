@@ -1851,7 +1851,7 @@
     private string HexLabel(HexProjection hex, UnitProjection? unit) =>
         $"{Title(hex.Biome)} {hex.Terrain}, elevation {hex.Elevation}" +
         (ProjectedHazardAt(HexKey(hex)) is not { } hazard ? string.Empty : $", {HazardLabel(hazard)}") +
-        (ObstacleArt.IsObstacle(hex.Object) ? $", blocked by {(hex.Object == "tree" ? "trees" : "rocks")}" : string.Empty) +
+        (ObstacleArt.IsObstacle(hex.Object) ? $", blocked by {ObstacleArt.Display(hex.Object!).ToLowerInvariant()}" : string.Empty) +
         (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
         (unit is null || unit.Effects.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Effects.Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {effect.Stat}"))) +
         (unit is null || unit.Conditions.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Conditions.Select(ConditionLabel))) +

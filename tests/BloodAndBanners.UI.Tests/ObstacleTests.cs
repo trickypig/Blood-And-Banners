@@ -20,9 +20,10 @@ public sealed class ObstacleTests : BunitContext
     [Fact]
     public void Each_hex_picks_a_stable_image_and_every_image_gets_used()
     {
-        var picks = Enumerable.Range(0, 10).SelectMany(q => Enumerable.Range(0, 10).Select(r => ObstacleArt.Variant(q, r))).ToList();
+        var picks = Enumerable.Range(0, 10).SelectMany(q => Enumerable.Range(0, 10).Select(r => ObstacleArt.Variant("tree", q, r))).ToList();
         Assert.Equal([1, 2, 3, 4], picks.Distinct().Order());
-        Assert.Equal(ObstacleArt.Variant(3, 5), ObstacleArt.Variant(3, 5));
+        Assert.Equal(ObstacleArt.Variant("rock", 3, 5), ObstacleArt.Variant("rock", 3, 5));
+        Assert.Equal("images/obstacles/shrine-1.png", ObstacleArt.ImagePath("shrine", 3, 5));
         Assert.Equal("images/obstacles/rock-2.png", ObstacleArt.ImagePath("rock", 2));
         Assert.Null(ObstacleArt.ImagePath("statue", 1));
     }
@@ -72,6 +73,15 @@ public sealed class ObstacleTests : BunitContext
         Assert.StartsWith($"{Images}images/obstacles/rock-", add().QuerySelector("img")!.GetAttribute("src"));
         cut.Find("[data-hex='1,0']").Click();
         Assert.Equal("rock", cut.Find("[data-hex='1,0'] [data-obstacle]").GetAttribute("data-obstacle"));
+
+        add().Click();
+        Assert.Equal("shrine", add().GetAttribute("data-obstacle"));
+        cut.Find("[data-hex='3,0']").Click();
+        Assert.Contains("Obstacle: Shrines", cut.Find(".hex-info").TextContent);
+        add().Click();
+        Assert.Equal("tree", add().GetAttribute("data-obstacle"));
+        cut.Find("[data-action='erase']").Click();
+        cut.Find("[data-hex='3,0']").Click();
 
         cut.Find(".player-button").Click();
         cut.Find("[data-hex='2,0']").Click();

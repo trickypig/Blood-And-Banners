@@ -52,7 +52,7 @@ public sealed class MapEditorDocument
             Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
         }
     }
-    /// <summary>Places a tree or rock obstacle (blocking movement and sight), replacing any start there; null clears the hex's blocker.</summary>
+    /// <summary>Places a tree, rock or shrine obstacle (blocking movement and sight), replacing any start there; null clears the hex's blocker.</summary>
     public void SetObstacle(int q, int r, string? kind)
     {
         if (kind is not null && !ObstacleArt.IsObstacle(kind)) throw new ArgumentOutOfRangeException(nameof(kind));

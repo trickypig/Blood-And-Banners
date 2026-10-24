@@ -1,2 +1,3 @@
 .hex-obstacle { pointer-events: none; }
 .obstacle-shadow { fill: #000; fill-opacity: .3; }
+.obstacle-shrine image { image-rendering: pixelated; }

@@ -165,7 +165,7 @@ function vanilla_terrain_tests(): array
             expect_same(1, count($ordinaryEvents[0]['payload']['defenseFaces']), 'fire should not modify an ordinary defender');
         },
 
-        'tree and rock obstacles block movement and sight even for flyers' => static function (): void {
+        'every obstacle kind blocks movement and sight even for flyers' => static function (): void {
             foreach (Board::OBSTACLES as $obstacle) {
                 $hexes = [];
                 for ($q = 0; $q < 5; $q++) {

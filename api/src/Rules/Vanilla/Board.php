@@ -6,7 +6,7 @@ namespace BloodAndBanners\Rules\Vanilla;
 final class Board
 {
     /** Map objects that fill their hex: nothing may enter it (flying units included) or see through it. */
-    public const OBSTACLES = ['tree', 'rock'];
+    public const OBSTACLES = ['tree', 'rock', 'shrine'];
 
     /** Whether a scenario hex blocks movement and sight, either by its flag or by holding an obstacle. */
     public static function blocks(array $hex): bool
