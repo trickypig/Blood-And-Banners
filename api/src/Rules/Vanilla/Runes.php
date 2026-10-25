@@ -35,7 +35,7 @@ final class Runes
     {
         $found = [];
         foreach ($state['board'] as $key => $tile) {
-            $kind = $tile['object'] ?? null;
+            $kind = Board::renamed(isset($tile['object']) ? (string)$tile['object'] : null);
             if ($kind !== null && isset(self::KINDS[$kind]) && Hex::distance((string)$key, $hex) <= self::radius($tile) - 1) {
                 $found[$kind] = true;
             }

@@ -148,5 +148,11 @@ function potion_tests(): array
             expect_same(null, \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['object' => null]]), 'drunk in play');
             expect_same('rune-of-focus', \BloodAndBanners\Rules\Vanilla\Board::projectedObject(['q' => 0, 'r' => 0, 'object' => 'rune-of-magic'], null), 'renamed');
         },
+
+        'a board tile from before tiles carried objects falls back to the map, and an old rune name is renamed' => static function (): void {
+            $hex = ['q' => 2, 'r' => 0, 'object' => 'speed-potion'];
+            expect_same('speed-potion', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['elevation' => 0]]), 'no object key: the map');
+            expect_same('rune-of-focus', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['object' => 'rune-of-magic']]), 'stored old name');
+        },
     ];
 }

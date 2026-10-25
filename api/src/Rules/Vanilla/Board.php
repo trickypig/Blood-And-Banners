@@ -37,7 +37,12 @@ final class Board
     /** The scenario hex's object, with renamed legacy ids read as their new names. */
     public static function objectKind(array $hex): ?string
     {
-        $kind = isset($hex['object']) ? (string)$hex['object'] : null;
+        return self::renamed(isset($hex['object']) ? (string)$hex['object'] : null);
+    }
+
+    /** A map object kind under its current id: old saved names read as their replacements. */
+    public static function renamed(?string $kind): ?string
+    {
         return $kind === null ? null : (self::RENAMED[$kind] ?? $kind);
     }
 
@@ -45,7 +50,10 @@ final class Board
     public static function projectedObject(array $hex, ?array $board): ?string
     {
         $key = Hex::key((int)$hex['q'], (int)$hex['r']);
-        return $board !== null && isset($board[$key]) ? ($board[$key]['object'] ?? null) : self::objectKind($hex);
+        if ($board !== null && isset($board[$key]) && array_key_exists('object', $board[$key])) {
+            return self::renamed($board[$key]['object'] === null ? null : (string)$board[$key]['object']);
+        }
+        return self::objectKind($hex);
     }
 
     public static function fromScenario(array $definition): array

@@ -24,6 +24,10 @@ function rune_battle(array $units, array $runes): array
 function rune_tests(): array
 {
     return [
+        'a rune-of-magic board tile still gives the Rune of Focus bonus' => static function (): void {
+            $state = rune_battle([], ['0,0' => ['rune-of-magic', 1]]);
+            expect_same(['rune-of-focus'], Runes::coveringKinds($state, '0,0'), 'old name read as focus');
+        },
         'a rune reaches radius minus one hexes, whatever the height' => static function (): void {
             $state = rune_battle([], ['0,0' => ['rune-of-warding', 1]]);
             expect_same(['rune-of-warding'], Runes::coveringKinds($state, '0,0'), 'radius 1 is its own hex');
