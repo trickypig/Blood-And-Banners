@@ -249,4 +249,22 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal(7, cut.FindAll("[data-rune-area='rune-of-focus']").Count);
         Assert.Contains("Radius: 2", cut.Find(".hex-info").TextContent);
     }
+
+    [Fact]
+    public void Rune_areas_are_tinted_on_the_battlefield()
+    {
+        var fixture = BattleFixtures.Projection();
+        var rune = fixture.Board.Hexes.First(hex => hex.OccupantId is null);
+        var runeKey = $"{rune.Q},{rune.R}";
+        var hexes = fixture.Board.Hexes.Select(hex => hex == rune ? hex with { Object = "rune-of-warding", Radius = 2 } : hex).ToList();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, fixture with { Board = fixture.Board with { Hexes = hexes } })
+            .Add(component => component.ImageBaseUrl, Images));
+
+        var tinted = cut.FindAll("[data-rune-area='rune-of-warding']");
+        var expected = hexes.Count(hex => HexMath.Distance($"{hex.Q},{hex.R}", runeKey) <= 1);
+        Assert.Equal(expected, tinted.Count);
+        var markup = cut.Markup;
+        Assert.True(markup.IndexOf("data-rune-area", StringComparison.Ordinal) < markup.IndexOf("unit-token", StringComparison.Ordinal), "the tint is beneath the units");
+    }
 }

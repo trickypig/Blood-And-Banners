@@ -272,4 +272,12 @@ public sealed class CombatLogFormatterTests
             "Round 3: Lord Ashfang's turn.",
             CombatLogFormatter.Describe(Event("turnEnded", """{"seatId":"seat-red","nextSeatId":"seat-blue","round":3}"""), projection));
     }
+
+    [Fact]
+    public void Drinking_a_potion_names_the_unit_and_the_potion()
+    {
+        var payload = JsonSerializer.Serialize(new { unitId = "s1-u3", seatId = "seat-red", hex = "4,4", kind = "speed-potion" });
+        var line = CombatLogFormatter.Describe(Event("potionDrunk", payload), BattleFixtures.Projection());
+        Assert.EndsWith("drinks a Speed Potion.", line);
+    }
 }

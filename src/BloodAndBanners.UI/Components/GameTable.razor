@@ -186,6 +186,10 @@
                         <ellipse class="crystal-ring @SeatClass(controller)" data-controlled-by="@controller"
                                  cx="@Num(tile.X)" cy="@Num(tile.Y + HexHalfHeight * .5)" rx="@Num(BoardLayout.Size * .55)" ry="@Num(BoardLayout.Size * .2)" />
                     }
+                    @if (boardIndex.RuneAreaByKey.TryGetValue(key, out var runeKinds))
+                    {
+                        <RuneAreaTint Tile="tile" Kinds="runeKinds" />
+                    }
                     <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
                     @if (_view.Push.Contains(key))
                     {
@@ -1510,6 +1514,7 @@
         public required Dictionary<string, string> OccupiedHex { get; init; }
         public required Dictionary<string, UnitProjection> UnitById { get; init; }
         public required Dictionary<string, MovementHazardProjection> ProjectedHazards { get; init; }
+        public required IReadOnlyDictionary<string, IReadOnlyList<string>> RuneAreaByKey { get; init; }
 
         public static BoardIndex For(GameTable owner)
         {
@@ -1555,6 +1560,7 @@
                 OccupiedHex = occupiedHex,
                 UnitById = unitById,
                 ProjectedHazards = projectedHazards,
+                RuneAreaByKey = RuneAreas.Of(projection.Board.Hexes),
             };
         }
     }

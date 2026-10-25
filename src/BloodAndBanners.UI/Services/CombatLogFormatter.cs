@@ -36,6 +36,7 @@ public static class CombatLogFormatter
             "armiesPlaced" => "Both armies take the field.",
             "unitMoved" => Moved(projection, payload),
             "crystalClaimed" => CrystalClaimed(projection, payload),
+            "potionDrunk" => $"{Unit(projection, Text(payload, "unitId"))} drinks a {MapObjectArt.Display(Text(payload, "kind"))}.",
             "attackResolved" => Attack(projection, payload),
             "attackRedirected" => payload.TryGetProperty("targetUnitId", out var redirected) && redirected.ValueKind == JsonValueKind.String
                 ? $"Pan Pipes forces {Unit(projection, Text(payload, "unitId"))} to attack {Unit(projection, redirected.GetString()!)} instead."
