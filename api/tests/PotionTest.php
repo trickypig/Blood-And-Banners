@@ -141,5 +141,12 @@ function potion_tests(): array
             expect_same(1, count($mine), 'a single Power Potion effect');
             expect_same(3, $mine[0]['turns'], 'reset to three');
         },
+
+        'the projected board shows the live object, so a drunk potion disappears' => static function (): void {
+            $hex = ['q' => 2, 'r' => 0, 'object' => 'speed-potion'];
+            expect_same('speed-potion', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, null), 'no game yet: the map\'s object');
+            expect_same(null, \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['object' => null]]), 'drunk in play');
+            expect_same('rune-of-focus', \BloodAndBanners\Rules\Vanilla\Board::projectedObject(['q' => 0, 'r' => 0, 'object' => 'rune-of-magic'], null), 'renamed');
+        },
     ];
 }

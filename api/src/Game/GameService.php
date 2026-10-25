@@ -1246,7 +1246,7 @@ final class GameService
         }
         return self::mapProjection($definition, static fn(array $hex): ?string => $state !== null
             ? ($occupants["{$hex['q']},{$hex['r']}"] ?? null)
-            : (isset($hex['piece']) ? (string)$hex['piece'] : null), $state['crystals'] ?? []);
+            : (isset($hex['piece']) ? (string)$hex['piece'] : null), $state['crystals'] ?? [], $state['board'] ?? null);
     }
 
     /** A built-in scenario's empty board, for previewing the battlefield before a game exists. */
@@ -1255,7 +1255,7 @@ final class GameService
         return self::mapProjection($this->scenarios->builtInDefinition($scenarioName), static fn(): ?string => null);
     }
 
-    private static function mapProjection(array $definition, callable $occupant, array $crystals = []): array
+    private static function mapProjection(array $definition, callable $occupant, array $crystals = [], ?array $board = null): array
     {
         return [
             'columns' => (int)$definition['map']['columns'],
@@ -1268,8 +1268,9 @@ final class GameService
                 'elevation' => (int)$hex['elevation'],
                 'sightBlocker' => Board::blocksSight($hex),
                 'impassable' => Board::blocksMovement($hex),
-                'object' => isset($hex['object']) ? (string)$hex['object'] : null,
+                'object' => Board::projectedObject($hex, $board),
                 'controlledBy' => isset($crystals["{$hex['q']},{$hex['r']}"]) ? (string)$crystals["{$hex['q']},{$hex['r']}"] : null,
+                'radius' => in_array(Board::objectKind($hex), Board::NEXUS_POINTS, true) ? (int)($hex['radius'] ?? 1) : null,
                 'occupantId' => $occupant($hex),
                 'playerStart' => isset($hex['playerStart']) ? (int)$hex['playerStart'] : null,
             ], $definition['map']['hexes']),

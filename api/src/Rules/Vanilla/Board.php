@@ -41,6 +41,13 @@ final class Board
         return $kind === null ? null : (self::RENAMED[$kind] ?? $kind);
     }
 
+    /** What a projected hex shows: the live board's object once a game is in play (potions get drunk), else the map's. */
+    public static function projectedObject(array $hex, ?array $board): ?string
+    {
+        $key = Hex::key((int)$hex['q'], (int)$hex['r']);
+        return $board !== null && isset($board[$key]) ? ($board[$key]['object'] ?? null) : self::objectKind($hex);
+    }
+
     public static function fromScenario(array $definition): array
     {
         $board = [];
