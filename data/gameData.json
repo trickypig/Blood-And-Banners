@@ -1791,7 +1791,7 @@
             "name": "Fire Crystal",
             "biome": "Lava",
             "rarity": "rare",
-            "image": "/images/objects/fire_crystal.png",
+            "image": "/images/landmarks/fire-crystal-1.png",
             "description": "A glowing crystal of pure flame essence",
             "benefit": {
                 "name": "Essence of Flame",
@@ -1805,28 +1805,28 @@
             "name": "Forest Crystal",
             "biome": "Forest",
             "rarity": "rare",
-            "image": "/images/objects/forest_crystal.png",
+            "image": "/images/landmarks/forest-crystal-1.png",
             "description": "A living crystal pulsing with nature's energy",
             "benefit": {
                 "name": "Essence of Nature",
-                "type": "AttackBonus",
-                "value": 2,
-                "target": "Water Creatures",
-                "description": "+4 Defense when defending against Water attacks"
+                "type": "DefenseBonus",
+                "value": 4,
+                "target": "Water Attacks",
+                "description": "+4 Defense when defending against water attacks"
             }
         },
         {
-            "name": "Water Crystal",
-            "biome": "River",
+            "name": "Ice Crystal",
+            "biome": "Ice",
             "rarity": "rare",
-            "image": "/images/objects/water_crystal.png",
-            "description": "A crystalline structure flowing with aquatic magic",
+            "image": "/images/landmarks/ice-crystal-1.png",
+            "description": "A shard of frozen winter that never thaws",
             "benefit": {
-                "name": "Essence of Water",
-                "type": "AttackBonus",
-                "value": 2,
-                "target": "Fire and Lava Creatures",
-                "description": "+1 Power when attacking Lava or Fire biome creatures. +2 Defense when defending against Fire attacks"
+                "name": "Essence of Frost",
+                "type": "AttackAndDefenseBonus",
+                "value": 1,
+                "target": "Lava Creatures and Fire Attacks",
+                "description": "+1 Power when attacking Lava biome creatures. +2 Defense when defending against fire attacks"
             }
         }
     ]

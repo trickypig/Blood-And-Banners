@@ -652,6 +652,8 @@
             margin-bottom: 20px;
         }
 
+        .object-image { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
+
         .object-card {
             background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,0,0,0.4));
             border: 3px solid #d4af37;
@@ -1141,6 +1143,7 @@
                     <li><a href="#unit-conditions" onclick="selectSubsection(event, 'unit-conditions')">Unit Conditions</a></li>
                     <li><a href="#combat" onclick="selectSubsection(event, 'combat')">Combat</a></li>
                     <li><a href="#unit-statistics" onclick="selectSubsection(event, 'unit-statistics')">Unit Statistics</a></li>
+                    <li><a href="#map-objects" onclick="selectSubsection(event, 'map-objects')">Map Objects</a></li>
                     <li><a href="#terrain-objects-rules" onclick="selectSubsection(event, 'terrain-objects-rules')">Terrain Objects</a></li>
                 </ul>
             </li>
@@ -1492,23 +1495,41 @@
             </div>
 
             <div class="section">
+                <h2 id="map-objects">Map Objects</h2>
+                <div class="rule-item">
+                    <p>Each hex holds at most one thing: a starting position or one map object.</p>
+                    <ul>
+                        <li><strong>Obstacles</strong> (trees, rocks) fill their hex. Nothing may enter or pass through it, flying units included, and they block line of sight.</li>
+                        <li><strong>Landmarks</strong> (shrines and crystals) fill their hex. Nothing may enter or pass through it, flying units included, but units can see and attack past them.</li>
+                        <li><strong>Nexus Points</strong> (Rune of Magic, Rune of Strength, Rune of Warding) block nothing; a unit may stand on one. Their powers are not yet in play.</li>
+                        <li><strong>Items</strong> (Power, Speed and Health Potions) block nothing; a unit may stand on one. Picking them up is not yet in play.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
                 <h2 id="terrain-objects-rules">Terrain Objects</h2>
                 <div class="rule-item">
-                    <div class="rule-title">Capturing Objects</div>
-                    <p>Special objects are scattered throughout the battlefield. A unit captures a Terrain Object by moving onto its hex. Once captured, the controlling player gains the object's benefits immediately.</p>
+                    <div class="rule-title">Claiming Crystals</div>
+                    <p>Fire, Forest and Ice Crystals are landmarks that can be claimed. When one of your units finishes its move on a hex next to a crystal, it claims that crystal for you if:</p>
+                    <ul>
+                        <li>the unit is not engaged (no enemy unit next to it within one level of height), and</li>
+                        <li>no enemy unit is next to the crystal.</li>
+                    </ul>
+                    <p>Only a unit's own move claims a crystal; being pushed, teleported or thrown next to one does not. The Void Lord can never claim crystals.</p>
                 </div>
                 <div class="rule-item">
-                    <div class="rule-title">Object Benefits</div>
-                    <p>Each object provides a specific benefit to its controlling player:</p>
+                    <div class="rule-title">Crystal Benefits</div>
+                    <p>Every unit you control gets the benefit of each crystal you control. Benefits stack: two Fire Crystals give +4 Power.</p>
                     <ul>
-                        <li><strong>Fire Crystal (Lava Biome):</strong> +2 Power when attacking Forest biome creatures</li>
-                        <li><strong>Forest Crystal (Forest Biome):</strong> +4 Defense when defending against Water attacks</li>
-                        <li><strong>Water Crystal (River Biome):</strong> +1 Power when attacking Lava or Fire biome creatures. +2 Defense when defending against Fire attacks</li>
+                        <li><strong>Fire Crystal:</strong> +2 Power when attacking Forest biome creatures</li>
+                        <li><strong>Forest Crystal:</strong> +4 Defense when defending against water attacks (attacks by River creatures, Water Twister and Aquatic Surge)</li>
+                        <li><strong>Ice Crystal:</strong> +1 Power when attacking Lava biome creatures. +2 Defense when defending against fire attacks (attacks by Lava creatures, and fire attacks such as Fireball, Flame Strike and dragon breath)</li>
                     </ul>
                 </div>
                 <div class="rule-item">
-                    <div class="rule-title">Losing Control</div>
-                    <p>If a unit controlling an object is defeated or moves away from the object's hex, that player loses the object's benefits. The object remains on the battlefield until captured by another unit.</p>
+                    <div class="rule-title">Keeping Control</div>
+                    <p>You keep a crystal for the rest of the game, even if your units move away or are defeated, until another player claims it — including an ally in Co-op.</p>
                 </div>
             </div>
         </div>
@@ -1556,7 +1577,7 @@
         <div id="objects-tab" class="tab-content">
             <div class="section">
                 <h2 id="terrain-objects-full">Terrain Objects</h2>
-                <p class="lore-text">Special objects are scattered throughout the battlefield. A player may capture an object by moving a unit onto an adjacent hex. If there are no enemy units adjacent to the object or the capturing unit, that unit now controls the object. The capturing player gains the benefits of the object immediately. That player now controls the object as long as they have a friendly unit adjacent to the object.</p>
+                <p class="lore-text">Crystals are landmarks scattered across the battlefield. Finish a unit's move next to one, while that unit is not engaged and no enemy stands beside the crystal, and you claim it. You keep it until another player claims it, and every unit you control gains its benefit.</p>
                 <div id="objects-container"></div>
             </div>
         </div>
@@ -2177,6 +2198,7 @@
                 objectCard.className = 'object-card';
 
                 objectCard.innerHTML = `
+                    ${obj.image ? `<img src="${obj.image}" alt="" class="object-image">` : ''}
                     <div class="object-name">${obj.name}</div>
                     <div class="object-biome">${obj.biome} Biome • ${obj.rarity}</div>
                     <div class="object-description">${obj.description}</div>
@@ -2284,6 +2306,7 @@
                 'unit-conditions': 'rules',
                 'combat': 'rules',
                 'unit-statistics': 'rules',
+                'map-objects': 'rules',
                 'terrain-objects-rules': 'rules',
                 'heroes': 'heroes',
                 'armies': 'armies',
@@ -2372,6 +2395,7 @@
                 'unit-conditions': 'rules',
                 'combat': 'rules',
                 'unit-statistics': 'rules',
+                'map-objects': 'rules',
                 'terrain-objects-rules': 'rules',
                 'heroes': 'heroes',
                 'armies': 'armies',
@@ -2420,7 +2444,7 @@
         function updateFloatingMenuActive() {
             // Define subsections for each tab (includes dynamically loaded ones)
             const tabSubsections = {
-                'rules': ['game-overview', 'setup', 'victory-conditions', 'turn-structure', 'movement', 'unit-conditions', 'combat', 'unit-statistics', 'terrain-objects-rules'],
+                'rules': ['game-overview', 'setup', 'victory-conditions', 'turn-structure', 'movement', 'unit-conditions', 'combat', 'unit-statistics', 'map-objects', 'terrain-objects-rules'],
                 'heroes': ['heroes'],
                 'armies': window.armySubsections || ['armies'],
                 'biomes': window.biomeSubsections || ['biomes-monsters'],
