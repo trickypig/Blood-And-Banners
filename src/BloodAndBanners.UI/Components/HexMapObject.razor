@@ -24,10 +24,10 @@
         }
         else if (category == "nexus")
         {
-            // Set into the ground at the hex's centre with a soft glow; a unit standing here is drawn over it.
-            var size = BoardLayout.Size * .75;
-            <ellipse class="nexus-glow" cx="@Num(Tile.X)" cy="@Num(Tile.Y + halfHeight * .1)" rx="@Num(BoardLayout.Size * .55)" ry="@Num(BoardLayout.Size * .3)" />
-            <image href="@image" x="@Num(Tile.X - size / 2)" y="@Num(Tile.Y + halfHeight * .2 - size)" width="@Num(size)" height="@Num(size)" />
+            // Set into the ground filling most of the hex with a wide glow, so it reads at a glance; a unit standing here is drawn over it.
+            var size = BoardLayout.Size * 1.55;
+            <ellipse class="nexus-glow" cx="@Num(Tile.X)" cy="@Num(Tile.Y + halfHeight * .3)" rx="@Num(BoardLayout.Size * .85)" ry="@Num(BoardLayout.Size * .45)" />
+            <image href="@image" x="@Num(Tile.X - size / 2)" y="@Num(Tile.Y + halfHeight * .75 - size)" width="@Num(size)" height="@Num(size)" />
         }
         else
         {

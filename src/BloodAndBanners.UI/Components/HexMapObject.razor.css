@@ -1,4 +1,4 @@
 .hex-map-object { pointer-events: none; }
 .map-object-shadow { fill: #000; fill-opacity: .3; }
-.nexus-glow { fill: #9fd8ff; fill-opacity: .35; filter: blur(3px); }
+.nexus-glow { fill: #9fd8ff; fill-opacity: .45; filter: blur(4px); }
 .map-object-shrine image { image-rendering: pixelated; }
