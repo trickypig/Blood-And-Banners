@@ -9,9 +9,12 @@ final class Board
     public const OBSTACLES = ['tree', 'rock'];
     /** Landmarks fill their hex for movement (flying included) but can be seen past. */
     public const LANDMARKS = ['shrine', 'fire-crystal', 'forest-crystal', 'ice-crystal'];
-    /** Nexus points and items block nothing; a unit may stand on them. They have no rules effect yet. */
-    public const NEXUS_POINTS = ['rune-of-magic', 'rune-of-strength', 'rune-of-warding'];
+    /** Nexus points (runes) block nothing; a unit may stand on them. Their auras are in Runes. */
+    public const NEXUS_POINTS = ['rune-of-focus', 'rune-of-strength', 'rune-of-warding'];
+    /** Items (potions) block nothing; a player unit that comes to rest on one drinks it (Potions). */
     public const ITEMS = ['power-potion', 'speed-potion', 'health-potion'];
+    /** Object ids from saved maps that have since been renamed. */
+    private const RENAMED = ['rune-of-magic' => 'rune-of-focus'];
 
     /** Whether a scenario hex blocks sight: an obstacle, or the art-less flag. */
     public static function blocksSight(array $hex): bool
@@ -31,6 +34,13 @@ final class Board
         return (bool)($tile['impassable'] ?? $tile['sightBlocker'] ?? false);
     }
 
+    /** The scenario hex's object, with renamed legacy ids read as their new names. */
+    public static function objectKind(array $hex): ?string
+    {
+        $kind = isset($hex['object']) ? (string)$hex['object'] : null;
+        return $kind === null ? null : (self::RENAMED[$kind] ?? $kind);
+    }
+
     public static function fromScenario(array $definition): array
     {
         $board = [];
@@ -43,7 +53,8 @@ final class Board
                 'biome' => (string)($hex['biome'] ?? 'plains'),
                 'terrain' => (string)($hex['terrain'] ?? 'grass'),
                 'spawnZone' => isset($hex['spawnZone']) ? (string)$hex['spawnZone'] : null,
-                'object' => isset($hex['object']) ? (string)$hex['object'] : null,
+                'object' => self::objectKind($hex),
+                'radius' => isset($hex['radius']) ? (int)$hex['radius'] : 1,
             ];
         }
         return $board;

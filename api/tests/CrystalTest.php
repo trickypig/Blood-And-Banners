@@ -88,7 +88,7 @@ function crystal_tests(): array
             $state = crystal_battle([vanilla_unit('a1', 'seat-a', '4,0'), vanilla_unit('b1', 'seat-b', '8,0')]);
             $state['board']['3,0']['object'] = 'forest-crystal';
             $state['board']['3,0']['impassable'] = true;
-            $state['board']['5,0']['object'] = 'rune-of-magic';
+            $state['board']['5,0']['object'] = 'rune-of-focus';
             $events = [];
             $after = Crystals::claim($state, 'a1', $events);
             expect_same(['3,0' => 'seat-a'], $after['crystals'], 'only the crystal is claimed');
@@ -141,11 +141,15 @@ function crystal_tests(): array
             expect_same($basePower, \BloodAndBanners\Rules\Vanilla\Stats::effective($state, 'f1', 'power', ['attackerId' => 'f1', 'defenderId' => 'a1']), 'other seats get nothing');
         },
 
-        'board tiles keep their map object' => static function (): void {
+        'board tiles keep their map object, rune radius and renamed legacy runes' => static function (): void {
             $board = \BloodAndBanners\Rules\Vanilla\Board::fromScenario(['map' => ['hexes' => [
                 ['q' => 0, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0, 'object' => 'ice-crystal', 'sightBlocker' => false],
+                ['q' => 1, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0, 'object' => 'rune-of-magic', 'sightBlocker' => false, 'radius' => 3],
             ]]]);
             expect_same('ice-crystal', $board['0,0']['object'], 'object kept');
+            expect_same(1, $board['0,0']['radius'], 'radius defaults to 1');
+            expect_same('rune-of-focus', $board['1,0']['object'], 'the old Rune of Magic is read as Rune of Focus');
+            expect_same(3, $board['1,0']['radius'], 'radius kept');
         },
     ];
 }

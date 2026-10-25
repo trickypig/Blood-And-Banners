@@ -23,11 +23,11 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal(["obstacle", "landmark", "nexus", "item"], MapObjectArt.Categories);
         Assert.Equal(["tree", "rock"], MapObjectArt.KindsIn("obstacle"));
         Assert.Equal(["shrine", "fire-crystal", "forest-crystal", "ice-crystal"], MapObjectArt.KindsIn("landmark"));
-        Assert.Equal(["rune-of-magic", "rune-of-strength", "rune-of-warding"], MapObjectArt.KindsIn("nexus"));
+        Assert.Equal(["rune-of-focus", "rune-of-strength", "rune-of-warding"], MapObjectArt.KindsIn("nexus"));
         Assert.Equal(["power-potion", "speed-potion", "health-potion"], MapObjectArt.KindsIn("item"));
         Assert.Equal((true, true), (MapObjectArt.BlocksSight("rock"), MapObjectArt.Impassable("rock")));
         Assert.Equal((false, true), (MapObjectArt.BlocksSight("shrine"), MapObjectArt.Impassable("shrine")));
-        Assert.Equal((false, false), (MapObjectArt.BlocksSight("health-potion"), MapObjectArt.Impassable("rune-of-magic")));
+        Assert.Equal((false, false), (MapObjectArt.BlocksSight("health-potion"), MapObjectArt.Impassable("rune-of-focus")));
         Assert.Equal("Fire Crystal", MapObjectArt.Display("fire-crystal"));
         Assert.Equal("Nexus Point", MapObjectArt.CategoryDisplay("nexus"));
 
@@ -45,7 +45,7 @@ public sealed class MapObjectTests : BunitContext
     [Theory]
     [InlineData("rock", "obstacle", "blocked by rock")]
     [InlineData("ice-crystal", "landmark", "landmark: ice crystal")]
-    [InlineData("rune-of-magic", "nexus", "nexus point: rune of magic")]
+    [InlineData("rune-of-focus", "nexus", "nexus point: rune of focus")]
     [InlineData("health-potion", "item", "item: health potion")]
     public void The_battlefield_draws_each_category_on_its_hex(string kind, string category, string label)
     {
@@ -102,7 +102,7 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal((null, false), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker));
 
         doc.SetObject(1, 0, "rock");
-        doc.SetObject(2, 0, "rune-of-magic");
+        doc.SetObject(2, 0, "rune-of-focus");
         doc.Erase(1, 0);
         doc.Erase(2, 0);
         Assert.All(doc.Definition.Map.Hexes, h => Assert.Equal((null, false, (int?)null), (h.Object, h.SightBlocker, h.PlayerStart)));
@@ -111,7 +111,7 @@ public sealed class MapObjectTests : BunitContext
     [Theory]
     [InlineData("obstacle", new[] { "tree", "rock" }, "Obstacle: Tree")]
     [InlineData("landmark", new[] { "shrine", "fire-crystal", "forest-crystal", "ice-crystal" }, "Landmark: Shrine")]
-    [InlineData("nexus", new[] { "rune-of-magic", "rune-of-strength", "rune-of-warding" }, "Nexus Point: Rune of Magic")]
+    [InlineData("nexus", new[] { "rune-of-focus", "rune-of-strength", "rune-of-warding" }, "Nexus Point: Rune of Focus")]
     [InlineData("item", new[] { "power-potion", "speed-potion", "health-potion" }, "Item: Power Potion")]
     public void Each_category_button_cycles_its_kinds_and_places_them(string category, string[] kinds, string info)
     {
@@ -169,5 +169,19 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal("seat-blue", ring.GetAttribute("data-controlled-by"));
         Assert.Contains("seat-2", ring.ClassList);
         Assert.Contains("controlled by Rival", cut.Find("[data-hex='4,4']").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Saved_maps_with_the_old_rune_of_magic_open_as_rune_of_focus()
+    {
+        Assert.Equal("rune-of-focus", MapObjectArt.Renamed("rune-of-magic"));
+        Assert.Equal("tree", MapObjectArt.Renamed("tree"));
+        Assert.Null(MapObjectArt.Renamed(null));
+
+        var doc = new MapEditorDocument();
+        var hexes = doc.Definition.Map.Hexes.Select((h, i) => i == 0 ? h with { Object = "rune-of-magic" } : h).ToList();
+        var json = MapFileCodec.ExportCanonical(doc.Definition with { Map = doc.Definition.Map with { Hexes = hexes } });
+        doc.Import(json);
+        Assert.Equal("rune-of-focus", doc.Definition.Map.Hexes[0].Object);
     }
 }

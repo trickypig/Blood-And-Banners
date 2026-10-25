@@ -20,12 +20,12 @@ public sealed class MapEditorDocument
     public void Import(string json)
     {
         var definition = MapFileCodec.Import(json);
-        Definition = definition; IsDirty = true; DetachSavedMap(); Selection = null;
+        Definition = Renamed(definition); IsDirty = true; DetachSavedMap(); Selection = null;
     }
     public void Load(SavedMap map, string ownerId)
     {
         MapFileCodec.Validate(map.Definition);
-        Definition = map.Definition; Selection = null; MarkSaved(map, ownerId);
+        Selection = null; MarkSaved(map, ownerId); Definition = Renamed(Definition);
     }
     public void Select(int q, int r) => Selection = (q, r);
     public void Rename(string name)
@@ -71,6 +71,9 @@ public sealed class MapEditorDocument
         Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
     }
     public void DetachSavedMap() { SavedSummary = null; SavedOwnerId = null; }
+    private static ScenarioDefinition Renamed(ScenarioDefinition definition) =>
+        definition.Map.Hexes.All(h => MapObjectArt.Renamed(h.Object) == h.Object) ? definition
+            : definition with { Map = definition.Map with { Hexes = definition.Map.Hexes.Select(h => h with { Object = MapObjectArt.Renamed(h.Object) }).ToList() } };
     public void MarkSaved(SavedMap map, string ownerId)
     {
         SavedSummary = map.Summary; SavedOwnerId = ownerId; IsDirty = false;

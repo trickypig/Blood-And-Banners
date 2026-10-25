@@ -2,7 +2,7 @@ namespace BloodAndBanners.UI.Services;
 
 /// <summary>
 /// Map objects, one per hex in the hex's "object": obstacles (block movement, flying included, and sight), landmarks
-/// (block movement only), nexus points and items (block nothing; no rules effect yet). Each kind has images at
+/// (block movement only), nexus points (rune auras) and items (potions drunk on stopping there); both block nothing. Each kind has images at
 /// images/&lt;folder&gt;/&lt;kind&gt;-1.png onwards, picked per hex by position like the terrain variants.
 /// Must match the lists in Board.php.
 /// </summary>
@@ -27,7 +27,7 @@ public static class MapObjectArt
         new("fire-crystal", "Fire Crystal", "landmark", 1),
         new("forest-crystal", "Forest Crystal", "landmark", 1),
         new("ice-crystal", "Ice Crystal", "landmark", 1),
-        new("rune-of-magic", "Rune of Magic", "nexus", 1),
+        new("rune-of-focus", "Rune of Focus", "nexus", 1),
         new("rune-of-strength", "Rune of Strength", "nexus", 1),
         new("rune-of-warding", "Rune of Warding", "nexus", 1),
         new("power-potion", "Power Potion", "item", 1),
@@ -36,6 +36,9 @@ public static class MapObjectArt
     ];
 
     public static IReadOnlyList<string> Categories { get; } = CategoryInfo.Select(info => info.Id).ToList();
+
+    /// <summary>Object ids from saved maps that have since been renamed, read as their new names.</summary>
+    public static string? Renamed(string? kind) => kind == "rune-of-magic" ? "rune-of-focus" : kind;
 
     public static IReadOnlyList<string> KindsIn(string category) => Art.Where(kind => kind.Category == category).Select(kind => kind.Id).ToList();
 
