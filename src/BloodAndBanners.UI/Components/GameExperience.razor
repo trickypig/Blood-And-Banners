@@ -11,6 +11,7 @@
 @if (_game is null)
 {
     <QuickStart ClientKind="@ClientKind"
+                ImageBaseUrl="@ImageBaseUrl"
                 StatusMessage="@_status"
                 OnResume="ResumeGame"
                 IsBusy="_isBusy"
@@ -29,6 +30,7 @@ else if (_game.Lifecycle == GameLifecycle.Lobby && IsWatching)
 else if (_game.Lifecycle == GameLifecycle.Lobby && _placingMonsters && VoidLordPreparing)
 {
     <GameTable Projection="_game"
+               PlayEntrance="_playEntrance"
                Events="_events"
                LiveAfterSequence="_liveAfterSequence"
                IsBusy="_isBusy"
@@ -71,6 +73,7 @@ else if (_game.Lifecycle == GameLifecycle.Draft && _game.Draft is not null && !V
 else
 {
     <GameTable Projection="_game"
+               PlayEntrance="_playEntrance"
                Events="_events"
                LiveAfterSequence="_liveAfterSequence"
                IsBusy="_isBusy"
@@ -131,6 +134,7 @@ else
 
     private readonly CancellationTokenSource _pollCancellation = new();
     private GameProjection? _game;
+    private bool _playEntrance;
     private readonly List<GameEvent> _events = [];
     private long _lastSequence;
     /// <summary>The last event of the first page fetched for this game; everything up to it is history, not news.</summary>
@@ -605,6 +609,11 @@ else
 
     private void ApplyProjection(GameProjection projection)
     {
+        if (_game is null || _game.GameId != projection.GameId)
+            _playEntrance = false;
+        else if (projection.Version >= _game.Version && projection.Lifecycle == GameLifecycle.Active
+            && _game.Lifecycle is GameLifecycle.Lobby or GameLifecycle.Draft or GameLifecycle.Setup)
+            _playEntrance = true;
         if (_game is not null && _game.GameId != projection.GameId)
         {
             _events.Clear();

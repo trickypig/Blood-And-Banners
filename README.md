@@ -48,7 +48,7 @@ The development PWA reads `wwwroot/appsettings.Development.json` and calls the A
 5. Choose **Ready your banner** in both browsers. The host's **Begin the draft** button becomes available when both seats are ready.
 6. Start the match from the host browser. Both clients show the draft table with both initiative rolls.
 7. Take turns picking. On your pick, choose any open decision: who moves first, your start position, your hero, or your army. Heroes and armies can each be claimed once.
-8. When the last pick lands, both armies are placed beside their portals on the selected battlefield and the first player's turn begins.
+8. When the last pick lands, the starting portals open forward, backward, then forward again. The armies fade in while the portals idle forward and backward three times, then the portals close and the first player's turn begins. Reopening a match keeps its portals inactive and does not replay the entrance.
 9. On your turn, click one of your units. Gold hexes are reachable, red hexes are attackable enemies. Hover or focus a destination to inspect the exact server-projected path. Safe movement sends immediately; terrain damage, forced movement, or a forced stop requires confirmation. Click an enemy to attack. Each turn allows your hero plus three other units, or any four units if your hero has fallen.
 10. The battle log in the side rail shows each roll. The match ends when one side has no units left. Choose **Return to war room** to leave.
 11. Refresh either browser at any point to verify that it reconnects to the same seat and state.

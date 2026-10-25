@@ -19,6 +19,19 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public void Player_start_icons_use_open_portals_and_the_fourth_player_is_magenta()
+    {
+        var cut = Render<MapEditor>(p => p.Add(c => c.ImageBaseUrl, "https://example.test/"));
+        cut.Find("[data-player='1']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("red-open.png", cut.Find("[data-portal='1'] image").GetAttribute("href"));
+        for (var player = 1; player < 4; player++) cut.Find($"[data-player='{player}']").Click();
+        Assert.Contains("magenta-open.png", cut.Find("[data-player='4'] img").GetAttribute("src"));
+        cut.Find("[data-hex='1,0']").Click();
+        Assert.Contains("magenta-open.png", cut.Find("[data-portal='4'] image").GetAttribute("href"));
+    }
+
+    [Fact]
     public void Toolbar_exposes_all_actions_without_mode_selection()
     {
         var cut = Render<MapEditor>();

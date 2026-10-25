@@ -91,7 +91,7 @@
                         <span class="battlefield-map">
                             @if (_boards.TryGetValue(battlefield.Name, out var board))
                             {
-                                <MapPreview Board="board" Name="@battlefield.Name" />
+                                <MapPreview Board="board" Name="@battlefield.Name" ImageBaseUrl="@ImageBaseUrl" />
                             }
                         </span>
                     </button>
@@ -123,6 +123,7 @@
 </section>
 
 @code {
+    [Parameter] public string? ImageBaseUrl { get; set; }
     [Parameter]
     public string ClientKind { get; set; } = "client";
 

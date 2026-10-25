@@ -1,0 +1,29 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+
+<g data-portal="@Player" aria-hidden="true" style="pointer-events: none">
+    @if (Animated)
+    {
+        <svg x="@Num(X - Size / 2)" y="@Num(Y - Size / 2)" width="@Num(Size)" height="@Num(Size)" viewBox="0 0 190 185" overflow="hidden" data-portal-frames>
+            <image data-sheet="opening" href="@Image("opening")" width="3040" height="185" />
+            <image data-sheet="idle" href="@Image("idle")" width="2850" height="185" style="display: none" />
+        </svg>
+    }
+    else
+    {
+        <image href="@Image(Closed ? "closed" : "open")" x="@Num(X - Size / 2)" y="@Num(Y - Size / 2)"
+               width="@Num(Size)" height="@Num(Size)" preserveAspectRatio="xMidYMid meet" />
+    }
+</g>
+
+@code {
+    [Parameter] public int Player { get; set; }
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+    [Parameter] public double Size { get; set; } = BoardLayout.Size * 1.7;
+    [Parameter] public bool Animated { get; set; }
+    [Parameter] public bool Closed { get; set; }
+    [Parameter] public string? ImageBaseUrl { get; set; }
+    private string Image(string pose) => CatalogImages.Resolve(ImageBaseUrl, PortalArt.ImagePath(Player, pose)) ?? PortalArt.ImagePath(Player, pose);
+    private static string Num(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

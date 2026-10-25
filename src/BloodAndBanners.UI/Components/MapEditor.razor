@@ -72,7 +72,8 @@
                     }
                     <button type="button" class="icon-button player-button" data-player="@_player" title="@startLabel" aria-label="@startLabel" disabled="@_busy"
                             aria-pressed="@(_tool == "player" ? "true" : "false")" @onclick="SelectPlayer">
-                        <span aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
+                        <img src="@CatalogImages.Resolve(ImageBaseUrl, PortalArt.ImagePath(_player))" alt="" />
+                        <span class="player-number" aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
                     </button>
                     @foreach (var category in MapObjectArt.Categories)
                     {
@@ -142,7 +143,7 @@
                             }
                             @if (hex.PlayerStart is { } start)
                             {
-                                <circle class="start-marker" cx="@Num(tile.X)" cy="@Num(tile.Y + 10)" r="13" fill="@StartColor(start)" />
+                                <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" />
                                 <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
                             }
                             <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />

@@ -13,6 +13,9 @@
     fill: #181711;
     font-family: Georgia, "Times New Roman", serif;
     font-weight: 700;
+    paint-order: stroke;
+    stroke: #f4ead0;
+    stroke-width: 3px;
 }
 
 .map-start.mine circle { fill: #f0cf7a; }

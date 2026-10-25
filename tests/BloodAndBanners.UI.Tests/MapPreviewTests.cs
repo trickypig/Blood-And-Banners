@@ -19,7 +19,9 @@ public sealed class MapPreviewTests : BunitContext
         Assert.Equal(new[] { "1", "2" }, markers.Select(marker => marker.GetAttribute("data-start")));
         Assert.Equal(new[] { "1", "2" }, markers.Select(marker => marker.TextContent.Trim()));
         Assert.Equal("Proving Field map preview with 2 starting points", cut.Find("svg").GetAttribute("aria-label"));
-        Assert.Empty(cut.FindAll("image"));
+        Assert.Equal(2, cut.FindAll("image").Count);
+        Assert.Contains("red-open.png", cut.Find("[data-start='1'] image").GetAttribute("href"));
+        Assert.Contains("blue-open.png", cut.Find("[data-start='2'] image").GetAttribute("href"));
     }
 
     [Fact]

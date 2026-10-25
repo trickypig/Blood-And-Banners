@@ -1,3 +1,5 @@
+.portal-entrance .unit-token { opacity: 0; }
+
 .game-table {
     --ink: #181711;
     --paper: #d8d0b9;
@@ -136,7 +138,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .rail-tab.seat-1 { border-bottom-color: #e2a29a; color: #e2a29a; }
 .rail-tab.seat-2 { border-bottom-color: #9cc3df; color: #9cc3df; }
 .rail-tab.seat-3 { border-bottom-color: #a8d79b; color: #a8d79b; }
-.rail-tab.seat-4 { border-bottom-color: #e6cf7c; color: #e6cf7c; }
+.rail-tab.seat-4 { border-bottom-color: #ed8bdd; color: #ed8bdd; }
 .rail-tab.seat-5 { border-bottom-color: #e0a8e2; color: #e0a8e2; }
 .rail-tab.seat-void { border-bottom-color: #b48cff; color: #b48cff; }
 .rail-tab.log-tab[aria-selected="true"] { color: #f0cf7a; }
@@ -286,7 +288,7 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .crystal-ring.seat-1 { stroke: #e2a29a; }
 .crystal-ring.seat-2 { stroke: #9cc3df; }
 .crystal-ring.seat-3 { stroke: #a8d79b; }
-.crystal-ring.seat-4 { stroke: #e6cf7c; }
+.crystal-ring.seat-4 { stroke: #ed8bdd; }
 .chain-mark { fill: #fff3aa; font: 700 14px Georgia, serif; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
 .choice-dice { display: flex; gap: .4rem; margin-bottom: .6rem; }
 .die { width: 2.6rem; height: 2.6rem; font-size: 1.3rem; color: #1f201d; background: #ede8da; border: 2px solid #b18b48; border-radius: .35rem; }
@@ -305,12 +307,12 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }
 
 .unit-token.seat-3 .token-plate { fill: #2f5b2a; stroke: #a8d79b; }
-.unit-token.seat-4 .token-plate { fill: #6b5a1f; stroke: #e6cf7c; }
+.unit-token.seat-4 .token-plate { fill: #64215e; stroke: #ed8bdd; }
 .unit-token.seat-5 .token-plate { fill: #5a2f5b; stroke: #e0a8e2; }
 .unit-token.seat-void .token-plate { fill: #1b1030; stroke: #b48cff; }
 .unit-token.ally .token-plate { stroke-dasharray: 3 2; }
 .roster.seat-3 h2 { color: #a8d79b; }
-.roster.seat-4 h2 { color: #e6cf7c; }
+.roster.seat-4 h2 { color: #ed8bdd; }
 .roster.seat-5 h2 { color: #e0a8e2; }
 .roster.seat-void h2 { color: #b48cff; }
 .inactive-abilities { opacity: .7; font-style: italic; }

@@ -20,7 +20,9 @@ button:focus-visible, input:focus-visible, .file-button:focus-within { outline: 
 .biomes .icon-button { padding: .2rem; }
 .terrain-preview { display: block; width: 100%; height: 100%; clip-path: polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%); }
 .terrain-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.player-button span { border-bottom: 3px solid var(--player-color); font-weight: bold; line-height: 1.6; }
+.player-button { position: relative; }
+.player-button img { width: 100%; height: 100%; object-fit: contain; }
+.player-button .player-number { position: absolute; right: 0; bottom: -2px; color: white; background: #232529cc; border-bottom: 2px solid var(--player-color); font-size: .6rem; font-weight: bold; line-height: 1; }
 .file-button { position: relative; margin: 0; overflow: hidden; }
 .file-button ::deep input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; margin: 0; padding: 0; }
 .editor-statusbar { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: .35rem 1.2rem; padding: .55rem .8rem; border-top: 1px solid #423e35; border-bottom: 1px solid #665b41; background: #222426; font-size: .85rem; }
@@ -44,7 +46,7 @@ input { box-sizing: border-box; display: block; width: 100%; min-height: 2.5rem;
 .editor-hex.selected .hex-outline { stroke: #ffd700; stroke-width: 3; }
 .height-label { font: 700 12px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 .start-marker { stroke: white; stroke-width: 2; pointer-events: none; }
-.start-label { fill: white; font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.start-label { fill: white; font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #181711; stroke-width: 3px; pointer-events: none; }
 .confirm-backdrop { position: fixed; inset: 0; background: #0009; display: grid; place-items: center; z-index: 100; padding: 1rem; }
 .confirm { background: #292b2c; border: 1px solid #d4af37; border-radius: .5rem; padding: 1.5rem; width: min(100%, 440px); box-sizing: border-box; max-height: calc(100dvh - 2rem); overflow: auto; }
 .confirm button { margin: .4rem .4rem 0 0; }

@@ -770,6 +770,7 @@ public sealed class GameExperienceTests : BunitContext
         // The first fetch (from 0) moves the cursor to 5; without the reveal the post-command fetch would ask from 5.
         cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2));
         Assert.Equal(0, api.EventRequests[1]);
+        Assert.True(cut.FindComponent<GameTable>().Instance.PlayEntrance);
     }
 
     [Fact]
@@ -789,6 +790,16 @@ public sealed class GameExperienceTests : BunitContext
         // The first poll (still Draft) fetches from 0 and moves the cursor to 5; the poll that sees the Active switch must ask from 0 again.
         cut.WaitForAssertion(() => Assert.True(api.EventRequests.Count >= 2), TimeSpan.FromSeconds(10));
         Assert.Equal([0L, 0L], api.EventRequests.Take(2));
+        Assert.True(cut.FindComponent<GameTable>().Instance.PlayEntrance);
+    }
+
+    [Fact]
+    public void Resuming_an_active_game_does_not_play_the_entrance()
+    {
+        Services.AddSingleton<IGameSessionCoordinator>(new FakeSessionCoordinator { Reconnected = CoopVoidLord(GameLifecycle.Active) });
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+        cut.WaitForAssertion(() => Assert.False(cut.FindComponent<GameTable>().Instance.PlayEntrance));
     }
 
     [Fact]

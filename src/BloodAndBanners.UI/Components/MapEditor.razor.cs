@@ -256,7 +256,7 @@ public partial class MapEditor : IAsyncDisposable
     private void Zoom(double delta) => _zoom = Math.Clamp(_zoom + delta, .5, 2);
     private static string Num(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
     private static string Display(string value) => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(value.Replace('-', ' '));
-    private static string StartColor(int start) => start switch { 1 => "#c41e3a", 2 => "#0051ba", 3 => "#00a86b", _ => "#ffaa00" };
+    private static string StartColor(int start) => start switch { 1 => "#c41e3a", 2 => "#0051ba", 3 => "#00a86b", _ => "#dd43c9" };
     public async ValueTask DisposeAsync()
     {
         _disposed = true; _epoch++; Account.Changed -= AccountChanged;

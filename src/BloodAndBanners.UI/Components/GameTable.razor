@@ -5,7 +5,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<main class="game-table">
+<main class="game-table @(_entranceRunning ? "portal-entrance" : null)">
     <MatchMenu GameId="@Projection.GameId"
                InviteBaseUri="@InviteBaseUri"
                IsSpectator="@(!Projection.Viewer.CanCommand)"
@@ -52,7 +52,7 @@
                 <button type="button"
                         class="ribbon-end-turn"
                         data-action="@action.Kind"
-                        disabled="@IsBusy"
+                        disabled="@(IsBusy || _entranceRunning)"
                         @onclick="() => Send(action.Kind, ActionPayload(action))">
                     @ActionLabel(action.Kind)
                 </button>
@@ -191,6 +191,10 @@
                         <RuneAreaTint Tile="tile" Kinds="runeKinds" />
                     }
                     <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
+                    @if (hex.PlayerStart is { } start)
+                    {
+                        <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" Closed="true" Animated="_entranceRunning" />
+                    }
                     @if (_view.Push.Contains(key))
                     {
                         <!text class="push-mark" x="@Num(tile.X)" y="@Num(tile.Y)">»</!text>
@@ -286,7 +290,7 @@
         }
     </section>
 
-    <aside class="command-rail @(_railOpen ? "rail-open" : null)" aria-label="Game commands">
+    <aside class="command-rail @(_railOpen ? "rail-open" : null)" aria-label="Game commands" inert="@_entranceRunning">
         @if (!string.IsNullOrEmpty(ErrorMessage))
         {
             <p class="rail-error" role="alert">@ErrorMessage</p>
@@ -557,7 +561,7 @@
         </div>
         <AttackPopup Projection="Projection" Events="Events" LiveAfterSequence="LiveAfterSequence" ImageBaseUrl="@ImageBaseUrl"
                      OnShowingChanged="showing => _attackShowing = showing" />
-        <TurnPopup Projection="Projection" Held="_attackShowing" />
+    <TurnPopup Projection="Projection" Held="@(_attackShowing || _entranceRunning)" />
     </aside>
 
     @if (Projection.Result is { } result)
@@ -586,6 +590,24 @@
 
     [Parameter]
     public bool IsBusy { get; set; }
+
+    /// <summary>Set only for a game that became active during this session, never for a resumed match.</summary>
+    [Parameter] public bool PlayEntrance { get; set; }
+
+    private bool _entranceRunning;
+    private bool _disposed;
+    private bool _entrancePending;
+    private string? _entranceGameId;
+    private IJSObjectReference? _portalModule;
+    private DotNetObjectReference<GameTable>? _portalReceiver;
+
+    [JSInvokable]
+    public Task CompletePortalEntrance(string gameId) => InvokeAsync(() =>
+    {
+        if (_disposed || gameId != Projection.GameId || !_entranceRunning) return;
+        _entranceRunning = false;
+        StateHasChanged();
+    });
 
     [Parameter]
     public string? ErrorMessage { get; set; }
@@ -692,6 +714,19 @@
         var newGame = _lastGameId != Projection.GameId;
         if (newGame)
         {
+            _entranceRunning = false;
+            _entrancePending = false;
+            _entranceGameId = null;
+        }
+        if (PlayEntrance && _entranceGameId != Projection.GameId && Projection.Lifecycle == GameLifecycle.Active
+            && !string.IsNullOrWhiteSpace(ImageBaseUrl) && Projection.Board.Hexes.Any(hex => hex.PlayerStart is not null))
+        {
+            _entranceGameId = Projection.GameId;
+            _entranceRunning = true;
+            _entrancePending = true;
+        }
+        if (newGame)
+        {
             _followEvents = true;
         }
         else if (!Projection.Viewer.CanCommand && Projection.Turn.ActiveSeatId != _lastActiveSeatId)
@@ -706,7 +741,11 @@
             new WorldRect(0, 0, layout.Width, layout.Height),
             _viewport.ContainerWidth,
             _viewport.ContainerHeight);
-        if (_followEvents)
+        if (_entranceRunning)
+        {
+            _viewport.Fit();
+        }
+        else if (_followEvents)
         {
             FrameEvents();
         }
@@ -892,7 +931,7 @@
             return;
         }
         _spotlitUnitId = null;
-        if (IsBusy)
+        if (IsBusy || _entranceRunning)
         {
             return;
         }
@@ -1281,6 +1320,7 @@
 
     private Task Send(string kind, object payload)
     {
+        if (_entranceRunning) return Task.CompletedTask;
         ClearMovementState();
         _swingChoice = false;
         return OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
@@ -1795,11 +1835,39 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (_entrancePending)
+        {
+            _entrancePending = false;
+            try
+            {
+                var gameId = Projection.GameId;
+                var module = _portalModule ?? await JS.InvokeAsync<IJSObjectReference>("import", "./_content/BloodAndBanners.UI/js/portalEntrance.js");
+                if (_disposed || gameId != Projection.GameId)
+                {
+                    if (_portalModule is null && module is not null) await module.DisposeAsync();
+                    return;
+                }
+                _portalModule = module;
+                _portalReceiver ??= DotNetObjectReference.Create(this);
+                if (_portalModule is not null)
+                    await _portalModule.InvokeVoidAsync("start", _boardElement, _portalReceiver, gameId);
+            }
+            catch (JSException)
+            {
+                await CompletePortalEntrance(Projection.GameId);
+            }
+        }
+        if (_disposed || !firstRender)
         {
             return;
         }
-        _viewportModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/BloodAndBanners.UI/js/boardViewport.js");
+        var viewportModule = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/BloodAndBanners.UI/js/boardViewport.js");
+        if (_disposed)
+        {
+            if (viewportModule is not null) await viewportModule.DisposeAsync();
+            return;
+        }
+        _viewportModule = viewportModule;
         if (_viewportModule is null)
         {
             return;
@@ -1827,6 +1895,15 @@
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
+        if (_portalModule is not null)
+        {
+            try { await _portalModule.InvokeVoidAsync("stop", _boardElement); }
+            catch (JSDisconnectedException) { }
+            await _portalModule.DisposeAsync();
+        }
+        _portalReceiver?.Dispose();
         if (_viewportModule is not null)
         {
             await _viewportModule.DisposeAsync();
