@@ -74,7 +74,7 @@ function vanilla_terrain_tests(): array
                 ]]],
             ]);
             expect_same(
-                ['elevation' => -1, 'sightBlocker' => false, 'impassable' => false, 'playerStart' => 1, 'biome' => 'water', 'terrain' => 'open-water', 'spawnZone' => null],
+                ['elevation' => -1, 'sightBlocker' => false, 'impassable' => false, 'playerStart' => 1, 'biome' => 'water', 'terrain' => 'open-water', 'spawnZone' => null, 'object' => null],
                 $board['2,3'],
                 'the engine must retain painted terrain from the scenario'
             );

@@ -43,6 +43,7 @@ final class Board
                 'biome' => (string)($hex['biome'] ?? 'plains'),
                 'terrain' => (string)($hex['terrain'] ?? 'grass'),
                 'spawnZone' => isset($hex['spawnZone']) ? (string)$hex['spawnZone'] : null,
+                'object' => isset($hex['object']) ? (string)$hex['object'] : null,
             ];
         }
         return $board;

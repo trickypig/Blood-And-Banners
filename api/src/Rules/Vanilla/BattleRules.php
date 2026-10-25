@@ -342,6 +342,9 @@ final class BattleRules
             'path' => $entered,
             'disengagement' => $hits,
         ]);
+        if ($state['pending'] === null) {
+            $state = Crystals::claim($state, $unitId, $events);
+        }
         return self::closeIfSpent($state, $unitId);
     }
 
@@ -611,6 +614,10 @@ final class BattleRules
             $resolved = IceMovement::resolveChoice($state, $option, $random, $events);
             $state = $resolved['state'];
             $activateAfter = (bool)($resolved['activateAfter'] ?? false);
+            // The slide that paused was the unit's own move; now that it has ended, it may claim crystals.
+            if (!$activateAfter && $state['pending'] === null && $state['phase'] === 'active' && $state['units'][$choice['unitId']]['hex'] !== null) {
+                $state = Crystals::claim($state, $choice['unitId'], $events);
+            }
             if (!$activateAfter && ($state['turn']['activeUnitId'] ?? null) === $choice['unitId']) {
                 $state['turn']['moveSpent'] += max(0, $remainingBeforeChoice - $resolved['remainingMove']);
             }
