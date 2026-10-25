@@ -69,21 +69,25 @@
                 <div class="toolbar-group" role="group" aria-label="Map objects">
                     @{
                         var startLabel = $"Place player {_player} start. Click again to switch to player {NextPlayer}.";
-                        var addLabel = $"Add {MapObjectArt.Display(_obstacle)}. Click again to switch to {MapObjectArt.Display(NextObstacle)}.";
                     }
                     <button type="button" class="icon-button player-button" data-player="@_player" title="@startLabel" aria-label="@startLabel" disabled="@_busy"
                             aria-pressed="@(_tool == "player" ? "true" : "false")" @onclick="SelectPlayer">
                         <span aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
                     </button>
-                    <button type="button" class="icon-button obstacle-button" data-obstacle="@_obstacle" title="@addLabel" aria-label="@addLabel" disabled="@_busy"
-                            aria-pressed="@(_tool == "obstacle" ? "true" : "false")" @onclick="SelectObstacle">
-                        @if (CatalogImages.Resolve(ImageBaseUrl, MapObjectArt.ImagePath(_obstacle)) is { } obstaclePreview)
-                        {
-                            <img src="@obstaclePreview" alt="" draggable="false" />
-                        }
-                        else { <span aria-hidden="true">@MapObjectArt.Display(_obstacle)[0]</span> }
-                    </button>
-                    <button type="button" class="icon-button" data-action="erase" title="Erase objects (start positions and obstacles)" aria-label="Erase objects (start positions and obstacles)" disabled="@_busy"
+                    @foreach (var category in MapObjectArt.Categories)
+                    {
+                        var kind = _objectKinds[category];
+                        var label = $"Add {MapObjectArt.CategoryDisplay(category).ToLowerInvariant()}: {MapObjectArt.Display(kind)}. Click again to switch to {MapObjectArt.Display(NextKind(category))}.";
+                        <button type="button" class="icon-button object-button" data-category="@category" data-object="@kind" title="@label" aria-label="@label" disabled="@_busy"
+                                aria-pressed="@(_tool == category ? "true" : "false")" @onclick="() => SelectObject(category)">
+                            @if (CatalogImages.Resolve(ImageBaseUrl, MapObjectArt.ImagePath(kind)) is { } preview)
+                            {
+                                <img src="@preview" alt="" draggable="false" />
+                            }
+                            else { <span aria-hidden="true">@MapObjectArt.Display(kind)[0]</span> }
+                        </button>
+                    }
+                    <button type="button" class="icon-button" data-action="erase" title="Erase start positions and map objects" aria-label="Erase start positions and map objects" disabled="@_busy"
                             aria-pressed="@(_tool == "erase" ? "true" : "false")" @onclick="SelectErase">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("erase")" /></svg>
                     </button>
@@ -99,7 +103,7 @@
             <div class="hex-info"><strong>Selected hex:</strong>
                 @if (_document.SelectedHex is { } selected)
                 {
-                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (MapObjectArt.Impassable(selected.Object)) { <text> &middot; Obstacle: @MapObjectArt.Display(selected.Object!)</text> } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
+                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
                 }
                 else { <span>None</span> }
             </div>

@@ -72,5 +72,5 @@ input { box-sizing: border-box; display: block; width: 100%; min-height: 2.5rem;
     .editor-statusbar > div { width: auto; }
     .map-panel { grid-column: 2; grid-row: 2; }
 }
-.obstacle-button { padding: .15rem; }
-.obstacle-button img { display: block; width: 1.9rem; height: 1.9rem; object-fit: contain; }
+.object-button { padding: .15rem; }
+.object-button img { display: block; width: 1.9rem; height: 1.9rem; object-fit: contain; }

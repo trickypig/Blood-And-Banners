@@ -44,25 +44,27 @@ public sealed class MapEditorDocument
         if (player is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(player));
         if (!Definition.Map.Hexes.Any(h => h.Q == q && h.R == r)) return;
         Select(q, r);
-        // Units deploy around a start, so a start clears any obstacle from its hex.
-        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? (player is null ? h : WithoutObstacle(h)) with { PlayerStart = player }
+        // A hex holds one thing, so a start clears any object from its hex.
+        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? (player is null ? h : WithoutObject(h)) with { PlayerStart = player }
             : player is not null && h.PlayerStart == player ? h with { PlayerStart = null } : h).ToList();
         if (!hexes.SequenceEqual(Definition.Map.Hexes))
         {
             Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
         }
     }
-    /// <summary>Places a tree, rock or shrine obstacle (blocking movement and sight), replacing any start there; null clears the hex's blocker.</summary>
-    public void SetObstacle(int q, int r, string? kind)
+    /// <summary>
+    /// Places an obstacle, landmark, nexus point or item, replacing whatever was on the hex (a start or another object);
+    /// null clears it. Only obstacles carry the sight-blocker flag.
+    /// </summary>
+    public void SetObject(int q, int r, string? kind)
     {
-        if (kind is not null && !MapObjectArt.Impassable(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        Edit(q, r, h => kind is null ? WithoutObstacle(h) : h with { Object = kind, SightBlocker = true, PlayerStart = null });
+        if (kind is not null && !MapObjectArt.IsKnown(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        Edit(q, r, h => kind is null ? WithoutObject(h) : h with { Object = kind, SightBlocker = MapObjectArt.BlocksSight(kind), PlayerStart = null });
     }
-    // Older maps also block hexes with an art-less flag (crags) or a "statue" object; clearing removes those too.
-    /// <summary>Removes everything standing on the hex (start position and obstacle), leaving its terrain and height.</summary>
-    public void Erase(int q, int r) => Edit(q, r, h => WithoutObstacle(h) with { PlayerStart = null });
-    private static ScenarioHex WithoutObstacle(ScenarioHex hex) =>
-        hex.SightBlocker || MapObjectArt.Impassable(hex.Object) ? hex with { Object = null, SightBlocker = false } : hex;
+    /// <summary>Removes everything on the hex (start position and object), leaving its terrain and height.</summary>
+    public void Erase(int q, int r) => Edit(q, r, h => WithoutObject(h) with { PlayerStart = null });
+    private static ScenarioHex WithoutObject(ScenarioHex hex) =>
+        hex.SightBlocker || hex.Object is not null ? hex with { Object = null, SightBlocker = false } : hex;
     public void Clear()
     {
         var hexes = Definition.Map.Hexes.Select(h => h with { Biome = "plains", Terrain = "grass", Elevation = 0, PlayerStart = null }).ToList();

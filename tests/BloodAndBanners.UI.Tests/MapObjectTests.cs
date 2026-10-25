@@ -76,4 +76,83 @@ public sealed class MapObjectTests : BunitContext
         var token = markup.IndexOf("unit-token", Math.Max(potion, 0), StringComparison.Ordinal);
         Assert.True(potion >= 0 && token > potion, "the potion is painted before (beneath) the unit token");
     }
+
+    [Fact]
+    public void A_hex_holds_one_thing_and_each_placement_replaces_the_last()
+    {
+        var doc = new MapEditorDocument();
+        doc.SetPlayerStart(0, 0, 1);
+        doc.SetObject(0, 0, "tree");
+        Assert.Equal(("tree", true, (int?)null), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker, doc.SelectedHex.PlayerStart));
+
+        doc.SetObject(0, 0, "fire-crystal");
+        Assert.Equal(("fire-crystal", false), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker));
+        doc.SetObject(0, 0, "rune-of-strength");
+        Assert.Equal(("rune-of-strength", false), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker));
+        doc.SetObject(0, 0, "speed-potion");
+        Assert.Equal("speed-potion", doc.SelectedHex!.Object);
+
+        doc.SetPlayerStart(0, 0, 2);
+        Assert.Equal((null, false, (int?)2), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker, doc.SelectedHex.PlayerStart));
+        doc.SetObject(0, 0, "health-potion");
+        Assert.Equal(("health-potion", (int?)null), (doc.SelectedHex!.Object, doc.SelectedHex.PlayerStart));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => doc.SetObject(0, 0, "statue"));
+        doc.SetObject(0, 0, null);
+        Assert.Equal((null, false), (doc.SelectedHex!.Object, doc.SelectedHex.SightBlocker));
+
+        doc.SetObject(1, 0, "rock");
+        doc.SetObject(2, 0, "rune-of-magic");
+        doc.Erase(1, 0);
+        doc.Erase(2, 0);
+        Assert.All(doc.Definition.Map.Hexes, h => Assert.Equal((null, false, (int?)null), (h.Object, h.SightBlocker, h.PlayerStart)));
+    }
+
+    [Theory]
+    [InlineData("obstacle", new[] { "tree", "rock" }, "Obstacle: Tree")]
+    [InlineData("landmark", new[] { "shrine", "fire-crystal", "forest-crystal", "ice-crystal" }, "Landmark: Shrine")]
+    [InlineData("nexus", new[] { "rune-of-magic", "rune-of-strength", "rune-of-warding" }, "Nexus Point: Rune of Magic")]
+    [InlineData("item", new[] { "power-potion", "speed-potion", "health-potion" }, "Item: Power Potion")]
+    public void Each_category_button_cycles_its_kinds_and_places_them(string category, string[] kinds, string info)
+    {
+        var cut = Render<MapEditor>(parameters => parameters.Add(component => component.ImageBaseUrl, Images));
+        var button = () => cut.Find($".object-button[data-category='{category}']");
+        Assert.Equal("false", button().GetAttribute("aria-pressed"));
+
+        button().Click();
+        Assert.Equal(("true", kinds[0]), (button().GetAttribute("aria-pressed"), button().GetAttribute("data-object")));
+        Assert.Equal($"{Images}{MapObjectArt.ImagePath(kinds[0])}", button().QuerySelector("img")!.GetAttribute("src"));
+        cut.Find("[data-hex='0,0']").Click();
+        var drawn = cut.Find("[data-hex='0,0'] [data-map-object]");
+        Assert.Equal((kinds[0], category), (drawn.GetAttribute("data-map-object"), drawn.GetAttribute("data-category")));
+        Assert.Contains(info, cut.Find(".hex-info").TextContent);
+
+        foreach (var kind in kinds.Skip(1).Append(kinds[0]))
+        {
+            button().Click();
+            Assert.Equal(kind, button().GetAttribute("data-object"));
+        }
+        Assert.Equal(4, cut.FindAll(".object-button").Count);
+    }
+
+    [Fact]
+    public void Erase_removes_starts_and_every_kind_of_object()
+    {
+        var cut = Render<MapEditor>(parameters => parameters.Add(component => component.ImageBaseUrl, Images));
+        void Place(string selector, string hex) { cut.Find(selector).Click(); cut.Find($"[data-hex='{hex}']").Click(); }
+        Place(".object-button[data-category='obstacle']", "0,0");
+        Place(".object-button[data-category='landmark']", "1,0");
+        Place(".object-button[data-category='nexus']", "2,0");
+        Place(".object-button[data-category='item']", "3,0");
+        Place(".player-button", "0,1");
+        Place(".object-button[data-category='item']", "0,1");
+        Assert.Empty(cut.FindAll(".start-label"));
+        Place(".player-button", "1,1");
+        Assert.Single(cut.FindAll(".start-label"));
+
+        cut.Find("[data-action='erase']").Click();
+        foreach (var hex in new[] { "0,0", "1,0", "2,0", "3,0", "0,1", "1,1" }) cut.Find($"[data-hex='{hex}']").Click();
+        Assert.Empty(cut.FindAll("[data-map-object]"));
+        Assert.Empty(cut.FindAll(".start-label"));
+    }
 }

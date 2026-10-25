@@ -65,11 +65,16 @@ public partial class MapEditor : IAsyncDisposable
         if (_tool == "player") _player = NextPlayer;
         _tool = "player"; _status = "";
     }
-    private string NextObstacle => MapObjectArt.KindsIn("obstacle")[(MapObjectArt.KindsIn("obstacle").ToList().IndexOf(_obstacle) + 1) % MapObjectArt.KindsIn("obstacle").Count];
-    private void SelectObstacle()
+    private readonly Dictionary<string, string> _objectKinds = MapObjectArt.Categories.ToDictionary(category => category, category => MapObjectArt.KindsIn(category)[0]);
+    private string NextKind(string category)
     {
-        if (_tool == "obstacle") _obstacle = NextObstacle;
-        _tool = "obstacle"; _status = "";
+        var kinds = MapObjectArt.KindsIn(category);
+        return kinds[(kinds.ToList().IndexOf(_objectKinds[category]) + 1) % kinds.Count];
+    }
+    private void SelectObject(string category)
+    {
+        if (_tool == category) _objectKinds[category] = NextKind(category);
+        _tool = category; _status = "";
     }
     private void SelectErase() { _tool = "erase"; _status = ""; }
     private void ChangeZoom(string action) { _status = ""; if (action == "zoom-reset") _zoom = 1; else Zoom(action == "zoom-in" ? .1 : -.1); }
@@ -90,7 +95,7 @@ public partial class MapEditor : IAsyncDisposable
         _ => "M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5M9 12h6"
     };
     private readonly Dictionary<string, string> _terrains = TerrainArt.BiomeNames.ToDictionary(b => b, b => TerrainArt.Terrains(b)[0]);
-    private string _tool = "paint", _biome = "plains", _heightAction = "raise", _obstacle = MapObjectArt.KindsIn("obstacle")[0];
+    private string _tool = "paint", _biome = "plains", _heightAction = "raise";
     private int _player = 1, _columns = 15, _rows = 10;
     private double _zoom = 1;
     private bool _busy, _conflict, _disposed;
@@ -208,7 +213,7 @@ public partial class MapEditor : IAsyncDisposable
         _document.Select(q, r);
         if (_tool == "paint") _document.Paint(q, r, _biome, _terrains[_biome]);
         else if (_tool == "player") _document.SetPlayerStart(q, r, _player);
-        else if (_tool == "obstacle") _document.SetObstacle(q, r, _obstacle);
+        else if (_objectKinds.TryGetValue(_tool, out var kind)) _document.SetObject(q, r, kind);
         else if (_tool == "erase") _document.Erase(q, r);
         else if (_heightAction == "reset") _document.ResetHeight(q, r);
         else _document.AdjustHeight(q, r, _heightAction == "raise" ? 1 : -1);
