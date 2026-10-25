@@ -35,6 +35,7 @@ public static class CombatLogFormatter
             "draftPicked" => $"{Seat(projection, Text(payload, "seatId"))} chose {DraftChoice(projection, payload)}.",
             "armiesPlaced" => "Both armies take the field.",
             "unitMoved" => Moved(projection, payload),
+            "crystalClaimed" => CrystalClaimed(projection, payload),
             "attackResolved" => Attack(projection, payload),
             "attackRedirected" => payload.TryGetProperty("targetUnitId", out var redirected) && redirected.ValueKind == JsonValueKind.String
                 ? $"Pan Pipes forces {Unit(projection, Text(payload, "unitId"))} to attack {Unit(projection, redirected.GetString()!)} instead."
@@ -179,6 +180,15 @@ public static class CombatLogFormatter
             var stopped => $"stops ({TerrainName(stopped)})",
         };
         return $"{unit} slides {path.Count} {(path.Count == 1 ? "hex" : "hexes")} to {to} and {ending}.";
+    }
+
+    private static string CrystalClaimed(GameProjection projection, JsonElement payload)
+    {
+        var seat = Seat(projection, Text(payload, "seatId"));
+        var from = payload.TryGetProperty("previousSeatId", out var previous) && previous.ValueKind == JsonValueKind.String
+            ? $" from {Object(Seat(projection, previous.GetString()!))}"
+            : string.Empty;
+        return $"{seat} {(seat == "You" ? "claim" : "claims")} the {MapObjectArt.Display(Text(payload, "kind"))}{from}.";
     }
 
     private static string Moved(GameProjection projection, JsonElement payload)

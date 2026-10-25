@@ -17,6 +17,15 @@ public sealed class CombatLogFormatterTests
         Assert.Contains($"Enraged +{level}", line);
     }
 
+    [Theory]
+    [InlineData("seat-red", null, "ice-crystal", "You claim the Ice Crystal.")]
+    [InlineData("seat-blue", "seat-red", "fire-crystal", "Rival claims the Fire Crystal from you.")]
+    public void Crystal_claims_name_the_player_and_the_crystal(string seatId, string? previous, string kind, string expected)
+    {
+        var payload = JsonSerializer.Serialize(new { seatId, unitId = "s1-u3", hex = "4,4", kind, previousSeatId = previous });
+        Assert.Equal(expected, CombatLogFormatter.Describe(Event("crystalClaimed", payload), BattleFixtures.Projection()));
+    }
+
     [Fact]
     public void Dragon_slayer_history_reports_the_permanent_award_level()
     {

@@ -181,6 +181,11 @@
                     {
                         <!text class="chain-mark" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@(link + 1)</!text>
                     }
+                    @if (hex.ControlledBy is { } controller)
+                    {
+                        <ellipse class="crystal-ring @SeatClass(controller)" data-controlled-by="@controller"
+                                 cx="@Num(tile.X)" cy="@Num(tile.Y + HexHalfHeight * .5)" rx="@Num(BoardLayout.Size * .55)" ry="@Num(BoardLayout.Size * .2)" />
+                    }
                     <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
                     @if (_view.Push.Contains(key))
                     {
@@ -1857,6 +1862,7 @@
             "obstacle" => $", blocked by {MapObjectArt.Display(hex.Object!).ToLowerInvariant()}",
             var category => $", {MapObjectArt.CategoryDisplay(category).ToLowerInvariant()}: {MapObjectArt.Display(hex.Object!).ToLowerInvariant()}",
         }) +
+        (hex.ControlledBy is { } controller ? $", controlled by {SeatName(controller)}" : string.Empty) +
         (hex.OccupantId is null ? string.Empty : $", occupied by {unit?.Name ?? hex.OccupantId}") +
         (unit is null || unit.Effects.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Effects.Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {effect.Stat}"))) +
         (unit is null || unit.Conditions.Count == 0 ? string.Empty : ", " + string.Join(", ", unit.Conditions.Select(ConditionLabel))) +

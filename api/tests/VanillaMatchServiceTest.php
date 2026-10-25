@@ -169,6 +169,7 @@ function vanilla_match_service_tests(): array
             expect_true(in_array('moveUnit', array_column($projection['legalActions'], 'kind'), true), 'the host may move');
             $occupied = array_values(array_filter($projection['board']['hexes'], static fn(array $hex): bool => $hex['q'] === 3 && $hex['r'] === 2));
             expect_same('s1-hero', $occupied[0]['occupantId'], 'the board shows live occupants');
+            expect_true(array_key_exists('controlledBy', $occupied[0]) && $occupied[0]['controlledBy'] === null, 'hexes project crystal control, null when unclaimed');
 
             $link = $match['games']->createSpectatorLink($match['gameId'], $match['host']['identity'], $match['host']['token']);
             $spectated = $match['games']->getSpectatorGame($link['token']);

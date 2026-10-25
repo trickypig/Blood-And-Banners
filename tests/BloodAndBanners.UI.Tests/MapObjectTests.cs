@@ -155,4 +155,19 @@ public sealed class MapObjectTests : BunitContext
         Assert.Empty(cut.FindAll("[data-map-object]"));
         Assert.Empty(cut.FindAll(".start-label"));
     }
+
+    [Fact]
+    public void A_claimed_crystal_shows_its_owner()
+    {
+        var fixture = BattleFixtures.Projection();
+        var hexes = fixture.Board.Hexes.Select(hex => (hex.Q, hex.R) == (4, 4) ? hex with { Object = "fire-crystal", Impassable = true, ControlledBy = "seat-blue" } : hex).ToList();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, fixture with { Board = fixture.Board with { Hexes = hexes } })
+            .Add(component => component.ImageBaseUrl, Images));
+
+        var ring = cut.Find("[data-hex='4,4'] .crystal-ring");
+        Assert.Equal("seat-blue", ring.GetAttribute("data-controlled-by"));
+        Assert.Contains("seat-2", ring.ClassList);
+        Assert.Contains("controlled by Rival", cut.Find("[data-hex='4,4']").GetAttribute("aria-label"));
+    }
 }

@@ -282,6 +282,11 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .effect-marker { font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #000; stroke-width: 2; }
 .effect-marker.buff { fill: #a6d98f; }
 .effect-marker.debuff { fill: #ff8a7a; }
+.crystal-ring { fill: none; stroke-width: 3; pointer-events: none; }
+.crystal-ring.seat-1 { stroke: #e2a29a; }
+.crystal-ring.seat-2 { stroke: #9cc3df; }
+.crystal-ring.seat-3 { stroke: #a8d79b; }
+.crystal-ring.seat-4 { stroke: #e6cf7c; }
 .chain-mark { fill: #fff3aa; font: 700 14px Georgia, serif; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
 .choice-dice { display: flex; gap: .4rem; margin-bottom: .6rem; }
 .die { width: 2.6rem; height: 2.6rem; font-size: 1.3rem; color: #1f201d; background: #ede8da; border: 2px solid #b18b48; border-radius: .35rem; }

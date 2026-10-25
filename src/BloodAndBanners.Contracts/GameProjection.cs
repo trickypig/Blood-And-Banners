@@ -42,6 +42,8 @@ public sealed record HexProjection(
     public string? Object { get; init; }
     /// <summary>Nothing may enter the hex, flying included: obstacles and landmarks.</summary>
     public bool Impassable { get; init; }
+    /// <summary>The seat that controls the crystal on this hex, or null when unclaimed or not a crystal.</summary>
+    public string? ControlledBy { get; init; }
 }
 
 public sealed record TurnProjection(
