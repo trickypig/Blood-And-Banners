@@ -19,8 +19,8 @@ Items only; their gameplay effects (rune bonuses, pickup, potion use) come in a 
 
 - A hex holds at most one thing: a start position, an obstacle, a landmark, a nexus point or an item are
   mutually exclusive. Placing any of them replaces whatever was there.
-- Shrines move from Obstacle to Landmark, so existing maps' shrines stop blocking sight.
-- Old maps' art-less `sightBlocker` flag (crags) and `"statue"` object keep behaving as obstacles.
+- Shrines move from Obstacle to Landmark and stop blocking sight.
+- No migration or compatibility handling for old maps or payloads; there shouldn't be any to deal with.
 - Unknown object strings behave as nothing (no blocking), as today.
 
 ## Data model
@@ -43,12 +43,12 @@ Unchanged on disk: each scenario hex keeps one `object` string. A catalog maps k
 
 ## Contracts and client
 
-- `HexProjection` gains `Impassable` (init property, defaults to `SightBlocker` for old payloads).
+- `HexProjection` gains `Impassable` (bool init property).
   `GameTable`'s forced-move preview uses it instead of `SightBlocker`.
 
 ## Art
 
-- Copy and downscale (to ~96px) the icons:
+- Copy and downscale (to 128px) the icons:
   - `images/landmarks/fire-crystal-1.png` ← Res_27, `forest-crystal-1.png` ← Res_29_stoneg,
     `ice-crystal-1.png` ← Res_75_crystalS; move `images/obstacles/shrine-1.png` to `images/landmarks/`.
   - `images/nexus/rune-of-magic-1.png` ← Loot_86_runestone, `rune-of-strength-1.png` ← Loot_198_rune,
