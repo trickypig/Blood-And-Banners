@@ -129,7 +129,7 @@ final class StepRunner
             }
         }
         sort($secondary, SORT_STRING);
-        $context = ['attackerId' => $step['attackerId'], 'defenderId' => $step['targetId'], 'damageType' => 'fire', 'originHex' => $source];
+        $context = ['attackerId' => $step['attackerId'], 'defenderId' => $step['targetId'], 'ability' => $step['ability'] ?? null, 'damageType' => 'fire', 'originHex' => $source];
         $power = Stats::effective($state, $step['attackerId'], 'power', $context, 6);
         $rolled = $step + [
             'originHex' => $source,

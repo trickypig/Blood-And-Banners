@@ -60,6 +60,9 @@ final class Stats
         foreach (Crystals::statSources($state, $unitId, $stat, $context) as $source) {
             $modifiers[] = $source;
         }
+        foreach (Runes::statSources($state, $unitId, $stat, $context) as $source) {
+            $modifiers[] = $source;
+        }
         $value = $base + array_sum(array_column($modifiers, 'amount'));
         return ['value' => max(0, $value), 'base' => $base, 'modifiers' => $modifiers];
     }
