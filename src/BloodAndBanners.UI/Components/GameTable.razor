@@ -1045,7 +1045,7 @@
             return [];
         }
         return Projection.Board.Hexes
-            .Where(hex => !hex.SightBlocker && hex.OccupantId is null && HexKey(hex) != origin)
+            .Where(hex => !hex.Impassable && hex.OccupantId is null && HexKey(hex) != origin)
             .Where(hex => HexMath.Distance(origin, HexKey(hex)) + Math.Abs(hex.Elevation - start.Elevation) / 2 <= TeleportReach)
             .Select(HexKey)
             .ToList();
@@ -1067,7 +1067,7 @@
             {
                 var nextKey = HexMath.Step(HexKey(current), direction);
                 var next = Index.HexByKey.GetValueOrDefault(nextKey);
-                if (next is null || next.SightBlocker || next.OccupantId is not null || next.Elevation - current.Elevation >= 2)
+                if (next is null || next.Impassable || next.OccupantId is not null || next.Elevation - current.Elevation >= 2)
                 {
                     break;
                 }

@@ -97,7 +97,7 @@ public sealed class ObstacleTests : BunitContext
     public void The_battlefield_stands_obstacles_on_their_hexes()
     {
         var fixture = BattleFixtures.Projection();
-        var hexes = fixture.Board.Hexes.Select(hex => (hex.Q, hex.R) == (4, 4) ? hex with { SightBlocker = true, Object = "rock" } : hex).ToList();
+        var hexes = fixture.Board.Hexes.Select(hex => (hex.Q, hex.R) == (4, 4) ? hex with { SightBlocker = true, Impassable = true, Object = "rock" } : hex).ToList();
         var cut = Render<GameTable>(parameters => parameters
             .Add(component => component.Projection, fixture with { Board = fixture.Board with { Hexes = hexes } })
             .Add(component => component.ImageBaseUrl, Images));

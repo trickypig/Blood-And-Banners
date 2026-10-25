@@ -1184,7 +1184,7 @@ public sealed partial class GameTableTests : BunitContext
             new(4, 0, "plains", "grass", 0, false, null),
             new(5, 0, "plains", "grass", 0, false, null),
             new(6, 0, "plains", "grass", 0, false, "s2-u1"),
-            new(0, 1, "stone", "crags", 0, true, null),
+            new(0, 1, "stone", "crags", 0, true, null) { Impassable = true },
         };
         UnitProjection Unit(string id, string seat, string hex, bool hero = false) => new(id, seat, hero, id, "", 3, 1, 3, 2, 5, 0, hex, false);
         return BattleFixtures.Projection() with

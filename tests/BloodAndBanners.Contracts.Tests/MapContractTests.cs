@@ -6,6 +6,14 @@ namespace BloodAndBanners.Contracts.Tests;
 public sealed class MapContractTests
 {
     [Fact]
+    public void Hex_projection_reads_the_impassable_flag()
+    {
+        const string json = """{"q":0,"r":0,"biome":"plains","terrain":"grass","elevation":0,"sightBlocker":false,"impassable":true,"occupantId":null,"object":"shrine"}""";
+        var shrine = JsonSerializer.Deserialize<HexProjection>(json, ContractJson.Options)!;
+        Assert.Equal((false, true), (shrine.SightBlocker, shrine.Impassable));
+    }
+
+    [Fact]
     public void Saved_map_roundtrip_preserves_revision_identity_and_unknown_metadata()
     {
         var fixture = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "saved-map.json"));

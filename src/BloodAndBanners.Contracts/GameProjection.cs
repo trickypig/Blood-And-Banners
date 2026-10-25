@@ -38,8 +38,10 @@ public sealed record HexProjection(
     string? OccupantId)
 {
     public int? PlayerStart { get; init; }
-    /// <summary>The map object on the hex, such as a "tree" or "rock" obstacle.</summary>
+    /// <summary>The map object on the hex: an obstacle, landmark, nexus point or item kind such as "tree" or "fire-crystal".</summary>
     public string? Object { get; init; }
+    /// <summary>Nothing may enter the hex, flying included: obstacles and landmarks.</summary>
+    public bool Impassable { get; init; }
 }
 
 public sealed record TurnProjection(

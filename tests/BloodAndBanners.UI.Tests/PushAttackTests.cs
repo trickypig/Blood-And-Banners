@@ -45,11 +45,14 @@ public sealed class PushAttackTests : BunitContext
         Assert.Equal("s2-u1", payload.GetProperty("targetUnitIds")[0].GetString());
     }
 
-    [Fact]
-    public void A_blocked_push_preview_stops_at_the_wall()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_blocked_push_preview_stops_at_the_wall(bool blocksSight)
     {
+        // A landmark blocks movement without blocking sight; the preview must stop at it like an obstacle.
         var projection = Projection("Stone Swat");
-        projection = projection with { Board = projection.Board with { Hexes = projection.Board.Hexes.Select(h => h.Q == 2 ? h with { SightBlocker = true } : h).ToList() } };
+        projection = projection with { Board = projection.Board with { Hexes = projection.Board.Hexes.Select(h => h.Q == 2 ? h with { SightBlocker = blocksSight, Impassable = true } : h).ToList() } };
         var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection));
         cut.Find("[data-hex='0,0']").Click();
         cut.Find("[data-use-ability='Stone Swat']").Click();

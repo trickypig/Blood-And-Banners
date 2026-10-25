@@ -224,7 +224,7 @@ public sealed partial class GameTableTests : BunitContext
         new ViewerPermissions(canCommand ? "player" : "spectator", canCommand ? "seat-red" : null, canCommand, canCommand),
         new BoardProjection(3, 2, [
             new HexProjection(0, 0, "plains", "grass", 0, false, "Thorgrim"),
-            new HexProjection(1, 0, "stone", "crags", 2, true, null),
+            new HexProjection(1, 0, "stone", "crags", 2, true, null) { Impassable = true },
         ]),
         new TurnProjection(2, "seat-red", 3),
         null,
