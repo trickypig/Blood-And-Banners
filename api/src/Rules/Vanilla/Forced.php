@@ -69,7 +69,7 @@ final class Forced
             [$q, $r] = Hex::parse($here);
             $next = Hex::key($q + $direction[0], $r + $direction[1]);
             $hex = $state['board'][$next] ?? null;
-            if ($hex === null || $hex['sightBlocker'] || $hex['elevation'] - $state['board'][$here]['elevation'] >= 2) {
+            if ($hex === null || Board::impassable($hex) || $hex['elevation'] - $state['board'][$here]['elevation'] >= 2) {
                 $blocked = $hex === null ? 'edge' : 'wall';
                 $roll = $dice->roll(1, $random);
                 $collisions[] = ['unitId' => $unitId, 'faces' => $roll['faces'], 'wounds' => $roll['swords']];
@@ -127,7 +127,7 @@ final class Forced
         $destinations = [];
         foreach ($state['board'] as $key => $hex) {
             $key = (string)$key;
-            if ($key === $origin || $hex['sightBlocker'] || self::occupantAt($state, $key) !== null) {
+            if ($key === $origin || Board::impassable($hex) || self::occupantAt($state, $key) !== null) {
                 continue;
             }
             if (Hex::distance($origin, $key) + intdiv(abs($hex['elevation'] - $elevation), 2) <= self::TELEPORT_REACH) {

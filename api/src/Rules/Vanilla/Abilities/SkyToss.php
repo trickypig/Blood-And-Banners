@@ -2,6 +2,7 @@
 declare(strict_types=1);
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\CustomDice;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Hex;
@@ -36,7 +37,7 @@ final class SkyToss extends SaveAttack
         $destinations = [];
         foreach ($state['board'] as $key => $hex) {
             $key = (string)$key;
-            if (!$hex['sightBlocker'] && !in_array($key, $occupied, true) && Hex::distance($origin, $key) <= 4) {
+            if (!Board::impassable($hex) && !in_array($key, $occupied, true) && Hex::distance($origin, $key) <= 4) {
                 $destinations[] = $key;
             }
         }

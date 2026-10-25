@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\Hex;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
@@ -25,7 +26,7 @@ final class TentacleRegeneration extends SpecialAttack
         }
         $occupied = array_column($state['units'], 'hex');
         $hexes = array_values(array_filter(Hex::neighbors($state['units'][$unitId]['hex'], $state['board']), static fn(string $hex): bool =>
-            Water::contains($state, $hex) && !$state['board'][$hex]['sightBlocker'] && !in_array($hex, $occupied, true)
+            Water::contains($state, $hex) && !Board::impassable($state['board'][$hex]) && !in_array($hex, $occupied, true)
         ));
         sort($hexes, SORT_STRING);
         return $hexes;

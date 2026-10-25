@@ -68,7 +68,7 @@ final class Terrain
     public static function canEnter(array $state, string $unitId, string $from, string $to, string $movementKind): bool
     {
         $destination = $state['board'][$to] ?? null;
-        if ($destination === null || $destination['sightBlocker']) {
+        if ($destination === null || Board::impassable($destination)) {
             return false;
         }
         if ($movementKind === 'voluntary' && !self::allowsVoluntaryHex($state, $state['units'][$unitId], $to)) {

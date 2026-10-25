@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Abilities;
 
+use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
 use BloodAndBanners\Rules\Vanilla\Hex;
@@ -37,7 +38,7 @@ final class MyceliumNetwork extends MovementAbility
         $occupied = array_column($state['units'], 'hex');
         $options = [];
         foreach ($state['board'] as $hex => $tile) {
-            if (!empty($tile['sightBlocker']) || in_array($hex, $occupied, true)) {
+            if (Board::impassable($tile) || in_array($hex, $occupied, true)) {
                 continue;
             }
             foreach ($anchors as $anchor) {

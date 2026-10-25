@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla\Modes;
 
+use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Game\GameServiceException;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
 use BloodAndBanners\Rules\Vanilla\Catalog;
@@ -191,7 +192,7 @@ final class CoopSetup
         $unit['abilities'] = array_values(array_filter($monster['abilities'], self::isAbilityPlayable(...)));
         $type = Terrain::type($state['board'][$hex]);
         $waterCreature = in_array($monster['biome'], ['River'], true);
-        return !$state['board'][$hex]['sightBlocker'] && ($type === null || ($type === 'water' && $waterCreature))
+        return !Board::impassable($state['board'][$hex]) && ($type === null || ($type === 'water' && $waterCreature))
             && Terrain::allowsVoluntaryHex($state, $unit, $hex);
     }
 

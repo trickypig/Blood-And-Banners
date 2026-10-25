@@ -17,7 +17,7 @@ final class Placement
             $candidates = [];
             foreach ($anchors as $anchor) {
                 foreach (Hex::neighbors($anchor, $board) as $key) {
-                    if (!$board[$key]['sightBlocker'] && !isset($occupied[$key])) {
+                    if (!Board::impassable($board[$key]) && !isset($occupied[$key])) {
                         $candidates[$key] = $key;
                     }
                 }

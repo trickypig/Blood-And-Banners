@@ -14,6 +14,23 @@ use BloodAndBanners\Rules\Vanilla\Terrain;
 use BloodAndBanners\Rules\Vanilla\TerrainResolver;
 use BloodAndBanners\Rules\Vanilla\UnitConditions;
 
+/** A five-hex line with `$kind` on 2,0, a flyer on 0,0 and an enemy on 4,0. */
+function object_line(string $kind): array
+{
+    $hexes = [];
+    for ($q = 0; $q < 5; $q++) {
+        $hexes[] = [
+            'q' => $q, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0,
+            'object' => $q === 2 ? $kind : null, 'sightBlocker' => false,
+        ];
+    }
+    $board = Board::fromScenario(['map' => ['hexes' => $hexes]]);
+    return [$board, vanilla_battle($board, [
+        terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 4]),
+        vanilla_unit('b1', 'seat-b', '4,0'),
+    ])];
+}
+
 function terrain_unit(string $unitId, string $seatId, string $hex, array $abilities = [], array $stats = []): array
 {
     return vanilla_unit($unitId, $seatId, $hex, $stats + [
@@ -57,7 +74,7 @@ function vanilla_terrain_tests(): array
                 ]]],
             ]);
             expect_same(
-                ['elevation' => -1, 'sightBlocker' => false, 'playerStart' => 1, 'biome' => 'water', 'terrain' => 'open-water', 'spawnZone' => null],
+                ['elevation' => -1, 'sightBlocker' => false, 'impassable' => false, 'playerStart' => 1, 'biome' => 'water', 'terrain' => 'open-water', 'spawnZone' => null],
                 $board['2,3'],
                 'the engine must retain painted terrain from the scenario'
             );
@@ -165,25 +182,39 @@ function vanilla_terrain_tests(): array
             expect_same(1, count($ordinaryEvents[0]['payload']['defenseFaces']), 'fire should not modify an ordinary defender');
         },
 
-        'every obstacle kind blocks movement and sight even for flyers' => static function (): void {
+        'obstacles block movement and sight even for flyers' => static function (): void {
             foreach (Board::OBSTACLES as $obstacle) {
-                $hexes = [];
-                for ($q = 0; $q < 5; $q++) {
-                    $hexes[] = [
-                        'q' => $q, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0,
-                        'object' => $q === 2 ? $obstacle : null, 'sightBlocker' => false,
-                    ];
-                }
-                $board = Board::fromScenario(['map' => ['hexes' => $hexes]]);
-                expect_same(true, $board['2,0']['sightBlocker'], "a {$obstacle} blocks its hex without the flag");
-                $state = vanilla_battle($board, [
-                    terrain_unit('a1', 'seat-a', '0,0', ['Flying'], ['move' => 4]),
-                    vanilla_unit('b1', 'seat-b', '4,0'),
-                ]);
-                $destinations = array_column(Movement::options($state, 'a1', 4), 'destination');
-                expect_same(['1,0'], $destinations, "a flyer can neither enter nor pass a {$obstacle}");
+                [$board, $state] = object_line($obstacle);
+                expect_same(true, $board['2,0']['sightBlocker'], "a {$obstacle} blocks sight without the flag");
+                expect_same(true, $board['2,0']['impassable'], "a {$obstacle} blocks movement");
+                expect_same(['1,0'], array_column(Movement::options($state, 'a1', 4), 'destination'), "a flyer can neither enter nor pass a {$obstacle}");
                 expect_same(false, Combat::visible($state, '0,0', '4,0'), "a {$obstacle} blocks line of sight");
             }
+        },
+
+        'landmarks block movement but not sight' => static function (): void {
+            foreach (Board::LANDMARKS as $landmark) {
+                [$board, $state] = object_line($landmark);
+                expect_same(false, $board['2,0']['sightBlocker'], "a {$landmark} does not block sight");
+                expect_same(['1,0'], array_column(Movement::options($state, 'a1', 4), 'destination'), "a flyer can neither enter nor pass a {$landmark}");
+                expect_same(true, Combat::visible($state, '0,0', '4,0'), "line of sight passes a {$landmark}");
+            }
+        },
+
+        'nexus points and items block nothing and units may stop on them' => static function (): void {
+            foreach (array_merge(Board::NEXUS_POINTS, Board::ITEMS) as $kind) {
+                [$board, $state] = object_line($kind);
+                expect_same([false, false], [$board['2,0']['sightBlocker'], $board['2,0']['impassable']], "a {$kind} blocks nothing");
+                expect_same(true, in_array('2,0', array_column(Movement::options($state, 'a1', 4), 'destination'), true), "a unit may end on a {$kind}");
+                expect_same(true, Combat::visible($state, '0,0', '4,0'), "line of sight passes a {$kind}");
+            }
+        },
+
+        'a sight blocker is always impassable' => static function (): void {
+            expect_same(true, Board::impassable(['sightBlocker' => true]), 'flag-only tile');
+            expect_same(false, Board::impassable(['sightBlocker' => false]), 'open tile');
+            expect_same(true, Board::impassable(['sightBlocker' => false, 'impassable' => true]), 'landmark tile');
+            expect_same(true, Board::blocksMovement(['object' => null, 'sightBlocker' => true]), 'art-less blocked hex');
         },
 
         'canonical options apply water costs stops and climb rules' => static function (): void {
