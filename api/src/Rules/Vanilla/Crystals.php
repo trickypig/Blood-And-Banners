@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla;
 
+use BloodAndBanners\Rules\Vanilla\Conditions\Condition;
+
 /**
  * Crystal landmarks. A unit that finishes its own move next to one, unengaged and with no enemy beside the crystal,
  * claims it for its player; the owner's units get the crystal's combat bonus until someone else claims it.
@@ -82,13 +84,14 @@ final class Crystals
         };
     }
 
-    /** An enemy stands next to the unit within one level of height. */
+    /** An enemy stands next to the unit within one level of height and could strike it for leaving, as for disengagement strikes. */
     private static function engaged(array $state, string $unitId): bool
     {
         $here = $state['units'][$unitId]['hex'];
         foreach ($state['units'] as $otherId => $other) {
             if ($other['hex'] !== null
                 && Sides::enemies($state, $unitId, (string)$otherId)
+                && !UnitConditions::any($state, (string)$otherId, static fn(Condition $condition): bool => $condition->blocksDisengagementStrike())
                 && Hex::distance($here, $other['hex']) === 1
                 && abs($state['board'][$here]['elevation'] - $state['board'][$other['hex']]['elevation']) <= 1) {
                 return true;

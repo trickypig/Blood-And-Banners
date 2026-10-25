@@ -37,6 +37,14 @@ function crystal_tests(): array
             expect_same([], $events, 'no claim event');
         },
 
+        'an enemy that could not strike a leaving unit does not engage it' => static function (): void {
+            $state = crystal_battle([vanilla_unit('a1', 'seat-a', '4,0'), vanilla_unit('b1', 'seat-b', '3,0')]);
+            $state['conditions'][] = ['name' => 'Stunned', 'unitId' => 'b1', 'sourceUnitId' => null, 'expires' => [], 'data' => []];
+            $events = [];
+            $after = Crystals::claim($state, 'a1', $events);
+            expect_same(['5,0' => 'seat-a'], $after['crystals'] ?? [], 'a stunned neighbour, like for disengagement strikes, does not engage');
+        },
+
         'an enemy next to the crystal blocks the claim' => static function (): void {
             $state = crystal_battle([vanilla_unit('a1', 'seat-a', '1,0', ['move' => 3]), vanilla_unit('b1', 'seat-b', '6,0')]);
             $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '4,0']);
