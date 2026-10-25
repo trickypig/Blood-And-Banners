@@ -65,7 +65,7 @@ public partial class MapEditor : IAsyncDisposable
         if (_tool == "player") _player = NextPlayer;
         _tool = "player"; _status = "";
     }
-    private string NextObstacle => ObstacleArt.Kinds[(ObstacleArt.Kinds.ToList().IndexOf(_obstacle) + 1) % ObstacleArt.Kinds.Count];
+    private string NextObstacle => MapObjectArt.KindsIn("obstacle")[(MapObjectArt.KindsIn("obstacle").ToList().IndexOf(_obstacle) + 1) % MapObjectArt.KindsIn("obstacle").Count];
     private void SelectObstacle()
     {
         if (_tool == "obstacle") _obstacle = NextObstacle;
@@ -90,7 +90,7 @@ public partial class MapEditor : IAsyncDisposable
         _ => "M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5M9 12h6"
     };
     private readonly Dictionary<string, string> _terrains = TerrainArt.BiomeNames.ToDictionary(b => b, b => TerrainArt.Terrains(b)[0]);
-    private string _tool = "paint", _biome = "plains", _heightAction = "raise", _obstacle = ObstacleArt.Kinds[0];
+    private string _tool = "paint", _biome = "plains", _heightAction = "raise", _obstacle = MapObjectArt.KindsIn("obstacle")[0];
     private int _player = 1, _columns = 15, _rows = 10;
     private double _zoom = 1;
     private bool _busy, _conflict, _disposed;
