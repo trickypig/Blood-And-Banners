@@ -103,7 +103,7 @@
             <div class="hex-info"><strong>Selected hex:</strong>
                 @if (_document.SelectedHex is { } selected)
                 {
-                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
+                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> @if (category == "nexus") { <text> &middot; Radius: @(selected.Radius ?? 1)</text> } } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
                 }
                 else { <span>None</span> }
             </div>
@@ -132,6 +132,10 @@
                            @onkeydown="e => HexKey(e, hex.Q, hex.R)">
                             <HexTerrain Tile="tile" PatternId="@TerrainArt.PatternId(hex, "editor-terrain-")" />
                             <polygon class="hex-outline" points="@tile.TopPoints" />
+                            @if (_runeAreas.TryGetValue($"{hex.Q},{hex.R}", out var runeKinds))
+                            {
+                                <RuneAreaTint Tile="tile" Kinds="runeKinds" />
+                            }
                             @if (hex.Elevation != 0)
                             {
                                 <!text class="height-label" x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)" fill="@TerrainArt.LabelColor(hex.Biome)">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
@@ -142,6 +146,10 @@
                                 <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
                             }
                             <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
+                            @if (hex.Radius is > 1 and var radius)
+                            {
+                                <!text class="rune-radius" data-rune-radius="@radius" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@radius</!text>
+                            }
                         </g>
                     }
                 </svg>

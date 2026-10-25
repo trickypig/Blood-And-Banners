@@ -84,6 +84,7 @@ public static class MapFileCodec
             if (hex.Biome is null || hex.Terrain is null || !TerrainArt.IsValid(hex.Biome, hex.Terrain)) throw new FormatException("Invalid biome or terrain.");
             if (hex.Elevation is < -1000 or > 1000 || hex.PlayerStart is < 1 or > 4) throw new FormatException("Invalid height or player start.");
             if (new[] { hex.SpawnZone, hex.Piece, hex.Object }.Any(v => v?.Length > 120)) throw new FormatException("Invalid tile metadata.");
+            if (hex.Radius is < 1 or > MapObjectArt.MaxRuneRadius) throw new FormatException("Rune radius must be 1–4.");
         }
         if (definition.Placements is null || definition.Objectives is null || definition.Scoring is null)
             throw new FormatException("Scenario metadata is missing.");

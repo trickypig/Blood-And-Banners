@@ -106,6 +106,7 @@ public partial class MapEditor : IAsyncDisposable
     private Func<Task>? _pending;
     private ScenarioDefinition? _layoutDefinition;
     private IReadOnlyList<HexProjection> _hexes = [];
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> _runeAreas = new Dictionary<string, IReadOnlyList<string>>();
     private BoardLayout _layout = BoardLayout.For([]);
     private IJSObjectReference? _files;
 
@@ -116,8 +117,9 @@ public partial class MapEditor : IAsyncDisposable
             if (!ReferenceEquals(_layoutDefinition, _document.Definition))
             {
                 _layoutDefinition = _document.Definition;
-                _hexes = _document.Definition.Map.Hexes.Select(h => new HexProjection(h.Q, h.R, h.Biome, h.Terrain, h.Elevation, h.SightBlocker, null) { PlayerStart = h.PlayerStart, Object = h.Object }).ToList();
+                _hexes = _document.Definition.Map.Hexes.Select(h => new HexProjection(h.Q, h.R, h.Biome, h.Terrain, h.Elevation, h.SightBlocker, null) { PlayerStart = h.PlayerStart, Object = h.Object, Radius = h.Radius }).ToList();
                 _layout = BoardLayout.For(_hexes);
+                _runeAreas = RuneAreas.Of(_hexes);
             }
             return _layout;
         }

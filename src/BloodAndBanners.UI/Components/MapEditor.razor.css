@@ -74,3 +74,5 @@ input { box-sizing: border-box; display: block; width: 100%; min-height: 2.5rem;
 }
 .object-button { padding: .15rem; }
 .object-button img { display: block; width: 1.9rem; height: 1.9rem; object-fit: contain; }
+
+.rune-radius { font-size: 12px; font-weight: 700; fill: #fff; stroke: #2a1f3d; stroke-width: 3px; paint-order: stroke; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }

@@ -184,4 +184,69 @@ public sealed class MapObjectTests : BunitContext
         doc.Import(json);
         Assert.Equal("rune-of-focus", doc.Definition.Map.Hexes[0].Object);
     }
+
+    [Fact]
+    public void Placing_the_same_rune_again_cycles_its_radius_and_anything_else_resets_it()
+    {
+        var doc = new MapEditorDocument();
+        doc.SetObject(0, 0, "rune-of-strength");
+        Assert.Null(doc.SelectedHex!.Radius);
+        var seen = new List<int?>();
+        for (var click = 0; click < 4; click++)
+        {
+            doc.SetObject(0, 0, "rune-of-strength");
+            seen.Add(doc.SelectedHex!.Radius);
+        }
+        Assert.Equal([2, 3, 4, null], seen);
+
+        doc.SetObject(0, 0, "rune-of-strength");
+        doc.SetObject(0, 0, "rune-of-warding");
+        Assert.Equal(("rune-of-warding", (int?)null), (doc.SelectedHex!.Object, doc.SelectedHex.Radius));
+        doc.SetObject(0, 0, "rune-of-warding");
+        doc.SetObject(0, 0, "speed-potion");
+        Assert.Null(doc.SelectedHex!.Radius);
+        doc.SetObject(0, 0, "speed-potion");
+        Assert.Equal(("speed-potion", (int?)null), (doc.SelectedHex!.Object, doc.SelectedHex.Radius));
+
+        doc.SetObject(1, 0, "rune-of-focus");
+        doc.SetObject(1, 0, "rune-of-focus");
+        doc.Erase(1, 0);
+        Assert.Null(doc.SelectedHex!.Radius);
+        doc.SetObject(1, 0, "rune-of-focus");
+        doc.SetObject(1, 0, "rune-of-focus");
+        doc.SetPlayerStart(1, 0, 1);
+        Assert.Null(doc.SelectedHex!.Radius);
+    }
+
+    [Fact]
+    public void Radius_round_trips_through_the_map_file_and_is_validated()
+    {
+        var doc = new MapEditorDocument();
+        doc.SetObject(0, 0, "rune-of-focus");
+        doc.SetObject(0, 0, "rune-of-focus");
+        var json = MapFileCodec.ExportCanonical(doc.Definition);
+        Assert.Contains("\"radius\"", json);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"radius\""));
+        var copy = new MapEditorDocument();
+        copy.Import(json);
+        Assert.Equal(2, copy.Definition.Map.Hexes.Single(h => h.Object == "rune-of-focus").Radius);
+
+        var bad = doc.Definition with { Map = doc.Definition.Map with { Hexes = doc.Definition.Map.Hexes.Select((h, i) => i == 0 ? h with { Radius = 5 } : h).ToList() } };
+        Assert.Throws<FormatException>(() => MapFileCodec.Validate(bad));
+    }
+
+    [Fact]
+    public void The_editor_shows_rune_radius_and_tints_its_area()
+    {
+        var cut = Render<MapEditor>(parameters => parameters.Add(component => component.ImageBaseUrl, Images));
+        cut.Find(".object-button[data-category='nexus']").Click();
+        cut.Find("[data-hex='2,2']").Click();
+        Assert.Empty(cut.FindAll("[data-rune-radius]"));
+        Assert.Single(cut.FindAll("[data-rune-area='rune-of-focus']"));
+
+        cut.Find("[data-hex='2,2']").Click();
+        Assert.Equal("2", cut.Find("[data-hex='2,2'] [data-rune-radius]").TextContent);
+        Assert.Equal(7, cut.FindAll("[data-rune-area='rune-of-focus']").Count);
+        Assert.Contains("Radius: 2", cut.Find(".hex-info").TextContent);
+    }
 }

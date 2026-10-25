@@ -38,6 +38,8 @@ public sealed record ScenarioHex(
     bool SightBlocker)
 {
     [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+    /// <summary>A rune's reach, 1–4: 1 is its own hex, each step adds a ring. Null means 1; other objects have none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Radius { get; init; }
 }
 
 public sealed record ScenarioScoring(

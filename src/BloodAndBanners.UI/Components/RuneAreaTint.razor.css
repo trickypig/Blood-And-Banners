@@ -1,0 +1,4 @@
+.rune-area { stroke: none; fill-opacity: .2; pointer-events: none; }
+.rune-area.rune-of-strength { fill: #e0644b; }
+.rune-area.rune-of-focus { fill: #a678e0; }
+.rune-area.rune-of-warding { fill: #5fa8e0; }

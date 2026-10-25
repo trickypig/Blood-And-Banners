@@ -44,6 +44,8 @@ public sealed record HexProjection(
     public bool Impassable { get; init; }
     /// <summary>The seat that controls the crystal on this hex, or null when unclaimed or not a crystal.</summary>
     public string? ControlledBy { get; init; }
+    /// <summary>The rune's reach on a nexus-point hex (1–4); null on every other hex.</summary>
+    public int? Radius { get; init; }
 }
 
 public sealed record TurnProjection(

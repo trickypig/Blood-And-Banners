@@ -47,6 +47,9 @@ final class MapValidator
             if (($hex['playerStart'] ?? null) !== null) {
                 self::integer($hex['playerStart'], 1, 4, 'Player starts must be 1–4.');
             }
+            if (($hex['radius'] ?? null) !== null) {
+                self::integer($hex['radius'], 1, 4, 'Rune radius must be 1–4.');
+            }
             foreach (['portal', 'fountain', 'sightBlocker'] as $flag) {
                 self::check(isset($hex[$flag]) && is_bool($hex[$flag]), "Invalid {$flag} flag.");
             }

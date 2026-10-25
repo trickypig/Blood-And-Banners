@@ -54,17 +54,21 @@ public sealed class MapEditorDocument
     }
     /// <summary>
     /// Places an obstacle, landmark, nexus point or item, replacing whatever was on the hex (a start or another object);
-    /// null clears it. Only obstacles carry the sight-blocker flag.
+    /// null clears it. Only obstacles carry the sight-blocker flag. Placing a rune on the same rune instead widens its
+    /// radius, wrapping from 4 back to 1.
     /// </summary>
     public void SetObject(int q, int r, string? kind)
     {
         if (kind is not null && !MapObjectArt.IsKnown(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        Edit(q, r, h => kind is null ? WithoutObject(h) : h with { Object = kind, SightBlocker = MapObjectArt.BlocksSight(kind), PlayerStart = null });
+        Edit(q, r, h => kind is null ? WithoutObject(h)
+            : h.Object == kind && MapObjectArt.CategoryOf(kind) == "nexus" ? h with { Radius = NextRadius(h.Radius) }
+            : h with { Object = kind, SightBlocker = MapObjectArt.BlocksSight(kind), PlayerStart = null, Radius = null });
     }
+    private static int? NextRadius(int? radius) => (radius ?? 1) % MapObjectArt.MaxRuneRadius + 1 is var next && next > 1 ? next : null;
     /// <summary>Removes everything on the hex (start position and object), leaving its terrain and height.</summary>
     public void Erase(int q, int r) => Edit(q, r, h => WithoutObject(h) with { PlayerStart = null });
     private static ScenarioHex WithoutObject(ScenarioHex hex) =>
-        hex.SightBlocker || hex.Object is not null ? hex with { Object = null, SightBlocker = false } : hex;
+        hex.SightBlocker || hex.Object is not null || hex.Radius is not null ? hex with { Object = null, SightBlocker = false, Radius = null } : hex;
     public void Clear()
     {
         var hexes = Definition.Map.Hexes.Select(h => h with { Biome = "plains", Terrain = "grass", Elevation = 0, PlayerStart = null }).ToList();

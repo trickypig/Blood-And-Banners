@@ -8,6 +8,8 @@ namespace BloodAndBanners.UI.Services;
 /// </summary>
 public static class MapObjectArt
 {
+    public const int MaxRuneRadius = 4;
+
     private sealed record Kind(string Id, string Display, string Category, int Variants);
 
     private static readonly (string Id, string Display, string Folder)[] CategoryInfo =

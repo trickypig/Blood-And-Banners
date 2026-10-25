@@ -135,5 +135,21 @@ function map_editor_tests(): array
             expect_same(413, $ctx['app']->handle(new Request('POST', '/api/v1/account/maps', bearer($owner), ['definition' => $valid]))->status, 'bounded size');
             expect_same(0, (int)$ctx['db']->query('SELECT COUNT(*) FROM scenarios')->fetchColumn(), 'invalid maps not written');
         },
+        'rune radius must be 1 to 4 when present' => static function (): void {
+            $definition = editor_definition();
+            $definition['map']['hexes'][0]['object'] = 'rune-of-strength';
+            $definition['map']['hexes'][0]['radius'] = 4;
+            expect_same(4, \BloodAndBanners\Scenario\MapValidator::validate($definition)['map']['hexes'][0]['radius'], 'radius 4 accepted');
+            $definition['map']['hexes'][0]['radius'] = null;
+            \BloodAndBanners\Scenario\MapValidator::validate($definition);
+            foreach ([0, 5, 'big'] as $bad) {
+                $definition['map']['hexes'][0]['radius'] = $bad;
+                try {
+                    \BloodAndBanners\Scenario\MapValidator::validate($definition);
+                    throw new RuntimeException("radius {$bad} was accepted");
+                } catch (\BloodAndBanners\Scenario\MapException) {
+                }
+            }
+        },
     ];
 }

@@ -1,0 +1,12 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+
+@foreach (var kind in Kinds)
+{
+    <polygon class="rune-area @kind" data-rune-area="@kind" points="@Tile.TopPoints" aria-hidden="true" />
+}
+
+@code {
+    [Parameter, EditorRequired] public HexTile Tile { get; set; } = default!;
+    [Parameter] public IReadOnlyList<string> Kinds { get; set; } = [];
+}
