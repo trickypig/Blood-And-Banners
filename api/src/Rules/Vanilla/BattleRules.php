@@ -111,6 +111,8 @@ final class BattleRules
             $state['turn']['activeUnitId'] = null;
         }
 
+        // Units come to rest only once the command has resolved, so a potion passed over mid-move stays put.
+        $state = Potions::drinkAll($state, $events);
         if ($state['phase'] === 'active') {
             $state = Charm::cleanup($state, $events);
         }
@@ -635,6 +637,7 @@ final class BattleRules
                 $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
                 $state['turn']['movedAfterAttack'] = false;
             }
+            $state = Potions::drinkAll($state, $events);
             $active = $state['turn']['activeSeatId'];
             if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
                 [$state, $passed] = self::passTurn($state, $random);
@@ -652,6 +655,7 @@ final class BattleRules
         }
         $events = [];
         $state = (new StepRunner($random, $this->now))->resolve($state, $option, $events);
+        $state = Potions::drinkAll($state, $events);
         $active = $state['turn']['activeSeatId'];
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
             [$state, $passed] = self::passTurn($state, $random);
@@ -775,6 +779,7 @@ final class BattleRules
         $events[] = MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round]);
         $state = Effects::expire($state, $next, Effects::UNTIL_NEXT_TURN, $events);
         $state = UnitConditions::atTurnStart($state, $events);
+        $state = Potions::drinkAll($state, $events);
         return [$state, $events];
     }
 
