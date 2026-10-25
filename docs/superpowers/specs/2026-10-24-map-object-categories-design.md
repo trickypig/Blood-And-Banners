@@ -58,7 +58,7 @@ Unchanged on disk: each scenario hex keeps one `object` string. A catalog maps k
 - `ObstacleArt` becomes `MapObjectArt`: per kind its display name, category, image count and folder;
   `Variant` and `ImagePath` as today.
 - `HexObstacle` becomes `HexMapObject`: obstacles and landmarks stand on the hex like a unit figure;
-  nexus runes sit flat and centred on the hex face with a soft glow; items are drawn small and low on the
+  nexus runes sit flat and centred on the hex face with a soft glow; items are drawn at 0.8× the hex radius (~35px), centred just below the hex centre on a soft shadow, low on the
   face. Nexus and item art is drawn in the layer beneath units so a unit standing there still reads clearly.
 
 ## Editor
