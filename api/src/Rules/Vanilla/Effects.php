@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla;
 
-/** Timed stat changes. An effect expires when the named seat's turn starts (UNTIL_NEXT_TURN) or ends (UNTIL_END_OF_TURN). */
+/** Timed stat changes. An effect expires when the named seat's turn starts (UNTIL_NEXT_TURN) or ends (UNTIL_END_OF_TURN); one with a turn count lasts that many of those turn ends. */
 final class Effects
 {
     public const UNTIL_NEXT_TURN = 'turnStart';
@@ -19,6 +19,7 @@ final class Effects
         string $seatId,
         string $at,
         array &$events,
+        ?int $turns = null,
     ): array {
         $state['effects'] = array_values(array_filter(
             $state['effects'],
@@ -31,7 +32,7 @@ final class Effects
             'stat' => $stat,
             'amount' => $amount,
             'expires' => ['seatId' => $seatId, 'at' => $at],
-        ];
+        ] + ($turns === null ? [] : ['turns' => $turns]);
         $state['effects'][] = $effect;
         $hex = $state['units'][$targetUnitId]['hex'];
         $events[] = MatchEngine::event('effectApplied', $hex === null ? [] : [$hex], $effect);
@@ -57,11 +58,17 @@ final class Effects
         ));
     }
 
-    public static function expire(array $state, string $seatId, string $at, array &$events): array
+    /** Ends the seat's effects due at this point; a counted effect instead loses a turn until its last. $all ends them regardless. */
+    public static function expire(array $state, string $seatId, string $at, array &$events, bool $all = false): array
     {
         $kept = [];
         foreach ($state['effects'] as $effect) {
             if ($effect['expires']['seatId'] === $seatId && $effect['expires']['at'] === $at) {
+                if (!$all && (int)($effect['turns'] ?? 1) > 1) {
+                    $effect['turns']--;
+                    $kept[] = $effect;
+                    continue;
+                }
                 $events[] = MatchEngine::event('effectExpired', [], ['name' => $effect['name'], 'targetUnitId' => $effect['targetUnitId']]);
                 continue;
             }

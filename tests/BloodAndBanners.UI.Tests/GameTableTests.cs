@@ -673,8 +673,12 @@ public sealed partial class GameTableTests : BunitContext
             Units = [
                 projection.Units[0] with
                 {
-                    EffectiveDefense = 4,
-                    Effects = [new EffectProjection("Shield Wall", "defense", 1, "nextTurn")],
+                    EffectiveDefense = 6,
+                    Effects = [
+                        new EffectProjection("Shield Wall", "defense", 1, "nextTurn"),
+                        new EffectProjection("Iron Draught", "defense", 1, "turns") { TurnsLeft = 2 },
+                        new EffectProjection("Last Sip", "defense", 1, "turns") { TurnsLeft = 1 },
+                    ],
                     Abilities = [new AbilityProjection("Evasion", "Essence", "Roll d20") { Playable = true }],
                 },
                 projection.Units[1],
@@ -686,9 +690,11 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("[data-hex='1,4']").Click();
 
         var defense = cut.Find("[data-testid=selected-unit] [data-stat='defense']");
-        Assert.Equal("2 → 4", defense.TextContent.Trim());
+        Assert.Equal("2 → 6", defense.TextContent.Trim());
         Assert.Equal("Defense", defense.QuerySelector("img")!.GetAttribute("alt"));
         Assert.Contains("Shield Wall +1 until your next turn", defense.GetAttribute("title"));
+        Assert.Contains("Iron Draught +1 for 2 more turns", defense.GetAttribute("title"));
+        Assert.Contains("Last Sip +1 for 1 more turn", defense.GetAttribute("title"));
         Assert.NotNull(cut.Find("[data-testid=selected-unit] li[data-ability='Evasion']"));
     }
 

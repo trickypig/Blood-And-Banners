@@ -7,7 +7,11 @@ public sealed record AbilityProjection(string Name, string Type, string Descript
     public bool CoolingDown { get; init; }
 }
 
-public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires);
+public sealed record EffectProjection(string Name, string Stat, int Amount, string Expires)
+{
+    /// <summary>For an effect that lasts a number of its owner's turns ("turns"), how many are left, this one included.</summary>
+    public int? TurnsLeft { get; init; }
+}
 
 public sealed record ConditionDataProjection
 {

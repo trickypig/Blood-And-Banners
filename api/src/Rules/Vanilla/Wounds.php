@@ -67,8 +67,8 @@ final class Wounds
         }
         if (!self::anyAlive($state, $unit['seatId'])) {
             // A wiped-out seat never takes another turn, so its effects could never expire on their own.
-            $state = Effects::expire($state, $unit['seatId'], Effects::UNTIL_END_OF_TURN, $events);
-            $state = Effects::expire($state, $unit['seatId'], Effects::UNTIL_NEXT_TURN, $events);
+            $state = Effects::expire($state, $unit['seatId'], Effects::UNTIL_END_OF_TURN, $events, true);
+            $state = Effects::expire($state, $unit['seatId'], Effects::UNTIL_NEXT_TURN, $events, true);
         }
         return $state;
     }

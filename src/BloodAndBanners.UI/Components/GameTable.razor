@@ -639,11 +639,18 @@
         ("defense", "Defense", unit.Defense, unit.EffectiveDefense ?? unit.Defense),
     ];
 
+    private static string EffectExpiry(EffectProjection effect) => effect.Expires switch
+    {
+        "endOfTurn" => "until end of turn",
+        "turns" => effect.TurnsLeft == 1 ? "for 1 more turn" : $"for {effect.TurnsLeft} more turns",
+        _ => "until your next turn",
+    };
+
     private static string? EffectSources(UnitProjection unit, string stat)
     {
         var sources = unit.Effects
             .Where(effect => effect.Stat == stat)
-            .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {(effect.Expires == "endOfTurn" ? "until end of turn" : "until your next turn")}")
+            .Select(effect => $"{effect.Name} {(effect.Amount > 0 ? "+" : "")}{effect.Amount} {EffectExpiry(effect)}")
             .Concat(unit.Conditions
                 .Where(condition => ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty, condition.Data.Level) != 0)
                 .Select(condition => $"{condition.Name} {ConditionText.StatDelta(condition.Name, stat, condition.Data.PowerPenalty, condition.Data.Level).ToString("+0;−0", System.Globalization.CultureInfo.InvariantCulture)} {ConditionText.Expiry(condition.Expires, condition.Name)}"))

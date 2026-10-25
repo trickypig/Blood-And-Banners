@@ -1003,7 +1003,8 @@ final class GameService
                 'name' => $effect['name'],
                 'stat' => $effect['stat'],
                 'amount' => $effect['amount'],
-                'expires' => $effect['expires']['at'] === Effects::UNTIL_END_OF_TURN ? 'endOfTurn' : 'nextTurn',
+                'expires' => isset($effect['turns']) ? 'turns' : ($effect['expires']['at'] === Effects::UNTIL_END_OF_TURN ? 'endOfTurn' : 'nextTurn'),
+                'turnsLeft' => isset($effect['turns']) ? (int)$effect['turns'] : null,
             ], Effects::forUnit($state, $id)),
             'conditions' => array_map(static fn(array $condition): array => [
                 'name' => $condition['name'],
