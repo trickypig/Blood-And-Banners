@@ -99,6 +99,40 @@ function crystal_tests(): array
             expect_same(['5,0' => 'seat-a'], $resolved['state']['crystals'] ?? [], 'the claim waits for the slide to end');
         },
 
+        'crystal bonuses apply to the owner in the matching attack and stack' => static function (): void {
+            $state = crystal_battle([
+                vanilla_unit('a1', 'seat-a', '0,0'),
+                vanilla_unit('f1', 'seat-b', '1,0', ['biome' => 'Forest']),
+                vanilla_unit('r1', 'seat-b', '2,0', ['biome' => 'River']),
+                vanilla_unit('l1', 'seat-b', '3,0', ['biome' => 'Lava']),
+                vanilla_unit('x1', 'seat-b', '4,0'),
+            ]);
+            $state['board']['6,0']['object'] = 'fire-crystal';
+            $state['board']['7,0']['object'] = 'forest-crystal';
+            $state['board']['8,0']['object'] = 'ice-crystal';
+            $power = static fn(array $s, string $target): int => \BloodAndBanners\Rules\Vanilla\Stats::effective($s, 'a1', 'power', ['attackerId' => 'a1', 'defenderId' => $target]);
+            $defense = static fn(array $s, string $attacker, array $extra = []): int => \BloodAndBanners\Rules\Vanilla\Stats::effective($s, 'a1', 'defense', ['attackerId' => $attacker, 'defenderId' => 'a1'] + $extra);
+            $basePower = $power($state, 'x1');
+            $baseDefense = $defense($state, 'x1');
+            expect_same($basePower, $power($state, 'f1'), 'no bonus without owning a crystal');
+
+            $state['crystals'] = ['5,0' => 'seat-a', '6,0' => 'seat-a', '7,0' => 'seat-a', '8,0' => 'seat-a'];
+            expect_same($basePower + 4, $power($state, 'f1'), 'two fire crystals stack: +4 power vs Forest');
+            expect_same($basePower, $power($state, 'x1'), 'no fire bonus vs a biome-less unit');
+            expect_same($basePower + 1, $power($state, 'l1'), 'ice: +1 power vs Lava');
+            expect_same($baseDefense + 4, $defense($state, 'r1'), 'forest: +4 defense vs a River attacker');
+            expect_same($baseDefense + 4, $defense($state, 'x1', ['ability' => 'Water Twister']), 'forest: +4 vs Water Twister');
+            expect_same($baseDefense + 2, $defense($state, 'l1'), 'ice: +2 defense vs a Lava attacker');
+            expect_same($baseDefense + 2, $defense($state, 'x1', ['damageType' => 'fire']), 'ice: +2 vs fire damage');
+            expect_same($baseDefense + 2, $defense($state, 'x1', ['ability' => 'Lava Burst']), 'ice: +2 vs a named fire ability');
+            expect_same($baseDefense, $defense($state, 'x1'), 'no defense bonus vs an ordinary attack');
+
+            $sources = \BloodAndBanners\Rules\Vanilla\Stats::breakdown($state, 'a1', 'power', ['attackerId' => 'a1', 'defenderId' => 'f1'])['modifiers'];
+            expect_same([['source' => 'Fire Crystal', 'amount' => 2], ['source' => 'Fire Crystal', 'amount' => 2]], $sources, 'each crystal is a named source');
+            expect_same((int)$state['units']['a1']['power'], \BloodAndBanners\Rules\Vanilla\Stats::effective($state, 'a1', 'power'), 'no bonus outside an attack');
+            expect_same($basePower, \BloodAndBanners\Rules\Vanilla\Stats::effective($state, 'f1', 'power', ['attackerId' => 'f1', 'defenderId' => 'a1']), 'other seats get nothing');
+        },
+
         'board tiles keep their map object' => static function (): void {
             $board = \BloodAndBanners\Rules\Vanilla\Board::fromScenario(['map' => ['hexes' => [
                 ['q' => 0, 'r' => 0, 'biome' => 'plains', 'terrain' => 'grass', 'elevation' => 0, 'object' => 'ice-crystal', 'sightBlocker' => false],

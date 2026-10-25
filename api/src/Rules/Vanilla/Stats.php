@@ -57,6 +57,9 @@ final class Stats
         foreach (Terrain::statSources($state, $unitId, $stat, $context) as $source) {
             $modifiers[] = $source;
         }
+        foreach (Crystals::statSources($state, $unitId, $stat, $context) as $source) {
+            $modifiers[] = $source;
+        }
         $value = $base + array_sum(array_column($modifiers, 'amount'));
         return ['value' => max(0, $value), 'base' => $base, 'modifiers' => $modifiers];
     }

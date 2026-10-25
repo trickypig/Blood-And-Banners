@@ -10,6 +10,8 @@ namespace BloodAndBanners\Rules\Vanilla;
 final class Crystals
 {
     public const KINDS = ['fire-crystal' => 'Fire Crystal', 'forest-crystal' => 'Forest Crystal', 'ice-crystal' => 'Ice Crystal'];
+    private const WATER_ABILITIES = ['Water Twister', 'Aquatic Surge'];
+    private const FIRE_ABILITIES = ['Fireball', 'Flame Strike', 'Dragon Breath', 'Inferno', 'Lava Burst', "Dragon's Breath"];
 
     /** Claims every crystal next to the unit that it may claim. Call only when the unit's own move has ended. */
     public static function claim(array $state, string $unitId, array &$events): array
@@ -36,6 +38,48 @@ final class Crystals
             ]);
         }
         return $state;
+    }
+
+    /**
+     * One named source per crystal the unit's player owns whose bonus fits this attack, so owning two of a kind stacks.
+     * @return list<array{source: string, amount: int}>
+     */
+    public static function statSources(array $state, string $unitId, string $stat, array $context): array
+    {
+        $seatId = $state['units'][$unitId]['seatId'] ?? null;
+        $sources = [];
+        foreach ($state['crystals'] ?? [] as $hex => $owner) {
+            $kind = $state['board'][(string)$hex]['object'] ?? null;
+            if ($owner !== $seatId || $kind === null || !isset(self::KINDS[$kind])) {
+                continue;
+            }
+            $amount = self::bonus($state, $kind, $unitId, $stat, $context);
+            if ($amount !== 0) {
+                $sources[] = ['source' => self::KINDS[$kind], 'amount' => $amount];
+            }
+        }
+        return $sources;
+    }
+
+    private static function bonus(array $state, string $kind, string $unitId, string $stat, array $context): int
+    {
+        $attacking = $stat === 'power' && ($context['attackerId'] ?? null) === $unitId;
+        $defending = $stat === 'defense' && ($context['defenderId'] ?? null) === $unitId;
+        $foeId = $attacking ? ($context['defenderId'] ?? null) : ($defending ? ($context['attackerId'] ?? null) : null);
+        if ($foeId === null || !isset($state['units'][$foeId])) {
+            return 0;
+        }
+        $foeBiome = $state['units'][$foeId]['biome'] ?? null;
+        $ability = $context['ability'] ?? null;
+        $water = $foeBiome === 'River' || in_array($ability, self::WATER_ABILITIES, true);
+        $fire = $foeBiome === 'Lava' || ($context['damageType'] ?? null) === 'fire' || in_array($ability, self::FIRE_ABILITIES, true);
+        return match (true) {
+            $kind === 'fire-crystal' && $attacking && $foeBiome === 'Forest' => 2,
+            $kind === 'forest-crystal' && $defending && $water => 4,
+            $kind === 'ice-crystal' && $attacking && $foeBiome === 'Lava' => 1,
+            $kind === 'ice-crystal' && $defending && $fire => 2,
+            default => 0,
+        };
     }
 
     /** An enemy stands next to the unit within one level of height. */
