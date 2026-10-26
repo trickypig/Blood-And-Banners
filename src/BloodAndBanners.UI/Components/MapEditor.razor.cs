@@ -197,6 +197,8 @@ public partial class MapEditor : IAsyncDisposable
     {
         _conflict = error is GameApiException { Code: "mapConflict" };
         _error = _conflict ? "This map was saved elsewhere. Reload the saved map or save your edits as a new map." :
+            // The server's own reason (a rejected map, an expired sign-in) says more than the generic connection hint.
+            error is GameApiException api ? $"{api.Message} Your edits are still here." :
             error is HttpRequestException or InvalidOperationException ? "Unable to access saved maps. Check your connection and sign-in, then try again. Your edits are still here." : error.Message;
     }
     private void SelectBiome(string biome)

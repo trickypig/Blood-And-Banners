@@ -225,6 +225,17 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Server_rejection_shows_the_server_reason()
+    {
+        await _account.VerifyCodeAsync("me@example.test", "123456", "device");
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='save']").Click();
+        _maps.SaveFailure = new GameApiException(System.Net.HttpStatusCode.BadRequest, "invalidMap", "Invalid portal flag.");
+        cut.Find("[data-action='save']").Click();
+        Assert.Contains("Invalid portal flag.", cut.Find("[role='alert']").TextContent);
+    }
+
+    [Fact]
     public async Task Signing_out_during_save_ignores_the_response_and_keeps_local_edits()
     {
         await _account.VerifyCodeAsync("me@example.test", "123456", "device");

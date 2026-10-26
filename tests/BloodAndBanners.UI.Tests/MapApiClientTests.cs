@@ -21,7 +21,11 @@ public sealed class MapApiClientTests
         Assert.Equal(HttpMethod.Put, handler.Method);
         using var body = JsonDocument.Parse(handler.Body!);
         Assert.Equal("r1", body.RootElement.GetProperty("expectedRevisionId").GetString());
-        Assert.Equal("Crossing", body.RootElement.GetProperty("definition").GetProperty("name").GetString());
+        // The map travels as one string: the host's firewall rejects bodies with about a thousand JSON fields.
+        Assert.False(body.RootElement.TryGetProperty("definition", out _));
+        using var sent = JsonDocument.Parse(body.RootElement.GetProperty("definitionJson").GetString()!);
+        Assert.Equal("Crossing", sent.RootElement.GetProperty("name").GetString());
+        Assert.Equal("keep", sent.RootElement.GetProperty("map").GetProperty("hexes")[0].GetProperty("customTile").GetString());
         Assert.Equal(2, result.Summary.Revision);
         Assert.Equal("keep", result.Definition.Map.Hexes[0].ExtensionData!["customTile"].GetString());
     }

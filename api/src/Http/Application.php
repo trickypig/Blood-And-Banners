@@ -115,14 +115,14 @@ final class Application
                 $maps = $this->service($this->maps);
                 return $request->method === 'GET'
                     ? new Response(200, $maps->listOwned($owner))
-                    : new Response(201, $maps->createOwned($owner, $request->jsonValue('definition')));
+                    : new Response(201, $maps->createOwned($owner, $this->mapDefinition($request)));
             }
             if (preg_match('#^/api/v1/account/maps/([^/]+)$#', $request->path, $matches) === 1 && in_array($request->method, ['GET', 'PUT'], true)) {
                 $owner = $this->requireUser($principal);
                 $maps = $this->service($this->maps);
                 return new Response(200, $request->method === 'GET'
                     ? $maps->loadOwned($matches[1], $owner)
-                    : $maps->saveOwned($matches[1], $owner, is_string($request->body['expectedRevisionId'] ?? null) ? $request->body['expectedRevisionId'] : '', $request->jsonValue('definition')));
+                    : $maps->saveOwned($matches[1], $owner, is_string($request->body['expectedRevisionId'] ?? null) ? $request->body['expectedRevisionId'] : '', $this->mapDefinition($request)));
             }
             if ($request->path === '/api/v1/account' && in_array($request->method, ['GET', 'PUT'], true)) {
                 $userId = $this->requireUser($principal);
@@ -286,6 +286,21 @@ final class Application
     private function service(?object $service): object
     {
         return $service ?? throw new \RuntimeException('Account services are not configured.');
+    }
+
+    /**
+     * The editor sends its map as one JSON string: the host's firewall rejects request bodies
+     * with about a thousand JSON fields, and every hex has a dozen. Older clients send the object.
+     */
+    private function mapDefinition(Request $request): mixed
+    {
+        $json = $request->body['definitionJson'] ?? null;
+        if (!is_string($json)) return $request->jsonValue('definition');
+        try {
+            return json_decode($json, false, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            throw new MapException(400, 'invalidMap', 'The map data is not valid JSON.');
+        }
     }
 
     private function requireUser(array $principal): string

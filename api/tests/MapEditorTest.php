@@ -31,6 +31,25 @@ function map_editor_tests(): array
             expect_true(is_object($wire->definition->customNumericObject), 'numeric object keys remain object');
             expect_true(is_object($wire->definition->placements[0]->options), 'nested empty object remains object');
         },
+        'HTTP saves accept the map as one JSON string the host firewall does not count field by field' => static function (): void {
+            $ctx = account_context();
+            $owner = sign_in($ctx, 'string@example.test');
+            $definition = editor_definition();
+            $definition['customScenario'] = (object)[];
+            $json = json_encode(['definitionJson' => json_encode($definition, JSON_THROW_ON_ERROR)], JSON_THROW_ON_ERROR);
+            $created = $ctx['app']->handle(BloodAndBanners\Http\RequestFactory::fromHttp('POST', '/api/v1/account/maps', bearer($owner), $json, []));
+            expect_same(201, $created->status, 'saved string definition');
+            $id = $created->body['summary']['scenarioId'];
+            $wire = json_decode(json_encode($created->body, JSON_THROW_ON_ERROR));
+            expect_true(is_object($wire->definition->customScenario), 'empty custom object remains object');
+            $definition['name'] = 'Renamed';
+            $put = json_encode(['definitionJson' => json_encode($definition, JSON_THROW_ON_ERROR), 'expectedRevisionId' => $created->body['summary']['revisionId']], JSON_THROW_ON_ERROR);
+            $saved = $ctx['app']->handle(BloodAndBanners\Http\RequestFactory::fromHttp('PUT', '/api/v1/account/maps/' . $id, bearer($owner), $put, []));
+            expect_same(200, $saved->status, 'saved string revision');
+            expect_same('Renamed', $saved->body['summary']['name'], 'revision name');
+            $broken = $ctx['app']->handle(BloodAndBanners\Http\RequestFactory::fromHttp('POST', '/api/v1/account/maps', bearer($owner), '{"definitionJson":"{"}', []));
+            expect_same(400, $broken->status, 'malformed string definition');
+        },
         'competing editor connections accept one revision and conflict the other' => static function (): void {
             $path = tempnam(sys_get_temp_dir(), 'bb-map-race-');
             $ready = [$path . '-ready-1', $path . '-ready-2'];
