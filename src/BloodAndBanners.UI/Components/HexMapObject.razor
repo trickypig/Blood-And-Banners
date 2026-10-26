@@ -25,12 +25,8 @@
         }
         else if (category == "nexus")
         {
-            // Set into the ground at the hex's centre; while active it glows. A unit standing here is drawn over it.
+            // Set into the ground at the hex's centre; a unit standing here is drawn over it.
             var size = BoardLayout.Size;
-            if (!Dormant)
-            {
-                <ellipse class="nexus-glow" cx="@Num(Tile.X)" cy="@Num(Tile.Y + halfHeight * .2)" rx="@Num(BoardLayout.Size * .65)" ry="@Num(BoardLayout.Size * .35)" />
-            }
             <image href="@image" x="@Num(Tile.X - size / 2)" y="@Num(Tile.Y + halfHeight * .5 - size)" width="@Num(size)" height="@Num(size)" />
         }
         else
