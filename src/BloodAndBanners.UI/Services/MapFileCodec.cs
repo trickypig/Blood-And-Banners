@@ -86,6 +86,7 @@ public static class MapFileCodec
             if (new[] { hex.SpawnZone, hex.Piece, hex.Object }.Any(v => v?.Length > 120)) throw new FormatException("Invalid tile metadata.");
             if (hex.Radius is < 1 or > MapObjectArt.MaxRuneRadius) throw new FormatException("Rune radius must be 1–4.");
         }
+        if (map.Hexes.Count(hex => hex.VoidPortal) > 1) throw new FormatException("A map holds at most one Void Portal.");
         if (definition.Placements is null || definition.Objectives is null || definition.Scoring is null)
             throw new FormatException("Scenario metadata is missing.");
         var s = definition.Scoring;
@@ -106,6 +107,8 @@ public static class MapFileCodec
             foreach (var field in new[] { "portal", "fountain", "sightBlocker" })
                 if (hex[field] is not JsonValue flag || !flag.TryGetValue<bool>(out _)) throw new FormatException($"{field} must be a boolean.");
             if (hex["playerStart"] is not null) RequireInteger(hex, "playerStart");
+            if (hex["voidPortal"] is { } voidPortal && (voidPortal is not JsonValue portalFlag || !portalFlag.TryGetValue<bool>(out _)))
+                throw new FormatException("voidPortal must be a boolean.");
         }
         var modes = root["modeCompatibility"] as JsonArray ?? throw new FormatException("Game modes are required.");
         foreach (var mode in modes)

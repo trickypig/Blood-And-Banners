@@ -25,6 +25,10 @@
                 <text x="@Num(start.X)" y="@Num(start.Y)" font-size="@Num(_markerRadius * 1.3)" text-anchor="middle" dominant-baseline="central">@start.Hex.PlayerStart</text>
             </g>
         }
+        @foreach (var gate in layout.Tiles.Where(tile => tile.Hex.VoidPortal))
+        {
+            <VoidPortal X="gate.X" Y="gate.Y" Size="@(_markerRadius * 2.4)" Phase="VoidPortalArt.Phase.Icon" ImageBaseUrl="@ImageBaseUrl" />
+        }
     </svg>
 }
 

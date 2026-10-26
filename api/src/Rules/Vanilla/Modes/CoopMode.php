@@ -20,6 +20,8 @@ use LogicException;
 final class CoopMode implements ModeRules
 {
     public const UNITS_PER_HERO_PLAYER = 8;
+    /** The Void Lord's gate: on the board from the war room on, free, fixed in place. Destroying it wins for the heroes. */
+    public const VOID_PORTAL_ID = 'v-portal';
     private const MESSAGES = [
         'voidLordRequired' => 'A Co-op match needs a Void Lord.',
         'heroPlayerRequired' => 'A Co-op match needs at least one hero player.',
@@ -42,7 +44,11 @@ final class CoopMode implements ModeRules
         }
         $layout = self::layout($board);
         $probe = array_map(static fn(int $i): string => "probe-{$i}", range(1, count($heroSeats) * self::UNITS_PER_HERO_PLAYER));
-        Placement::place($board, $layout['start'], $layout['facing'], $probe, array_fill_keys($layout['spawn'], true));
+        $blocked = array_fill_keys($layout['spawn'], true);
+        if ($layout['portal'] !== null) {
+            $blocked[$layout['portal']] = true;
+        }
+        Placement::place($board, $layout['start'], $layout['facing'], $probe, $blocked);
 
         $initiative = (new InitiativeResolver())->resolve($heroSeats, $random);
         $order = $initiative['order'];
@@ -83,7 +89,7 @@ final class CoopMode implements ModeRules
             'result' => null,
         ];
         return [
-            'state' => $state,
+            'state' => self::withVoidPortal($state, $this->catalog),
             'events' => [MatchEngine::event('initiativeRolled', [], ['rolls' => $initiative['rolls'], 'order' => $order])],
         ];
     }
@@ -146,6 +152,9 @@ final class CoopMode implements ModeRules
 
     public function victory(array $state): ?array
     {
+        if (array_key_exists(self::VOID_PORTAL_ID, $state['units']) && $state['units'][self::VOID_PORTAL_ID]['hex'] === null) {
+            return ['reason' => 'portalDestroyed', 'winningSeatId' => null, 'winningSide' => 'heroes'];
+        }
         if (!Sides::anyAlive($state, 'void')) {
             return ['reason' => 'monstersDefeated', 'winningSeatId' => null, 'winningSide' => 'heroes'];
         }
@@ -157,7 +166,10 @@ final class CoopMode implements ModeRules
         return ['reason' => 'heroesDefeated', 'winningSeatId' => $state['voidLordSeatId'], 'winningSide' => 'void'];
     }
 
-    /** The shared hero start, the spawn hex the heroes face, and every spawn hex. */
+    /**
+     * The shared hero start, the spawn hex the heroes face, every spawn hex, and the Void Portal's hex: the map's
+     * marker, or else the open spawn hex farthest from the heroes (null when there is none).
+     */
     public static function layout(array $board): array
     {
         $homes = Board::homes($board);
@@ -174,7 +186,69 @@ final class CoopMode implements ModeRules
         $facing = $spawn;
         usort($facing, static fn(string $a, string $b): int => [Hex::distance($start, $a), $a] <=> [Hex::distance($start, $b), $b]);
         sort($spawn, SORT_STRING);
-        return ['start' => $start, 'facing' => $facing[0], 'spawn' => $spawn];
+        $portal = null;
+        foreach ($board as $key => $hex) {
+            if (($hex['voidPortal'] ?? false) && !Board::impassable($hex)) {
+                $portal = (string)$key;
+            }
+        }
+        if ($portal === null) {
+            foreach (array_reverse($facing) as $key) {
+                if (!Board::impassable($board[$key])) {
+                    $portal = $key;
+                    break;
+                }
+            }
+        }
+        return ['start' => $start, 'facing' => $facing[0], 'spawn' => $spawn, 'portal' => $portal];
+    }
+
+    /** Stands the Void Portal on its hex unless it is already on the board; a catalog without one leaves the state alone. */
+    public static function withVoidPortal(array $state, ?Catalog $catalog): array
+    {
+        if (isset($state['units'][self::VOID_PORTAL_ID])) {
+            // A fresh board from the scenario must still mark where the war room's portal stands.
+            return self::markVoidPortal($state, $state['units'][self::VOID_PORTAL_ID]['hex']);
+        }
+        $portal = $catalog?->voidPortal();
+        if ($portal === null) {
+            return $state;
+        }
+        $hex = self::layout($state['board'])['portal'];
+        $occupied = array_column($state['units'], 'hex');
+        if ($hex === null || in_array($hex, $occupied, true)) {
+            // A war room saved before the portal existed may already have a monster on its hex.
+            $hex = null;
+            foreach (array_reverse(self::layout($state['board'])['spawn']) as $key) {
+                if (!Board::impassable($state['board'][$key]) && !in_array($key, $occupied, true)) {
+                    $hex = $key;
+                    break;
+                }
+            }
+            if ($hex === null) {
+                return $state;
+            }
+        }
+        $state = self::markVoidPortal($state, $hex);
+        $state['units'][self::VOID_PORTAL_ID] = ['fixed' => true] + CoopSetup::unit($portal, self::VOID_PORTAL_ID, $state['voidLordSeatId'], $hex);
+        ksort($state['units'], SORT_STRING);
+        return $state;
+    }
+
+    private static function markVoidPortal(array $state, ?string $hex): array
+    {
+        if ($hex === null) {
+            return $state;
+        }
+        foreach ($state['board'] as $key => $tile) {
+            $state['board'][$key]['voidPortal'] = (string)$key === $hex;
+        }
+        return $state;
+    }
+
+    public static function isFixed(array $unit): bool
+    {
+        return (bool)($unit['fixed'] ?? false);
     }
 
     public const MAX_HERO_PLAYERS = 4;
@@ -186,10 +260,10 @@ final class CoopMode implements ModeRules
     }
 
     /** The Void Lord's board while the war room is still open: no hero seats, initiative or draft yet. */
-    public static function lobbySetup(array $board, string $voidLordSeatId, int $budget): array
+    public static function lobbySetup(array $board, string $voidLordSeatId, int $budget, ?Catalog $catalog = null): array
     {
         self::layout($board);
-        return [
+        return self::withVoidPortal([
             'mode' => 'coop',
             'phase' => 'setup',
             'seats' => [$voidLordSeatId],
@@ -208,7 +282,7 @@ final class CoopMode implements ModeRules
             'pending' => null,
             'turn' => Turn::idle(),
             'result' => null,
-        ];
+        ], $catalog);
     }
 
     /** The lobby horde follows the Void Lord role to its new seat. */

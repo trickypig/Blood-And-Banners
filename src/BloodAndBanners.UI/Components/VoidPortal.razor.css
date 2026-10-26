@@ -1,0 +1,96 @@
+/* Void_Gate.png: 14 columns x 8 rows of 192 px frames, 100 ms each. Rows: 1 Appear, 2 Inactive Idle, 3 Rise,
+   4 Activate, 5 Active Idle, 6 Inactivate, 7 Decline, 8 Disappear. Generated frame lists; keep the counts in step with the sheet. */
+.void-sheet { transform: translate(0, -768px); }
+.void-sheet.dormant { animation: void-dormant 700ms steps(7) infinite; }
+.void-sheet.active { animation: void-active 700ms steps(7) infinite; }
+/* Held on its first (empty) frame until the entrance has decoded its art and adds .started to the group. */
+.void-sheet.opening { animation: void-opening 3200ms step-end forwards paused, void-active 700ms steps(7) 3200ms infinite paused; }
+.started .void-sheet.opening { animation-play-state: running; }
+.void-sheet.closing { animation: void-closing 3200ms step-end forwards; }
+
+@keyframes void-dormant {
+    from { transform: translate(0, -192px); }
+    to { transform: translate(-1344px, -192px); }
+}
+
+@keyframes void-active {
+    from { transform: translate(0, -768px); }
+    to { transform: translate(-1344px, -768px); }
+}
+
+@keyframes void-opening {
+    0.0% { transform: translate(0px, 0px); }
+    3.125% { transform: translate(-192px, 0px); }
+    6.25% { transform: translate(-384px, 0px); }
+    9.375% { transform: translate(-576px, 0px); }
+    12.5% { transform: translate(-768px, 0px); }
+    15.625% { transform: translate(-960px, 0px); }
+    18.75% { transform: translate(-1152px, 0px); }
+    21.875% { transform: translate(-1344px, 0px); }
+    25.0% { transform: translate(-1536px, 0px); }
+    28.125% { transform: translate(-1728px, 0px); }
+    31.25% { transform: translate(-1920px, 0px); }
+    34.375% { transform: translate(0px, -384px); }
+    37.5% { transform: translate(-192px, -384px); }
+    40.625% { transform: translate(-384px, -384px); }
+    43.75% { transform: translate(-576px, -384px); }
+    46.875% { transform: translate(-768px, -384px); }
+    50.0% { transform: translate(-960px, -384px); }
+    53.125% { transform: translate(-1152px, -384px); }
+    56.25% { transform: translate(-1344px, -384px); }
+    59.375% { transform: translate(-1536px, -384px); }
+    62.5% { transform: translate(-1728px, -384px); }
+    65.625% { transform: translate(-1920px, -384px); }
+    68.75% { transform: translate(-2112px, -384px); }
+    71.875% { transform: translate(-2304px, -384px); }
+    75.0% { transform: translate(-2496px, -384px); }
+    78.125% { transform: translate(0px, -576px); }
+    81.25% { transform: translate(-192px, -576px); }
+    84.375% { transform: translate(-384px, -576px); }
+    87.5% { transform: translate(-576px, -576px); }
+    90.625% { transform: translate(-768px, -576px); }
+    93.75% { transform: translate(-960px, -576px); }
+    96.875% { transform: translate(-1152px, -576px); }
+    100% { transform: translate(-1152px, -576px); }
+}
+
+@keyframes void-closing {
+    0.0% { transform: translate(0px, -960px); }
+    3.125% { transform: translate(-192px, -960px); }
+    6.25% { transform: translate(-384px, -960px); }
+    9.375% { transform: translate(-576px, -960px); }
+    12.5% { transform: translate(-768px, -960px); }
+    15.625% { transform: translate(-960px, -960px); }
+    18.75% { transform: translate(-1152px, -960px); }
+    21.875% { transform: translate(0px, -1152px); }
+    25.0% { transform: translate(-192px, -1152px); }
+    28.125% { transform: translate(-384px, -1152px); }
+    31.25% { transform: translate(-576px, -1152px); }
+    34.375% { transform: translate(-768px, -1152px); }
+    37.5% { transform: translate(-960px, -1152px); }
+    40.625% { transform: translate(-1152px, -1152px); }
+    43.75% { transform: translate(-1344px, -1152px); }
+    46.875% { transform: translate(-1536px, -1152px); }
+    50.0% { transform: translate(-1728px, -1152px); }
+    53.125% { transform: translate(-1920px, -1152px); }
+    56.25% { transform: translate(-2112px, -1152px); }
+    59.375% { transform: translate(-2304px, -1152px); }
+    62.5% { transform: translate(-2496px, -1152px); }
+    65.625% { transform: translate(0px, -1344px); }
+    68.75% { transform: translate(-192px, -1344px); }
+    71.875% { transform: translate(-384px, -1344px); }
+    75.0% { transform: translate(-576px, -1344px); }
+    78.125% { transform: translate(-768px, -1344px); }
+    81.25% { transform: translate(-960px, -1344px); }
+    84.375% { transform: translate(-1152px, -1344px); }
+    87.5% { transform: translate(-1344px, -1344px); }
+    90.625% { transform: translate(-1536px, -1344px); }
+    93.75% { transform: translate(-1728px, -1344px); }
+    96.875% { transform: translate(-1920px, -1344px); }
+    100% { transform: translate(-1920px, -1344px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .void-sheet.dormant, .void-sheet.active, .void-sheet.opening { animation: none; }
+    .void-sheet.closing { animation: none; opacity: 0; }
+}

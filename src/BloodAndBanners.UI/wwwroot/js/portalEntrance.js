@@ -29,7 +29,8 @@ export async function start(board, receiver, gameId) {
     const run = { stopped: false, frame: 0 };
     runs.set(board, run);
     const portals = [...board.querySelectorAll('[data-portal-frames]')];
-    const sheets = portals.flatMap(portal => [...portal.querySelectorAll('image')]);
+    const gates = [...board.querySelectorAll('[data-void-portal]')];
+    const sheets = [...portals, ...gates].flatMap(portal => [...portal.querySelectorAll('image')]);
     // Decode every sheet before starting so slow image loads cannot consume the opening.
     await Promise.all([...new Set(sheets.map(sheet => sheet.getAttribute('href')).filter(Boolean))].map(async url => {
         const image = new Image();
@@ -37,6 +38,8 @@ export async function start(board, receiver, gameId) {
         try { await image.decode(); } catch { /* An unavailable image must not block gameplay. */ }
     }));
     if (run.stopped) return;
+    // The Void Portal's opening run is CSS, held until now so it starts with the heroes' portals.
+    for (const gate of gates) gate.classList.add('started');
     const began = performance.now();
     const step = now => {
         if (run.stopped) return;

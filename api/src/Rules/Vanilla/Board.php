@@ -68,6 +68,7 @@ final class Board
                 'biome' => (string)($hex['biome'] ?? 'plains'),
                 'terrain' => (string)($hex['terrain'] ?? 'grass'),
                 'spawnZone' => isset($hex['spawnZone']) ? (string)$hex['spawnZone'] : null,
+                'voidPortal' => (bool)($hex['voidPortal'] ?? false),
                 'object' => self::objectKind($hex),
                 'radius' => isset($hex['radius']) ? (int)$hex['radius'] : 1,
             ];

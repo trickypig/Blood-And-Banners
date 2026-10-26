@@ -40,6 +40,8 @@ public sealed record ScenarioHex(
     [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
     /// <summary>A rune's reach, 1–4: 1 is its own hex, each step adds a ring. Null means 1; other objects have none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Radius { get; init; }
+    /// <summary>Where the Void Lord's gate stands in Co-op; at most one hex per map.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool VoidPortal { get; init; }
 }
 
 public sealed record ScenarioScoring(

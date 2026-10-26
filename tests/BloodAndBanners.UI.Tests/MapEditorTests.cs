@@ -32,6 +32,27 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public void After_the_four_starts_the_tool_places_the_one_void_portal()
+    {
+        var cut = Render<MapEditor>(p => p.Add(c => c.ImageBaseUrl, "https://example.test/"));
+        for (var click = 0; click < 5; click++) cut.Find(".player-button").Click();
+        var button = cut.Find(".player-button");
+        Assert.Equal("void", button.GetAttribute("data-player"));
+        Assert.EndsWith("images/void-portal/icon.png", button.QuerySelector("img")!.GetAttribute("src"));
+        Assert.Contains("Void Portal", button.GetAttribute("aria-label"));
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Equal("icon", cut.Find("[data-hex='0,0'] [data-void-portal]").GetAttribute("data-void-portal"));
+        Assert.EndsWith("images/void-portal/icon.png", cut.Find("[data-hex='0,0'] [data-void-portal] image").GetAttribute("href"));
+        Assert.Contains("Void Portal", cut.Find(".hex-info").TextContent);
+        cut.Find("[data-hex='1,0']").Click();
+        Assert.Single(cut.FindAll("[data-void-portal]"));
+        Assert.NotNull(cut.Find("[data-hex='1,0'] [data-void-portal]"));
+        cut.Find("[data-action='erase']").Click();
+        cut.Find("[data-hex='1,0']").Click();
+        Assert.Empty(cut.FindAll("[data-void-portal]"));
+    }
+
+    [Fact]
     public void Toolbar_exposes_all_actions_without_mode_selection()
     {
         var cut = Render<MapEditor>();
@@ -169,6 +190,8 @@ public sealed class MapEditorTests : BunitContext
         for (var click = 0; click < 4; click++) cut.Find(".player-button").Click();
         cut.Find("[data-hex='0,0']").Click();
         Assert.Equal("P4", cut.Find("[data-hex='0,0'] .start-label").TextContent);
+        cut.Find(".player-button").Click();
+        Assert.Equal("void", cut.Find(".player-button").GetAttribute("data-player"));
         cut.Find(".player-button").Click();
         Assert.Equal("1", cut.Find(".player-button").GetAttribute("data-player"));
         cut.Find("[data-action='erase']").Click();

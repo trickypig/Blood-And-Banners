@@ -241,6 +241,7 @@ function monster_water_tests(): array
             $board = coop_board();
             $board['7,0']['terrain'] = 'open-water';
             $board['7,1']['terrain'] = 'shallow-water';
+            $board['8,4']['voidPortal'] = true;
             foreach ([['Kraken', '7,0'], ['Kraken Tentacle (Lesser)', '7,1'], ['Merman', '8,0'], ['Mermaid', '8,0'], ['Sahuagin', '8,8'], ['Ewashia, Mistress of Tides', '8,8']] as [$name, $hex]) {
                 $state = $engine->start(['hero-a', 'void-lord'], $board, new SequenceRandom([15]), 'coop', ['voidLordSeatId' => 'void-lord'])['state'];
                 $actions = $engine->legalActions($state, 'void-lord');

@@ -46,6 +46,8 @@ public sealed record HexProjection(
     public string? ControlledBy { get; init; }
     /// <summary>The rune's reach on a nexus-point hex (1–4); null on every other hex.</summary>
     public int? Radius { get; init; }
+    /// <summary>The Void Portal stands here (Co-op): drawn as the gate while it lives.</summary>
+    public bool VoidPortal { get; init; }
 }
 
 public sealed record TurnProjection(
