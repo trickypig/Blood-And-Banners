@@ -2,12 +2,13 @@
 @using System.Globalization
 @using BloodAndBanners.UI.Services
 
-@if (CatalogImages.Resolve(ImageBaseUrl, MapObjectArt.ImagePath(Tile.Hex.Object, Tile.Hex.Q, Tile.Hex.R)) is { } image)
+@if (CatalogImages.Resolve(ImageBaseUrl, ArtPath) is { } image)
 {
     var kind = Tile.Hex.Object!;
     var category = MapObjectArt.CategoryOf(kind)!;
     var halfHeight = Math.Sqrt(3) / 2 * BoardLayout.Size;
-    <g class="hex-map-object map-object-@kind category-@category" data-map-object="@kind" data-category="@category" aria-hidden="true">
+    var runeState = category == "nexus" ? (Dormant ? "inactive" : "active") : null;
+    <g class="hex-map-object map-object-@kind category-@category" data-map-object="@kind" data-category="@category" data-rune-state="@runeState" aria-hidden="true">
         @if (category is "obstacle" or "landmark")
         {
             // Stands on the hex like a unit figure: its foot sits low on the face and a tall tree may rise into the hex behind.
@@ -24,10 +25,13 @@
         }
         else if (category == "nexus")
         {
-            // Set into the ground filling most of the hex with a wide glow, so it reads at a glance; a unit standing here is drawn over it.
-            var size = BoardLayout.Size * 1.55;
-            <ellipse class="nexus-glow" cx="@Num(Tile.X)" cy="@Num(Tile.Y + halfHeight * .3)" rx="@Num(BoardLayout.Size * .85)" ry="@Num(BoardLayout.Size * .45)" />
-            <image href="@image" x="@Num(Tile.X - size / 2)" y="@Num(Tile.Y + halfHeight * .75 - size)" width="@Num(size)" height="@Num(size)" />
+            // Set into the ground at the hex's centre; while active it glows. A unit standing here is drawn over it.
+            var size = BoardLayout.Size;
+            if (!Dormant)
+            {
+                <ellipse class="nexus-glow" cx="@Num(Tile.X)" cy="@Num(Tile.Y + halfHeight * .2)" rx="@Num(BoardLayout.Size * .65)" ry="@Num(BoardLayout.Size * .35)" />
+            }
+            <image href="@image" x="@Num(Tile.X - size / 2)" y="@Num(Tile.Y + halfHeight * .5 - size)" width="@Num(size)" height="@Num(size)" />
         }
         else
         {
@@ -42,6 +46,12 @@
 @code {
     [Parameter, EditorRequired] public HexTile Tile { get; set; } = default!;
     [Parameter] public string? ImageBaseUrl { get; set; }
+
+    /// <summary>For a rune, show its inactive form (no unit in its area); the editor always leaves this off.</summary>
+    [Parameter] public bool Dormant { get; set; }
+
+    private string? ArtPath => (Dormant ? MapObjectArt.InactiveImagePath(Tile.Hex.Object) : null)
+        ?? MapObjectArt.ImagePath(Tile.Hex.Object, Tile.Hex.Q, Tile.Hex.R);
 
     private static string Num(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
 }

@@ -24,4 +24,16 @@ public static class RuneAreas
         }
         return areas;
     }
+
+    /// <summary>Keys of the rune hexes with at least one unit standing in their area, so they show as active.</summary>
+    public static IReadOnlySet<string> Active(IEnumerable<HexProjection> hexes)
+    {
+        var all = hexes.ToList();
+        var occupied = all.Where(hex => hex.OccupantId is not null).Select(hex => $"{hex.Q},{hex.R}").ToList();
+        return all
+            .Where(hex => MapObjectArt.CategoryOf(hex.Object) == "nexus")
+            .Where(rune => occupied.Any(unit => HexMath.Distance($"{rune.Q},{rune.R}", unit) <= Math.Clamp(rune.Radius ?? 1, 1, MapObjectArt.MaxRuneRadius) - 1))
+            .Select(rune => $"{rune.Q},{rune.R}")
+            .ToHashSet();
+    }
 }

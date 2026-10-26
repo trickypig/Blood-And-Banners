@@ -72,4 +72,7 @@ public static class MapObjectArt
         : null;
 
     public static string? ImagePath(string? kind, int q, int r) => IsKnown(kind) ? ImagePath(kind, Variant(kind!, q, r)) : null;
+
+    /// <summary>A rune's dormant image, shown in a game while no unit stands in its area; its active image is <see cref="ImagePath(string?, int)"/>.</summary>
+    public static string? InactiveImagePath(string? kind) => CategoryOf(kind) == "nexus" ? $"images/nexus/{kind}-inactive.png" : null;
 }

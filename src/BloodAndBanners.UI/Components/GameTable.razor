@@ -190,7 +190,7 @@
                     {
                         <RuneAreaTint Tile="tile" Kinds="runeKinds" />
                     }
-                    <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
+                    <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" Dormant="!boardIndex.ActiveRunes.Contains(key)" />
                     @if (hex.PlayerStart is { } start)
                     {
                         <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" Closed="true" Animated="_entranceRunning" />
@@ -1555,6 +1555,7 @@
         public required Dictionary<string, UnitProjection> UnitById { get; init; }
         public required Dictionary<string, MovementHazardProjection> ProjectedHazards { get; init; }
         public required IReadOnlyDictionary<string, IReadOnlyList<string>> RuneAreaByKey { get; init; }
+        public required IReadOnlySet<string> ActiveRunes { get; init; }
 
         public static BoardIndex For(GameTable owner)
         {
@@ -1601,6 +1602,7 @@
                 UnitById = unitById,
                 ProjectedHazards = projectedHazards,
                 RuneAreaByKey = RuneAreas.Of(projection.Board.Hexes),
+                ActiveRunes = RuneAreas.Active(projection.Board.Hexes),
             };
         }
     }

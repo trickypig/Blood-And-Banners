@@ -38,6 +38,8 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal("images/obstacles/rock-2.png", MapObjectArt.ImagePath("rock", 2));
         Assert.Equal("images/nexus/rune-of-warding-1.png", MapObjectArt.ImagePath("rune-of-warding", 4, 1));
         Assert.Equal("images/items/speed-potion-1.png", MapObjectArt.ImagePath("speed-potion"));
+        Assert.Equal("images/nexus/rune-of-focus-inactive.png", MapObjectArt.InactiveImagePath("rune-of-focus"));
+        Assert.Null(MapObjectArt.InactiveImagePath("speed-potion"));
         Assert.Null(MapObjectArt.ImagePath("statue", 1));
         Assert.Null(MapObjectArt.CategoryOf("statue"));
     }
@@ -57,7 +59,9 @@ public sealed class MapObjectTests : BunitContext
 
         var drawn = Assert.Single(cut.FindAll("[data-map-object]"));
         Assert.Equal((kind, category), (drawn.GetAttribute("data-map-object"), drawn.GetAttribute("data-category")));
-        Assert.Equal($"{Images}{MapObjectArt.ImagePath(kind, 4, 4)}", drawn.QuerySelector("image")!.GetAttribute("href"));
+        // No unit stands on (4,4), so a radius-1 rune there shows its inactive form
+        var path = category == "nexus" ? MapObjectArt.InactiveImagePath(kind) : MapObjectArt.ImagePath(kind, 4, 4);
+        Assert.Equal($"{Images}{path}", drawn.QuerySelector("image")!.GetAttribute("href"));
         Assert.Contains(label, cut.Find("[data-hex='4,4']").GetAttribute("aria-label"));
     }
 
@@ -266,5 +270,49 @@ public sealed class MapObjectTests : BunitContext
         Assert.Equal(expected, tinted.Count);
         var markup = cut.Markup;
         Assert.True(markup.IndexOf("data-rune-area", StringComparison.Ordinal) < markup.IndexOf("unit-token", StringComparison.Ordinal), "the tint is beneath the units");
+    }
+
+    [Theory]
+    [InlineData(1, "inactive")]
+    [InlineData(2, "active")]
+    [InlineData(3, "active")]
+    public void A_rune_on_the_battlefield_is_active_only_while_a_unit_is_in_its_area(int radius, string state)
+    {
+        // The nearest unit to (4,4) stands next to it on (3,4)
+        var fixture = BattleFixtures.Projection();
+        var hexes = fixture.Board.Hexes.Select(hex => (hex.Q, hex.R) == (4, 4) ? hex with { Object = "rune-of-strength", Radius = radius } : hex).ToList();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, fixture with { Board = fixture.Board with { Hexes = hexes } })
+            .Add(component => component.ImageBaseUrl, Images));
+
+        var rune = cut.Find("[data-map-object='rune-of-strength']");
+        Assert.Equal(state, rune.GetAttribute("data-rune-state"));
+        var path = state == "active" ? MapObjectArt.ImagePath("rune-of-strength", 4, 4) : MapObjectArt.InactiveImagePath("rune-of-strength");
+        Assert.Equal($"{Images}{path}", rune.QuerySelector("image")!.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void A_rune_with_a_unit_standing_on_it_is_active()
+    {
+        var fixture = BattleFixtures.Projection();
+        var occupied = fixture.Board.Hexes.First(hex => hex.OccupantId is not null);
+        var hexes = fixture.Board.Hexes.Select(hex => hex == occupied ? hex with { Object = "rune-of-warding" } : hex).ToList();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, fixture with { Board = fixture.Board with { Hexes = hexes } })
+            .Add(component => component.ImageBaseUrl, Images));
+
+        Assert.Equal("active", cut.Find("[data-map-object='rune-of-warding']").GetAttribute("data-rune-state"));
+    }
+
+    [Fact]
+    public void The_editor_always_shows_runes_active()
+    {
+        var cut = Render<MapEditor>(parameters => parameters.Add(component => component.ImageBaseUrl, Images));
+        cut.Find(".object-button[data-category='nexus']").Click();
+        cut.Find("[data-hex='2,2']").Click();
+
+        var rune = cut.Find("[data-map-object='rune-of-focus']");
+        Assert.Equal("active", rune.GetAttribute("data-rune-state"));
+        Assert.Equal($"{Images}{MapObjectArt.ImagePath("rune-of-focus", 2, 2)}", rune.QuerySelector("image")!.GetAttribute("href"));
     }
 }
