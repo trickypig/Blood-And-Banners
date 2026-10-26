@@ -12,6 +12,7 @@ use BloodAndBanners\Rules\Vanilla\BattleRules;
 use BloodAndBanners\Rules\Vanilla\Board;
 use BloodAndBanners\Rules\Vanilla\Catalog;
 use BloodAndBanners\Rules\Vanilla\Effects;
+use BloodAndBanners\Rules\Vanilla\Hex;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
 use BloodAndBanners\Rules\Vanilla\Modes\CoopMode;
 use BloodAndBanners\Rules\Vanilla\Modes\CoopSetup;
@@ -492,8 +493,8 @@ final class GameService
         $budget = CoopMode::budget($definition['coop'] ?? [], count($memberships) - 1);
         $state = $this->loadState($game['id']);
         $state = $state === null
-            ? CoopMode::lobbySetup(Board::fromScenario($definition), $voidLord, $budget)
-            : CoopMode::handOver($state, $voidLord);
+            ? CoopMode::lobbySetup(Board::fromScenario($definition), $voidLord, $budget, $this->engine->catalog())
+            : CoopMode::withVoidPortal(CoopMode::handOver($state, $voidLord), $this->engine->catalog());
         $state['setup']['budget'] = $budget;
         $state['setup']['cap'] = CoopMode::budget($definition['coop'] ?? [], CoopMode::MAX_HERO_PLAYERS);
         $this->saveState($game['id'], $version, $state);
@@ -1273,6 +1274,9 @@ final class GameService
                 'radius' => in_array(Board::objectKind($hex), Board::NEXUS_POINTS, true) ? (int)($hex['radius'] ?? 1) : null,
                 'occupantId' => $occupant($hex),
                 'playerStart' => isset($hex['playerStart']) ? (int)$hex['playerStart'] : null,
+                'voidPortal' => $board !== null
+                    ? (bool)($board[Hex::key((int)$hex['q'], (int)$hex['r'])]['voidPortal'] ?? false)
+                    : (bool)($hex['voidPortal'] ?? false),
             ], $definition['map']['hexes']),
         ];
     }

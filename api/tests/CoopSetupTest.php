@@ -16,8 +16,13 @@ function coop_setup_tests(): array
             expect_same('', $wyrm['abilities'][0]['type'], 'an ability without a type loads as an empty type');
         },
 
-        'the shipped catalog has forty-four visible monsters' => static function (): void {
-            expect_same(44, count((new Catalog())->monsters()), 'gameData.json ships 44 visible monsters');
+        'the shipped catalog has forty-three placeable monsters and the fixed void portal' => static function (): void {
+            $catalog = new Catalog();
+            expect_same(43, count($catalog->monsters()), 'gameData.json ships 43 placeable monsters');
+            expect_same(null, $catalog->monster('Void Portal'), 'the void lord cannot place the portal');
+            $portal = $catalog->voidPortal();
+            expect_same([0, 5, 5, 0, 15, 'boss'], [$portal['move'], $portal['range'], $portal['power'], $portal['defense'], $portal['hp'], $portal['tier']], 'portal stats');
+            expect_same(['Unmovable'], array_column($portal['abilities'], 'name'), 'the portal cannot be pushed');
         },
 
         'boards keep spawn zones from the scenario' => static function (): void {

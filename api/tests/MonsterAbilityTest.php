@@ -203,7 +203,7 @@ function monster_ability_tests(): array
             expect_true(str_contains($flight, 'cannot land') && str_contains($flight, 'Poison pits still apply'), 'the setup card explains shared flying limits instead of promising poison immunity');
             $spawn = $started['setup']['spawnZoneHexes'][0];
             $placed = vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Marsh Hydra', 'hex' => $spawn]);
-            $hydra = $placed['units'][0];
+            $hydra = array_column($placed['units'], null, 'unitId')['v-m1'];
             expect_same(['Multiple Heads', 'Poisonous Bite', 'Outrage'], array_column($hydra['abilities'], 'name'), 'the supported essences appear on the active card');
             expect_same(true, $hydra['abilities'][0]['playable'], 'the essence is marked playable');
             expect_same([], $hydra['inactiveAbilities'], 'the marsh hydra has no deferred abilities left');

@@ -60,6 +60,7 @@ public static class CombatLogFormatter
             "matchCompleted" => Text(payload, "reason") switch
             {
                 "monstersDefeated" => "The heroes have destroyed every monster.",
+                "portalDestroyed" => "The heroes have destroyed the Void Portal.",
                 "heroesDefeated" => "The Void Lord has slain every hero.",
                 _ => $"{Seat(projection, Text(payload, "winningSeatId"))} won by annihilation.",
             },

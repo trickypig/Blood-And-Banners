@@ -1,0 +1,32 @@
+@namespace BloodAndBanners.UI.Components
+@using BloodAndBanners.UI.Services
+
+@* The cell's gate stands on its pool near the bottom, so the frame is lifted until the pool sits just below the hex centre. *@
+<g class="void-portal" data-void-portal="@Phase.ToString().ToLowerInvariant()" aria-hidden="true" style="pointer-events: none">
+    @if (Phase == VoidPortalArt.Phase.Icon)
+    {
+        <image href="@Image(VoidPortalArt.IconPath)" x="@Num(Left)" y="@Num(Top)" width="@Num(Size)" height="@Num(Size)"
+               preserveAspectRatio="xMidYMid meet" />
+    }
+    else
+    {
+        <svg x="@Num(Left)" y="@Num(Top)" width="@Num(Size)" height="@Num(Size)"
+             viewBox="0 0 @VoidPortalArt.Frame @VoidPortalArt.Frame" overflow="hidden">
+            <image class="void-sheet @Phase.ToString().ToLowerInvariant()" href="@Image(VoidPortalArt.SheetPath)"
+                   width="@(VoidPortalArt.Frame * VoidPortalArt.Columns)" height="@(VoidPortalArt.Frame * VoidPortalArt.Rows)" />
+        </svg>
+    }
+</g>
+
+@code {
+    [Parameter] public double X { get; set; }
+    [Parameter] public double Y { get; set; }
+    [Parameter] public double Size { get; set; } = BoardLayout.Size * 2.1;
+    [Parameter] public VoidPortalArt.Phase Phase { get; set; } = VoidPortalArt.Phase.Active;
+    [Parameter] public string? ImageBaseUrl { get; set; }
+    private double Left => X - Size / 2;
+    // The pool's middle is about 160 px down the 192 px frame.
+    private double Top => Y + BoardLayout.Size * .3 - Size * 160 / VoidPortalArt.Frame;
+    private string Image(string path) => CatalogImages.Resolve(ImageBaseUrl, path) ?? path;
+    private static string Num(double value) => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}

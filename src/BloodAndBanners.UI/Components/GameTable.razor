@@ -195,6 +195,10 @@
                     {
                         <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" Closed="true" Animated="_entranceRunning" />
                     }
+                    @if (hex.VoidPortal && IsCoop && VoidPortalPhase is { } portalPhase)
+                    {
+                        <VoidPortal X="tile.X" Y="tile.Y" Phase="portalPhase" ImageBaseUrl="@ImageBaseUrl" />
+                    }
                     @if (_view.Push.Contains(key))
                     {
                         <!text class="push-mark" x="@Num(tile.X)" y="@Num(tile.Y)">»</!text>
@@ -212,7 +216,9 @@
                         var figureTop = plateY + plateHeight - figureHeight;
                         var figureWidth = BoardLayout.Size * 1.9;
                         var figureMidY = figureTop + figureHeight / 2;
-                        var portrait = unit is null ? null : TokenImage(unit);
+                        // The Void Portal's gate is drawn by the hex; its token keeps only the plate and health bar.
+                        var gate = hex.OccupantId == VoidPortalArt.UnitId;
+                        var portrait = unit is null || gate ? null : TokenImage(unit);
                         <g class="unit-token @SeatClass(unit?.SeatId) @(unit is not null && IsCoop && unit.SeatId != Projection.Viewer.SeatId && SideOf(unit) == ViewerSide ? "ally" : null) @(unit?.IsHero == true ? "hero" : null) @ActivationState(unit)" aria-hidden="true">
                             @if (key == _view.SpotlitHex)
                             {
@@ -225,7 +231,7 @@
                                        x="@Num(tile.X - figureWidth / 2)" y="@Num(figureTop)" width="@Num(figureWidth)" height="@Num(figureHeight)"
                                        preserveAspectRatio="xMidYMax meet" />
                             }
-                            else
+                            else if (!gate)
                             {
                                 <!text class="token-initials" x="@Num(tile.X)" y="@Num(figureMidY)">@(unit is null ? Initials(hex.OccupantId) : Initials(unit.Name))</!text>
                             }
@@ -303,7 +309,7 @@
                            SelectedMonster="@_selectedMonster"
                            IsBusy="IsBusy"
                            ImageBaseUrl="@ImageBaseUrl"
-                           MonstersPlaced="Projection.Units.Count"
+                           MonstersPlaced="Projection.Units.Count(unit => unit.UnitId != VoidPortalArt.UnitId)"
                            OnSelectMonster="SelectMonster"
                            InWarRoom="@(Projection.Lifecycle == GameLifecycle.Lobby)"
                            ViewerReady="@(Projection.Memberships.FirstOrDefault(member => member.SeatId == Projection.Viewer.SeatId)?.Ready ?? false)"
@@ -725,6 +731,7 @@
             _entranceRunning = true;
             _entrancePending = true;
         }
+        TrackVoidPortal(newGame);
         if (newGame)
         {
             _followEvents = true;
@@ -1705,7 +1712,8 @@
 
     private string ResultSummary(GameResult result) =>
         IsCoop
-            ? result.WinningSide == "heroes" ? "Every monster has fallen." : "Every hero has fallen."
+            ? result.Reason == "portalDestroyed" ? "The Void Portal has been destroyed."
+                : result.WinningSide == "heroes" ? "Every monster has fallen." : "Every hero has fallen."
         : !Projection.Viewer.CanCommand
             ? "The losing army has fallen."
             : result.WinningSeatId == Projection.Viewer.SeatId ? "Every enemy unit has fallen." : "Your army has fallen.";
@@ -1927,6 +1935,37 @@
         TerrainArt.PatternId(hex);
 
     private static readonly double HexHalfHeight = Math.Sqrt(3) / 2 * BoardLayout.Size;
+
+    /// <summary>Whether this session has seen the Void Portal standing, so its fall is shown only when it happens.</summary>
+    private bool _voidPortalSeenStanding;
+    private bool _voidPortalFalling;
+
+    private void TrackVoidPortal(bool newGame)
+    {
+        if (newGame)
+        {
+            _voidPortalSeenStanding = false;
+            _voidPortalFalling = false;
+        }
+        var portal = Projection.Units.FirstOrDefault(unit => unit.UnitId == VoidPortalArt.UnitId);
+        if (portal?.Hex is not null) _voidPortalSeenStanding = true;
+        else if (portal is not null && _voidPortalSeenStanding) _voidPortalFalling = true;
+    }
+
+    /// <summary>
+    /// Dormant before battle; the opening run while the entrance plays, then the Active Idle loop for the whole game;
+    /// the closing run once it falls. A portal already gone when this session joined is not drawn.
+    /// </summary>
+    private VoidPortalArt.Phase? VoidPortalPhase
+    {
+        get
+        {
+            var portal = Projection.Units.FirstOrDefault(unit => unit.UnitId == VoidPortalArt.UnitId);
+            if (portal is { Hex: null }) return _voidPortalFalling ? VoidPortalArt.Phase.Closing : null;
+            if (Projection.Lifecycle is GameLifecycle.Lobby or GameLifecycle.Draft or GameLifecycle.Setup) return VoidPortalArt.Phase.Dormant;
+            return _entranceRunning ? VoidPortalArt.Phase.Opening : VoidPortalArt.Phase.Active;
+        }
+    }
 
     // Map tokens prefer the background-free avatar; cards elsewhere keep the full image.
     private string? TokenImage(UnitProjection unit) =>

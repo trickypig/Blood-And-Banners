@@ -53,6 +53,8 @@ The development PWA reads `wwwroot/appsettings.Development.json` and calls the A
 10. The battle log in the side rail shows each roll. The match ends when one side has no units left. Choose **Return to war room** to leave.
 11. Refresh either browser at any point to verify that it reconnects to the same seat and state.
 
+In a Void incursion, the Void Portal stands on the map's portal hex (placed in the editor after the four starts), or else on the void spawn hex farthest from the heroes. It belongs to the Void Lord for free, cannot move or be pushed, and attacks at range 5 with power 5. When the battle begins it appears, rises and activates, then idles until the heroes destroy it to win.
+
 This slice implements Vanilla duel rules and abilities. Co-op and Battle Royale still open their current direct scenarios, but their complete mode-specific rules are not yet playable.
 
 ### Sign in and friends (optional)

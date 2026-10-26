@@ -34,6 +34,7 @@ final class MapValidator
         $hexes = $map['hexes'] ?? null;
         self::check(is_array($hexes) && array_is_list($hexes) && count($hexes) >= 1 && count($hexes) <= 10000, 'Maps must contain 1–10,000 hexes.');
         $seen = [];
+        $voidPortals = 0;
         foreach ($hexes as $hex) {
             self::check(is_array($hex), 'Invalid hex.');
             self::integer($hex['q'] ?? null, -10000, 10000, 'Invalid axial coordinates.');
@@ -53,10 +54,15 @@ final class MapValidator
             foreach (['portal', 'fountain', 'sightBlocker'] as $flag) {
                 self::check(isset($hex[$flag]) && is_bool($hex[$flag]), "Invalid {$flag} flag.");
             }
+            if (array_key_exists('voidPortal', $hex)) {
+                self::check(is_bool($hex['voidPortal']), 'Invalid voidPortal flag.');
+                $voidPortals += $hex['voidPortal'] ? 1 : 0;
+            }
             foreach (['spawnZone', 'piece', 'object'] as $field) {
                 self::check(($hex[$field] ?? null) === null || (is_string($hex[$field]) && strlen($hex[$field]) <= 120), "Invalid {$field}.");
             }
         }
+        self::check($voidPortals <= 1, 'A map holds at most one Void Portal.');
         foreach (['placements', 'objectives'] as $field) {
             self::check(isset($definition[$field]) && is_array($definition[$field]) && array_is_list($definition[$field]), "Invalid {$field}.");
         }

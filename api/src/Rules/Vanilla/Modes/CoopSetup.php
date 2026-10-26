@@ -39,6 +39,7 @@ final class CoopSetup
         'unknownUnit' => 'That monster is not on the battlefield.',
         'setupConfirmed' => 'The Void Lord has already confirmed the monsters.',
         'setupEmpty' => 'Place at least one monster before confirming.',
+        'fixedMonster' => 'The Void Portal cannot be removed.',
     ];
 
     public function __construct(private readonly Catalog $catalog)
@@ -77,9 +78,11 @@ final class CoopSetup
             }
         }
         foreach ($state['units'] as $unitId => $unit) {
-            $actions[] = ['kind' => 'removeMonster', 'unitId' => (string)$unitId, 'targetHexes' => [$unit['hex']]];
+            if (!CoopMode::isFixed($unit)) {
+                $actions[] = ['kind' => 'removeMonster', 'unitId' => (string)$unitId, 'targetHexes' => [$unit['hex']]];
+            }
         }
-        if ($state['units'] !== [] && $state['setup']['spent'] <= $state['setup']['budget']) {
+        if (self::placed($state) > 0 && $state['setup']['spent'] <= $state['setup']['budget']) {
             $actions[] = ['kind' => 'confirmSetup', 'unitId' => null, 'targetHexes' => []];
         }
         return $actions;
@@ -130,13 +133,16 @@ final class CoopSetup
             if ($unit === null) {
                 self::fail('unknownUnit');
             }
+            if (CoopMode::isFixed($unit)) {
+                self::fail('fixedMonster');
+            }
             $cost = self::cost($unit);
             $state['setup']['spent'] -= $cost;
             $state = UnitConditions::clearUnit($state, $unitId);
             unset($state['units'][$unitId]);
             $events[] = MatchEngine::event('monsterRemoved', [$unit['hex']], ['unitId' => $unitId, 'monster' => $unit['name'], 'hex' => $unit['hex'], 'cost' => $cost]);
         } else {
-            if ($state['units'] === []) {
+            if (self::placed($state) === 0) {
                 self::fail('setupEmpty');
             }
             if ($state['setup']['spent'] > $state['setup']['budget']) {
@@ -150,9 +156,15 @@ final class CoopSetup
                 $state['draft']['pickingSeatId'] = $state['initiative']['order'][0];
                 $state['draft']['pickIndex'] = 0;
             }
-            $events[] = MatchEngine::event('setupConfirmed', [], $legacy ? ['monsters' => count($state['units'])] : []);
+            $events[] = MatchEngine::event('setupConfirmed', [], $legacy ? ['monsters' => self::placed($state)] : []);
         }
         return ['state' => $state, 'events' => $events];
+    }
+
+    /** Monsters the Void Lord placed, leaving out the fixed Void Portal. */
+    private static function placed(array $state): int
+    {
+        return count(array_filter($state['units'], static fn(array $unit): bool => !CoopMode::isFixed($unit)));
     }
 
     /** Shared creature construction for setup and in-battle summons. */

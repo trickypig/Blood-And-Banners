@@ -68,12 +68,19 @@
                 </div>
                 <div class="toolbar-group" role="group" aria-label="Map objects">
                     @{
-                        var startLabel = $"Place player {_player} start. Click again to switch to player {NextPlayer}.";
+                        var startLabel = $"Place {StartChoiceName(_player)}. Click again to switch to {StartChoiceName(NextPlayer)}.";
                     }
-                    <button type="button" class="icon-button player-button" data-player="@_player" title="@startLabel" aria-label="@startLabel" disabled="@_busy"
+                    <button type="button" class="icon-button player-button" data-player="@(_player == VoidPortalChoice ? "void" : _player)" title="@startLabel" aria-label="@startLabel" disabled="@_busy"
                             aria-pressed="@(_tool == "player" ? "true" : "false")" @onclick="SelectPlayer">
-                        <img src="@CatalogImages.Resolve(ImageBaseUrl, PortalArt.ImagePath(_player))" alt="" />
-                        <span class="player-number" aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
+                        @if (_player == VoidPortalChoice)
+                        {
+                            <img src="@CatalogImages.Resolve(ImageBaseUrl, VoidPortalArt.IconPath)" alt="" />
+                        }
+                        else
+                        {
+                            <img src="@CatalogImages.Resolve(ImageBaseUrl, PortalArt.ImagePath(_player))" alt="" />
+                            <span class="player-number" aria-hidden="true" style="--player-color: @StartColor(_player)">@($"P{_player}")</span>
+                        }
                     </button>
                     @foreach (var category in MapObjectArt.Categories)
                     {
@@ -104,7 +111,7 @@
             <div class="hex-info"><strong>Selected hex:</strong>
                 @if (_document.SelectedHex is { } selected)
                 {
-                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> @if (category == "nexus") { <text> &middot; Radius: @(selected.Radius ?? 1)</text> } } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
+                    <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (selected.VoidPortal) { <text> &middot; Void Portal</text> }@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> @if (category == "nexus") { <text> &middot; Radius: @(selected.Radius ?? 1)</text> } } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
                 }
                 else { <span>None</span> }
             </div>
@@ -145,6 +152,10 @@
                             {
                                 <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" />
                                 <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
+                            }
+                            @if (hex.VoidPortal)
+                            {
+                                <VoidPortal X="tile.X" Y="tile.Y" Phase="VoidPortalArt.Phase.Icon" ImageBaseUrl="@ImageBaseUrl" />
                             }
                             <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
                             @if (hex.Radius is > 1 and var radius)

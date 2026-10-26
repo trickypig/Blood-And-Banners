@@ -28,6 +28,7 @@ require __DIR__ . '/CoopHiddenInfoTest.php';
 require __DIR__ . '/CoopTestSupport.php';
 require __DIR__ . '/CoopSidesTest.php';
 require __DIR__ . '/CoopSetupTest.php';
+require __DIR__ . '/CoopVoidPortalTest.php';
 require __DIR__ . '/CoopDraftTest.php';
 require __DIR__ . '/CoopPrepTest.php';
 require __DIR__ . '/ModeScheduleTest.php';
@@ -61,7 +62,7 @@ require __DIR__ . '/AccountGamesTest.php';
 require __DIR__ . '/MapEditorTest.php';
 $failures = 0;
 $tests = array_merge(config_tests(), mail_tests(), http_request_factory_tests(), gateway_tests(), foundation_tests(), api_tests(), core_rules_tests(), scenario_tests(), vanilla_geometry_tests(), vanilla_draft_tests(), vanilla_battle_tests(), vanilla_ability_tests(), vanilla_forced_tests(), vanilla_terrain_tests(), vanilla_ice_tests(), crystal_tests(), rune_tests(), potion_tests(), vanilla_match_service_tests(), coop_service_tests(), coop_lobby_setup_tests(), coop_hidden_info_tests(), coop_sides_tests(), coop_setup_tests(), coop_draft_tests(), coop_prep_tests(), mode_schedule_tests(), coop_battle_tests(), monster_ability_tests(), monster_poison_tests(), monster_control_tests(), monster_extra_attack_tests(), monster_mushroom_tests(), monster_water_tests(), monster_area_attack_tests(), monster_push_attack_tests(), boulder_throw_tests(), column_attack_tests(), dragon_breath_tests(), commander_name_tests(), monster_lock_attack_tests(), control_choice_attack_tests(), monster_defense_tests(), monster_charm_tests(), passive_condition_tests(), dragon_slayer_tests(), reflective_surface_tests(), lobby_leave_tests(), email_sign_in_tests(), account_tests(), friend_tests(), account_games_tests());
-$tests = array_merge($tests, map_editor_tests());
+$tests = array_merge($tests, map_editor_tests(), coop_void_portal_tests());
 foreach ($tests as $name => $test) {
     try {
         $test();

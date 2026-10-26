@@ -45,8 +45,20 @@ public sealed class MapEditorDocument
         if (!Definition.Map.Hexes.Any(h => h.Q == q && h.R == r)) return;
         Select(q, r);
         // A hex holds one thing, so a start clears any object from its hex.
-        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? (player is null ? h : WithoutObject(h)) with { PlayerStart = player }
+        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? (player is null ? h : WithoutObject(h) with { VoidPortal = false }) with { PlayerStart = player }
             : player is not null && h.PlayerStart == player ? h with { PlayerStart = null } : h).ToList();
+        if (!hexes.SequenceEqual(Definition.Map.Hexes))
+        {
+            Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
+        }
+    }
+    /// <summary>Moves the map's one Void Portal to the hex, clearing any start or object there.</summary>
+    public void SetVoidPortal(int q, int r)
+    {
+        if (!Definition.Map.Hexes.Any(h => h.Q == q && h.R == r)) return;
+        Select(q, r);
+        var hexes = Definition.Map.Hexes.Select(h => h.Q == q && h.R == r ? WithoutObject(h) with { PlayerStart = null, VoidPortal = true }
+            : h.VoidPortal ? h with { VoidPortal = false } : h).ToList();
         if (!hexes.SequenceEqual(Definition.Map.Hexes))
         {
             Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
@@ -62,16 +74,16 @@ public sealed class MapEditorDocument
         if (kind is not null && !MapObjectArt.IsKnown(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
         Edit(q, r, h => kind is null ? WithoutObject(h)
             : h.Object == kind && MapObjectArt.CategoryOf(kind) == "nexus" ? h with { Radius = NextRadius(h.Radius) }
-            : h with { Object = kind, SightBlocker = MapObjectArt.BlocksSight(kind), PlayerStart = null, Radius = null });
+            : h with { Object = kind, SightBlocker = MapObjectArt.BlocksSight(kind), PlayerStart = null, VoidPortal = false, Radius = null });
     }
     private static int? NextRadius(int? radius) => (radius ?? 1) % MapObjectArt.MaxRuneRadius + 1 is var next && next > 1 ? next : null;
-    /// <summary>Removes everything on the hex (start position and object), leaving its terrain and height.</summary>
-    public void Erase(int q, int r) => Edit(q, r, h => WithoutObject(h) with { PlayerStart = null });
+    /// <summary>Removes everything on the hex (start position, Void Portal and object), leaving its terrain and height.</summary>
+    public void Erase(int q, int r) => Edit(q, r, h => WithoutObject(h) with { PlayerStart = null, VoidPortal = false });
     private static ScenarioHex WithoutObject(ScenarioHex hex) =>
         hex.SightBlocker || hex.Object is not null || hex.Radius is not null ? hex with { Object = null, SightBlocker = false, Radius = null } : hex;
     public void Clear()
     {
-        var hexes = Definition.Map.Hexes.Select(h => h with { Biome = "plains", Terrain = "grass", Elevation = 0, PlayerStart = null }).ToList();
+        var hexes = Definition.Map.Hexes.Select(h => h with { Biome = "plains", Terrain = "grass", Elevation = 0, PlayerStart = null, VoidPortal = false }).ToList();
         Definition = Definition with { Map = Definition.Map with { Hexes = hexes } }; IsDirty = true;
     }
     public void DetachSavedMap() { SavedSummary = null; SavedOwnerId = null; }

@@ -59,7 +59,10 @@ public partial class MapEditor : IAsyncDisposable
         });
     }
     private void SelectHeight(string action) { _tool = "height"; _heightAction = action; _status = ""; }
-    private int NextPlayer => _player % 4 + 1;
+    /// <summary>The start button cycles P1–P4, then the Void Portal.</summary>
+    private const int VoidPortalChoice = 5;
+    private int NextPlayer => _player % VoidPortalChoice + 1;
+    private static string StartChoiceName(int choice) => choice == VoidPortalChoice ? "the Void Portal" : $"player {choice} start";
     private void SelectPlayer()
     {
         if (_tool == "player") _player = NextPlayer;
@@ -117,7 +120,7 @@ public partial class MapEditor : IAsyncDisposable
             if (!ReferenceEquals(_layoutDefinition, _document.Definition))
             {
                 _layoutDefinition = _document.Definition;
-                _hexes = _document.Definition.Map.Hexes.Select(h => new HexProjection(h.Q, h.R, h.Biome, h.Terrain, h.Elevation, h.SightBlocker, null) { PlayerStart = h.PlayerStart, Object = h.Object, Radius = h.Radius }).ToList();
+                _hexes = _document.Definition.Map.Hexes.Select(h => new HexProjection(h.Q, h.R, h.Biome, h.Terrain, h.Elevation, h.SightBlocker, null) { PlayerStart = h.PlayerStart, Object = h.Object, Radius = h.Radius, VoidPortal = h.VoidPortal }).ToList();
                 _layout = BoardLayout.For(_hexes);
                 _runeAreas = RuneAreas.Of(_hexes);
             }
@@ -214,6 +217,7 @@ public partial class MapEditor : IAsyncDisposable
         _status = "";
         _document.Select(q, r);
         if (_tool == "paint") _document.Paint(q, r, _biome, _terrains[_biome]);
+        else if (_tool == "player" && _player == VoidPortalChoice) _document.SetVoidPortal(q, r);
         else if (_tool == "player") _document.SetPlayerStart(q, r, _player);
         else if (_objectKinds.TryGetValue(_tool, out var kind)) _document.SetObject(q, r, kind);
         else if (_tool == "erase") _document.Erase(q, r);

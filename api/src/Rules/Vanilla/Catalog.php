@@ -10,6 +10,8 @@ final class Catalog
     private array $heroes = [];
     private array $armies = [];
     private array $monsters = [];
+    /** Fixed monsters (the Void Portal) stand on every Co-op board for free; the Void Lord never places them. */
+    private array $fixed = [];
 
     public function __construct(?string $path = null)
     {
@@ -41,10 +43,15 @@ final class Catalog
                 if (!empty($creature['hidden'])) {
                     continue;
                 }
-                $this->monsters[(string)$creature['name']] = self::stats($creature) + [
+                $monster = self::stats($creature) + [
                     'biome' => (string)($biome['biome'] ?? ''),
                     'tier' => (string)($creature['tier'] ?? 'common'),
                 ];
+                if (!empty($creature['fixed'])) {
+                    $this->fixed[(string)$creature['name']] = $monster;
+                    continue;
+                }
+                $this->monsters[(string)$creature['name']] = $monster;
                 // Myconid prints its death reaction as Attack; it is always a passive reaction in play.
                 foreach ($this->monsters[(string)$creature['name']]['abilities'] as &$ability) {
                     if ($ability['name'] === 'Spore Release') {
@@ -64,6 +71,12 @@ final class Catalog
     public function monster(string $name): ?array
     {
         return $this->monsters[$name] ?? null;
+    }
+
+    /** The Void Lord's gate, or null when the catalog has none (older test catalogs). */
+    public function voidPortal(): ?array
+    {
+        return $this->fixed['Void Portal'] ?? null;
     }
 
     public function heroes(): array

@@ -1773,14 +1773,20 @@
                 {
                     "name": "Void Portal",
                     "tier": "boss",
+                    "fixed": true,
                     "image": "/images/monsters/void_portal.png",
                     "avatarImage": "/images/monsters/void_portal_nobg.png",
                     "move": 0,
-                    "range": 1,
-                    "power": 0,
+                    "range": 5,
+                    "power": 5,
                     "defense": 0,
                     "hp": 15,
                     "abilities": [
+                        {
+                            "name": "Unmovable",
+                            "type": "Essence",
+                            "description": "Cannot be pushed or knocked back by any effect"
+                        }
                     ]
                 }
             ]

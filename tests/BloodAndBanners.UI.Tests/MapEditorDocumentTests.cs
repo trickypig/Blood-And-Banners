@@ -16,6 +16,25 @@ public sealed class MapEditorDocumentTests
         Assert.Null(doc.Definition.Map.Hexes.Single(h => h.Q == 0 && h.R == 0).PlayerStart);
     }
     [Fact]
+    public void The_void_portal_moves_and_shares_its_hex_with_nothing()
+    {
+        var doc = new MapEditorDocument();
+        doc.SetObject(0, 0, "tree");
+        doc.SetPlayerStart(0, 0, 1);
+        doc.SetVoidPortal(0, 0);
+        var hex = doc.Definition.Map.Hexes.Single(h => h.Q == 0 && h.R == 0);
+        Assert.True(hex.VoidPortal);
+        Assert.Null(hex.PlayerStart);
+        Assert.Null(hex.Object);
+        doc.SetVoidPortal(1, 0);
+        Assert.Single(doc.Definition.Map.Hexes, h => h.VoidPortal);
+        doc.SetPlayerStart(1, 0, 2);
+        Assert.DoesNotContain(doc.Definition.Map.Hexes, h => h.VoidPortal);
+        doc.SetVoidPortal(1, 0);
+        doc.SetObject(1, 0, "rock");
+        Assert.DoesNotContain(doc.Definition.Map.Hexes, h => h.VoidPortal);
+    }
+    [Fact]
     public void Tools_edit_the_document_and_noops_do_not_dirty_it()
     {
         var doc = new MapEditorDocument();

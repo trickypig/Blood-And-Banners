@@ -25,6 +25,20 @@ public sealed class MapFileCodecTests
     }
 
     [Fact]
+    public void The_void_portal_round_trips_and_a_map_holds_at_most_one()
+    {
+        var doc = new MapEditorDocument();
+        doc.SetVoidPortal(0, 0);
+        var json = MapFileCodec.ExportCanonical(doc.Definition);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(json, "\"voidPortal\""));
+        var map = MapFileCodec.Import(json);
+        Assert.True(map.Map.Hexes.Single(h => h.Q == 0 && h.R == 0).VoidPortal);
+        var two = map with { Map = map.Map with { Hexes = map.Map.Hexes.Select(h => h with { VoidPortal = true }).ToList() } };
+        Assert.Throws<FormatException>(() => MapFileCodec.Validate(two));
+        Assert.Throws<FormatException>(() => MapFileCodec.Import(json.Replace("\"voidPortal\": true", "\"voidPortal\": \"yes\"")));
+    }
+
+    [Fact]
     public void Canonical_metadata_survives_editing_and_export()
     {
         var map = MapFileCodec.Import(Legacy);
