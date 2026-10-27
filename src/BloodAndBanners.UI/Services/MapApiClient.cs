@@ -17,6 +17,17 @@ public sealed class MapApiClient(HttpClient http) : IMapApiClient
     public Task<SavedMap> SaveAsync(AuthSession session, string scenarioId, string expectedRevisionId, ScenarioDefinition definition, CancellationToken cancellationToken = default) =>
         SendAsync<SavedMap>(HttpMethod.Put, $"{Root}/{Uri.EscapeDataString(scenarioId)}", session, new { definitionJson = Encode(definition), expectedRevisionId }, cancellationToken);
 
+    public async Task<BuiltInScenarios> ListBuiltInAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await http.GetAsync("api/v1/scenarios", cancellationToken);
+        return await GameApiClient.ReadAsync<BuiltInScenarios>(response, cancellationToken);
+    }
+    public async Task<ScenarioDefinition> LoadBuiltInAsync(string name, CancellationToken cancellationToken = default)
+    {
+        using var response = await http.GetAsync($"api/v1/scenarios/{Uri.EscapeDataString(name)}", cancellationToken);
+        return await GameApiClient.ReadAsync<ScenarioDefinition>(response, cancellationToken);
+    }
+
     // One string field, not a JSON tree: the host's firewall rejects request bodies with about a thousand
     // JSON fields, and each hex carries a dozen.
     private static string Encode(ScenarioDefinition definition) => JsonSerializer.Serialize(definition, ContractJson.Options);

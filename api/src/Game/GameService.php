@@ -1251,6 +1251,16 @@ final class GameService
     }
 
     /** A built-in scenario's empty board, for previewing the battlefield before a game exists. */
+    public function builtInScenarios(): array
+    {
+        return $this->scenarios->builtInSummaries();
+    }
+
+    public function builtInScenario(string $scenarioName): array
+    {
+        return $this->scenarios->builtInDefinition($scenarioName);
+    }
+
     public function scenarioBoard(string $scenarioName): array
     {
         return self::mapProjection($this->scenarios->builtInDefinition($scenarioName), static fn(): ?string => null);

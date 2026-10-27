@@ -229,11 +229,23 @@
                         @if (_dialog == "new")
                         {
                             <label for="new-map-shape">Map shape</label>
-                            <select id="new-map-shape" @bind="_shape">
+                            <select id="new-map-shape" @bind="_shape" @bind:after="ShapeChanged">
                                 <option value="rectangle">Rectangular</option>
                                 <option value="hex">Hex</option>
+                                <option value="copy">Copy a scenario</option>
                             </select>
-                            @if (_shape == "hex")
+                            @if (_shape == "copy")
+                            {
+                                <label for="new-map-source">Scenario to copy</label>
+                                <select id="new-map-source" required disabled="@(_builtIns is null)" @bind="_source" @bind:after="SourceChanged">
+                                    <option value="">@(_builtIns is null ? "Loading scenarios…" : "Choose a scenario")</option>
+                                    @foreach (var scenario in _builtIns ?? [])
+                                    {
+                                        <option value="@scenario.Name">@scenario.Name (@string.Join(", ", scenario.ModeCompatibility.Select(GameModeLabels.For)))</option>
+                                    }
+                                </select>
+                            }
+                            else if (_shape == "hex")
                             {
                                 <label for="new-map-side">Hexes per side<input id="new-map-side" type="number" min="1" max="15" required @bind="_side" /></label>
                             }

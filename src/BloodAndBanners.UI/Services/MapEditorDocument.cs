@@ -37,6 +37,12 @@ public sealed class MapEditorDocument
         var definition = MapFileCodec.Import(json);
         Definition = Renamed(definition); IsDirty = true; DetachSavedMap(); Selection = null;
     }
+    /// <summary>Starts a new, unsaved map from a copy of another map under a new name.</summary>
+    public void Copy(string name, ScenarioDefinition source)
+    {
+        MapFileCodec.Validate(source);
+        Definition = Renamed(source with { Name = name }); IsDirty = true; DetachSavedMap(); Selection = null;
+    }
     public void Load(SavedMap map, string ownerId)
     {
         MapFileCodec.Validate(map.Definition);

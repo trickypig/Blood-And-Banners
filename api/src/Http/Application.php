@@ -98,9 +98,13 @@ final class Application
                 return new Response(200, $this->games->getWatchedGame($matches[1]));
             }
 
-            if (preg_match('#^/api/v1/scenarios/([^/]+)/board$#', $request->path, $matches) === 1 && $request->method === 'GET') {
+            if ($request->method === 'GET' && $request->path === '/api/v1/scenarios') {
+                return new Response(200, $this->games->builtInScenarios());
+            }
+            if (preg_match('#^/api/v1/scenarios/([^/]+)(/board)?$#', $request->path, $matches) === 1 && $request->method === 'GET') {
                 try {
-                    return new Response(200, $this->games->scenarioBoard(rawurldecode($matches[1])));
+                    $name = rawurldecode($matches[1]);
+                    return new Response(200, isset($matches[2]) ? $this->games->scenarioBoard($name) : $this->games->builtInScenario($name));
                 } catch (DomainException $error) {
                     if ($error->getMessage() !== 'scenarioNotFound') {
                         throw $error;

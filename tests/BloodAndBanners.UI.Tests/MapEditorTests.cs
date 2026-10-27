@@ -92,6 +92,45 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public void New_map_can_copy_a_built_in_scenario_under_a_new_name_without_signing_in()
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-shape").Change("copy");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("#new-map-source option").Count));
+        Assert.Empty(cut.FindAll("#new-map-columns"));
+        Assert.Contains("Void Reaches (Void incursion)", cut.Find("#new-map-source").TextContent);
+        cut.Find("form").Submit();
+        Assert.Equal("Choose a scenario to copy.", cut.Find("[role=alert]").TextContent);
+
+        cut.Find("#new-map-source").Change("Void Reaches");
+        Assert.Equal("Void Reaches copy", cut.Find("#new-map-name").GetAttribute("value"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[role=dialog]")));
+        Assert.Contains("load-built-in:Void Reaches", _maps.Calls);
+        Assert.Equal(_maps.BuiltIn.Map.Hexes.Count, cut.FindAll(".editor-hex:not(.empty)").Count);
+        Assert.Contains("Void Reaches copy", cut.Markup);
+        Assert.Contains("Copied Void Reaches.", cut.Markup);
+    }
+
+    [Fact]
+    public void A_scenario_that_fails_to_load_keeps_the_dialog_open_with_the_reason()
+    {
+        _maps.BuiltInFailure = new HttpRequestException("offline");
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-shape").Change("copy");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("#new-map-source option").Count));
+        cut.Find("#new-map-name").Input("My own name");
+        cut.Find("#new-map-source").Change("Four Corners");
+        Assert.Equal("My own name", cut.Find("#new-map-name").GetAttribute("value"));
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => Assert.Contains("Four Corners could not be loaded", cut.Find("[role=alert]").TextContent));
+        Assert.NotNull(cut.Find("[role=dialog]"));
+    }
+
+    [Fact]
     public void Player_start_icons_use_open_portals_and_the_fourth_player_is_magenta()
     {
         var cut = Render<MapEditor>(p => p.Add(c => c.ImageBaseUrl, "https://example.test/"));
@@ -460,6 +499,18 @@ public sealed class MapEditorTests : BunitContext
         public IReadOnlyList<SavedMapSummary> List = [];
         public Task<SavedMaps>? PendingList;
         public static SavedMap Saved(ScenarioDefinition definition, string revision = "r1", int number = 1) => new(new("map1", definition.Name, revision, number, "2026-10-21T00:00:00Z"), definition);
+        public Exception? BuiltInFailure;
+        public ScenarioDefinition BuiltIn = MapFileCodec.Import(MapFileCodecTests.Legacy) with { Name = "Void Reaches" };
+        public Task<BuiltInScenarios> ListBuiltInAsync(CancellationToken c = default)
+        {
+            Calls.Add("list-built-in");
+            return Task.FromResult(new BuiltInScenarios([new("Four Corners", [GameMode.VanillaPvp]), new("Void Reaches", [GameMode.Coop])]));
+        }
+        public Task<ScenarioDefinition> LoadBuiltInAsync(string name, CancellationToken c = default)
+        {
+            Calls.Add($"load-built-in:{name}");
+            return BuiltInFailure is null ? Task.FromResult(BuiltIn) : Task.FromException<ScenarioDefinition>(BuiltInFailure);
+        }
         public Task<SavedMaps> ListAsync(AuthSession s, CancellationToken c = default) { Calls.Add("list"); return PendingList ?? Task.FromResult(new SavedMaps(List)); }
         public Task<SavedMap> LoadAsync(AuthSession s, string id, CancellationToken c = default) { Calls.Add("load"); return PendingLoad ?? Task.FromResult(Saved(MapFileCodec.Import(MapFileCodecTests.Legacy))); }
         public Task<SavedMap> CreateAsync(AuthSession s, ScenarioDefinition d, CancellationToken c = default) { Calls.Add("create"); Definitions.Add(d); return PendingCreate ?? Task.FromResult(Saved(d)); }

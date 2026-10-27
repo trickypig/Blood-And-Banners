@@ -159,21 +159,38 @@ final class ScenarioService
 
     public function builtInDefinition(string $name): array
     {
-        $files = glob(dirname(__DIR__, 2) . '/scenarios/*.json') ?: [];
-        foreach ($files as $file) {
-            $json = file_get_contents($file);
-            if ($json === false) {
-                continue;
+        foreach ($this->builtInDefinitions() as $definition) {
+            if (($definition['name'] ?? null) === $name) {
+                $this->validate($definition);
+                return $definition;
             }
-            $definition = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-            if (($definition['name'] ?? null) !== $name) {
-                continue;
-            }
-            $this->validate($definition);
-            return $definition;
         }
 
         throw new DomainException('scenarioNotFound');
+    }
+
+    /** Every built-in scenario's name and game modes, by name, for copying one in the map editor. */
+    public function builtInSummaries(): array
+    {
+        $summaries = array_map(static fn(array $definition): array => [
+            'name' => (string)$definition['name'],
+            'modeCompatibility' => array_values($definition['modeCompatibility']),
+        ], $this->builtInDefinitions());
+        usort($summaries, static fn(array $left, array $right): int => strcmp($left['name'], $right['name']));
+        return ['scenarios' => $summaries];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function builtInDefinitions(): array
+    {
+        $definitions = [];
+        foreach (glob(dirname(__DIR__, 2) . '/scenarios/*.json') ?: [] as $file) {
+            $json = file_get_contents($file);
+            if ($json !== false) {
+                $definitions[] = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+            }
+        }
+        return $definitions;
     }
 
     public function resolveBuiltInRevision(string $name, string $mode): array

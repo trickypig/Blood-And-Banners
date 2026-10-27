@@ -285,6 +285,27 @@ function api_tests(): array
             expect_same('scenarioNotFound', $missing->body['error']['code'], 'missing scenario error should be explicit');
         },
 
+        'built-in scenarios are listed and copied in full without auth' => static function (): void {
+            $app = test_application();
+            $list = $app->handle(new Request('GET', '/api/v1/scenarios'));
+            $copy = $app->handle(new Request('GET', '/api/v1/scenarios/Twin%20Roads'));
+            $missing = $app->handle(new Request('GET', '/api/v1/scenarios/Nowhere'));
+
+            expect_same(200, $list->status, 'the list is public');
+            $names = array_column($list->body['scenarios'], 'name');
+            $sorted = $names;
+            sort($sorted, SORT_STRING);
+            expect_same($sorted, $names, 'scenarios are listed by name');
+            expect_true(in_array('Void Reaches', $names, true) && in_array('Four Corners', $names, true), 'every built-in is listed');
+            $voidReaches = array_values(array_filter($list->body['scenarios'], static fn(array $s): bool => $s['name'] === 'Void Reaches'))[0];
+            expect_same(['coop'], $voidReaches['modeCompatibility'], 'each scenario carries its modes');
+            expect_same(200, $copy->status, 'a definition is public');
+            expect_same('Twin Roads', $copy->body['name'], 'the copy is the named scenario');
+            expect_same(631, count($copy->body['map']['hexes']), 'the copy carries every hex');
+            expect_true(count(array_filter($copy->body['map']['hexes'], static fn(array $hex): bool => $hex['spawnZone'] === 'void')) >= 24, 'the copy keeps its spawn zones');
+            expect_same(404, $missing->status, 'unknown scenarios are not found');
+        },
+
         'guest conversion route is gone and creates nothing' => static function (): void {
             [$app, $db] = test_application_with_db();
             $guest = $app->handle(new Request('POST', '/api/v1/auth/guest', body: ['deviceId' => 'conversion-api-device']));

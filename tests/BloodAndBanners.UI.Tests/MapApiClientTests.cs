@@ -39,6 +39,24 @@ public sealed class MapApiClientTests
         Assert.Equal("mapConflict", error.Code);
     }
 
+    [Fact]
+    public async Task Built_in_scenarios_are_listed_and_copied_without_a_bearer()
+    {
+        var handler = new Handler { Response = """{"scenarios":[{"name":"Serpent's Coil","modeCompatibility":["coop"]}]}""" };
+        var client = new MapApiClient(new HttpClient(handler) { BaseAddress = new("https://example.test/play/") });
+        var list = await client.ListBuiltInAsync();
+        Assert.Equal("https://example.test/play/api/v1/scenarios", handler.Uri);
+        Assert.Null(handler.Authorization);
+        Assert.Equal("Serpent's Coil", list.Scenarios[0].Name);
+        Assert.Equal([GameMode.Coop], list.Scenarios[0].ModeCompatibility);
+
+        handler.Response = JsonSerializer.Serialize(MapFileCodec.Import(MapFileCodecTests.Legacy), ContractJson.Options);
+        var definition = await client.LoadBuiltInAsync("Serpent's Coil");
+        Assert.Equal("https://example.test/play/api/v1/scenarios/Serpent%27s%20Coil", handler.Uri);
+        Assert.Null(handler.Authorization);
+        Assert.Equal("Crossing", definition.Name);
+    }
+
     private sealed class Handler : HttpMessageHandler
     {
         public string Response = "{}";

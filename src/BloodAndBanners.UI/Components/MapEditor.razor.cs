@@ -49,6 +49,7 @@ public partial class MapEditor : IAsyncDisposable
         var name = _draftName.Trim();
         if (name.Length is < 1 or > 120) { _dialogError = "Enter a map name between 1 and 120 characters."; return; }
         if (_dialog == "rename") { _document.Rename(name); _status = ""; CloseDialog(); return; }
+        if (_shape == "copy") { await CopyScenario(name); return; }
         if (_shape == "hex" ? _side is < 1 or > 15 : _columns is < 5 or > 30 || _rows is < 5 or > 30)
         { _dialogError = _shape == "hex" ? "Hex side length must be between 1 and 15." : "Columns and rows must be between 5 and 30."; return; }
         var columns = _columns; var rows = _rows; var side = _side; var shape = _shape;
@@ -57,6 +58,35 @@ public partial class MapEditor : IAsyncDisposable
         {
             if (shape == "hex") _document.NewHex(name, side); else _document.New(name, columns, rows);
             _error = null; _conflict = false; _zoom = 1; _status = "New map created.";
+            return Task.CompletedTask;
+        });
+    }
+    private IReadOnlyList<BuiltInScenarioSummary>? _builtIns;
+    private string _source = "";
+    private async Task ShapeChanged()
+    {
+        if (_shape != "copy" || _builtIns is not null) return;
+        try { _builtIns = (await MapApi.ListBuiltInAsync()).Scenarios; _dialogError = null; }
+        catch (Exception) { _dialogError = "The scenarios could not be loaded. Check your connection and try again."; }
+    }
+    /// <summary>Names the copy after its source until the player types a name of their own.</summary>
+    private void SourceChanged()
+    {
+        var named = _draftName == "New Map" || (_builtIns ?? []).Any(s => _draftName == $"{s.Name} copy");
+        if (named && _source.Length > 0) _draftName = $"{_source} copy";
+    }
+    private async Task CopyScenario(string name)
+    {
+        if (_source.Length == 0) { _dialogError = "Choose a scenario to copy."; return; }
+        ScenarioDefinition source;
+        try { source = await MapApi.LoadBuiltInAsync(_source); }
+        catch (Exception) { _dialogError = $"{_source} could not be loaded. Check your connection and try again."; return; }
+        var copied = _source;
+        CloseDialog();
+        await Confirm(() =>
+        {
+            _document.Copy(name, source); SyncDimensions();
+            _error = null; _conflict = false; _status = $"Copied {copied}.";
             return Task.CompletedTask;
         });
     }
