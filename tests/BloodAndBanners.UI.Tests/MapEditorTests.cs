@@ -115,6 +115,21 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public void A_scenario_the_editor_cannot_open_is_refused_with_the_reason()
+    {
+        var source = MapFileCodec.Import(MapFileCodecTests.Legacy);
+        _maps.BuiltIn = source with { Map = source.Map with { Hexes = [source.Map.Hexes[0] with { Terrain = "stone" }] } };
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-shape").Change("copy");
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll("#new-map-source option").Count));
+        cut.Find("#new-map-source").Change("Four Corners");
+        cut.Find("form").Submit();
+        cut.WaitForAssertion(() => Assert.Equal("Four Corners cannot be edited: Invalid biome or terrain.", cut.Find("[role=alert]").TextContent));
+        Assert.NotNull(cut.Find("[role=dialog]"));
+    }
+
+    [Fact]
     public void A_scenario_that_fails_to_load_keeps_the_dialog_open_with_the_reason()
     {
         _maps.BuiltInFailure = new HttpRequestException("offline");
@@ -511,6 +526,9 @@ public sealed class MapEditorTests : BunitContext
             Calls.Add($"load-built-in:{name}");
             return BuiltInFailure is null ? Task.FromResult(BuiltIn) : Task.FromException<ScenarioDefinition>(BuiltInFailure);
         }
+        public IReadOnlyList<PlayableMap> Playable = [];
+        public Task<PlayableMaps> ListPlayableAsync(AuthSession s, GameMode mode, CancellationToken c = default) { Calls.Add($"playable:{mode}"); return Task.FromResult(new PlayableMaps(Playable)); }
+        public Task<BoardProjection> LoadRevisionBoardAsync(AuthSession s, string revisionId, CancellationToken c = default) => Task.FromResult(MapPreviewFixtures.Board());
         public Task<SavedMaps> ListAsync(AuthSession s, CancellationToken c = default) { Calls.Add("list"); return PendingList ?? Task.FromResult(new SavedMaps(List)); }
         public Task<SavedMap> LoadAsync(AuthSession s, string id, CancellationToken c = default) { Calls.Add("load"); return PendingLoad ?? Task.FromResult(Saved(MapFileCodec.Import(MapFileCodecTests.Legacy))); }
         public Task<SavedMap> CreateAsync(AuthSession s, ScenarioDefinition d, CancellationToken c = default) { Calls.Add("create"); Definitions.Add(d); return PendingCreate ?? Task.FromResult(Saved(d)); }

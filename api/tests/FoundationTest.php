@@ -41,7 +41,7 @@ function foundation_tests(): array
             (new Migrator($db))->migrate();
 
             $applied = $db->query('SELECT name FROM schema_migrations ORDER BY name')->fetchAll(PDO::FETCH_COLUMN);
-            expect_same(['001_initial', '002_match_state', '003_commander_names', '004_event_visibility', '005_accounts'], $applied, 'each migration is recorded once');
+            expect_same(['001_initial', '002_match_state', '003_commander_names', '004_event_visibility', '005_accounts', '006_seat_limits'], $applied, 'each migration is recorded once');
             $columns = array_column($db->query('PRAGMA table_info(game_memberships)')->fetchAll(), 'name');
             expect_same(1, count(array_keys($columns, 'commander_name', true)), 'the name column exists exactly once');
         },

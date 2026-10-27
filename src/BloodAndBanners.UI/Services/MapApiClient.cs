@@ -17,6 +17,10 @@ public sealed class MapApiClient(HttpClient http) : IMapApiClient
     public Task<SavedMap> SaveAsync(AuthSession session, string scenarioId, string expectedRevisionId, ScenarioDefinition definition, CancellationToken cancellationToken = default) =>
         SendAsync<SavedMap>(HttpMethod.Put, $"{Root}/{Uri.EscapeDataString(scenarioId)}", session, new { definitionJson = Encode(definition), expectedRevisionId }, cancellationToken);
 
+    public Task<PlayableMaps> ListPlayableAsync(AuthSession session, GameMode mode, CancellationToken cancellationToken = default) =>
+        SendAsync<PlayableMaps>(HttpMethod.Get, $"{Root}/playable/{JsonSerializer.Serialize(mode, ContractJson.Options).Trim('"')}", session, null, cancellationToken);
+    public Task<BoardProjection> LoadRevisionBoardAsync(AuthSession session, string revisionId, CancellationToken cancellationToken = default) =>
+        SendAsync<BoardProjection>(HttpMethod.Get, $"{Root}/revisions/{Uri.EscapeDataString(revisionId)}/board", session, null, cancellationToken);
     public async Task<BuiltInScenarios> ListBuiltInAsync(CancellationToken cancellationToken = default)
     {
         using var response = await http.GetAsync("api/v1/scenarios", cancellationToken);

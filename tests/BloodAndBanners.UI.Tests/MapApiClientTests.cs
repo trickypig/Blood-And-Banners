@@ -57,6 +57,23 @@ public sealed class MapApiClientTests
         Assert.Equal("Crossing", definition.Name);
     }
 
+    [Fact]
+    public async Task The_players_ready_maps_and_their_previews_need_the_bearer()
+    {
+        var handler = new Handler { Response = """{"maps":[{"scenarioId":"m","name":"Ember Isle","revisionId":"r3","revision":3,"isLatest":false,"players":4,"updatedAt":"2026-10-27T00:00:00Z"}]}""" };
+        var client = new MapApiClient(new HttpClient(handler) { BaseAddress = new("https://example.test/play/") });
+        var session = new AuthSession("owner", "user", "secret", "refresh");
+        var maps = await client.ListPlayableAsync(session, GameMode.VanillaPvp);
+        Assert.Equal("https://example.test/play/api/v1/account/maps/playable/vanillaPvp", handler.Uri);
+        Assert.Equal("Bearer secret", handler.Authorization);
+        Assert.Equal(new PlayableMap("m", "Ember Isle", "r3", 3, false, 4, "2026-10-27T00:00:00Z"), maps.Maps[0]);
+
+        handler.Response = """{"columns":1,"rows":1,"hexes":[]}""";
+        await client.LoadRevisionBoardAsync(session, "r/3");
+        Assert.Equal("https://example.test/play/api/v1/account/maps/revisions/r%2F3/board", handler.Uri);
+        Assert.Equal("Bearer secret", handler.Authorization);
+    }
+
     private sealed class Handler : HttpMessageHandler
     {
         public string Response = "{}";

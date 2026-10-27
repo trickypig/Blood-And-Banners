@@ -29,7 +29,7 @@
                 <strong>Void incursion</strong>
                 <span>One Void Lord against one to four allied commanders.</span>
             </button>
-            <button type="button" data-mode="battleRoyale" disabled="@IsBusy" @onclick="() => ChooseMode(GameMode.BattleRoyale)">
+            <button type="button" data-mode="battleRoyale" disabled="@IsBusy" @ref="_royaleButton" @onclick="() => ChooseMode(GameMode.BattleRoyale)">
                 <strong>Battle royale</strong>
                 <span>A human dungeon master drives the battlefield against two to four rivals.</span>
             </button>
@@ -68,33 +68,18 @@
                 <h2 id="battlefield-title" tabindex="-1" @ref="_pickerHeading">Choose the battlefield.</h2>
                 <p>Terrain changes the fight. Pick the ground before the banners rise.</p>
             </header>
-            <div class="battlefield-list" role="radiogroup" aria-label="@(_pickerMode == GameMode.Coop ? "Void incursion battlefield" : "Vanilla battlefield")">
+            <div class="battlefield-list" role="radiogroup" aria-label="@PickerLabel">
                 @foreach (var battlefield in Battlefields)
                 {
-                    var selected = battlefield.Name == _selectedScenario;
-                    <button type="button"
-                            class="battlefield-card @(selected ? "selected" : null)"
-                            role="radio"
-                            aria-checked="@(selected ? "true" : "false")"
-                            data-scenario="@battlefield.Name"
-                            disabled="@IsBusy"
-                            @onclick="() => _selectedScenario = battlefield.Name">
-                        <span class="battlefield-name">@battlefield.Name</span>
-                        <span class="battlefield-size">@battlefield.Size</span>
-                        <span class="battlefield-role">@battlefield.Role</span>
-                        <span class="battlefield-tags">
-                            @foreach (var tag in battlefield.Tags)
-                            {
-                                <span>@tag</span>
-                            }
-                        </span>
-                        <span class="battlefield-map">
-                            @if (_boards.TryGetValue(battlefield.Name, out var board))
-                            {
-                                <MapPreview Board="board" Name="@battlefield.Name" ImageBaseUrl="@ImageBaseUrl" />
-                            }
-                        </span>
-                    </button>
+                    @Card(battlefield)
+                }
+                @if (_ownMaps.Count > 0)
+                {
+                    <p class="battlefield-group" data-testid="own-maps">Your maps</p>
+                    @foreach (var battlefield in _ownMaps)
+                    {
+                        @Card(battlefield)
+                    }
                 }
             </div>
             <div class="picker-actions">
@@ -160,16 +145,27 @@
     [Parameter]
     public Func<string, Task<BoardProjection>>? LoadBoard { get; set; }
 
+    /// <summary>The signed-in player's own maps ready for a mode, offered after the built-in battlefields.</summary>
+    [Parameter]
+    public Func<GameMode, Task<IReadOnlyList<PlayableMap>>>? LoadOwnMaps { get; set; }
+
+    /// <summary>Fetches one of the player's map revisions for its card preview.</summary>
+    [Parameter]
+    public Func<string, Task<BoardProjection>>? LoadOwnBoard { get; set; }
+
     private string _joinCode = string.Empty;
     private bool _choosingBattlefield;
     private GameMode _pickerMode = GameMode.VanillaPvp;
-    private string _selectedScenario = "Four Corners";
+    /// <summary>The chosen card's <see cref="Battlefield.Key"/>.</summary>
+    private string _selected = "Four Corners";
+    private IReadOnlyList<Battlefield> _ownMaps = [];
     private bool _focusPicker;
     private bool _focusMode;
     private readonly Dictionary<string, BoardProjection> _boards = [];
     private ElementReference _pickerHeading;
     private ElementReference _vanillaButton;
     private ElementReference _coopButton;
+    private ElementReference _royaleButton;
 
     private static readonly Battlefield[] VanillaBattlefields =
     [
@@ -178,7 +174,7 @@
         new("Home Map", "32 × 30", "Grand battlefield", ["Large", "Mixed ground"]),
     ];
 
-    /// <summary>Void Reaches, then the five hexagonal drafts (scripts/build-incursion-maps.py) on trial.</summary>
+    /// <summary>Original incursions and the compact tactical maps (scripts/build-tactical-maps.py).</summary>
     private static readonly Battlefield[] CoopBattlefields =
     [
         new("Void Reaches", "25 × 25", "The first incursion", ["Five biomes", "Crags"]),
@@ -189,7 +185,66 @@
         new("Blighted March", "Hex 15", "Escalating danger", ["Hazard bands", "Three crossings", "Lava lanes"]),
     ];
 
-    private Battlefield[] Battlefields => _pickerMode == GameMode.Coop ? CoopBattlefields : VanillaBattlefields;
+    private static readonly Battlefield[] RoyaleBattlefields =
+    [
+        new("Last Banner", "3 × 3", "Every commander for themselves", ["Two to four rivals"]),
+    ];
+
+    private Battlefield[] Battlefields => _pickerMode switch
+    {
+        GameMode.Coop => CoopBattlefields,
+        GameMode.BattleRoyale => RoyaleBattlefields,
+        _ => VanillaBattlefields,
+    };
+
+    private string PickerLabel => _pickerMode switch
+    {
+        GameMode.Coop => "Void incursion battlefield",
+        GameMode.BattleRoyale => "Battle royale battlefield",
+        _ => "Vanilla battlefield",
+    };
+
+    private RenderFragment Card(Battlefield battlefield) => __builder =>
+    {
+        var selected = battlefield.Key == _selected;
+        <button type="button"
+                class="battlefield-card @(selected ? "selected" : null) @(battlefield.RevisionId is null ? null : "own-map")"
+                role="radio"
+                aria-checked="@(selected ? "true" : "false")"
+                data-scenario="@(battlefield.RevisionId is null ? battlefield.Name : null)"
+                data-map-revision="@battlefield.RevisionId"
+                disabled="@IsBusy"
+                @onclick="() => _selected = battlefield.Key">
+            <span class="battlefield-name">@battlefield.Name</span>
+            <span class="battlefield-size">@battlefield.Size</span>
+            <span class="battlefield-role">@battlefield.Role</span>
+            <span class="battlefield-tags">
+                @foreach (var tag in battlefield.Tags)
+                {
+                    <span>@tag</span>
+                }
+            </span>
+            <span class="battlefield-map">
+                @if (_boards.TryGetValue(battlefield.Key, out var board))
+                {
+                    <MapPreview Board="board" Name="@battlefield.Name" ImageBaseUrl="@ImageBaseUrl" />
+                }
+            </span>
+        </button>
+    };
+
+    /// <summary>A card for one of the player's maps at the revision the server found ready.</summary>
+    private static Battlefield OwnCard(PlayableMap map, GameMode mode) => new(
+        map.Name,
+        $"Revision {map.Revision}",
+        mode switch
+        {
+            GameMode.Coop => map.Players == 1 ? "1 hero player" : $"Up to {map.Players} hero players",
+            GameMode.BattleRoyale => $"{map.Players} rivals",
+            _ => "Two commanders",
+        },
+        map.IsLatest ? [] : ["Your newest save is not ready yet"],
+        map.RevisionId);
 
     protected override void OnParametersSet()
     {
@@ -209,39 +264,63 @@
         else if (_focusMode)
         {
             _focusMode = false;
-            await (_pickerMode == GameMode.Coop ? _coopButton : _vanillaButton).FocusAsync();
+            await (_pickerMode switch { GameMode.Coop => _coopButton, GameMode.BattleRoyale => _royaleButton, _ => _vanillaButton }).FocusAsync();
         }
     }
 
-    private Task ChooseMode(GameMode mode)
+    private async Task ChooseMode(GameMode mode)
     {
-        if (mode is GameMode.VanillaPvp or GameMode.Coop)
+        _pickerMode = mode;
+        _selected = Battlefields[0].Key;
+        _ownMaps = [];
+        _choosingBattlefield = true;
+        _focusPicker = true;
+        var previews = LoadPreviews(Battlefields, LoadBoard);
+        await LoadOwnMapsFor(mode);
+        await previews;
+    }
+
+    private async Task LoadOwnMapsFor(GameMode mode)
+    {
+        if (LoadOwnMaps is null)
         {
-            _pickerMode = mode;
-            _selectedScenario = Battlefields[0].Name;
-            _choosingBattlefield = true;
-            _focusPicker = true;
-            return LoadPreviews();
+            return;
         }
-        return OnCreate.InvokeAsync(new GameSetupSelection(mode, "Last Banner"));
+        IReadOnlyList<PlayableMap> maps;
+        try
+        {
+            maps = await LoadOwnMaps(mode);
+        }
+        catch (Exception)
+        {
+            // The built-in battlefields still work when the player's own maps cannot be fetched.
+            return;
+        }
+        if (!_choosingBattlefield || _pickerMode != mode)
+        {
+            return;
+        }
+        _ownMaps = maps.Select(map => OwnCard(map, mode)).ToList();
+        StateHasChanged();
+        await LoadPreviews(_ownMaps, LoadOwnBoard);
     }
 
-    private async Task LoadPreviews()
+    private async Task LoadPreviews(IReadOnlyList<Battlefield> battlefields, Func<string, Task<BoardProjection>>? load)
     {
-        if (LoadBoard is null)
+        if (load is null)
         {
             return;
         }
 
-        var loads = Battlefields
-            .Where(battlefield => !_boards.ContainsKey(battlefield.Name))
-            .Select(battlefield => (battlefield.Name, Board: LoadBoard(battlefield.Name)))
+        var loads = battlefields
+            .Where(battlefield => !_boards.ContainsKey(battlefield.Key))
+            .Select(battlefield => (battlefield.Key, Board: load(battlefield.RevisionId ?? battlefield.Name)))
             .ToList();
-        foreach (var (name, load) in loads)
+        foreach (var (key, pending) in loads)
         {
             try
             {
-                _boards[name] = await load;
+                _boards[key] = await pending;
                 StateHasChanged();
             }
             catch (Exception)
@@ -251,7 +330,11 @@
         }
     }
 
-    private Task CreateGame() => OnCreate.InvokeAsync(new GameSetupSelection(_pickerMode, _selectedScenario));
+    private Task CreateGame()
+    {
+        var chosen = Battlefields.Concat(_ownMaps).FirstOrDefault(battlefield => battlefield.Key == _selected) ?? Battlefields[0];
+        return OnCreate.InvokeAsync(new GameSetupSelection(_pickerMode, chosen.Name, chosen.RevisionId));
+    }
 
     private void BackToModes()
     {
@@ -267,5 +350,9 @@
         ? Task.CompletedTask
         : OnWatch.InvokeAsync(_joinCode.Trim());
 
-    private sealed record Battlefield(string Name, string Size, string Role, IReadOnlyList<string> Tags);
+    /// <summary>A card in the picker: a built-in scenario, or one of the player's own maps at a given revision.</summary>
+    private sealed record Battlefield(string Name, string Size, string Role, IReadOnlyList<string> Tags, string? RevisionId = null)
+    {
+        public string Key => RevisionId ?? Name;
+    }
 }

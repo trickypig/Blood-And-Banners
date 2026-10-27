@@ -180,6 +180,8 @@ public sealed record GameProjection(
     GameResult? Result)
 {
     public string ScenarioName { get; init; } = string.Empty;
+    /// <summary>Player seats in the war room; a player's own map may hold fewer than the mode usually seats. Null from older servers.</summary>
+    public int? SeatLimit { get; init; }
     public IReadOnlyList<MembershipProjection> Memberships { get; init; } = [];
     public DraftProjection? Draft { get; init; }
     public IReadOnlyDictionary<string, SeatArmyProjection>? Armies { get; init; }

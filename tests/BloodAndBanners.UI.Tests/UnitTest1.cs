@@ -15,6 +15,9 @@ public sealed partial class GameTableTests : BunitContext
             .Add(component => component.OnCreate, mode => selected = mode));
 
         cut.Find("button[data-mode=battleRoyale]").Click();
+        Assert.Null(selected);
+        Assert.Equal("Battle royale battlefield", cut.Find(".battlefield-list").GetAttribute("aria-label"));
+        cut.Find("button[data-action=create-game]").Click();
         Assert.Equal(new GameSetupSelection(GameMode.BattleRoyale, "Last Banner"), selected);
 
         var busy = Render<QuickStart>(parameters => parameters.Add(component => component.IsBusy, true));
@@ -61,6 +64,69 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("button[data-mode=vanillaPvp]").Click();
         Assert.Equal("Four Corners", cut.FindAll("button[data-scenario]")[0].GetAttribute("data-scenario"));
         Assert.Equal("true", cut.FindAll("button[data-scenario]")[0].GetAttribute("aria-checked"));
+    }
+
+    [Fact]
+    public void Quick_start_offers_the_players_own_ready_maps_after_the_built_ins()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        GameSetupSelection? selected = null;
+        var asked = new List<GameMode>();
+        var previews = new List<string>();
+        var cut = Render<QuickStart>(parameters => parameters
+            .Add(component => component.OnCreate, selection => selected = selection)
+            .Add(component => component.LoadOwnMaps, mode =>
+            {
+                asked.Add(mode);
+                return Task.FromResult<IReadOnlyList<PlayableMap>>(
+                [
+                    new("map-1", "Ember Isle", "rev-3", 3, true, 2, "2026-10-27T00:00:00Z"),
+                    new("map-2", "Half Done", "rev-1", 1, false, 4, "2026-10-26T00:00:00Z"),
+                ]);
+            })
+            .Add(component => component.LoadOwnBoard, revision =>
+            {
+                previews.Add(revision);
+                return Task.FromResult(MapPreviewFixtures.Board());
+            }));
+
+        cut.Find("button[data-mode=coop]").Click();
+
+        Assert.Equal([GameMode.Coop], asked);
+        Assert.Equal("Your maps", cut.Find("[data-testid=own-maps]").TextContent);
+        var own = cut.FindAll("button[data-map-revision]");
+        Assert.Equal(["rev-3", "rev-1"], own.Select(card => card.GetAttribute("data-map-revision")));
+        Assert.Null(own[0].GetAttribute("data-scenario"));
+        Assert.Contains("Revision 3", own[0].TextContent);
+        Assert.Contains("Up to 2 hero players", own[0].TextContent);
+        Assert.DoesNotContain("not ready", own[0].TextContent);
+        Assert.Contains("Your newest save is not ready yet", own[1].TextContent);
+        Assert.Equal(["rev-3", "rev-1"], previews);
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("button[data-map-revision] svg.map-preview").Count));
+
+        cut.Find("button[data-map-revision='rev-3']").Click();
+        Assert.Equal("true", cut.Find("button[data-map-revision='rev-3']").GetAttribute("aria-checked"));
+        Assert.Equal("false", cut.Find("button[data-scenario='Void Reaches']").GetAttribute("aria-checked"));
+        cut.Find("button[data-action=create-game]").Click();
+        Assert.Equal(new GameSetupSelection(GameMode.Coop, "Ember Isle", "rev-3"), selected);
+
+        cut.Find("button[data-action=back-modes]").Click();
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+        Assert.Equal([GameMode.Coop, GameMode.VanillaPvp], asked);
+        Assert.Equal("true", cut.Find("button[data-scenario='Four Corners']").GetAttribute("aria-checked"));
+    }
+
+    [Fact]
+    public void Quick_start_keeps_the_built_in_battlefields_when_the_players_maps_cannot_load()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<QuickStart>(parameters => parameters
+            .Add(component => component.LoadOwnMaps, _ => Task.FromException<IReadOnlyList<PlayableMap>>(new HttpRequestException("offline"))));
+
+        cut.Find("button[data-mode=coop]").Click();
+
+        Assert.Empty(cut.FindAll("[data-testid=own-maps]"));
+        Assert.Equal(6, cut.FindAll("button[data-scenario]").Count);
     }
 
     [Fact]

@@ -51,7 +51,7 @@ public sealed class AccountSessionTests
 
         public Task<AuthSession> CreateGuestAsync(string deviceId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<GameSeatSession> CreateGameAsync(AuthSession session, GameMode mode, string scenarioName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<GameSeatSession> CreateGameAsync(AuthSession session, GameMode mode, string scenarioName, string? scenarioRevisionId = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GameSeatSession> JoinGameAsync(AuthSession session, string gameId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GameProjection> ReconnectAsync(AuthSession session, string gameId, string seatToken, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<GameProjection> SubmitCommandAsync(AuthSession session, string gameId, string seatToken, CommandEnvelope command, CancellationToken cancellationToken = default) => throw new NotSupportedException();

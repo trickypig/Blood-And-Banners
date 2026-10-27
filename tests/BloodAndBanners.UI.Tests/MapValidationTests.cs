@@ -24,6 +24,31 @@ public sealed class MapValidationTests
         foreach (var hex in doc.Definition.Map.Hexes.Where(h => h.Q - Center.Q >= 11).Take(count).ToList()) doc.ToggleSpawnZone(hex.Q, hex.R);
     }
 
+    /// <summary>
+    /// Players each built-in map seats per mode (duel, Void incursion, battle royale). The server's copy of this check
+    /// (MapModeCheck.php) asserts the same table in api/tests/MapModeCheckTest.php, so the two cannot drift apart.
+    /// </summary>
+    [Theory]
+    [InlineData("four-corners", 2, 0, 0)]
+    [InlineData("home-map", 2, 0, 0)]
+    [InlineData("proving-field", 2, 0, 0)]
+    [InlineData("training-grounds", 0, 0, 0)]
+    [InlineData("last-banner", 0, 0, 0)]
+    [InlineData("void-reaches", 0, 4, 0)]
+    [InlineData("incursion-twin-roads", 0, 4, 0)]
+    [InlineData("incursion-serpents-coil", 0, 4, 0)]
+    [InlineData("incursion-the-gorge", 0, 4, 0)]
+    [InlineData("incursion-lakeheart", 0, 4, 0)]
+    [InlineData("incursion-blighted-march", 0, 4, 0)]
+    public void Built_in_maps_match_the_server_check(string file, int duel, int coop, int royale)
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "BloodAndBanners.slnx"))) root = root.Parent!;
+        var definition = MapFileCodec.Import(File.ReadAllText(Path.Combine(root.FullName, "api", "scenarios", $"{file}.json")));
+        var players = MapValidation.Check(definition).ToDictionary(c => c.Mode, c => c.Players);
+        Assert.Equal((duel, coop, royale), (players[GameMode.VanillaPvp], players[GameMode.Coop], players[GameMode.BattleRoyale]));
+    }
+
     private static ModeCheck Check(MapEditorDocument doc, GameMode mode) => MapValidation.Check(doc.Definition).Single(c => c.Mode == mode);
 
     private static void Ring(MapEditorDocument doc, (int Q, int R) around, int radius, Action<int, int> act)

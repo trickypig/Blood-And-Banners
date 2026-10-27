@@ -37,6 +37,8 @@
 .battlefield-card[data-scenario="Four Corners"]::before { background: linear-gradient(#52768b 0 25%, #90aeba 25% 50%, #9b3e26 50% 75%, #66507b 75%); }
 .battlefield-card[data-scenario="Proving Field"]::before { background: #8d7847; }
 .battlefield-card[data-scenario="Home Map"]::before { background: repeating-linear-gradient(#687759 0 .35rem, #8b7250 .35rem .7rem); }
+.battlefield-card.own-map::before { background: #d0ad66; }
+.battlefield-group { margin: 0; padding: 1rem .8rem .45rem 1.45rem; color: #d0ad66; font: 700 .8rem/1 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid #5b5548; }
 .battlefield-card:hover:not(:disabled) { background: #292824; }
 .battlefield-card.selected { color: #fff5dd; background: #302e29; box-shadow: inset .28rem 0 #d0ad66; }
 .battlefield-card:focus-visible, .picker-actions button:focus-visible { outline: .2rem solid #e6cc8e; outline-offset: -.2rem; }

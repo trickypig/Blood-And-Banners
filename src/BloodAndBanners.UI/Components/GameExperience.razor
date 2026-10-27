@@ -18,6 +18,8 @@
                 ErrorMessage="@_error"
                 InitialJoinCode="@InitialJoinCode"
                 LoadBoard="LoadScenarioBoard"
+                LoadOwnMaps="LoadOwnMaps"
+                LoadOwnBoard="LoadOwnBoard"
                 OnCreate="CreateGame"
                 OnJoin="JoinGame"
                 OnWatch="WatchGame"
@@ -219,6 +221,22 @@ else
     private Task<BoardProjection> LoadScenarioBoard(string scenarioName) =>
         Sessions.GetScenarioBoardAsync(scenarioName, _pollCancellation.Token);
 
+    private IMapApiClient? Maps => ServiceProvider.GetService(typeof(IMapApiClient)) as IMapApiClient;
+
+    /// <summary>The signed-in player's maps ready for the mode; none for guests.</summary>
+    private async Task<IReadOnlyList<PlayableMap>> LoadOwnMaps(GameMode mode)
+    {
+        if (Account is not { } account || Maps is not { } maps || await account.LoadAsync() is null)
+        {
+            return [];
+        }
+        return (await account.CallAsync(session => maps.ListPlayableAsync(session, mode, _pollCancellation.Token), _pollCancellation.Token)).Maps;
+    }
+
+    private Task<BoardProjection> LoadOwnBoard(string revisionId) => Account is { } account && Maps is { } maps
+        ? account.CallAsync(session => maps.LoadRevisionBoardAsync(session, revisionId, _pollCancellation.Token), _pollCancellation.Token)
+        : Task.FromException<BoardProjection>(new InvalidOperationException("Sign in to preview your maps."));
+
     private Task CreateGame(GameSetupSelection selection) => RunCommand(async () =>
     {
         _generation++;
@@ -227,6 +245,7 @@ else
             DeviceId(),
             selection.Mode,
             selection.ScenarioName,
+            selection.ScenarioRevisionId,
             _pollCancellation.Token));
         _status = "War room opened. Share the invite link with your rival.";
         StartPolling();

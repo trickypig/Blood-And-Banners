@@ -144,6 +144,31 @@ public sealed class GameClientTests
         Assert.Equal("Bearer", handler.Requests[1].Headers.Authorization?.Scheme);
         Assert.Equal("access-1", handler.Requests[1].Headers.Authorization?.Parameter);
         Assert.Contains("\"scenarioName\":\"Void Reaches\"", handler.Bodies[1]);
+        Assert.DoesNotContain("scenarioRevisionId", handler.Bodies[1]);
+    }
+
+    [Fact]
+    public async Task Creating_a_game_on_an_own_map_sends_its_revision()
+    {
+        var handler = new QueueHandler(
+            """
+            {
+              "game":{
+                "gameId":"game-2","version":1,"lifecycle":"lobby","mode":"coop",
+                "viewer":{"role":"player","seatId":"seat-1","canCommand":true,"isHost":true},
+                "board":{"columns":0,"rows":0,"hexes":[]},
+                "turn":{"round":0,"activeSeatId":null,"activationsRemaining":0},
+                "pendingChoice":null,"legalActions":[],"scores":{"seat-1":0},"result":null
+              },
+              "seatToken":"seat-secret"
+            }
+            """);
+        var client = new GameApiClient(new HttpClient(handler) { BaseAddress = new Uri("https://game.test/") });
+
+        await client.CreateGameAsync(new AuthSession("u1", "user", "access-1", "refresh-1"), GameMode.Coop, "Ember Isle", "rev-3");
+
+        Assert.Contains("\"scenarioRevisionId\":\"rev-3\"", handler.Bodies[0]);
+        Assert.Contains("\"scenarioName\":\"Ember Isle\"", handler.Bodies[0]);
     }
 
     [Fact]

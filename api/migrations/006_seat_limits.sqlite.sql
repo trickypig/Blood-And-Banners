@@ -1,0 +1,1 @@
+ALTER TABLE games ADD COLUMN seat_limit INTEGER NULL;

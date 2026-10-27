@@ -491,6 +491,7 @@ public sealed class GameSessionCoordinatorTests
             AuthSession session,
             GameMode mode,
             string scenarioName,
+            string? scenarioRevisionId = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(Created ?? throw new InvalidOperationException("Game response was not configured."));
 

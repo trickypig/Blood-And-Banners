@@ -54,6 +54,18 @@ public sealed class WarRoomLobbyTests : BunitContext
     }
 
     [Fact]
+    public void The_war_room_shows_only_the_seats_the_map_holds()
+    {
+        var usual = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null)));
+        Assert.Equal("2 / 5", usual.Find(".muster-count").TextContent);
+        Assert.Equal(5, usual.FindAll("li[data-seat]").Count);
+
+        var small = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null) with { SeatLimit = 3 }));
+        Assert.Equal("2 / 3", small.Find(".muster-count").TextContent);
+        Assert.Equal(3, small.FindAll("li[data-seat]").Count);
+    }
+
+    [Fact]
     public void Coop_lobby_uses_ally_wording()
     {
         var host = Render<WarRoomLobby>(parameters => parameters.Add(c => c.Projection, CoopLobby("seat-1", true, null)));

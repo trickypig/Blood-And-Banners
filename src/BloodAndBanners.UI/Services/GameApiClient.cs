@@ -40,11 +40,13 @@ public sealed class GameApiClient(HttpClient httpClient) : IGameApiClient
         AuthSession session,
         GameMode mode,
         string scenarioName,
+        string? scenarioRevisionId = null,
         CancellationToken cancellationToken = default)
     {
+        object body = scenarioRevisionId is null ? new { mode, scenarioName } : new { mode, scenarioName, scenarioRevisionId };
         using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/games")
         {
-            Content = JsonContent.Create(new { mode, scenarioName }, options: ContractJson.Options)
+            Content = JsonContent.Create(body, body.GetType(), options: ContractJson.Options)
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", session.AccessToken);
         using var response = await httpClient.SendAsync(request, cancellationToken);

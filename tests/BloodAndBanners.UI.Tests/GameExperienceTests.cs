@@ -66,7 +66,7 @@ public sealed class GameExperienceTests : BunitContext
     }
 
     [Fact]
-    public void Battle_royale_creates_directly_with_its_existing_scenario()
+    public void Battle_royale_opens_the_picker_on_its_existing_scenario()
     {
         var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
         Services.AddSingleton<IGameSessionCoordinator>(api);
@@ -74,9 +74,50 @@ public sealed class GameExperienceTests : BunitContext
         var cut = Render<GameExperience>();
 
         cut.Find("button[data-mode=battleRoyale]").Click();
+        Assert.Null(api.CreateRequest);
+        cut.Find("button[data-action=create-game]").Click();
 
         cut.WaitForAssertion(() => Assert.Equal((GameMode.BattleRoyale, "Last Banner"), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName)));
-        Assert.Empty(cut.FindAll("[data-testid=battlefield-picker]"));
+        Assert.Null(api.CreateRevision);
+    }
+
+    [Fact]
+    public void A_signed_in_host_opens_a_war_room_on_their_own_map_revision()
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        var maps = new MapEditorTests.EditorMapApi
+        {
+            Playable = [new("map-1", "Ember Isle", "rev-3", 3, true, 4, "2026-10-27T00:00:00Z")],
+        };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession(FakeAccountSession.Account()));
+        Services.AddSingleton<IMapApiClient>(maps);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.Find("button[data-mode=coop]").Click();
+        cut.WaitForElement("button[data-map-revision='rev-3']").Click();
+        cut.Find("button[data-action=create-game]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal((GameMode.Coop, "Ember Isle", "rev-3"), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName, api.CreateRevision)));
+        Assert.Contains("playable:Coop", maps.Calls);
+    }
+
+    [Fact]
+    public void Guests_see_only_the_built_in_battlefields()
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        var maps = new MapEditorTests.EditorMapApi { Playable = [new("map-1", "Ember Isle", "rev-3", 3, true, 4, "2026-10-27T00:00:00Z")] };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        Services.AddSingleton<IAccountSession>(new FakeAccountSession());
+        Services.AddSingleton<IMapApiClient>(maps);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>();
+
+        cut.Find("button[data-mode=coop]").Click();
+
+        Assert.Empty(cut.FindAll("[data-testid=own-maps]"));
+        Assert.DoesNotContain(maps.Calls, call => call.StartsWith("playable"));
     }
 
     [Theory]
@@ -577,6 +618,7 @@ public sealed class GameExperienceTests : BunitContext
         public GameProjection? Readied { get; init; }
         public (string ClientKind, string GameId)? JoinRequest { get; private set; }
         public (string DeviceId, GameMode Mode, string ScenarioName)? CreateRequest { get; private set; }
+        public string? CreateRevision { get; private set; }
         public (long Version, bool Ready)? ReadyRequest { get; private set; }
 
         public GameProjection? Commanded { get; init; }
@@ -631,9 +673,10 @@ public sealed class GameExperienceTests : BunitContext
             return Task.CompletedTask;
         }
 
-        public Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, CancellationToken cancellationToken = default)
+        public Task<GameProjection> CreateGuestGameAsync(string deviceId, GameMode mode, string scenarioName, string? scenarioRevisionId = null, CancellationToken cancellationToken = default)
         {
             CreateRequest = (deviceId, mode, scenarioName);
+            CreateRevision = scenarioRevisionId;
             return Task.FromResult(Created ?? throw new InvalidOperationException());
         }
 

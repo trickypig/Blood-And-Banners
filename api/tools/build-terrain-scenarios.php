@@ -140,7 +140,7 @@ $fourCorners = [
 $provingFieldSpecial = [];
 for ($column = 4; $column <= 6; $column++) {
     for ($row = 2; $row <= 6; $row++) {
-        $provingFieldSpecial["{$column},{$row}"] = ['biome' => 'stone', 'terrain' => 'stone', 'elevation' => 1];
+        $provingFieldSpecial["{$column},{$row}"] = ['biome' => 'stone', 'terrain' => 'stone-path', 'elevation' => 1];
     }
     $provingFieldSpecial["{$column},4"] = ['biome' => 'stone', 'terrain' => 'stone-path', 'elevation' => 1];
 }

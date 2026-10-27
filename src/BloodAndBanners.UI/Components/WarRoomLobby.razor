@@ -213,7 +213,7 @@
         await OnRemoveSeat.InvokeAsync(seatId);
     }
 
-    private int SeatLimit => Projection.Mode == GameMode.VanillaPvp ? 2 : 5;
+    private int SeatLimit => Projection.SeatLimit ?? (Projection.Mode == GameMode.VanillaPvp ? 2 : 5);
 
     private MembershipProjection? ViewerMembership =>
         Projection.Memberships.FirstOrDefault(seat => seat.SeatId == Projection.Viewer.SeatId);

@@ -11,4 +11,7 @@ public interface IMapApiClient
     /// <summary>The game's own scenarios, which anyone may copy into the editor.</summary>
     Task<BuiltInScenarios> ListBuiltInAsync(CancellationToken cancellationToken = default);
     Task<ScenarioDefinition> LoadBuiltInAsync(string name, CancellationToken cancellationToken = default);
+    /// <summary>The player's maps ready for the mode, each at its newest ready revision.</summary>
+    Task<PlayableMaps> ListPlayableAsync(AuthSession session, GameMode mode, CancellationToken cancellationToken = default);
+    Task<BoardProjection> LoadRevisionBoardAsync(AuthSession session, string revisionId, CancellationToken cancellationToken = default);
 }

@@ -13,10 +13,12 @@ public interface IGameApiClient
 
     Task<BoardProjection> GetScenarioBoardAsync(string scenarioName, CancellationToken cancellationToken = default);
 
+    /// <summary>Opens a war room on a built-in scenario, or on the signed-in player's own map revision when one is given.</summary>
     Task<GameSeatSession> CreateGameAsync(
         AuthSession session,
         GameMode mode,
         string scenarioName,
+        string? scenarioRevisionId = null,
         CancellationToken cancellationToken = default);
 
     Task<GameSeatSession> JoinGameAsync(

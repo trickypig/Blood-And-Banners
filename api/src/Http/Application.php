@@ -114,6 +114,12 @@ final class Application
             }
 
             $principal = $this->principal($request);
+            if ($request->method === 'GET' && preg_match('#^/api/v1/account/maps/playable/([^/]+)$#', $request->path, $matches) === 1) {
+                return new Response(200, $this->games->playableMaps($this->requireUser($principal), rawurldecode($matches[1])));
+            }
+            if ($request->method === 'GET' && preg_match('#^/api/v1/account/maps/revisions/([^/]+)/board$#', $request->path, $matches) === 1) {
+                return new Response(200, $this->games->ownedMapBoard(rawurldecode($matches[1]), $this->requireUser($principal)));
+            }
             if ($request->path === '/api/v1/account/maps' && in_array($request->method, ['GET', 'POST'], true)) {
                 $owner = $this->requireUser($principal);
                 $maps = $this->service($this->maps);
@@ -167,10 +173,13 @@ final class Application
                 return new Response(200, ['matches' => $this->games->matchHistory($principal['identityId'])]);
             }
             if ($request->method === 'POST' && $request->path === '/api/v1/games') {
+                $revisionId = $request->body['scenarioRevisionId'] ?? null;
                 return new Response(201, $this->seatSession($this->games->createGame(
-                    $principal['identityId'],
+                    // Only a signed-in player has maps of their own to play on.
+                    is_string($revisionId) ? $this->requireUser($principal) : $principal['identityId'],
                     (string)($request->body['mode'] ?? ''),
-                    (string)($request->body['scenarioName'] ?? '')
+                    (string)($request->body['scenarioName'] ?? ''),
+                    is_string($revisionId) ? $revisionId : null
                 )));
             }
             if (preg_match('#^/api/v1/games/([^/]+)$#', $request->path, $matches) === 1) {
@@ -241,7 +250,7 @@ final class Application
         } catch (GameServiceException $error) {
             $status = match ($error->errorCode) {
                 'versionConflict' => 409,
-                'gameNotFound' => 404,
+                'gameNotFound', 'scenarioNotFound' => 404,
                 'membershipRequired', 'hostRequired', 'seatCredentialRequired', 'seatCredentialInvalid' => 403,
                 default => 422,
             };

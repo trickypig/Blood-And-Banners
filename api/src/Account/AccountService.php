@@ -22,7 +22,7 @@ final class AccountService
         $friendSet = array_fill_keys($friendIds, true);
 
         $yours = $this->connection->prepare(
-            'SELECT g.id, g.mode, g.lifecycle, g.scenario_name, g.updated_at FROM games g
+            'SELECT g.id, g.mode, g.lifecycle, g.scenario_name, g.seat_limit, g.updated_at FROM games g
              INNER JOIN game_memberships m ON m.game_id = g.id
              WHERE m.identity_id = :me AND g.lifecycle IN ' . self::OPEN_LIFECYCLES . '
              ORDER BY g.updated_at DESC LIMIT ' . self::FEED_LIMIT
@@ -33,7 +33,7 @@ final class AccountService
         if ($friendIds !== []) {
             $placeholders = implode(', ', array_fill(0, count($friendIds), '?'));
             $statement = $this->connection->prepare(
-                'SELECT g.id, g.mode, g.lifecycle, g.scenario_name, g.updated_at FROM games g
+                'SELECT g.id, g.mode, g.lifecycle, g.scenario_name, g.seat_limit, g.updated_at FROM games g
                  WHERE g.lifecycle IN ' . self::OPEN_LIFECYCLES . "
                    AND g.id IN (SELECT game_id FROM game_memberships WHERE identity_id IN ({$placeholders}))
                    AND g.id NOT IN (SELECT game_id FROM game_memberships WHERE identity_id = ?)
@@ -66,7 +66,7 @@ final class AccountService
                 'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
                 'isFriend' => isset($friendSet[$seat['identity_id']]),
             ], $seats),
-            'canJoin' => $game['lifecycle'] === 'lobby' && count($seats) < GameService::seatLimit((string)$game['mode']),
+            'canJoin' => $game['lifecycle'] === 'lobby' && count($seats) < GameService::seatLimit((string)$game['mode'], $game['seat_limit'] ?? null),
             'updatedAt' => (string)$game['updated_at'],
         ];
     }

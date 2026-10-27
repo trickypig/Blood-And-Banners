@@ -81,6 +81,8 @@ public partial class MapEditor : IAsyncDisposable
         ScenarioDefinition source;
         try { source = await MapApi.LoadBuiltInAsync(_source); }
         catch (Exception) { _dialogError = $"{_source} could not be loaded. Check your connection and try again."; return; }
+        try { MapFileCodec.Validate(source); }
+        catch (FormatException error) { _dialogError = $"{_source} cannot be edited: {error.Message}"; return; }
         var copied = _source;
         CloseDialog();
         await Confirm(() =>

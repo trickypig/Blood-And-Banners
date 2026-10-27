@@ -18,8 +18,9 @@ public sealed class GameSessionCoordinator(
         string deviceId,
         GameMode mode,
         string scenarioName,
+        string? scenarioRevisionId = null,
         CancellationToken cancellationToken = default) =>
-        OpenSeatAsync(deviceId, identity => api.CreateGameAsync(identity, mode, scenarioName, cancellationToken), cancellationToken);
+        OpenSeatAsync(deviceId, identity => api.CreateGameAsync(identity, mode, scenarioName, scenarioRevisionId, cancellationToken), cancellationToken);
 
     public Task<GameProjection> JoinGuestGameAsync(
         string deviceId,

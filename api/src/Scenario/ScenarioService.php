@@ -100,6 +100,67 @@ final class ScenarioService
         return ['summary' => $this->summary($row), 'definition' => MapValidator::structure(json_decode($row['definition_json'], false, flags: JSON_THROW_ON_ERROR))];
     }
 
+    /**
+     * The player's maps that can host the mode, each at its newest revision that passes the server's own map check
+     * (an unfinished later save is skipped), most recently saved first.
+     */
+    public function playableOwned(string $ownerUserId, string $mode): array
+    {
+        $query = $this->connection->prepare(
+            'SELECT s.id, r.id AS revision_id, r.revision, r.created_at, r.definition_json
+             FROM scenarios s JOIN scenario_revisions r ON r.scenario_id = s.id
+             WHERE s.owner_user_id = :owner AND s.deleted_at IS NULL
+             ORDER BY s.id, r.revision DESC'
+        );
+        $query->execute(['owner' => $ownerUserId]);
+        $maps = [];
+        $newest = [];
+        while (($row = $query->fetch(PDO::FETCH_ASSOC)) !== false) {
+            $newest[$row['id']] ??= (int)$row['revision'];
+            if (isset($maps[$row['id']])) {
+                continue;
+            }
+            $definition = json_decode($row['definition_json'], true, flags: JSON_THROW_ON_ERROR);
+            $players = MapModeCheck::players($definition, $mode);
+            if ($players === 0) {
+                continue;
+            }
+            $maps[$row['id']] = [
+                'scenarioId' => $row['id'], 'name' => (string)$definition['name'], 'revisionId' => $row['revision_id'],
+                'revision' => (int)$row['revision'], 'isLatest' => (int)$row['revision'] === $newest[$row['id']],
+                'players' => $players, 'updatedAt' => str_replace(' ', 'T', $row['created_at']) . 'Z',
+            ];
+        }
+        $maps = array_values($maps);
+        usort($maps, static fn(array $a, array $b): int => [$b['updatedAt'], $a['scenarioId']] <=> [$a['updatedAt'], $b['scenarioId']]);
+        return ['maps' => $maps];
+    }
+
+    /** One revision of the player's own map, as long as the map has not been deleted. */
+    public function ownedRevision(string $revisionId, string $ownerUserId): array
+    {
+        $query = $this->connection->prepare(
+            'SELECT r.definition_json FROM scenario_revisions r JOIN scenarios s ON s.id = r.scenario_id
+             WHERE r.id = :id AND s.owner_user_id = :owner AND s.deleted_at IS NULL'
+        );
+        $query->execute(['id' => $revisionId, 'owner' => $ownerUserId]);
+        $json = $query->fetchColumn();
+        if ($json === false) {
+            throw new DomainException('scenarioNotFound');
+        }
+        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    /** The player's map revision for a new game in the mode: it must pass the server's map check for that mode. */
+    public function resolveOwnedRevision(string $revisionId, string $ownerUserId, string $mode): array
+    {
+        $definition = $this->ownedRevision($revisionId, $ownerUserId);
+        if (MapModeCheck::players($definition, $mode) === 0) {
+            throw new DomainException('scenarioModeIncompatible');
+        }
+        return ['revisionId' => $revisionId, 'definition' => $definition];
+    }
+
     public function createOwned(string $ownerUserId, mixed $definition): array
     {
         $definition = MapValidator::validate($definition);

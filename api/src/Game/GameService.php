@@ -19,6 +19,7 @@ use BloodAndBanners\Rules\Vanilla\Modes\CoopSetup;
 use BloodAndBanners\Rules\Vanilla\Stats;
 use BloodAndBanners\Rules\Vanilla\Turn;
 use BloodAndBanners\Rules\Vanilla\UnitConditions;
+use BloodAndBanners\Scenario\MapModeCheck;
 use BloodAndBanners\Scenario\ScenarioService;
 use DomainException;
 use PDO;
@@ -41,7 +42,8 @@ final class GameService
         $this->engine = $engine ?? new MatchEngine(new Catalog());
     }
 
-    public function createGame(string $hostIdentityId, string $mode, string $scenarioName): array
+    /** Opens a war room on a built-in scenario, or on a revision of the host's own map when one is given. */
+    public function createGame(string $hostIdentityId, string $mode, string $scenarioName, ?string $scenarioRevisionId = null): array
     {
         if (!in_array($mode, ['vanillaPvp', 'coop', 'battleRoyale'], true)) {
             throw new GameServiceException('invalidMode', 'The requested game mode is not supported.');
@@ -49,7 +51,14 @@ final class GameService
         $this->connection->beginTransaction();
         try {
             try {
-                $scenario = $this->scenarios->resolveBuiltInRevision($scenarioName, $mode);
+                $seatLimit = null;
+                if ($scenarioRevisionId !== null) {
+                    $scenario = $this->scenarios->resolveOwnedRevision($scenarioRevisionId, $hostIdentityId, $mode);
+                    $scenarioName = (string)$scenario['definition']['name'];
+                    $seatLimit = self::ownMapSeats($scenario['definition'], $mode);
+                } else {
+                    $scenario = $this->scenarios->resolveBuiltInRevision($scenarioName, $mode);
+                }
             } catch (DomainException $error) {
                 $message = $error->getMessage() === 'scenarioModeIncompatible'
                     ? 'The selected scenario does not support this game mode.'
@@ -60,10 +69,10 @@ final class GameService
             $seatToken = self::token();
             $now = self::now();
             $this->connection->prepare(
-                'INSERT INTO games (id, mode, lifecycle, scenario_revision_id, scenario_name, host_identity_id, version, created_at, updated_at)
-                 VALUES (:id, :mode, :lifecycle, :revision, :scenario, :host, 1, :created, :updated)'
+                'INSERT INTO games (id, mode, lifecycle, scenario_revision_id, scenario_name, seat_limit, host_identity_id, version, created_at, updated_at)
+                 VALUES (:id, :mode, :lifecycle, :revision, :scenario, :seats, :host, 1, :created, :updated)'
             )->execute([
-                'id' => $gameId, 'mode' => $mode, 'lifecycle' => 'lobby', 'scenario' => $scenarioName,
+                'id' => $gameId, 'mode' => $mode, 'lifecycle' => 'lobby', 'scenario' => $scenarioName, 'seats' => $seatLimit,
                 'revision' => $scenario['revisionId'], 'host' => $hostIdentityId, 'created' => $now, 'updated' => $now,
             ]);
             $this->insertMembership($gameId, $hostIdentityId, 1, true, $seatToken);
@@ -78,9 +87,18 @@ final class GameService
         }
     }
 
-    public static function seatLimit(string $mode): int
+    /** Player seats in a game: the mode's usual number, or fewer when the game's own map was found to hold fewer. */
+    public static function seatLimit(string $mode, mixed $stored = null): int
     {
-        return $mode === 'vanillaPvp' ? 2 : 5;
+        $usual = $mode === 'vanillaPvp' ? 2 : 5;
+        return $stored === null ? $usual : min($usual, (int)$stored);
+    }
+
+    /** Seats a player's own map holds: its players, plus the Void Lord or the dungeon master outside a duel. */
+    private static function ownMapSeats(array $definition, string $mode): int
+    {
+        $players = MapModeCheck::players($definition, $mode);
+        return $mode === 'vanillaPvp' ? $players : $players + 1;
     }
 
     /** Gives a signed-in member their seat on this device: a fresh seat token replaces the old one everywhere. */
@@ -129,7 +147,7 @@ final class GameService
                 throw new GameServiceException('gameAlreadyStarted', 'Only lobby games can be joined.', (int)$game['version']);
             }
             $count = (int)$this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game', ['game' => $gameId]);
-            $maximum = self::seatLimit($game['mode']);
+            $maximum = self::seatLimit($game['mode'], $game['seat_limit'] ?? null);
             if ($count >= $maximum) {
                 throw new GameServiceException('gameFull', 'This game has no open player seats.', (int)$game['version']);
             }
@@ -901,6 +919,7 @@ final class GameService
             'lifecycle' => $game['lifecycle'],
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
+            'seatLimit' => self::seatLimit((string)$game['mode'], $game['seat_limit'] ?? null),
             'viewer' => $viewer,
             'board' => $this->boardProjection($game, $shown),
             'sides' => $state === null ? null : (object)$state['sides'],
@@ -1259,6 +1278,24 @@ final class GameService
     public function builtInScenario(string $scenarioName): array
     {
         return $this->scenarios->builtInDefinition($scenarioName);
+    }
+
+    public function playableMaps(string $ownerUserId, string $mode): array
+    {
+        if (!in_array($mode, ['vanillaPvp', 'coop', 'battleRoyale'], true)) {
+            throw new GameServiceException('invalidMode', 'The requested game mode is not supported.');
+        }
+        return $this->scenarios->playableOwned($ownerUserId, $mode);
+    }
+
+    public function ownedMapBoard(string $revisionId, string $ownerUserId): array
+    {
+        try {
+            $definition = $this->scenarios->ownedRevision($revisionId, $ownerUserId);
+        } catch (DomainException) {
+            throw new GameServiceException('scenarioNotFound', 'The map could not be found.');
+        }
+        return self::mapProjection($definition, static fn(): ?string => null);
     }
 
     public function scenarioBoard(string $scenarioName): array
