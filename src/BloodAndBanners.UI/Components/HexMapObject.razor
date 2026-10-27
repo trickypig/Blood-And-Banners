@@ -12,13 +12,14 @@
         @if (category is "obstacle" or "landmark")
         {
             // Stands on the hex like a unit figure: its foot sits low on the face and a tall tree may rise into the hex behind.
-            var (width, height) = kind switch
+            // A rock is a squat boulder filling most of its hex, so it sits a little lower to stay centred on the face.
+            var (width, height, footDrop) = kind switch
             {
-                "tree" => (BoardLayout.Size * 1.5, halfHeight * 2),
-                "rock" => (BoardLayout.Size * 1.3, halfHeight * 1.3),
-                _ => (BoardLayout.Size * 1.4, halfHeight * 1.5),
+                "tree" => (BoardLayout.Size * 1.5, halfHeight * 2, .55),
+                "rock" => (BoardLayout.Size * 1.75, halfHeight * 1.6, .7),
+                _ => (BoardLayout.Size * 1.4, halfHeight * 1.5, .55),
             };
-            var foot = Tile.Y + halfHeight * .55;
+            var foot = Tile.Y + halfHeight * footDrop;
             <ellipse class="map-object-shadow" cx="@Num(Tile.X)" cy="@Num(foot - 3)" rx="@Num(BoardLayout.Size * .42)" ry="@Num(BoardLayout.Size * .14)" />
             <image href="@image" x="@Num(Tile.X - width / 2)" y="@Num(foot - height)" width="@Num(width)" height="@Num(height)"
                    preserveAspectRatio="xMidYMax meet" />
