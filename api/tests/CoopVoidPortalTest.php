@@ -147,6 +147,17 @@ function coop_void_portal_tests(): array
             }
         },
 
+        'every void incursion map lets the void lord deploy water-bound monsters' => static function (): void {
+            $files = [dirname(__DIR__) . '/scenarios/void-reaches.json', ...glob(dirname(__DIR__) . '/scenarios/incursion-*.json')];
+            expect_same(9, count($files), 'void reaches and the eight incursion maps');
+            foreach ($files as $file) {
+                $scenario = json_decode((string)file_get_contents($file), true, flags: JSON_THROW_ON_ERROR);
+                $wet = array_filter($scenario['map']['hexes'], static fn(array $hex): bool => ($hex['spawnZone'] ?? null) === 'void'
+                    && in_array($hex['terrain'], ['open-water', 'shallow-water'], true));
+                expect_true(count($wet) >= 6, "{$scenario['name']} has water spawn hexes");
+            }
+        },
+
         'maps hold at most one void portal and the flag must be boolean' => static function (): void {
             $map = built_in_scenario('void-reaches');
             foreach ($map['map']['hexes'] as $index => $hex) {

@@ -256,6 +256,26 @@ def lake_and_river(m, river, lake_radius, width=1.0, river_terrain="open-water")
     return set(water), set(lake)
 
 
+def water_spawns(m, size=3):
+    """Deep-water deployment for the Void Lord's water-bound monsters: a small pool on each river flank, north of
+    mid-river, and one on the lake's north shore. Crossings and the start's surroundings stay clear."""
+    taken = set().union(*m.crossings.values()) if m.crossings else set()
+    deep = {h for h in m.hexes if m.terrain(h) == "open-water" and h not in taken and dist(h, m.start) >= 8}
+    for lo, hi in ((-RADIUS, -5.0), (5.0, RADIUS), (-2.5, 2.5)):
+        side = [h for h in deep if lo <= xy(h)[0] <= hi]
+        if not side:
+            continue
+        mid = (lo + hi) / 2
+        seed = min(side, key=lambda h: (xy(h)[1] + 0.3 * abs(xy(h)[0] - mid), h))
+        pool, queue = [seed], deque([seed])
+        while queue and len(pool) < size:
+            for n in sorted(neighbours(queue.popleft()), key=lambda h: (xy(h)[1], h)):
+                if n in side and n not in pool and len(pool) < size:
+                    pool.append(n)
+                    queue.append(n)
+        m.spawn(pool)
+
+
 def portal_court(m, terrain="darkness", elevation=2):
     m.portal = PORTAL
     m.paint([PORTAL], terrain, elevation)
@@ -767,6 +787,9 @@ def check(m):
     spawn = [h for h, c in m.hexes.items() if c["spawn"]]
     if len(spawn) < 24:
         issues.append(f"only {len(spawn)} spawn hexes")
+    wet_spawn = [h for h in spawn if m.terrain(h) in ("open-water", "shallow-water")]
+    if len(wet_spawn) < 6:
+        issues.append(f"only {len(wet_spawn)} spawn hexes in water")
     room = [h for h in m.disc(m.start, 3) if h != m.start and m.hexes[h]["object"] not in OBSTACLES | LANDMARKS
             and m.terrain(h) not in ("lava", "poison-pits") and not m.hexes[h]["spawn"] and h != m.portal]
     if len(room) < 32:
@@ -793,7 +816,7 @@ def check(m):
     for c in m.hexes.values():
         if c["object"]:
             counts[c["object"]] = counts.get(c["object"], 0) + 1
-    return issues, {"spawn": len(spawn), "room": len(room), "dry route": dry, "wet route": wet, "crossings": crossings,
+    return issues, {"spawn": len(spawn), "water spawn": len(wet_spawn), "room": len(room), "dry route": dry, "wet route": wet, "crossings": crossings,
                     "objects": dict(sorted(counts.items()))}
 
 
@@ -856,6 +879,7 @@ def main():
     failed = False
     for build in MAPS:
         m = build()
+        water_spawns(m)
         issues, stats = check(m)
         slug = "incursion-" + m.name.lower().replace("'", "").replace(" ", "-")
         print(f"{m.name}: {stats}")
