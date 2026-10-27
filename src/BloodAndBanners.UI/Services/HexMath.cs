@@ -60,7 +60,7 @@ public static class HexMath
         return $"{q + direction.Q},{r + direction.R}";
     }
 
-    private static (int Q, int R) Parse(string key)
+    public static (int Q, int R) Parse(string key)
     {
         var parts = key.Split(',');
         return (int.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture), int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));

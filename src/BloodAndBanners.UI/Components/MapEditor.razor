@@ -197,8 +197,25 @@
     {
         <div class="confirm-backdrop" @onkeydown="DialogKey">
             <section class="confirm" role="dialog" aria-modal="true" aria-labelledby="editor-dialog-title" tabindex="-1" @ref="_dialogElement">
-                <h2 id="editor-dialog-title">@(_dialog == "new" ? "New map" : _dialog == "load" ? "Load map" : "Rename map")</h2>
-                @if (_dialog == "load")
+                <h2 id="editor-dialog-title">@(_dialog switch { "new" => "New map", "load" => "Load map", "checks" => "Map saved", _ => "Rename map" })</h2>
+                @if (_dialog == "checks")
+                {
+                    <p>@(_checks.Any(c => c.IsValid) ? "Games can be played on this map in the modes marked ready." : "This map is saved as a work in progress; it is not ready for any game mode yet.")</p>
+                    <ul class="mode-checks">
+                        @foreach (var check in _checks)
+                        {
+                            <li data-mode="@check.Mode" class="@(check.IsValid ? "ready" : "not-ready")">
+                                <strong>@GameModeLabels.For(check.Mode)</strong>: @(check.IsValid ? $"ready for {check.Players} {(check.Players == 1 ? "player" : "players")}" : "not ready")
+                                @if (!check.IsValid)
+                                {
+                                    <ul>@foreach (var issue in check.Issues) { <li>@issue</li> }</ul>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    <button type="button" data-action="close-dialog" @onclick="CloseDialog">OK</button>
+                }
+                else if (_dialog == "load")
                 {
                     <SavedMapsPanel Maps="_maps" IsBusy="_busy" OnLoad="RequestLoad" OnRefresh="RefreshMaps" />
                     @if (_error is not null) { <p role="alert">@_error</p> }

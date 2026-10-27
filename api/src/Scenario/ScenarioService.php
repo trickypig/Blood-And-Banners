@@ -216,8 +216,8 @@ final class ScenarioService
     {
         if (($definition['schemaVersion'] ?? null) !== 1
             || trim((string)($definition['name'] ?? '')) === ''
+            // An empty list is an unfinished map: it saves, but no game mode accepts it.
             || !is_array($definition['modeCompatibility'] ?? null)
-            || ($definition['modeCompatibility'] ?? []) === []
             || !is_array($definition['map']['hexes'] ?? null)) {
             throw new DomainException('invalidScenarioDefinition');
         }

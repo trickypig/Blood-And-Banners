@@ -13,6 +13,8 @@ public sealed record ScenarioDefinition(
     ScenarioScoring Scoring)
 {
     [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+    /// <summary>How many players each mode in <see cref="ModeCompatibility"/> seats, as the editor's map check found on saving.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyDictionary<GameMode, int>? PlayerCounts { get; init; }
 }
 
 public sealed record ScenarioMap(

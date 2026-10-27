@@ -53,6 +53,11 @@ input, select { box-sizing: border-box; display: block; width: 100%; min-height:
 .confirm-backdrop { position: fixed; inset: 0; background: #0009; display: grid; place-items: center; z-index: 100; padding: 1rem; }
 .confirm { background: #292b2c; border: 1px solid #d4af37; border-radius: .5rem; padding: 1.5rem; width: min(100%, 440px); box-sizing: border-box; max-height: calc(100dvh - 2rem); overflow: auto; }
 .confirm button { margin: .4rem .4rem 0 0; }
+.mode-checks { margin: 0 0 1rem; padding-left: 1.2rem; }
+.mode-checks > li { margin-bottom: .5rem; }
+.mode-checks > li.ready strong { color: #9fd18b; }
+.mode-checks > li.not-ready strong { color: #e8a07c; }
+.mode-checks ul { margin: .25rem 0 0; padding-left: 1.1rem; color: #c8c1b0; font-size: .9em; }
 
 @media (max-width: 850px) {
     .map-editor { --editor-padding: .5rem; }

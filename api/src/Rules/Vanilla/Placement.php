@@ -7,6 +7,9 @@ use BloodAndBanners\Game\GameServiceException;
 
 final class Placement
 {
+    /** Terrain no unit starts the battle on; the editor's map check (MapValidation.cs) skips it too. */
+    private const HAZARDS = ['lava', 'poison'];
+
     public static function place(array $board, string $homeKey, string $opponentHomeKey, array $unitIds, array $occupied): array
     {
         $occupied[$homeKey] = true;
@@ -17,7 +20,7 @@ final class Placement
             $candidates = [];
             foreach ($anchors as $anchor) {
                 foreach (Hex::neighbors($anchor, $board) as $key) {
-                    if (!Board::impassable($board[$key]) && !isset($occupied[$key])) {
+                    if (!Board::impassable($board[$key]) && !in_array(Terrain::type($board[$key]), self::HAZARDS, true) && !isset($occupied[$key])) {
                         $candidates[$key] = $key;
                     }
                 }

@@ -22,9 +22,18 @@ final class MapValidator
         $name = $definition['name'] ?? null;
         self::check(is_string($name) && trim($name) !== '' && preg_match_all('/./us', $name) <= 120, 'Map names must contain 1–120 characters.');
         $modes = $definition['modeCompatibility'] ?? null;
-        self::check(is_array($modes) && array_is_list($modes) && count($modes) > 0, 'Choose at least one game mode.');
+        // A work-in-progress map may suit no mode yet: the editor's map check records the ready modes on saving.
+        self::check(is_array($modes) && array_is_list($modes), 'Invalid game modes.');
         foreach ($modes as $mode) {
             self::check(in_array($mode, ['vanillaPvp', 'coop', 'battleRoyale'], true), 'Invalid game mode.');
+        }
+        if (isset($definition['playerCounts'])) {
+            $counts = self::record($definition['playerCounts']);
+            self::check(is_array($counts) && ($counts === [] || !array_is_list($counts)), 'Invalid player counts.');
+            foreach ($counts as $mode => $count) {
+                self::check(in_array($mode, $modes, true), 'Player counts must be for the map’s own game modes.');
+                self::integer($count, 1, 4, 'Player counts must be 1–4.');
+            }
         }
         $map = $definition['map'] ?? null;
         self::check(is_array($map), 'Map data is required.');

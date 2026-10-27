@@ -59,6 +59,15 @@ function vanilla_geometry_tests(): array
             Placement::assertCapacity($board, 7);
         },
 
+        'units never deploy onto lava or poison pits' => static function (): void {
+            $board = proving_field_board();
+            $board['3,2']['terrain'] = 'lava';
+            $board['4,2']['terrain'] = 'poison-pits';
+            $placed = Placement::place($board, '4,1', '0,9', ['hero', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6'], []);
+            expect_same([], array_intersect(['3,2', '4,2'], array_values($placed)), 'hazards are skipped at deployment');
+            expect_same(7, count($placed), 'the army still deploys beside its portal');
+        },
+
         'training grounds is too small for two full armies' => static function (): void {
             $definition = json_decode((string)file_get_contents(dirname(__DIR__) . '/scenarios/training-grounds.json'), true, flags: JSON_THROW_ON_ERROR);
             expect_game_error('scenarioTooSmall', static fn() => Placement::assertCapacity(Board::fromScenario($definition), 7));

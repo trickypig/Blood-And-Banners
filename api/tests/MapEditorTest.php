@@ -168,6 +168,25 @@ function map_editor_tests(): array
             expect_same(413, $ctx['app']->handle(new Request('POST', '/api/v1/account/maps', bearer($owner), ['definition' => $valid]))->status, 'bounded size');
             expect_same(0, (int)$ctx['db']->query('SELECT COUNT(*) FROM scenarios')->fetchColumn(), 'invalid maps not written');
         },
+        'unfinished maps save with no game modes, and ready modes keep their player counts' => static function (): void {
+            $ctx = account_context();
+            $owner = sign_in($ctx, 'modes@example.test');
+            $definition = editor_definition();
+            $definition['modeCompatibility'] = [];
+            $created = $ctx['app']->handle(new Request('POST', '/api/v1/account/maps', bearer($owner), ['definition' => $definition]));
+            expect_same(201, $created->status, 'a map ready for no mode still saves');
+            $definition['modeCompatibility'] = ['vanillaPvp', 'battleRoyale'];
+            $definition['playerCounts'] = ['vanillaPvp' => 2, 'battleRoyale' => 3];
+            $json = json_encode(['definition' => $definition], JSON_THROW_ON_ERROR);
+            $created = $ctx['app']->handle(BloodAndBanners\Http\RequestFactory::fromHttp('POST', '/api/v1/account/maps', bearer($owner), $json, []));
+            expect_same(201, $created->status, 'player counts accepted');
+            $loaded = $ctx['app']->handle(new Request('GET', '/api/v1/account/maps/' . $created->body['summary']['scenarioId'], bearer($owner)));
+            expect_same('{"vanillaPvp":2,"battleRoyale":3}', json_encode($loaded->body['definition']['playerCounts'], JSON_THROW_ON_ERROR), 'counts round trip');
+            foreach ([['coop' => 2], ['vanillaPvp' => 5], ['vanillaPvp' => '2'], [2]] as $index => $counts) {
+                $bad = $definition; $bad['playerCounts'] = $counts;
+                expect_same(400, $ctx['app']->handle(new Request('POST', '/api/v1/account/maps', bearer($owner), ['definition' => $bad]))->status, "bad player counts {$index}");
+            }
+        },
         'rune radius must be 1 to 4 when present' => static function (): void {
             $definition = editor_definition();
             $definition['map']['hexes'][0]['object'] = 'rune-of-strength';

@@ -113,6 +113,7 @@ public partial class MapEditor : IAsyncDisposable
     private string _status = "Loaded New Map.";
     private int _epoch;
     private IReadOnlyList<SavedMapSummary> _maps = [];
+    private IReadOnlyList<ModeCheck> _checks = [];
     private Func<Task>? _pending;
     private ScenarioDefinition? _layoutDefinition;
     private IReadOnlyList<HexProjection> _hexes = [];
@@ -181,7 +182,9 @@ public partial class MapEditor : IAsyncDisposable
         var epoch = _epoch; _busy = true; _error = null;
         try
         {
-            var snapshot = _document.Definition;
+            // Unfinished maps save too; the check only decides which modes the map is offered for.
+            var checks = MapValidation.Check(_document.Definition);
+            var snapshot = MapValidation.Stamp(_document.Definition, checks);
             MapFileCodec.Validate(snapshot);
             var saved = !asNew && _document.SavedOwnerId == owner && _document.SavedSummary is { } summary
                 ? await AccountCall(owner, s => MapApi.SaveAsync(s, summary.ScenarioId, summary.RevisionId, snapshot))
@@ -190,6 +193,7 @@ public partial class MapEditor : IAsyncDisposable
             _document.MarkSaved(saved, owner); _conflict = false;
             _maps = new[] { saved.Summary }.Concat(_maps.Where(m => m.ScenarioId != saved.Summary.ScenarioId)).ToList();
             _status = $"Saved {saved.Summary.Name} (revision {saved.Summary.Revision}).";
+            _checks = checks; OpenDialog("checks");
         }
         catch (Exception e) { if (Current(epoch, owner)) ShowError(e); }
         finally { if (Current(epoch, owner)) _busy = false; }

@@ -33,6 +33,7 @@ public sealed class MapEditorTests : BunitContext
         Assert.Contains("Height: 1", cut.Find(".hex-info").TextContent);
         cut.Find("[data-action='save']").Click();
         cut.WaitForAssertion(() => Assert.Single(_maps.Definitions));
+        cut.Find("[data-action='close-dialog']").Click();
         var saved = MapFileCodec.Import(MapFileCodec.ExportCanonical(_maps.Definitions[0]));
         Assert.Equal("void", saved.Map.Hexes.Single(h => h.Q == 0 && h.R == 0).SpawnZone);
         cut.Find("[data-hex='0,0']").Click();
@@ -62,6 +63,7 @@ public sealed class MapEditorTests : BunitContext
         Assert.Contains("Empty cell", empty.GetAttribute("aria-label"));
         cut.Find("[data-action='save']").Click();
         cut.WaitForAssertion(() => Assert.Single(_maps.Definitions));
+        cut.Find("[data-action='close-dialog']").Click();
         Assert.DoesNotContain(_maps.Definitions[0].Map.Hexes, h => h.Q == 0 && h.R == 0);
         var reloaded = MapFileCodec.Import(MapFileCodec.ExportCanonical(_maps.Definitions[0]));
         Assert.Equal(149, reloaded.Map.Hexes.Count);
@@ -296,6 +298,7 @@ public sealed class MapEditorTests : BunitContext
         var cut = Render<MapEditor>();
         cut.Find("[data-action='save']").Click();
         cut.WaitForAssertion(() => Assert.Contains("Saved", cut.Find("[role='status']").TextContent));
+        cut.Find("[data-action='close-dialog']").Click();
         cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         cut.Find("[data-action='save']").Click();
         cut.Find("[data-action='save-as']").Click();
@@ -304,11 +307,37 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Saving_reports_each_mode_and_records_the_ready_ones_even_for_an_unfinished_map()
+    {
+        await _account.VerifyCodeAsync("me@example.test", "123456", "device");
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='save']").Click();
+        cut.WaitForAssertion(() => Assert.Single(_maps.Definitions));
+        Assert.Empty(_maps.Definitions[0].ModeCompatibility);
+        Assert.Contains("not ready for any game mode", cut.Find("[role='dialog']").TextContent);
+        Assert.Contains("Place a P2 start; vanilla duel needs one.", cut.Find("[data-mode='VanillaPvp']").TextContent);
+
+        cut.Find("[data-action='close-dialog']").Click();
+        cut.Find(".player-button").Click();
+        cut.Find("[data-hex='0,1']").Click();
+        cut.Find(".player-button").Click();
+        cut.Find("[data-hex='0,13']").Click();
+        cut.Find("[data-action='save']").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, _maps.Definitions.Count));
+        Assert.Equal([GameMode.VanillaPvp], _maps.Definitions[1].ModeCompatibility);
+        Assert.Equal(2, _maps.Definitions[1].PlayerCounts![GameMode.VanillaPvp]);
+        Assert.Contains("Vanilla duel: ready for 2 players", cut.Find("[data-mode='VanillaPvp']").TextContent.Trim());
+        Assert.Contains("not ready", cut.Find("[data-mode='Coop']").TextContent);
+    }
+
+    [Fact]
     public async Task Conflict_preserves_edits_and_offers_reload_or_save_as()
     {
         await _account.VerifyCodeAsync("me@example.test", "123456", "device");
         var cut = Render<MapEditor>();
         cut.Find("[data-action='save']").Click();
+        cut.Find("[data-action='close-dialog']").Click();
         cut.Find("[data-height='raise']").Click(); cut.Find("[data-hex='0,0']").Click();
         _maps.SaveFailure = new GameApiException(System.Net.HttpStatusCode.Conflict, "mapConflict", "Saved elsewhere");
         cut.Find("[data-action='save']").Click();

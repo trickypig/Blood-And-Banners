@@ -71,7 +71,9 @@ public static class MapFileCodec
     {
         if (definition.SchemaVersion != 1 || string.IsNullOrWhiteSpace(definition.Name) || definition.Name.EnumerateRunes().Count() > 120)
             throw new FormatException("Use schema version 1 and a map name of 1–120 characters.");
-        if (definition.ModeCompatibility is not { Count: > 0 } || definition.ModeCompatibility.Any(m => !Enum.IsDefined(m)))
+        // A work-in-progress map may suit no mode yet; the editor's map check fills these in on saving.
+        if (definition.ModeCompatibility is null || definition.ModeCompatibility.Any(m => !Enum.IsDefined(m))
+            || definition.PlayerCounts?.Any(p => !definition.ModeCompatibility.Contains(p.Key) || p.Value is < 1 or > 4) == true)
             throw new FormatException("Invalid game modes.");
         var map = definition.Map;
         if (map is null || map.Columns is < 1 or > 100 || map.Rows is < 1 or > 100 || map.Hexes is not { Count: <= 10000 })
@@ -141,8 +143,7 @@ public static class MapFileCodec
         map.Placements.Count > 0 || map.Objectives.Count > 0 || map.Map.ExtensionData?.Count > 0 || map.Map.EditorEmptyCells is { Count: > 0 } ||
         map.ExtensionData?.Keys.Any(k => k is "version" or "columns" or "rows" or "hexes") == true ||
         map.Map.Hexes.Any(h => h.ExtensionData?.Keys.Any(k => k is "height" or "col" or "row") == true) ||
-        map.Scoring.ExtensionData?.Count > 0 || map.Scoring != DefaultScoring ||
-        !map.ModeCompatibility.SequenceEqual(new[] { GameMode.VanillaPvp, GameMode.Coop, GameMode.BattleRoyale });
+        map.Scoring.ExtensionData?.Count > 0 || map.Scoring != DefaultScoring;
 
     public static string ExportCanonical(ScenarioDefinition map) => JsonSerializer.Serialize(map, Pretty);
 
@@ -158,7 +159,8 @@ public static class MapFileCodec
             var hex = item!.AsObject(); hex["height"] = hex["elevation"]!.DeepClone(); hex.Remove("elevation");
         }
         root["hexes"] = hexes;
-        foreach (var key in new[] { "schemaVersion", "map", "modeCompatibility", "placements", "objectives", "scoring" }) root.Remove(key);
+        // Modes and player counts are recomputed from the map on its next save.
+        foreach (var key in new[] { "schemaVersion", "map", "modeCompatibility", "playerCounts", "placements", "objectives", "scoring" }) root.Remove(key);
         return root.ToJsonString(Pretty);
     }
 
