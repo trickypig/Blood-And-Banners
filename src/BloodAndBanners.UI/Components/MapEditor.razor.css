@@ -36,14 +36,17 @@ button:focus-visible, input:focus-visible, .file-button:focus-within { outline: 
 [role=alert] { border-left: 3px solid #de9c74; padding: .5rem 1rem; background: #3f302b; margin: .5rem; }
 .map-scroll { flex: 1; min-height: 0; overflow: auto; background: #1a1c21; }
 label { display: block; }
-input { box-sizing: border-box; display: block; width: 100%; min-height: 2.5rem; padding: .45rem; background: #1f2022; color: #f3edde; border: 1px solid #6a6658; border-radius: .25rem; margin: .25rem 0 .8rem; font: inherit; }
+input, select { box-sizing: border-box; display: block; width: 100%; min-height: 2.5rem; padding: .45rem; background: #1f2022; color: #f3edde; border: 1px solid #6a6658; border-radius: .25rem; margin: .25rem 0 .8rem; font: inherit; }
 .dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
 .buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
 .editor-board { display: block; height: auto; }
 .editor-hex { cursor: pointer; outline: none; }
 .hex-outline { fill: transparent; stroke: #d4af37; stroke-width: 1; }
+.spawn-zone-marker { fill: #b780ed33; stroke: #d5a5ff; stroke-width: 3; stroke-dasharray: 6 4; pointer-events: none; }
 .editor-hex:hover .hex-outline, .editor-hex:focus .hex-outline { stroke: #fff3aa; stroke-width: 3; }
 .editor-hex.selected .hex-outline { stroke: #ffd700; stroke-width: 3; }
+.editor-hex.empty .hex-outline { stroke: transparent; pointer-events: all; }
+.editor-hex.empty:hover .hex-outline, .editor-hex.empty:focus .hex-outline { stroke: #fff3aa; stroke-width: 3; }
 .height-label { font: 700 12px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 .start-marker { stroke: white; stroke-width: 2; pointer-events: none; }
 .start-label { fill: white; font: 700 11px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: #181711; stroke-width: 3px; pointer-events: none; }

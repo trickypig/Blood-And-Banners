@@ -60,6 +60,31 @@ function expect_canonical_rectangle(array $scenario, string $message): void
 function scenario_tests(): array
 {
     return [
+        'generated scenario sight blockers have visible obstacles' => static function (): void {
+            $directory = sys_get_temp_dir() . '/bb-generated-' . bin2hex(random_bytes(8));
+            mkdir($directory);
+            $names = ['four-corners', 'home-map', 'proving-field', 'void-reaches'];
+            try {
+                $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(dirname(__DIR__) . '/tools/build-terrain-scenarios.php')
+                    . ' ' . escapeshellarg(dirname(__DIR__, 2) . '/data/Home_Map.json') . ' ' . escapeshellarg($directory);
+                exec($command, $output, $status);
+                expect_same(0, $status, 'scenario generator succeeds');
+                foreach (array_merge(glob($directory . '/*.json'), glob(dirname(__DIR__) . '/scenarios/*.json')) as $path) {
+                    $name = basename($path, '.json');
+                    $scenario = json_decode((string)file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+                    foreach ($scenario['map']['hexes'] as $hex) {
+                        if (!$hex['sightBlocker']) continue;
+                        expect_true(in_array($hex['object'], Board::OBSTACLES, true), "{$name} blocker {$hex['q']},{$hex['r']} has obstacle art");
+                    }
+                }
+            } finally {
+                foreach ($names as $name) {
+                    $file = $directory . '/' . $name . '.json';
+                    if (is_file($file)) unlink($file);
+                }
+                rmdir($directory);
+            }
+        },
         'legacy editor maps normalize into the versioned scenario schema' => static function (): void {
             $legacy = [
                 'name' => 'Old Crossing',

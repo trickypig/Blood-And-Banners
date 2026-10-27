@@ -21,7 +21,11 @@ public sealed record ScenarioMap(
     IReadOnlyList<ScenarioHex> Hexes)
 {
     [JsonExtensionData] public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+    /// <summary>Empty editor targets outside the declared rectangle, retained for imported axial maps.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<ScenarioCell>? EditorEmptyCells { get; init; }
 }
+
+public sealed record ScenarioCell(int Q, int R);
 
 public sealed record ScenarioHex(
     int Q,

@@ -95,9 +95,17 @@
                             else { <span aria-hidden="true">@MapObjectArt.Display(kind)[0]</span> }
                         </button>
                     }
+                    <button type="button" class="icon-button" data-action="spawn-zone" title="Toggle Void spawn zone" aria-label="Toggle Void spawn zone" disabled="@_busy"
+                            aria-pressed="@(_tool == "spawn-zone" ? "true" : "false")" @onclick="SelectSpawnZone">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("spawn-zone")" /></svg>
+                    </button>
                     <button type="button" class="icon-button" data-action="erase" title="Erase start positions and map objects" aria-label="Erase start positions and map objects" disabled="@_busy"
                             aria-pressed="@(_tool == "erase" ? "true" : "false")" @onclick="SelectErase">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("erase")" /></svg>
+                    </button>
+                    <button type="button" class="icon-button" data-action="erase-tile" title="Erase entire tile" aria-label="Erase entire tile" disabled="@_busy"
+                            aria-pressed="@(_tool == "erase-tile" ? "true" : "false")" @onclick='() => _tool = "erase-tile"'>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="@IconPath("erase-tile")" /></svg>
                     </button>
                 </div>
             </div>
@@ -113,7 +121,12 @@
                 {
                     <span>@selected.Q, @selected.R &middot; @Display(selected.Biome) / @Display(selected.Terrain) &middot; Height: @selected.Elevation &middot; Start: @(selected.PlayerStart?.ToString() ?? "none")@if (selected.VoidPortal) { <text> &middot; Void Portal</text> }@if (MapObjectArt.CategoryOf(selected.Object) is { } category) { <text> &middot; @MapObjectArt.CategoryDisplay(category): @MapObjectArt.Display(selected.Object!)</text> @if (category == "nexus") { <text> &middot; Radius: @(selected.Radius ?? 1)</text> } } else if (selected.SightBlocker) { <text> &middot; Blocked</text> }</span>
                 }
+                else if (_document.Selection is { } cell) { <span>@cell.Q, @cell.R &middot; Empty cell</span> }
                 else { <span>None</span> }
+                @if (_document.SelectedHex?.SpawnZone is { } zone)
+                {
+                    <span>&middot; Spawn zone: @Display(zone)</span>
+                }
             </div>
         </div>
         <section class="map-panel" aria-label="Map canvas">
@@ -133,34 +146,46 @@
                     @foreach (var tile in Layout.Tiles)
                     {
                         var hex = tile.Hex;
+                        var isEmpty = !_occupied.Contains((hex.Q, hex.R));
                         <g @key="(hex.Q, hex.R)" role="button" tabindex="0" data-hex="@($"{hex.Q},{hex.R}")"
-                           class="editor-hex @(_document.Selection == (hex.Q, hex.R) ? "selected" : "")"
-                           aria-label="@($"Hex {hex.Q}, {hex.R}, {hex.Biome} {hex.Terrain}, height {hex.Elevation}{(MapObjectArt.Impassable(hex.Object) ? $", {hex.Object}" : "")}")"
+                           class="editor-hex @(isEmpty ? "empty" : "") @(_document.Selection == (hex.Q, hex.R) ? "selected" : "")"
+                           aria-label="@(isEmpty ? $"Empty cell {hex.Q}, {hex.R}. Paint terrain to restore." : $"Hex {hex.Q}, {hex.R}, {hex.Biome} {hex.Terrain}, height {hex.Elevation}{(MapObjectArt.Impassable(hex.Object) ? $", {hex.Object}" : "")}")"
                            aria-disabled="@(_busy ? "true" : "false")" @onclick="() => Edit(hex.Q, hex.R)"
                            @onkeydown="e => HexKey(e, hex.Q, hex.R)">
-                            <HexTerrain Tile="tile" PatternId="@TerrainArt.PatternId(hex, "editor-terrain-")" />
-                            <polygon class="hex-outline" points="@tile.TopPoints" />
-                            @if (_runeAreas.TryGetValue($"{hex.Q},{hex.R}", out var runeKinds))
+                            @if (isEmpty)
                             {
-                                <RuneAreaTint Tile="tile" Kinds="runeKinds" />
+                                <polygon class="hex-outline" points="@tile.TopPoints" />
                             }
-                            @if (hex.Elevation != 0)
+                            else
                             {
-                                <!text class="height-label" x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)" fill="@TerrainArt.LabelColor(hex.Biome)">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
-                            }
-                            @if (hex.PlayerStart is { } start)
-                            {
-                                <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" />
-                                <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
-                            }
-                            @if (hex.VoidPortal)
-                            {
-                                <VoidPortal X="tile.X" Y="tile.Y" Phase="VoidPortalArt.Phase.Icon" ImageBaseUrl="@ImageBaseUrl" />
-                            }
-                            <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
-                            @if (hex.Radius is > 1 and var radius)
-                            {
-                                <!text class="rune-radius" data-rune-radius="@radius" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@radius</!text>
+                                <HexTerrain Tile="tile" PatternId="@TerrainArt.PatternId(hex, "editor-terrain-")" />
+                                <polygon class="hex-outline" points="@tile.TopPoints" />
+                                @if (_spawnZones.Contains((hex.Q, hex.R)))
+                                {
+                                    <polygon class="spawn-zone-marker" data-spawn-zone="void" points="@tile.TopPoints"><title>Void spawn zone</title></polygon>
+                                }
+                                @if (_runeAreas.TryGetValue($"{hex.Q},{hex.R}", out var runeKinds))
+                                {
+                                    <RuneAreaTint Tile="tile" Kinds="runeKinds" />
+                                }
+                                @if (hex.Elevation != 0)
+                                {
+                                    <!text class="height-label" x="@Num(tile.X - BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)" fill="@TerrainArt.LabelColor(hex.Biome)">@(hex.Elevation > 0 ? $"+{hex.Elevation}" : hex.Elevation.ToString())</!text>
+                                }
+                                @if (hex.PlayerStart is { } start)
+                                {
+                                    <StartingPortal Player="start" X="tile.X" Y="tile.Y" ImageBaseUrl="@ImageBaseUrl" />
+                                    <!text class="start-label" x="@Num(tile.X)" y="@Num(tile.Y + 10)">@($"P{start}")</!text>
+                                }
+                                @if (hex.VoidPortal)
+                                {
+                                    <VoidPortal X="tile.X" Y="tile.Y" Phase="VoidPortalArt.Phase.Icon" ImageBaseUrl="@ImageBaseUrl" />
+                                }
+                                <HexMapObject Tile="tile" ImageBaseUrl="@ImageBaseUrl" />
+                                @if (hex.Radius is > 1 and var radius)
+                                {
+                                    <!text class="rune-radius" data-rune-radius="@radius" x="@Num(tile.X + BoardLayout.Size * .42)" y="@Num(tile.Y - BoardLayout.Size * .5)">@radius</!text>
+                                }
                             }
                         </g>
                     }
@@ -186,10 +211,22 @@
                         <input id="@(_dialog == "new" ? "new-map-name" : "map-name")" maxlength="120" required @bind="_draftName" @bind:event="oninput" />
                         @if (_dialog == "new")
                         {
-                            <div class="dimensions">
-                                <label for="new-map-columns">Columns<input id="new-map-columns" type="number" min="5" max="30" required @bind="_columns" /></label>
-                                <label for="new-map-rows">Rows<input id="new-map-rows" type="number" min="5" max="30" required @bind="_rows" /></label>
-                            </div>
+                            <label for="new-map-shape">Map shape</label>
+                            <select id="new-map-shape" @bind="_shape">
+                                <option value="rectangle">Rectangular</option>
+                                <option value="hex">Hex</option>
+                            </select>
+                            @if (_shape == "hex")
+                            {
+                                <label for="new-map-side">Hexes per side<input id="new-map-side" type="number" min="1" max="15" required @bind="_side" /></label>
+                            }
+                            else
+                            {
+                                <div class="dimensions">
+                                    <label for="new-map-columns">Columns<input id="new-map-columns" type="number" min="5" max="30" required @bind="_columns" /></label>
+                                    <label for="new-map-rows">Rows<input id="new-map-rows" type="number" min="5" max="30" required @bind="_rows" /></label>
+                                </div>
+                            }
                         }
                         @if (_dialogError is not null) { <p role="alert">@_dialogError</p> }
                         <div class="buttons">

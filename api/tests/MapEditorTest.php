@@ -14,6 +14,20 @@ function editor_definition(): array
 function map_editor_tests(): array
 {
     return [
+        'empty canvas can be saved and loaded without inventing terrain' => static function (): void {
+            $ctx = account_context();
+            $owner = sign_in($ctx, 'empty-canvas@example.test');
+            $definition = editor_definition();
+            $definition['map']['hexes'] = [];
+            $definition['map']['editorEmptyCells'] = [['q' => 10, 'r' => 10]];
+            $created = $ctx['app']->handle(new Request('POST', '/api/v1/account/maps', bearer($owner), ['definition' => $definition]));
+            expect_same(201, $created->status, 'empty map saved');
+            $id = $created->body['summary']['scenarioId'];
+            $loaded = $ctx['app']->handle(new Request('GET', '/api/v1/account/maps/' . $id, bearer($owner)));
+            expect_same([], $loaded->body['definition']['map']['hexes'], 'holes remain empty');
+            expect_same(1, $loaded->body['definition']['map']['columns'], 'canvas width retained');
+            expect_same('[{"q":10,"r":10}]', json_encode($loaded->body['definition']['map']['editorEmptyCells'], JSON_THROW_ON_ERROR), 'outlying empty target retained');
+        },
         'HTTP saved map roundtrip preserves empty object metadata' => static function (): void {
             $ctx = account_context();
             $owner = sign_in($ctx, 'shape@example.test');

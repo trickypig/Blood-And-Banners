@@ -11,6 +11,21 @@ public sealed partial class GameTableTests : BunitContext
 {
     public GameTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
+    [Fact]
+    public void Missing_cells_have_no_game_tile_or_outline()
+    {
+        var projection = BattleFixtures.Projection();
+        var removed = projection.Board.Hexes.First();
+        projection = projection with { Board = projection.Board with
+        {
+            Hexes = projection.Board.Hexes.Where(h => h.Q != removed.Q || h.R != removed.R).ToList()
+        } };
+        var cut = Render<GameTable>(p => p.Add(c => c.Projection, projection));
+        Assert.Empty(cut.FindAll($"[data-hex='{removed.Q},{removed.R}']"));
+        Assert.Equal(projection.Board.Hexes.Count, cut.FindAll(".hex-outline").Count);
+        Assert.Empty(cut.FindAll(".editor-hex"));
+    }
+
     [Theory]
     [InlineData("seat-red", "s1-u3", "s2-u1")]
     [InlineData("seat-blue", "s2-u1", "s1-u3")]

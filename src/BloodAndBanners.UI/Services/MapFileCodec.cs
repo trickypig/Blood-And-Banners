@@ -74,9 +74,12 @@ public static class MapFileCodec
         if (definition.ModeCompatibility is not { Count: > 0 } || definition.ModeCompatibility.Any(m => !Enum.IsDefined(m)))
             throw new FormatException("Invalid game modes.");
         var map = definition.Map;
-        if (map is null || map.Columns is < 1 or > 100 || map.Rows is < 1 or > 100 || map.Hexes is not { Count: > 0 and <= 10000 })
-            throw new FormatException("Maps need dimensions from 1–100 and 1–10,000 hexes.");
+        if (map is null || map.Columns is < 1 or > 100 || map.Rows is < 1 or > 100 || map.Hexes is not { Count: <= 10000 })
+            throw new FormatException("Maps need dimensions from 1–100 and at most 10,000 hexes.");
         var seen = new HashSet<(int, int)>();
+        if (map.EditorEmptyCells is { } emptyCells && (emptyCells.Count > 10000 || emptyCells.Any(c =>
+            c is null || c.Q is < -10000 or > 10000 || c.R is < -10000 or > 10000)))
+            throw new FormatException("Invalid empty editor coordinates.");
         foreach (var hex in map.Hexes)
         {
             if (hex is null || hex.Q is < -10000 or > 10000 || hex.R is < -10000 or > 10000 || !seen.Add((hex.Q, hex.R)))
@@ -99,6 +102,15 @@ public static class MapFileCodec
         // Record deserialization otherwise supplies 0 for absent integer fields, silently moving a hex.
         var map = root["map"] as JsonObject ?? throw new FormatException("Map data is required.");
         foreach (var field in new[] { "columns", "rows" }) RequireInteger(map, field);
+        if (map["editorEmptyCells"] is { } empty)
+        {
+            if (empty is not JsonArray cells) throw new FormatException("Invalid empty editor coordinates.");
+            foreach (var item in cells)
+            {
+                if (item is not JsonObject cell) throw new FormatException("Invalid empty editor coordinate.");
+                RequireInteger(cell, "q"); RequireInteger(cell, "r");
+            }
+        }
         var hexes = map["hexes"] as JsonArray ?? throw new FormatException("Map hexes are required.");
         foreach (var item in hexes)
         {
@@ -126,7 +138,7 @@ public static class MapFileCodec
     }
 
     public static bool HasScenarioMetadata(ScenarioDefinition map) =>
-        map.Placements.Count > 0 || map.Objectives.Count > 0 || map.Map.ExtensionData?.Count > 0 ||
+        map.Placements.Count > 0 || map.Objectives.Count > 0 || map.Map.ExtensionData?.Count > 0 || map.Map.EditorEmptyCells is { Count: > 0 } ||
         map.ExtensionData?.Keys.Any(k => k is "version" or "columns" or "rows" or "hexes") == true ||
         map.Map.Hexes.Any(h => h.ExtensionData?.Keys.Any(k => k is "height" or "col" or "row") == true) ||
         map.Scoring.ExtensionData?.Count > 0 || map.Scoring != DefaultScoring ||

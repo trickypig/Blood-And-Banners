@@ -6,6 +6,68 @@ namespace BloodAndBanners.UI.Tests;
 public sealed class MapEditorDocumentTests
 {
     [Fact]
+    public void Erased_imported_outlying_cells_remain_editable_after_save_and_reload()
+    {
+        var doc = new MapEditorDocument();
+        doc.Import("""{"version":3,"name":"Outlier","columns":1,"rows":1,"hexes":[{"q":10,"r":10,"biome":"plains","terrain":"grass","height":2}]}""");
+        doc.EraseTile(10, 10);
+        Assert.Contains((10, 10), doc.Cells);
+        doc.Import(MapFileCodec.ExportCanonical(doc.Definition));
+        Assert.Contains((10, 10), doc.Cells);
+        doc.Paint(10, 10, "plains", "grass");
+        var hex = Assert.Single(doc.Definition.Map.Hexes);
+        Assert.Equal((10, 10, 0), (hex.Q, hex.R, hex.Elevation));
+    }
+
+    [Fact]
+    public void Entirely_erased_maps_round_trip_and_only_terrain_can_restore_cells()
+    {
+        var doc = new MapEditorDocument();
+        doc.New("Empty canvas", 5, 5);
+        foreach (var cell in doc.Cells.ToList()) doc.EraseTile(cell.Q, cell.R);
+        Assert.Empty(doc.Definition.Map.Hexes);
+        foreach (var json in new[] { MapFileCodec.ExportCanonical(doc.Definition), MapFileCodec.ExportLegacy(doc.Definition) })
+        {
+            var restored = new MapEditorDocument();
+            restored.Import(json);
+            Assert.Empty(restored.Definition.Map.Hexes);
+            Assert.Equal(25, restored.Cells.Count());
+            restored.AdjustHeight(0, 0, 1);
+            restored.SetPlayerStart(0, 0, 1);
+            restored.SetObject(0, 0, "tree");
+            restored.SetVoidPortal(0, 0);
+            Assert.Empty(restored.Definition.Map.Hexes);
+            restored.Paint(0, 0, "plains", "grass");
+            Assert.Equal(0, Assert.Single(restored.Definition.Map.Hexes).Elevation);
+            restored.Paint(999, 999, "plains", "grass");
+            Assert.Single(restored.Definition.Map.Hexes);
+        }
+    }
+
+    [Theory]
+    [InlineData(1, 1, 1)]
+    [InlineData(2, 7, 3)]
+    [InlineData(3, 19, 5)]
+    [InlineData(15, 631, 29)]
+    public void Hex_maps_have_six_equal_sides_and_preserve_their_shape_on_reload(int side, int count, int extent)
+    {
+        var doc = new MapEditorDocument();
+        doc.NewHex("Hex", side);
+        var map = MapFileCodec.Import(MapFileCodec.ExportCanonical(doc.Definition)).Map;
+        Assert.Equal(count, map.Hexes.Count);
+        Assert.Equal((extent, extent), (map.Columns, map.Rows));
+        var qs = map.Hexes.Select(h => h.Q).ToList();
+        var rs = map.Hexes.Select(h => h.R).ToList();
+        var sums = map.Hexes.Select(h => h.Q + h.R).ToList();
+        foreach (var axis in new[] { qs, rs, sums })
+        {
+            Assert.Equal(extent - 1, axis.Max() - axis.Min());
+            Assert.Equal(side, axis.Count(v => v == axis.Min()));
+            Assert.Equal(side, axis.Count(v => v == axis.Max()));
+        }
+    }
+
+    [Fact]
     public void Assigning_a_player_start_moves_that_players_existing_marker()
     {
         var doc = new MapEditorDocument();

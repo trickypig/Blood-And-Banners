@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use BloodAndBanners\Scenario\AxialCoordinates;
 use BloodAndBanners\Scenario\LegacyMapImporter;
+use BloodAndBanners\Rules\Vanilla\Board;
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'BloodAndBanners\\';
@@ -67,6 +68,13 @@ function scenario_hex_from_offset(int $column, int $row, string $biome, string $
 /** @param array<string, mixed> $scenario */
 function write_scenario(string $path, array $scenario): void
 {
+    // Every blocked cell needs visible obstacle art, including legacy statue markers.
+    foreach ($scenario['map']['hexes'] as &$hex) {
+        if ($hex['sightBlocker'] && !in_array($hex['object'], Board::OBSTACLES, true)) {
+            $hex['object'] = 'rock';
+        }
+    }
+    unset($hex);
     usort(
         $scenario['map']['hexes'],
         static fn(array $left, array $right): int => [$left['r'], $left['q']] <=> [$right['r'], $right['q']]

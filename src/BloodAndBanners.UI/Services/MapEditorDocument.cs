@@ -17,6 +17,21 @@ public sealed class MapEditorDocument
         if (columns is < 5 or > 30 || rows is < 5 or > 30) throw new FormatException("New map dimensions must be 5–30.");
         Definition = Empty(name, columns, rows); IsDirty = true; DetachSavedMap(); Selection = null;
     }
+    public void NewHex(string name, int side)
+    {
+        if (side is < 1 or > 15) throw new FormatException("Hex side length must be 1–15.");
+        var radius = side - 1;
+        var centerQ = radius - radius / 2;
+        var definition = Empty(name, 2 * side - 1, 2 * side - 1);
+        Definition = definition with { Map = definition.Map with { Hexes = definition.Map.Hexes.Where(h =>
+            Math.Max(Math.Max(Math.Abs(h.Q - centerQ), Math.Abs(h.R - radius)), Math.Abs(h.Q - centerQ + h.R - radius)) <= radius).ToList() } };
+        IsDirty = true; DetachSavedMap(); Selection = null;
+    }
+    /// <summary>Missing coordinate entries are empty cells; dimensions retain the editable canvas.</summary>
+    public IEnumerable<(int Q, int R)> Cells => Enumerable.Range(0, Definition.Map.Columns)
+        .SelectMany(col => Enumerable.Range(0, Definition.Map.Rows).Select(row => (Q: row - col / 2, R: col)))
+        .Union(Definition.Map.Hexes.Select(h => (h.Q, h.R)))
+        .Union(Definition.Map.EditorEmptyCells?.Select(c => (c.Q, c.R)) ?? []);
     public void Import(string json)
     {
         var definition = MapFileCodec.Import(json);
@@ -35,10 +50,30 @@ public sealed class MapEditorDocument
     public void Paint(int q, int r, string biome, string terrain)
     {
         if (!TerrainArt.IsValid(biome, terrain)) throw new FormatException("Invalid terrain.");
+        if (!Definition.Map.Hexes.Any(h => h.Q == q && h.R == r))
+        {
+            if (!Cells.Contains((q, r))) return;
+            var hex = new ScenarioHex(q, r, biome, terrain, 0, null, false, null, null, null, false, false);
+            var empty = Definition.Map.EditorEmptyCells?.Where(c => c.Q != q || c.R != r).ToList();
+            Definition = Definition with { Map = Definition.Map with { Hexes = [.. Definition.Map.Hexes, hex], EditorEmptyCells = empty is { Count: > 0 } ? empty : null } };
+            Select(q, r); IsDirty = true;
+            return;
+        }
         Edit(q, r, h => h with { Biome = biome, Terrain = terrain });
+    }
+    public void EraseTile(int q, int r)
+    {
+        Select(q, r);
+        var hexes = Definition.Map.Hexes.Where(h => h.Q != q || h.R != r).ToList();
+        if (hexes.Count == Definition.Map.Hexes.Count) return;
+        var empty = Definition.Map.EditorEmptyCells;
+        if (r < 0 || r >= Definition.Map.Columns || q + r / 2 < 0 || q + r / 2 >= Definition.Map.Rows)
+            empty = (empty ?? []).Append(new ScenarioCell(q, r)).Distinct().ToList();
+        Definition = Definition with { Map = Definition.Map with { Hexes = hexes, EditorEmptyCells = empty } }; IsDirty = true;
     }
     public void AdjustHeight(int q, int r, int delta) => Edit(q, r, h => h with { Elevation = Math.Clamp(h.Elevation + delta, 0, 10) });
     public void ResetHeight(int q, int r) => Edit(q, r, h => h with { Elevation = 0 });
+    public void ToggleSpawnZone(int q, int r) => Edit(q, r, h => h with { SpawnZone = h.SpawnZone == "void" ? null : "void" });
     public void SetPlayerStart(int q, int r, int? player)
     {
         if (player is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(player));

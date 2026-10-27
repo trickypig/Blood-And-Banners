@@ -49,12 +49,14 @@ public partial class MapEditor : IAsyncDisposable
         var name = _draftName.Trim();
         if (name.Length is < 1 or > 120) { _dialogError = "Enter a map name between 1 and 120 characters."; return; }
         if (_dialog == "rename") { _document.Rename(name); _status = ""; CloseDialog(); return; }
-        if (_columns is < 5 or > 30 || _rows is < 5 or > 30) { _dialogError = "Columns and rows must be between 5 and 30."; return; }
-        var columns = _columns; var rows = _rows;
+        if (_shape == "hex" ? _side is < 1 or > 15 : _columns is < 5 or > 30 || _rows is < 5 or > 30)
+        { _dialogError = _shape == "hex" ? "Hex side length must be between 1 and 15." : "Columns and rows must be between 5 and 30."; return; }
+        var columns = _columns; var rows = _rows; var side = _side; var shape = _shape;
         CloseDialog();
         await Confirm(() =>
         {
-            _document.New(name, columns, rows); _error = null; _conflict = false; _zoom = 1; _status = "New map created.";
+            if (shape == "hex") _document.NewHex(name, side); else _document.New(name, columns, rows);
+            _error = null; _conflict = false; _zoom = 1; _status = "New map created.";
             return Task.CompletedTask;
         });
     }
@@ -80,6 +82,7 @@ public partial class MapEditor : IAsyncDisposable
         _tool = category; _status = "";
     }
     private void SelectErase() { _tool = "erase"; _status = ""; }
+    private void SelectSpawnZone() { _tool = "spawn-zone"; _status = ""; }
     private void ChangeZoom(string action) { _status = ""; if (action == "zoom-reset") _zoom = 1; else Zoom(action == "zoom-in" ? .1 : -.1); }
     private static string IconPath(string action) => action switch
     {
@@ -95,11 +98,15 @@ public partial class MapEditor : IAsyncDisposable
         "zoom-in" => "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6M6 10h8m-4-4v8",
         "zoom-out" => "M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14m5 12 6 6M6 10h8",
         "erase" => "M9 20H4l-1-4L14 5l6 6-9 9m-6-8 6 6m5 2h6",
+        "erase-tile" => "M7 3h10l5 9-5 9H7l-5-9ZM8 8l8 8M16 8l-8 8",
+        "spawn-zone" => "M7 3h10l5 9-5 9H7l-5-9ZM12 7v10m-5-5h10",
         _ => "M4 9V4h5m6 0h5v5M4 15v5h5m6 0h5v-5M9 12h6"
     };
     private readonly Dictionary<string, string> _terrains = TerrainArt.BiomeNames.ToDictionary(b => b, b => TerrainArt.Terrains(b)[0]);
     private string _tool = "paint", _biome = "plains", _heightAction = "raise";
     private int _player = 1, _columns = 15, _rows = 10;
+    private string _shape = "rectangle";
+    private int _side = 5;
     private double _zoom = 1;
     private bool _busy, _conflict, _disposed;
     private string? _error, _accountId;
@@ -109,6 +116,8 @@ public partial class MapEditor : IAsyncDisposable
     private Func<Task>? _pending;
     private ScenarioDefinition? _layoutDefinition;
     private IReadOnlyList<HexProjection> _hexes = [];
+    private HashSet<(int Q, int R)> _occupied = [];
+    private HashSet<(int Q, int R)> _spawnZones = [];
     private IReadOnlyDictionary<string, IReadOnlyList<string>> _runeAreas = new Dictionary<string, IReadOnlyList<string>>();
     private BoardLayout _layout = BoardLayout.For([]);
     private IJSObjectReference? _files;
@@ -121,7 +130,11 @@ public partial class MapEditor : IAsyncDisposable
             {
                 _layoutDefinition = _document.Definition;
                 _hexes = _document.Definition.Map.Hexes.Select(h => new HexProjection(h.Q, h.R, h.Biome, h.Terrain, h.Elevation, h.SightBlocker, null) { PlayerStart = h.PlayerStart, Object = h.Object, Radius = h.Radius, VoidPortal = h.VoidPortal }).ToList();
-                _layout = BoardLayout.For(_hexes);
+                _occupied = _hexes.Select(h => (h.Q, h.R)).ToHashSet();
+                _spawnZones = _document.Definition.Map.Hexes.Where(h => h.SpawnZone == "void").Select(h => (h.Q, h.R)).ToHashSet();
+                var empty = _document.Cells.Where(c => !_occupied.Contains(c))
+                    .Select(c => new HexProjection(c.Q, c.R, "plains", "grass", 0, false, null));
+                _layout = BoardLayout.For(_hexes.Concat(empty).ToList());
                 _runeAreas = RuneAreas.Of(_hexes);
             }
             return _layout;
@@ -219,10 +232,12 @@ public partial class MapEditor : IAsyncDisposable
         _status = "";
         _document.Select(q, r);
         if (_tool == "paint") _document.Paint(q, r, _biome, _terrains[_biome]);
+        else if (_tool == "spawn-zone") _document.ToggleSpawnZone(q, r);
         else if (_tool == "player" && _player == VoidPortalChoice) _document.SetVoidPortal(q, r);
         else if (_tool == "player") _document.SetPlayerStart(q, r, _player);
         else if (_objectKinds.TryGetValue(_tool, out var kind)) _document.SetObject(q, r, kind);
         else if (_tool == "erase") _document.Erase(q, r);
+        else if (_tool == "erase-tile") _document.EraseTile(q, r);
         else if (_heightAction == "reset") _document.ResetHeight(q, r);
         else _document.AdjustHeight(q, r, _heightAction == "raise" ? 1 : -1);
     }

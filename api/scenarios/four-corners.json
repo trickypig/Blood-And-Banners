@@ -998,7 +998,7 @@
                 "portal": false,
                 "spawnZone": null,
                 "piece": null,
-                "object": null,
+                "object": "rock",
                 "fountain": false,
                 "sightBlocker": true
             },
@@ -1026,7 +1026,7 @@
                 "portal": false,
                 "spawnZone": null,
                 "piece": null,
-                "object": null,
+                "object": "rock",
                 "fountain": false,
                 "sightBlocker": true
             },

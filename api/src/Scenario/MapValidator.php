@@ -32,8 +32,18 @@ final class MapValidator
             self::integer($map[$dimension] ?? null, 1, 100, 'Map dimensions must be between 1 and 100.');
         }
         $hexes = $map['hexes'] ?? null;
-        self::check(is_array($hexes) && array_is_list($hexes) && count($hexes) >= 1 && count($hexes) <= 10000, 'Maps must contain 1–10,000 hexes.');
+        self::check(is_array($hexes) && array_is_list($hexes) && count($hexes) <= 10000, 'Maps must contain at most 10,000 hexes.');
         $seen = [];
+        if (isset($map['editorEmptyCells'])) {
+            $emptyCells = $map['editorEmptyCells'];
+            self::check(is_array($emptyCells) && array_is_list($emptyCells) && count($emptyCells) <= 10000, 'Invalid empty editor coordinates.');
+            foreach ($emptyCells as $cell) {
+                $cell = self::record($cell);
+                self::check(is_array($cell), 'Invalid empty editor coordinate.');
+                self::integer($cell['q'] ?? null, -10000, 10000, 'Invalid empty editor coordinate.');
+                self::integer($cell['r'] ?? null, -10000, 10000, 'Invalid empty editor coordinate.');
+            }
+        }
         $voidPortals = 0;
         foreach ($hexes as $hex) {
             self::check(is_array($hex), 'Invalid hex.');

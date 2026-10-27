@@ -19,6 +19,77 @@ public sealed class MapEditorTests : BunitContext
     }
 
     [Fact]
+    public async Task Spawn_zone_tool_toggles_visible_flags_and_saves_them_without_replacing_terrain()
+    {
+        await _account.VerifyCodeAsync("me@example.test", "123456", "device");
+        var cut = Render<MapEditor>();
+        cut.Find("[data-height='raise']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-action='spawn-zone']").Click();
+        Assert.Equal("true", cut.Find("[data-action='spawn-zone']").GetAttribute("aria-pressed"));
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.NotNull(cut.Find("[data-hex='0,0'] [data-spawn-zone='void']"));
+        Assert.Contains("Spawn zone: Void", cut.Find(".hex-info").TextContent);
+        Assert.Contains("Height: 1", cut.Find(".hex-info").TextContent);
+        cut.Find("[data-action='save']").Click();
+        cut.WaitForAssertion(() => Assert.Single(_maps.Definitions));
+        var saved = MapFileCodec.Import(MapFileCodec.ExportCanonical(_maps.Definitions[0]));
+        Assert.Equal("void", saved.Map.Hexes.Single(h => h.Q == 0 && h.R == 0).SpawnZone);
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Empty(cut.FindAll("[data-spawn-zone]"));
+        cut.Find("[data-action='erase-tile']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-action='spawn-zone']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        Assert.Contains("empty", cut.Find("[data-hex='0,0']").ClassList);
+        Assert.Empty(cut.FindAll("[data-spawn-zone]"));
+    }
+
+    [Fact]
+    public async Task Erased_tiles_save_as_holes_and_can_be_repainted_without_old_contents()
+    {
+        await _account.VerifyCodeAsync("me@example.test", "123456", "device");
+        var cut = Render<MapEditor>();
+        cut.Find("[data-height='raise']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find(".player-button").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        cut.Find("[data-action='erase-tile']").Click();
+        cut.Find("[data-hex='0,0']").Click();
+        var empty = cut.Find("[data-hex='0,0']");
+        Assert.Contains("empty", empty.ClassList);
+        Assert.Single(empty.Children);
+        Assert.Contains("Empty cell", empty.GetAttribute("aria-label"));
+        cut.Find("[data-action='save']").Click();
+        cut.WaitForAssertion(() => Assert.Single(_maps.Definitions));
+        Assert.DoesNotContain(_maps.Definitions[0].Map.Hexes, h => h.Q == 0 && h.R == 0);
+        var reloaded = MapFileCodec.Import(MapFileCodec.ExportCanonical(_maps.Definitions[0]));
+        Assert.Equal(149, reloaded.Map.Hexes.Count);
+        cut.Find("[data-biome='water']").Click();
+        cut.Find("[data-hex='0,0']").KeyDown("Enter");
+        Assert.DoesNotContain("empty", cut.Find("[data-hex='0,0']").ClassList);
+        Assert.Contains("Water / Open Water", cut.Find(".hex-info").TextContent);
+        Assert.Contains("Height: 0", cut.Find(".hex-info").TextContent);
+        Assert.Empty(cut.FindAll("[data-hex='0,0'] .start-label"));
+    }
+
+    [Theory]
+    [InlineData(1, 1, 1)]
+    [InlineData(2, 7, 9)]
+    [InlineData(3, 19, 25)]
+    public void Hex_map_dialog_creates_equal_sides_and_editable_empty_corners(int side, int tiles, int cells)
+    {
+        var cut = Render<MapEditor>();
+        cut.Find("[data-action='new']").Click();
+        cut.Find("#new-map-shape").Change("hex");
+        Assert.Empty(cut.FindAll("#new-map-columns"));
+        cut.Find("#new-map-side").Change(side.ToString());
+        cut.Find("form").Submit();
+        Assert.Equal(cells, cut.FindAll("[data-hex]").Count);
+        Assert.Equal(tiles, cut.FindAll(".editor-hex:not(.empty)").Count);
+    }
+
+    [Fact]
     public void Player_start_icons_use_open_portals_and_the_fourth_player_is_magenta()
     {
         var cut = Render<MapEditor>(p => p.Add(c => c.ImageBaseUrl, "https://example.test/"));
@@ -293,13 +364,14 @@ public sealed class MapEditorTests : BunitContext
         cut.Find("[data-action='keep-editing']").Click();
         Assert.Contains("+1", cut.Find("[data-hex='0,0']").TextContent);
         cut.Find("[data-load-map='map1']").Click(); cut.Find("[data-action='discard']").Click();
-        Assert.Single(cut.FindAll("[data-hex]"));
+        Assert.Single(cut.FindAll(".editor-hex:not(.empty)"));
+        Assert.Single(cut.FindAll(".editor-hex.empty"));
         Assert.Contains("Crossing", cut.Find(".map-name").TextContent);
         Assert.Contains("Loaded Crossing.", cut.Find("[role='status']").TextContent);
         Assert.DoesNotContain("%", cut.Find("[role='status']").TextContent);
         cut.Find("[data-height='raise']").Click();
         Assert.DoesNotContain("Loaded", cut.Find("[role='status']").TextContent);
-        cut.Find("[data-hex]").Click();
+        cut.Find(".editor-hex:not(.empty)").Click();
         Assert.Contains("Unsaved changes", cut.Find("[role='status']").TextContent);
     }
 

@@ -9,7 +9,7 @@
       {"q":0,"r":0,"biome":"stone","terrain":"stone-path","elevation":1,"playerStart":null,"portal":false,"spawnZone":"dm","piece":null,"object":"banner","fountain":false,"sightBlocker":false},
       {"q":1,"r":0,"biome":"sand","terrain":"dunes","elevation":1,"playerStart":1,"portal":false,"spawnZone":"players","piece":null,"object":null,"fountain":false,"sightBlocker":false},
       {"q":-1,"r":0,"biome":"ice","terrain":"snow","elevation":0,"playerStart":2,"portal":false,"spawnZone":"players","piece":null,"object":null,"fountain":false,"sightBlocker":false},
-      {"q":0,"r":1,"biome":"lava","terrain":"basalt","elevation":2,"playerStart":3,"portal":false,"spawnZone":"players","piece":null,"object":null,"fountain":false,"sightBlocker":true},
+      {"q":0,"r":1,"biome":"lava","terrain":"basalt","elevation":2,"playerStart":3,"portal":false,"spawnZone":"players","piece":null,"object":"rock","fountain":false,"sightBlocker":true},
       {"q":0,"r":-1,"biome":"jungle","terrain":"swamp","elevation":0,"playerStart":4,"portal":false,"spawnZone":"players","piece":null,"object":null,"fountain":false,"sightBlocker":false},
       {"q":1,"r":-1,"biome":"plains","terrain":"grass","elevation":0,"playerStart":null,"portal":false,"spawnZone":null,"piece":"boss","object":"chest","fountain":false,"sightBlocker":false},
       {"q":-1,"r":1,"biome":"water","terrain":"shallow-water","elevation":0,"playerStart":null,"portal":false,"spawnZone":null,"piece":null,"object":"statue","fountain":false,"sightBlocker":false}
