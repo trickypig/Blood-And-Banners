@@ -127,6 +127,25 @@ function coop_void_portal_tests(): array
             expect_same('void', $board['-4,12']['spawnZone'], 'it stands in the void spawn zone');
         },
 
+        'the hexagonal incursion drafts start four hero players with the portal at the top' => static function (): void {
+            $files = glob(dirname(__DIR__) . '/scenarios/incursion-*.json');
+            expect_same(5, count($files), 'five drafts are built');
+            foreach ($files as $file) {
+                $scenario = MapValidator::validate(json_decode((string)file_get_contents($file), true, flags: JSON_THROW_ON_ERROR));
+                $name = $scenario['name'];
+                expect_same(['coop'], $scenario['modeCompatibility'], "{$name} is a co-op map");
+                expect_same(631, count($scenario['map']['hexes']), "{$name} is a side-15 hexagon");
+                $board = Board::fromScenario($scenario);
+                $layout = CoopMode::layout($board);
+                expect_same('-5,14', $layout['portal'], "{$name} marks its portal at the top point");
+                expect_same('18,14', $layout['start'], "{$name} starts the heroes at the bottom point");
+                $state = (new MatchEngine(new Catalog()))->start(
+                    ['hero-a', 'hero-b', 'hero-c', 'hero-d', 'void-lord'], $board, new SequenceRandom([15, 14, 13, 12]), 'coop', ['voidLordSeatId' => 'void-lord']
+                )['state'];
+                expect_same('-5,14', $state['units'][CoopMode::VOID_PORTAL_ID]['hex'], "{$name} raises the portal on its hex");
+            }
+        },
+
         'maps hold at most one void portal and the flag must be boolean' => static function (): void {
             $map = built_in_scenario('void-reaches');
             foreach ($map['map']['hexes'] as $index => $hex) {

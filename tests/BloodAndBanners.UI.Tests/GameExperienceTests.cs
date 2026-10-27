@@ -65,20 +65,41 @@ public sealed class GameExperienceTests : BunitContext
         Assert.NotNull(cut.Find("button[data-mode=vanillaPvp]"));
     }
 
-    [Theory]
-    [InlineData(GameMode.Coop, "coop", "Void Reaches")]
-    [InlineData(GameMode.BattleRoyale, "battleRoyale", "Last Banner")]
-    public void Non_vanilla_modes_create_directly_with_their_existing_scenarios(GameMode mode, string selector, string scenario)
+    [Fact]
+    public void Battle_royale_creates_directly_with_its_existing_scenario()
     {
         var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
         Services.AddSingleton<IGameSessionCoordinator>(api);
         JSInterop.Mode = JSRuntimeMode.Loose;
         var cut = Render<GameExperience>();
 
-        cut.Find($"button[data-mode={selector}]").Click();
+        cut.Find("button[data-mode=battleRoyale]").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal((mode, scenario), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName)));
+        cut.WaitForAssertion(() => Assert.Equal((GameMode.BattleRoyale, "Last Banner"), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName)));
         Assert.Empty(cut.FindAll("[data-testid=battlefield-picker]"));
+    }
+
+    [Theory]
+    [InlineData("Void Reaches")]
+    [InlineData("Twin Roads")]
+    [InlineData("Serpent's Coil")]
+    [InlineData("The Gorge")]
+    [InlineData("Lakeheart")]
+    [InlineData("Blighted March")]
+    public void Void_incursion_battlefield_cards_submit_the_selected_scenario(string scenario)
+    {
+        var api = new FakeSessionCoordinator { Created = LobbyProjection("seat-red", isHost: true) };
+        Services.AddSingleton<IGameSessionCoordinator>(api);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<GameExperience>(parameters => parameters.Add(component => component.ClientKind, "web"));
+
+        cut.Find("button[data-mode=coop]").Click();
+        Assert.Null(api.CreateRequest);
+        Assert.Equal("true", cut.Find("button[data-scenario='Void Reaches']").GetAttribute("aria-checked"));
+        cut.Find($"button[data-scenario=\"{scenario}\"]").Click();
+        cut.Find("button[data-action=create-game]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal((GameMode.Coop, scenario), (api.CreateRequest?.Mode, api.CreateRequest?.ScenarioName)));
     }
 
     [Fact]

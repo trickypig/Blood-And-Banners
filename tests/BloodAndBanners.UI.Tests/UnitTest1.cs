@@ -44,6 +44,26 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
+    public void Quick_start_void_incursion_lists_void_reaches_then_the_hexagonal_drafts()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<QuickStart>();
+
+        cut.Find("button[data-mode=coop]").Click();
+
+        Assert.Equal("Void incursion battlefield", cut.Find(".battlefield-list").GetAttribute("aria-label"));
+        var cards = cut.FindAll("button[data-scenario]");
+        Assert.Equal(new[] { "Void Reaches", "Twin Roads", "Serpent's Coil", "The Gorge", "Lakeheart", "Blighted March" },
+            cards.Select(card => card.GetAttribute("data-scenario")));
+        Assert.Contains("Hex 15", cards[1].TextContent);
+
+        cut.Find("button[data-action=back-modes]").Click();
+        cut.Find("button[data-mode=vanillaPvp]").Click();
+        Assert.Equal("Four Corners", cut.FindAll("button[data-scenario]")[0].GetAttribute("data-scenario"));
+        Assert.Equal("true", cut.FindAll("button[data-scenario]")[0].GetAttribute("aria-checked"));
+    }
+
+    [Fact]
     public void Quick_start_battlefield_cards_preview_each_map_and_survive_a_failed_load()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;

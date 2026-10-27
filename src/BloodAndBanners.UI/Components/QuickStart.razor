@@ -25,7 +25,7 @@
                 <strong>Vanilla duel</strong>
                 <span>Two commanders. One hero and army each. No second chances.</span>
             </button>
-            <button type="button" data-mode="coop" disabled="@IsBusy" @onclick="() => ChooseMode(GameMode.Coop)">
+            <button type="button" data-mode="coop" disabled="@IsBusy" @ref="_coopButton" @onclick="() => ChooseMode(GameMode.Coop)">
                 <strong>Void incursion</strong>
                 <span>One Void Lord against one to four allied commanders.</span>
             </button>
@@ -68,7 +68,7 @@
                 <h2 id="battlefield-title" tabindex="-1" @ref="_pickerHeading">Choose the battlefield.</h2>
                 <p>Terrain changes the fight. Pick the ground before the banners rise.</p>
             </header>
-            <div class="battlefield-list" role="radiogroup" aria-label="Vanilla battlefield">
+            <div class="battlefield-list" role="radiogroup" aria-label="@(_pickerMode == GameMode.Coop ? "Void incursion battlefield" : "Vanilla battlefield")">
                 @foreach (var battlefield in Battlefields)
                 {
                     var selected = battlefield.Name == _selectedScenario;
@@ -99,7 +99,7 @@
             </div>
             <div class="picker-actions">
                 <button type="button" class="back" data-action="back-modes" disabled="@IsBusy" @onclick="BackToModes">Back</button>
-                <button type="button" class="create" data-action="create-game" disabled="@IsBusy" @onclick="CreateVanilla">Open war room</button>
+                <button type="button" class="create" data-action="create-game" disabled="@IsBusy" @onclick="CreateGame">Open war room</button>
             </div>
         </section>
     }
@@ -162,19 +162,34 @@
 
     private string _joinCode = string.Empty;
     private bool _choosingBattlefield;
+    private GameMode _pickerMode = GameMode.VanillaPvp;
     private string _selectedScenario = "Four Corners";
     private bool _focusPicker;
-    private bool _focusVanilla;
+    private bool _focusMode;
     private readonly Dictionary<string, BoardProjection> _boards = [];
     private ElementReference _pickerHeading;
     private ElementReference _vanillaButton;
+    private ElementReference _coopButton;
 
-    private static readonly Battlefield[] Battlefields =
+    private static readonly Battlefield[] VanillaBattlefields =
     [
         new("Four Corners", "13 × 11", "Maximum terrain", ["Water", "Ice", "Lava", "Poison"]),
         new("Proving Field", "11 × 9", "Classic duel", ["Open lanes", "Balanced"]),
         new("Home Map", "32 × 30", "Grand battlefield", ["Large", "Mixed ground"]),
     ];
+
+    /// <summary>Void Reaches, then the five hexagonal drafts (scripts/build-incursion-maps.py) on trial.</summary>
+    private static readonly Battlefield[] CoopBattlefields =
+    [
+        new("Void Reaches", "25 × 25", "The first incursion", ["Five biomes", "Crags"]),
+        new("Twin Roads", "Hex 15", "Choose your flank", ["Forest or dunes", "Ice or fire", "Island crossing"]),
+        new("Serpent's Coil", "Hex 15", "The long road", ["Switchback", "Lake shortcut", "Goat path"]),
+        new("The Gorge", "Hex 15", "High ground", ["Cliffs", "High bridges", "Lake bowl"]),
+        new("Lakeheart", "Hex 15", "Hold the Heart", ["Central hub", "Four causeways", "Quadrants"]),
+        new("Blighted March", "Hex 15", "Escalating danger", ["Hazard bands", "Three crossings", "Lava lanes"]),
+    ];
+
+    private Battlefield[] Battlefields => _pickerMode == GameMode.Coop ? CoopBattlefields : VanillaBattlefields;
 
     protected override void OnParametersSet()
     {
@@ -191,24 +206,24 @@
             _focusPicker = false;
             await _pickerHeading.FocusAsync();
         }
-        else if (_focusVanilla)
+        else if (_focusMode)
         {
-            _focusVanilla = false;
-            await _vanillaButton.FocusAsync();
+            _focusMode = false;
+            await (_pickerMode == GameMode.Coop ? _coopButton : _vanillaButton).FocusAsync();
         }
     }
 
     private Task ChooseMode(GameMode mode)
     {
-        if (mode == GameMode.VanillaPvp)
+        if (mode is GameMode.VanillaPvp or GameMode.Coop)
         {
-            _selectedScenario = "Four Corners";
+            _pickerMode = mode;
+            _selectedScenario = Battlefields[0].Name;
             _choosingBattlefield = true;
             _focusPicker = true;
             return LoadPreviews();
         }
-        var scenario = mode == GameMode.Coop ? "Void Reaches" : "Last Banner";
-        return OnCreate.InvokeAsync(new GameSetupSelection(mode, scenario));
+        return OnCreate.InvokeAsync(new GameSetupSelection(mode, "Last Banner"));
     }
 
     private async Task LoadPreviews()
@@ -236,12 +251,12 @@
         }
     }
 
-    private Task CreateVanilla() => OnCreate.InvokeAsync(new GameSetupSelection(GameMode.VanillaPvp, _selectedScenario));
+    private Task CreateGame() => OnCreate.InvokeAsync(new GameSetupSelection(_pickerMode, _selectedScenario));
 
     private void BackToModes()
     {
         _choosingBattlefield = false;
-        _focusVanilla = true;
+        _focusMode = true;
     }
 
     private Task Join() => string.IsNullOrWhiteSpace(_joinCode)
