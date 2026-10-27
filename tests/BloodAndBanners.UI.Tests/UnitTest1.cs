@@ -36,7 +36,7 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Equal("-1", cut.Find("#battlefield-title").GetAttribute("tabindex"));
         Assert.Equal("radiogroup", cut.Find(".battlefield-list").GetAttribute("role"));
         var cards = cut.FindAll("button[data-scenario]");
-        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map" }, cards.Select(card => card.GetAttribute("data-scenario")));
+        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map", "Splitstone", "Rimefire Crossing" }, cards.Select(card => card.GetAttribute("data-scenario")));
         Assert.All(cards, card => Assert.Equal("radio", card.GetAttribute("role")));
         Assert.Contains("13 × 11", cards[0].TextContent);
         Assert.Contains("Maximum terrain", cards[0].TextContent);
@@ -47,7 +47,7 @@ public sealed partial class GameTableTests : BunitContext
     }
 
     [Fact]
-    public void Quick_start_void_incursion_lists_void_reaches_then_the_hexagonal_drafts()
+    public void Quick_start_void_incursion_lists_original_and_compact_tactical_maps()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
         var cut = Render<QuickStart>();
@@ -56,7 +56,7 @@ public sealed partial class GameTableTests : BunitContext
 
         Assert.Equal("Void incursion battlefield", cut.Find(".battlefield-list").GetAttribute("aria-label"));
         var cards = cut.FindAll("button[data-scenario]");
-        Assert.Equal(new[] { "Void Reaches", "Twin Roads", "Serpent's Coil", "The Gorge", "Lakeheart", "Blighted March" },
+        Assert.Equal(new[] { "Void Reaches", "Twin Roads", "Serpent's Coil", "The Gorge", "Lakeheart", "Blighted March", "Threefold Ford", "Cinder Switch", "Thornwatch" },
             cards.Select(card => card.GetAttribute("data-scenario")));
         Assert.Contains("Hex 15", cards[1].TextContent);
 
@@ -126,7 +126,7 @@ public sealed partial class GameTableTests : BunitContext
         cut.Find("button[data-mode=coop]").Click();
 
         Assert.Empty(cut.FindAll("[data-testid=own-maps]"));
-        Assert.Equal(6, cut.FindAll("button[data-scenario]").Count);
+        Assert.Equal(9, cut.FindAll("button[data-scenario]").Count);
     }
 
     [Fact]
@@ -146,14 +146,14 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Empty(requested);
         cut.Find("button[data-mode=vanillaPvp]").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("button[data-scenario] svg.map-preview").Count));
-        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map" }, requested);
+        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("button[data-scenario] svg.map-preview").Count));
+        Assert.Equal(new[] { "Four Corners", "Proving Field", "Home Map", "Splitstone", "Rimefire Crossing" }, requested);
         Assert.NotNull(cut.Find("button[data-scenario='Four Corners'] svg.map-preview"));
         Assert.Empty(cut.FindAll("button[data-scenario='Home Map'] svg"));
 
         cut.Find("button[data-action=back-modes]").Click();
         cut.Find("button[data-mode=vanillaPvp]").Click();
-        Assert.Equal(4, requested.Count);
+        Assert.Equal(6, requested.Count);
     }
 
     [Fact]

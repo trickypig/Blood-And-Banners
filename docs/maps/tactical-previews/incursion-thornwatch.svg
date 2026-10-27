@@ -1,0 +1,387 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="568.0" height="755.2703415323647" viewBox="0 0 568.0 755.2703415323647">
+<rect width="100%" height="100%" fill="#20242a"/>
+<text x="20" y="25" fill="white" font-family="sans-serif" font-size="18">Thornwatch | 18 x 18</text>
+<polygon points="49.0,60.0 39.5,76.5 20.5,76.5 11.0,60.0 20.5,43.5 39.5,43.5" fill="#756087" stroke="#303438" stroke-width="1"><title>0,0: darkness, height 0</title></polygon>
+<polygon points="49.0,92.9 39.5,109.4 20.5,109.4 11.0,92.9 20.5,76.5 39.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>0,1: darkness, height 0</title></polygon>
+<polygon points="49.0,125.8 39.5,142.3 20.5,142.3 11.0,125.8 20.5,109.4 39.5,109.4" fill="#756087" stroke="#303438" stroke-width="1"><title>0,2: darkness, height 0</title></polygon>
+<polygon points="49.0,158.7 39.5,175.2 20.5,175.2 11.0,158.7 20.5,142.3 39.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>0,3: darkness, height 0</title></polygon>
+<polygon points="49.0,191.6 39.5,208.1 20.5,208.1 11.0,191.6 20.5,175.2 39.5,175.2" fill="#756087" stroke="#303438" stroke-width="1"><title>0,4: darkness, height 0</title></polygon>
+<polygon points="49.0,224.5 39.5,241.0 20.5,241.0 11.0,224.5 20.5,208.1 39.5,208.1" fill="#756087" stroke="#303438" stroke-width="1"><title>0,5: darkness, height 0</title></polygon>
+<polygon points="49.0,257.5 39.5,273.9 20.5,273.9 11.0,257.5 20.5,241.0 39.5,241.0" fill="#397849" stroke="#303438" stroke-width="1"><title>0,6: jungle, height 0</title></polygon>
+<polygon points="49.0,290.4 39.5,306.8 20.5,306.8 11.0,290.4 20.5,273.9 39.5,273.9" fill="#397849" stroke="#303438" stroke-width="1"><title>0,7: jungle, height 0</title></polygon>
+<polygon points="49.0,323.3 39.5,339.7 20.5,339.7 11.0,323.3 20.5,306.8 39.5,306.8" fill="#397849" stroke="#303438" stroke-width="1"><title>0,8: jungle, height 0</title></polygon>
+<polygon points="49.0,356.2 39.5,372.6 20.5,372.6 11.0,356.2 20.5,339.7 39.5,339.7" fill="#397849" stroke="#303438" stroke-width="1"><title>0,9: jungle, height 0</title></polygon>
+<polygon points="49.0,389.1 39.5,405.5 20.5,405.5 11.0,389.1 20.5,372.6 39.5,372.6" fill="#397849" stroke="#303438" stroke-width="1"><title>0,10: jungle, height 0</title></polygon>
+<polygon points="49.0,422.0 39.5,438.5 20.5,438.5 11.0,422.0 20.5,405.5 39.5,405.5" fill="#397849" stroke="#303438" stroke-width="1"><title>0,11: jungle, height 0</title></polygon>
+<polygon points="49.0,454.9 39.5,471.4 20.5,471.4 11.0,454.9 20.5,438.5 39.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,12: grass, height 0</title></polygon>
+<polygon points="49.0,487.8 39.5,504.3 20.5,504.3 11.0,487.8 20.5,471.4 39.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,13: grass, height 0</title></polygon>
+<polygon points="49.0,520.7 39.5,537.2 20.5,537.2 11.0,520.7 20.5,504.3 39.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,14: grass, height 0</title></polygon>
+<polygon points="49.0,553.6 39.5,570.1 20.5,570.1 11.0,553.6 20.5,537.2 39.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,15: grass, height 0</title></polygon>
+<polygon points="49.0,586.5 39.5,603.0 20.5,603.0 11.0,586.5 20.5,570.1 39.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,16: grass, height 0</title></polygon>
+<polygon points="49.0,619.5 39.5,635.9 20.5,635.9 11.0,619.5 20.5,603.0 39.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>0,17: grass, height 0</title></polygon>
+<polygon points="77.5,76.5 68.0,92.9 49.0,92.9 39.5,76.5 49.0,60.0 68.0,60.0" fill="#756087" stroke="#303438" stroke-width="1"><title>1,0: darkness, height 0</title></polygon>
+<polygon points="77.5,109.4 68.0,125.8 49.0,125.8 39.5,109.4 49.0,92.9 68.0,92.9" fill="#756087" stroke="#303438" stroke-width="1"><title>1,1: darkness, height 0</title></polygon>
+<polygon points="77.5,142.3 68.0,158.7 49.0,158.7 39.5,142.3 49.0,125.8 68.0,125.8" fill="#756087" stroke="#303438" stroke-width="1"><title>1,2: darkness, height 0</title></polygon>
+<polygon points="77.5,175.2 68.0,191.6 49.0,191.6 39.5,175.2 49.0,158.7 68.0,158.7" fill="#756087" stroke="#303438" stroke-width="1"><title>1,3: darkness, height 0</title></polygon>
+<polygon points="77.5,208.1 68.0,224.5 49.0,224.5 39.5,208.1 49.0,191.6 68.0,191.6" fill="#756087" stroke="#303438" stroke-width="1"><title>1,4: darkness, height 0</title></polygon>
+<polygon points="77.5,241.0 68.0,257.5 49.0,257.5 39.5,241.0 49.0,224.5 68.0,224.5" fill="#756087" stroke="#303438" stroke-width="1"><title>1,5: darkness, height 0</title></polygon>
+<polygon points="77.5,273.9 68.0,290.4 49.0,290.4 39.5,273.9 49.0,257.5 68.0,257.5" fill="#397849" stroke="#303438" stroke-width="1"><title>1,6: jungle, height 0</title></polygon>
+<polygon points="77.5,306.8 68.0,323.3 49.0,323.3 39.5,306.8 49.0,290.4 68.0,290.4" fill="#718353" stroke="#303438" stroke-width="1"><title>1,7: swamp, height 0</title></polygon>
+<polygon points="77.5,339.7 68.0,356.2 49.0,356.2 39.5,339.7 49.0,323.3 68.0,323.3" fill="#718353" stroke="#303438" stroke-width="1"><title>1,8: swamp, height 0</title></polygon>
+<polygon points="77.5,372.6 68.0,389.1 49.0,389.1 39.5,372.6 49.0,356.2 68.0,356.2" fill="#718353" stroke="#303438" stroke-width="1"><title>1,9: swamp, height 0</title></polygon>
+<polygon points="77.5,405.5 68.0,422.0 49.0,422.0 39.5,405.5 49.0,389.1 68.0,389.1" fill="#397849" stroke="#303438" stroke-width="1"><title>1,10: jungle, height 0</title></polygon>
+<polygon points="77.5,438.5 68.0,454.9 49.0,454.9 39.5,438.5 49.0,422.0 68.0,422.0" fill="#397849" stroke="#303438" stroke-width="1"><title>1,11: jungle, height 0</title></polygon>
+<polygon points="77.5,471.4 68.0,487.8 49.0,487.8 39.5,471.4 49.0,454.9 68.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,12: grass, height 0</title></polygon>
+<polygon points="77.5,504.3 68.0,520.7 49.0,520.7 39.5,504.3 49.0,487.8 68.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,13: grass, height 0</title></polygon>
+<polygon points="77.5,537.2 68.0,553.6 49.0,553.6 39.5,537.2 49.0,520.7 68.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,14: grass, height 0</title></polygon>
+<polygon points="77.5,570.1 68.0,586.5 49.0,586.5 39.5,570.1 49.0,553.6 68.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,15: grass, height 0</title></polygon>
+<polygon points="77.5,603.0 68.0,619.5 49.0,619.5 39.5,603.0 49.0,586.5 68.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,16: grass, height 0</title></polygon>
+<polygon points="77.5,635.9 68.0,652.4 49.0,652.4 39.5,635.9 49.0,619.5 68.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>1,17: grass, height 0</title></polygon>
+<polygon points="106.0,60.0 96.5,76.5 77.5,76.5 68.0,60.0 77.5,43.5 96.5,43.5" fill="#756087" stroke="#303438" stroke-width="1"><title>2,0: darkness, height 0</title></polygon>
+<polygon points="106.0,92.9 96.5,109.4 77.5,109.4 68.0,92.9 77.5,76.5 96.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>2,1: darkness, height 0</title></polygon>
+<polygon points="106.0,125.8 96.5,142.3 77.5,142.3 68.0,125.8 77.5,109.4 96.5,109.4" fill="#756087" stroke="#303438" stroke-width="1"><title>2,2: darkness, height 0</title></polygon>
+<polygon points="106.0,158.7 96.5,175.2 77.5,175.2 68.0,158.7 77.5,142.3 96.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>2,3: darkness, height 0</title></polygon>
+<polygon points="106.0,191.6 96.5,208.1 77.5,208.1 68.0,191.6 77.5,175.2 96.5,175.2" fill="#a3ae43" stroke="#303438" stroke-width="1"><title>2,4: poison-pits, height 0</title></polygon>
+<polygon points="106.0,224.5 96.5,241.0 77.5,241.0 68.0,224.5 77.5,208.1 96.5,208.1" fill="#756087" stroke="#ef64ff" stroke-width="3"><title>2,5: darkness, height 0</title></polygon>
+<polygon points="106.0,257.5 96.5,273.9 77.5,273.9 68.0,257.5 77.5,241.0 96.5,241.0" fill="#397849" stroke="#303438" stroke-width="1"><title>2,6: jungle, height 0</title></polygon>
+<text x="87.0" y="261.453792062852" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">FC</text>
+<polygon points="106.0,290.4 96.5,306.8 77.5,306.8 68.0,290.4 77.5,273.9 96.5,273.9" fill="#718353" stroke="#303438" stroke-width="1"><title>2,7: swamp, height 0</title></polygon>
+<polygon points="106.0,323.3 96.5,339.7 77.5,339.7 68.0,323.3 77.5,306.8 96.5,306.8" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>2,8: open-water, height 0</title></polygon>
+<polygon points="106.0,356.2 96.5,372.6 77.5,372.6 68.0,356.2 77.5,339.7 96.5,339.7" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>2,9: open-water, height 0</title></polygon>
+<polygon points="106.0,389.1 96.5,405.5 77.5,405.5 68.0,389.1 77.5,372.6 96.5,372.6" fill="#718353" stroke="#303438" stroke-width="1"><title>2,10: swamp, height 0</title></polygon>
+<polygon points="106.0,422.0 96.5,438.5 77.5,438.5 68.0,422.0 77.5,405.5 96.5,405.5" fill="#397849" stroke="#303438" stroke-width="1"><title>2,11: jungle, height 0</title></polygon>
+<polygon points="106.0,454.9 96.5,471.4 77.5,471.4 68.0,454.9 77.5,438.5 96.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,12: grass, height 0</title></polygon>
+<polygon points="106.0,487.8 96.5,504.3 77.5,504.3 68.0,487.8 77.5,471.4 96.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,13: grass, height 0</title></polygon>
+<polygon points="106.0,520.7 96.5,537.2 77.5,537.2 68.0,520.7 77.5,504.3 96.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,14: grass, height 0</title></polygon>
+<polygon points="106.0,553.6 96.5,570.1 77.5,570.1 68.0,553.6 77.5,537.2 96.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,15: grass, height 0</title></polygon>
+<polygon points="106.0,586.5 96.5,603.0 77.5,603.0 68.0,586.5 77.5,570.1 96.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,16: grass, height 0</title></polygon>
+<polygon points="106.0,619.5 96.5,635.9 77.5,635.9 68.0,619.5 77.5,603.0 96.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>2,17: grass, height 0</title></polygon>
+<polygon points="134.5,76.5 125.0,92.9 106.0,92.9 96.5,76.5 106.0,60.0 125.0,60.0" fill="#756087" stroke="#303438" stroke-width="1"><title>3,0: darkness, height 0</title></polygon>
+<polygon points="134.5,109.4 125.0,125.8 106.0,125.8 96.5,109.4 106.0,92.9 125.0,92.9" fill="#756087" stroke="#303438" stroke-width="1"><title>3,1: darkness, height 0</title></polygon>
+<polygon points="134.5,142.3 125.0,158.7 106.0,158.7 96.5,142.3 106.0,125.8 125.0,125.8" fill="#756087" stroke="#303438" stroke-width="1"><title>3,2: darkness, height 0</title></polygon>
+<polygon points="134.5,175.2 125.0,191.6 106.0,191.6 96.5,175.2 106.0,158.7 125.0,158.7" fill="#756087" stroke="#303438" stroke-width="1"><title>3,3: darkness, height 0</title></polygon>
+<polygon points="134.5,208.1 125.0,224.5 106.0,224.5 96.5,208.1 106.0,191.6 125.0,191.6" fill="#a3ae43" stroke="#303438" stroke-width="1"><title>3,4: poison-pits, height 0</title></polygon>
+<polygon points="134.5,241.0 125.0,257.5 106.0,257.5 96.5,241.0 106.0,224.5 125.0,224.5" fill="#756087" stroke="#ef64ff" stroke-width="3"><title>3,5: darkness, height 0</title></polygon>
+<polygon points="134.5,273.9 125.0,290.4 106.0,290.4 96.5,273.9 106.0,257.5 125.0,257.5" fill="#718353" stroke="#ef64ff" stroke-width="3"><title>3,6: swamp, height 0</title></polygon>
+<polygon points="134.5,306.8 125.0,323.3 106.0,323.3 96.5,306.8 106.0,290.4 125.0,290.4" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>3,7: open-water, height 0</title></polygon>
+<polygon points="134.5,339.7 125.0,356.2 106.0,356.2 96.5,339.7 106.0,323.3 125.0,323.3" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>3,8: open-water, height 0</title></polygon>
+<polygon points="134.5,372.6 125.0,389.1 106.0,389.1 96.5,372.6 106.0,356.2 125.0,356.2" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>3,9: open-water, height 0</title></polygon>
+<polygon points="134.5,405.5 125.0,422.0 106.0,422.0 96.5,405.5 106.0,389.1 125.0,389.1" fill="#718353" stroke="#303438" stroke-width="1"><title>3,10: swamp, height 0</title></polygon>
+<text x="115.5" y="409.544136109991" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">HP</text>
+<polygon points="134.5,438.5 125.0,454.9 106.0,454.9 96.5,438.5 106.0,422.0 125.0,422.0" fill="#397849" stroke="#303438" stroke-width="1"><title>3,11: jungle, height 0</title></polygon>
+<polygon points="134.5,471.4 125.0,487.8 106.0,487.8 96.5,471.4 106.0,454.9 125.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,12: grass, height 0</title></polygon>
+<polygon points="134.5,504.3 125.0,520.7 106.0,520.7 96.5,504.3 106.0,487.8 125.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,13: grass, height 0</title></polygon>
+<polygon points="134.5,537.2 125.0,553.6 106.0,553.6 96.5,537.2 106.0,520.7 125.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,14: grass, height 0</title></polygon>
+<polygon points="134.5,570.1 125.0,586.5 106.0,586.5 96.5,570.1 106.0,553.6 125.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,15: grass, height 0</title></polygon>
+<polygon points="134.5,603.0 125.0,619.5 106.0,619.5 96.5,603.0 106.0,586.5 125.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,16: grass, height 0</title></polygon>
+<polygon points="134.5,635.9 125.0,652.4 106.0,652.4 96.5,635.9 106.0,619.5 125.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>3,17: grass, height 0</title></polygon>
+<polygon points="163.0,60.0 153.5,76.5 134.5,76.5 125.0,60.0 134.5,43.5 153.5,43.5" fill="#756087" stroke="#303438" stroke-width="1"><title>4,0: darkness, height 0</title></polygon>
+<polygon points="163.0,92.9 153.5,109.4 134.5,109.4 125.0,92.9 134.5,76.5 153.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>4,1: darkness, height 0</title></polygon>
+<polygon points="163.0,125.8 153.5,142.3 134.5,142.3 125.0,125.8 134.5,109.4 153.5,109.4" fill="#756087" stroke="#303438" stroke-width="1"><title>4,2: darkness, height 0</title></polygon>
+<polygon points="163.0,158.7 153.5,175.2 134.5,175.2 125.0,158.7 134.5,142.3 153.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>4,3: darkness, height 0</title></polygon>
+<polygon points="163.0,191.6 153.5,208.1 134.5,208.1 125.0,191.6 134.5,175.2 153.5,175.2" fill="#a3ae43" stroke="#303438" stroke-width="1"><title>4,4: poison-pits, height 0</title></polygon>
+<polygon points="163.0,224.5 153.5,241.0 134.5,241.0 125.0,224.5 134.5,208.1 153.5,208.1" fill="#756087" stroke="#ef64ff" stroke-width="3"><title>4,5: darkness, height 0</title></polygon>
+<polygon points="163.0,257.5 153.5,273.9 134.5,273.9 125.0,257.5 134.5,241.0 153.5,241.0" fill="#397849" stroke="#303438" stroke-width="1"><title>4,6: jungle, height 0</title></polygon>
+<text x="144.0" y="261.453792062852" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="163.0,290.4 153.5,306.8 134.5,306.8 125.0,290.4 134.5,273.9 153.5,273.9" fill="#718353" stroke="#303438" stroke-width="1"><title>4,7: swamp, height 0</title></polygon>
+<polygon points="163.0,323.3 153.5,339.7 134.5,339.7 125.0,323.3 134.5,306.8 153.5,306.8" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>4,8: open-water, height 0</title></polygon>
+<polygon points="163.0,356.2 153.5,372.6 134.5,372.6 125.0,356.2 134.5,339.7 153.5,339.7" fill="#3979b8" stroke="#ef64ff" stroke-width="3"><title>4,9: open-water, height 0</title></polygon>
+<polygon points="163.0,389.1 153.5,405.5 134.5,405.5 125.0,389.1 134.5,372.6 153.5,372.6" fill="#718353" stroke="#303438" stroke-width="1"><title>4,10: swamp, height 0</title></polygon>
+<polygon points="163.0,422.0 153.5,438.5 134.5,438.5 125.0,422.0 134.5,405.5 153.5,405.5" fill="#397849" stroke="#303438" stroke-width="1"><title>4,11: jungle, height 0</title></polygon>
+<polygon points="163.0,454.9 153.5,471.4 134.5,471.4 125.0,454.9 134.5,438.5 153.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,12: grass, height 0</title></polygon>
+<polygon points="163.0,487.8 153.5,504.3 134.5,504.3 125.0,487.8 134.5,471.4 153.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,13: grass, height 0</title></polygon>
+<polygon points="163.0,520.7 153.5,537.2 134.5,537.2 125.0,520.7 134.5,504.3 153.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,14: grass, height 0</title></polygon>
+<polygon points="163.0,553.6 153.5,570.1 134.5,570.1 125.0,553.6 134.5,537.2 153.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,15: grass, height 0</title></polygon>
+<polygon points="163.0,586.5 153.5,603.0 134.5,603.0 125.0,586.5 134.5,570.1 153.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,16: grass, height 0</title></polygon>
+<polygon points="163.0,619.5 153.5,635.9 134.5,635.9 125.0,619.5 134.5,603.0 153.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>4,17: grass, height 0</title></polygon>
+<polygon points="191.5,76.5 182.0,92.9 163.0,92.9 153.5,76.5 163.0,60.0 182.0,60.0" fill="#756087" stroke="#303438" stroke-width="1"><title>5,0: darkness, height 0</title></polygon>
+<polygon points="191.5,109.4 182.0,125.8 163.0,125.8 153.5,109.4 163.0,92.9 182.0,92.9" fill="#756087" stroke="#303438" stroke-width="1"><title>5,1: darkness, height 0</title></polygon>
+<polygon points="191.5,142.3 182.0,158.7 163.0,158.7 153.5,142.3 163.0,125.8 182.0,125.8" fill="#756087" stroke="#303438" stroke-width="1"><title>5,2: darkness, height 0</title></polygon>
+<polygon points="191.5,175.2 182.0,191.6 163.0,191.6 153.5,175.2 163.0,158.7 182.0,158.7" fill="#756087" stroke="#303438" stroke-width="1"><title>5,3: darkness, height 0</title></polygon>
+<polygon points="191.5,208.1 182.0,224.5 163.0,224.5 153.5,208.1 163.0,191.6 182.0,191.6" fill="#756087" stroke="#303438" stroke-width="1"><title>5,4: darkness, height 0</title></polygon>
+<polygon points="191.5,241.0 182.0,257.5 163.0,257.5 153.5,241.0 163.0,224.5 182.0,224.5" fill="#756087" stroke="#303438" stroke-width="1"><title>5,5: darkness, height 0</title></polygon>
+<polygon points="191.5,273.9 182.0,290.4 163.0,290.4 153.5,273.9 163.0,257.5 182.0,257.5" fill="#397849" stroke="#303438" stroke-width="1"><title>5,6: jungle, height 0</title></polygon>
+<polygon points="191.5,306.8 182.0,323.3 163.0,323.3 153.5,306.8 163.0,290.4 182.0,290.4" fill="#718353" stroke="#303438" stroke-width="1"><title>5,7: swamp, height 0</title></polygon>
+<polygon points="191.5,339.7 182.0,356.2 163.0,356.2 153.5,339.7 163.0,323.3 182.0,323.3" fill="#718353" stroke="#303438" stroke-width="1"><title>5,8: swamp, height 0</title></polygon>
+<text x="172.5" y="343.72620542237365" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="191.5,372.6 182.0,389.1 163.0,389.1 153.5,372.6 163.0,356.2 182.0,356.2" fill="#718353" stroke="#303438" stroke-width="1"><title>5,9: swamp, height 0</title></polygon>
+<polygon points="191.5,405.5 182.0,422.0 163.0,422.0 153.5,405.5 163.0,389.1 182.0,389.1" fill="#397849" stroke="#303438" stroke-width="1"><title>5,10: jungle, height 0</title></polygon>
+<polygon points="191.5,438.5 182.0,454.9 163.0,454.9 153.5,438.5 163.0,422.0 182.0,422.0" fill="#397849" stroke="#303438" stroke-width="1"><title>5,11: jungle, height 0</title></polygon>
+<text x="172.5" y="442.45310145379966" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="191.5,471.4 182.0,487.8 163.0,487.8 153.5,471.4 163.0,454.9 182.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,12: grass, height 0</title></polygon>
+<polygon points="191.5,504.3 182.0,520.7 163.0,520.7 153.5,504.3 163.0,487.8 182.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,13: grass, height 0</title></polygon>
+<polygon points="191.5,537.2 182.0,553.6 163.0,553.6 153.5,537.2 163.0,520.7 182.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,14: grass, height 0</title></polygon>
+<polygon points="191.5,570.1 182.0,586.5 163.0,586.5 153.5,570.1 163.0,553.6 182.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,15: grass, height 0</title></polygon>
+<polygon points="191.5,603.0 182.0,619.5 163.0,619.5 153.5,603.0 163.0,586.5 182.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,16: grass, height 0</title></polygon>
+<polygon points="191.5,635.9 182.0,652.4 163.0,652.4 153.5,635.9 163.0,619.5 182.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>5,17: grass, height 0</title></polygon>
+<polygon points="220.0,60.0 210.5,76.5 191.5,76.5 182.0,60.0 191.5,43.5 210.5,43.5" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>6,0: snow, height 0</title></polygon>
+<polygon points="220.0,92.9 210.5,109.4 191.5,109.4 182.0,92.9 191.5,76.5 210.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>6,1: darkness, height 0</title></polygon>
+<polygon points="220.0,125.8 210.5,142.3 191.5,142.3 182.0,125.8 191.5,109.4 210.5,109.4" fill="#756087" stroke="#303438" stroke-width="1"><title>6,2: darkness, height 0</title></polygon>
+<polygon points="220.0,158.7 210.5,175.2 191.5,175.2 182.0,158.7 191.5,142.3 210.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>6,3: darkness, height 0</title></polygon>
+<polygon points="220.0,191.6 210.5,208.1 191.5,208.1 182.0,191.6 191.5,175.2 210.5,175.2" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>6,4: snow, height 0</title></polygon>
+<text x="201.0" y="195.63586137523467" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="220.0,224.5 210.5,241.0 191.5,241.0 182.0,224.5 191.5,208.1 210.5,208.1" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,5: roads, height 0</title></polygon>
+<polygon points="220.0,257.5 210.5,273.9 191.5,273.9 182.0,257.5 191.5,241.0 210.5,241.0" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,6: roads, height 0</title></polygon>
+<text x="201.0" y="261.453792062852" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<polygon points="220.0,290.4 210.5,306.8 191.5,306.8 182.0,290.4 191.5,273.9 210.5,273.9" fill="#c4ad7c" stroke="#ef64ff" stroke-width="3"><title>6,7: roads, height 0</title></polygon>
+<polygon points="220.0,323.3 210.5,339.7 191.5,339.7 182.0,323.3 191.5,306.8 210.5,306.8" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,8: roads, height 0</title></polygon>
+<text x="201.0" y="327.27172275046934" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">NW</text>
+<polygon points="220.0,356.2 210.5,372.6 191.5,372.6 182.0,356.2 191.5,339.7 210.5,339.7" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,9: roads, height 0</title></polygon>
+<polygon points="220.0,389.1 210.5,405.5 191.5,405.5 182.0,389.1 191.5,372.6 210.5,372.6" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,10: roads, height 0</title></polygon>
+<polygon points="220.0,422.0 210.5,438.5 191.5,438.5 182.0,422.0 191.5,405.5 210.5,405.5" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>6,11: roads, height 0</title></polygon>
+<polygon points="220.0,454.9 210.5,471.4 191.5,471.4 182.0,454.9 191.5,438.5 210.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,12: grass, height 0</title></polygon>
+<polygon points="220.0,487.8 210.5,504.3 191.5,504.3 182.0,487.8 191.5,471.4 210.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,13: grass, height 0</title></polygon>
+<polygon points="220.0,520.7 210.5,537.2 191.5,537.2 182.0,520.7 191.5,504.3 210.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,14: grass, height 0</title></polygon>
+<polygon points="220.0,553.6 210.5,570.1 191.5,570.1 182.0,553.6 191.5,537.2 210.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,15: grass, height 0</title></polygon>
+<polygon points="220.0,586.5 210.5,603.0 191.5,603.0 182.0,586.5 191.5,570.1 210.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,16: grass, height 0</title></polygon>
+<polygon points="220.0,619.5 210.5,635.9 191.5,635.9 182.0,619.5 191.5,603.0 210.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>6,17: grass, height 0</title></polygon>
+<polygon points="248.5,76.5 239.0,92.9 220.0,92.9 210.5,76.5 220.0,60.0 239.0,60.0" fill="#756087" stroke="#303438" stroke-width="1"><title>7,0: darkness, height 0</title></polygon>
+<polygon points="248.5,109.4 239.0,125.8 220.0,125.8 210.5,109.4 220.0,92.9 239.0,92.9" fill="#756087" stroke="#303438" stroke-width="1"><title>7,1: darkness, height 1</title></polygon>
+<text x="220.5" y="101.363448015713" fill="white" font-size="10">1</text>
+<polygon points="248.5,142.3 239.0,158.7 220.0,158.7 210.5,142.3 220.0,125.8 239.0,125.8" fill="#756087" stroke="#303438" stroke-width="1"><title>7,2: darkness, height 1</title></polygon>
+<text x="220.5" y="134.27241335952166" fill="white" font-size="10">1</text>
+<polygon points="248.5,175.2 239.0,191.6 220.0,191.6 210.5,175.2 220.0,158.7 239.0,158.7" fill="#756087" stroke="#303438" stroke-width="1"><title>7,3: darkness, height 0</title></polygon>
+<polygon points="248.5,208.1 239.0,224.5 220.0,224.5 210.5,208.1 220.0,191.6 239.0,191.6" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>7,4: snow, height 0</title></polygon>
+<polygon points="248.5,241.0 239.0,257.5 220.0,257.5 210.5,241.0 220.0,224.5 239.0,224.5" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>7,5: snow, height 0</title></polygon>
+<text x="229.5" y="244.99930939094767" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<polygon points="248.5,273.9 239.0,290.4 220.0,290.4 210.5,273.9 220.0,257.5 239.0,257.5" fill="#397849" stroke="#ef64ff" stroke-width="3"><title>7,6: jungle, height 0</title></polygon>
+<polygon points="248.5,306.8 239.0,323.3 220.0,323.3 210.5,306.8 220.0,290.4 239.0,290.4" fill="#397849" stroke="#ef64ff" stroke-width="3"><title>7,7: jungle, height 0</title></polygon>
+<polygon points="248.5,339.7 239.0,356.2 220.0,356.2 210.5,339.7 220.0,323.3 239.0,323.3" fill="#397849" stroke="#303438" stroke-width="1"><title>7,8: jungle, height 0</title></polygon>
+<text x="229.5" y="343.72620542237365" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="248.5,372.6 239.0,389.1 220.0,389.1 210.5,372.6 220.0,356.2 239.0,356.2" fill="#397849" stroke="#303438" stroke-width="1"><title>7,9: jungle, height 0</title></polygon>
+<polygon points="248.5,405.5 239.0,422.0 220.0,422.0 210.5,405.5 220.0,389.1 239.0,389.1" fill="#397849" stroke="#303438" stroke-width="1"><title>7,10: jungle, height 0</title></polygon>
+<text x="229.5" y="409.544136109991" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="248.5,438.5 239.0,454.9 220.0,454.9 210.5,438.5 220.0,422.0 239.0,422.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,11: grass, height 0</title></polygon>
+<polygon points="248.5,471.4 239.0,487.8 220.0,487.8 210.5,471.4 220.0,454.9 239.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,12: grass, height 0</title></polygon>
+<polygon points="248.5,504.3 239.0,520.7 220.0,520.7 210.5,504.3 220.0,487.8 239.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,13: grass, height 0</title></polygon>
+<polygon points="248.5,537.2 239.0,553.6 220.0,553.6 210.5,537.2 220.0,520.7 239.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,14: grass, height 0</title></polygon>
+<polygon points="248.5,570.1 239.0,586.5 220.0,586.5 210.5,570.1 220.0,553.6 239.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,15: grass, height 0</title></polygon>
+<polygon points="248.5,603.0 239.0,619.5 220.0,619.5 210.5,603.0 220.0,586.5 239.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,16: grass, height 0</title></polygon>
+<polygon points="248.5,635.9 239.0,652.4 220.0,652.4 210.5,635.9 220.0,619.5 239.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>7,17: grass, height 0</title></polygon>
+<polygon points="277.0,60.0 267.5,76.5 248.5,76.5 239.0,60.0 248.5,43.5 267.5,43.5" fill="#756087" stroke="#303438" stroke-width="1"><title>8,0: darkness, height 0</title></polygon>
+<polygon points="277.0,92.9 267.5,109.4 248.5,109.4 239.0,92.9 248.5,76.5 267.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>8,1: darkness, height 1</title></polygon>
+<text x="249.0" y="84.90896534380866" fill="white" font-size="10">1</text>
+<polygon points="277.0,125.8 267.5,142.3 248.5,142.3 239.0,125.8 248.5,109.4 267.5,109.4" fill="#756087" stroke="#ef64ff" stroke-width="3"><title>8,2: darkness, height 1</title></polygon>
+<text x="258.0" y="129.81793068761732" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">VP</text>
+<text x="249.0" y="117.81793068761733" fill="white" font-size="10">1</text>
+<polygon points="277.0,158.7 267.5,175.2 248.5,175.2 239.0,158.7 248.5,142.3 267.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>8,3: darkness, height 1</title></polygon>
+<text x="249.0" y="150.726896031426" fill="white" font-size="10">1</text>
+<polygon points="277.0,191.6 267.5,208.1 248.5,208.1 239.0,191.6 248.5,175.2 267.5,175.2" fill="#756087" stroke="#303438" stroke-width="1"><title>8,4: darkness, height 0</title></polygon>
+<polygon points="277.0,224.5 267.5,241.0 248.5,241.0 239.0,224.5 248.5,208.1 267.5,208.1" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>8,5: snow, height 0</title></polygon>
+<polygon points="277.0,257.5 267.5,273.9 248.5,273.9 239.0,257.5 248.5,241.0 267.5,241.0" fill="#397849" stroke="#303438" stroke-width="1"><title>8,6: jungle, height 0</title></polygon>
+<text x="258.0" y="261.453792062852" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">PP</text>
+<polygon points="277.0,290.4 267.5,306.8 248.5,306.8 239.0,290.4 248.5,273.9 267.5,273.9" fill="#397849" stroke="#ef64ff" stroke-width="3"><title>8,7: jungle, height 0</title></polygon>
+<polygon points="277.0,323.3 267.5,339.7 248.5,339.7 239.0,323.3 248.5,306.8 267.5,306.8" fill="#397849" stroke="#ef64ff" stroke-width="3"><title>8,8: jungle, height 0</title></polygon>
+<polygon points="277.0,356.2 267.5,372.6 248.5,372.6 239.0,356.2 248.5,339.7 267.5,339.7" fill="#397849" stroke="#303438" stroke-width="1"><title>8,9: jungle, height 0</title></polygon>
+<text x="258.0" y="360.180688094278" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<polygon points="277.0,389.1 267.5,405.5 248.5,405.5 239.0,389.1 248.5,372.6 267.5,372.6" fill="#397849" stroke="#303438" stroke-width="1"><title>8,10: jungle, height 0</title></polygon>
+<polygon points="277.0,422.0 267.5,438.5 248.5,438.5 239.0,422.0 248.5,405.5 267.5,405.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,11: grass, height 0</title></polygon>
+<polygon points="277.0,454.9 267.5,471.4 248.5,471.4 239.0,454.9 248.5,438.5 267.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,12: grass, height 0</title></polygon>
+<polygon points="277.0,487.8 267.5,504.3 248.5,504.3 239.0,487.8 248.5,471.4 267.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,13: grass, height 0</title></polygon>
+<polygon points="277.0,520.7 267.5,537.2 248.5,537.2 239.0,520.7 248.5,504.3 267.5,504.3" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>8,14: roads, height 0</title></polygon>
+<text x="258.0" y="524.7255148133213" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">P1</text>
+<polygon points="277.0,553.6 267.5,570.1 248.5,570.1 239.0,553.6 248.5,537.2 267.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,15: grass, height 0</title></polygon>
+<polygon points="277.0,586.5 267.5,603.0 248.5,603.0 239.0,586.5 248.5,570.1 267.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,16: grass, height 0</title></polygon>
+<polygon points="277.0,619.5 267.5,635.9 248.5,635.9 239.0,619.5 248.5,603.0 267.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>8,17: grass, height 0</title></polygon>
+<polygon points="305.5,76.5 296.0,92.9 277.0,92.9 267.5,76.5 277.0,60.0 296.0,60.0" fill="#756087" stroke="#303438" stroke-width="1"><title>9,0: darkness, height 0</title></polygon>
+<polygon points="305.5,109.4 296.0,125.8 277.0,125.8 267.5,109.4 277.0,92.9 296.0,92.9" fill="#756087" stroke="#303438" stroke-width="1"><title>9,1: darkness, height 1</title></polygon>
+<text x="277.5" y="101.363448015713" fill="white" font-size="10">1</text>
+<polygon points="305.5,142.3 296.0,158.7 277.0,158.7 267.5,142.3 277.0,125.8 296.0,125.8" fill="#756087" stroke="#303438" stroke-width="1"><title>9,2: darkness, height 1</title></polygon>
+<text x="277.5" y="134.27241335952166" fill="white" font-size="10">1</text>
+<polygon points="305.5,175.2 296.0,191.6 277.0,191.6 267.5,175.2 277.0,158.7 296.0,158.7" fill="#756087" stroke="#303438" stroke-width="1"><title>9,3: darkness, height 0</title></polygon>
+<polygon points="305.5,208.1 296.0,224.5 277.0,224.5 267.5,208.1 277.0,191.6 296.0,191.6" fill="#9fd7eb" stroke="#303438" stroke-width="1"><title>9,4: ice, height 0</title></polygon>
+<polygon points="305.5,241.0 296.0,257.5 277.0,257.5 267.5,241.0 277.0,224.5 296.0,224.5" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>9,5: snow, height 0</title></polygon>
+<polygon points="305.5,273.9 296.0,290.4 277.0,290.4 267.5,273.9 277.0,257.5 296.0,257.5" fill="#397849" stroke="#303438" stroke-width="1"><title>9,6: jungle, height 0</title></polygon>
+<polygon points="305.5,306.8 296.0,323.3 277.0,323.3 267.5,306.8 277.0,290.4 296.0,290.4" fill="#397849" stroke="#303438" stroke-width="1"><title>9,7: jungle, height 0</title></polygon>
+<text x="286.5" y="310.81724007856496" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="305.5,339.7 296.0,356.2 277.0,356.2 267.5,339.7 277.0,323.3 296.0,323.3" fill="#397849" stroke="#303438" stroke-width="1"><title>9,8: jungle, height 0</title></polygon>
+<polygon points="305.5,372.6 296.0,389.1 277.0,389.1 267.5,372.6 277.0,356.2 296.0,356.2" fill="#397849" stroke="#303438" stroke-width="1"><title>9,9: jungle, height 0</title></polygon>
+<polygon points="305.5,405.5 296.0,422.0 277.0,422.0 267.5,405.5 277.0,389.1 296.0,389.1" fill="#397849" stroke="#303438" stroke-width="1"><title>9,10: jungle, height 0</title></polygon>
+<text x="286.5" y="409.544136109991" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="305.5,438.5 296.0,454.9 277.0,454.9 267.5,438.5 277.0,422.0 296.0,422.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,11: grass, height 0</title></polygon>
+<polygon points="305.5,471.4 296.0,487.8 277.0,487.8 267.5,471.4 277.0,454.9 296.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,12: grass, height 0</title></polygon>
+<polygon points="305.5,504.3 296.0,520.7 277.0,520.7 267.5,504.3 277.0,487.8 296.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,13: grass, height 0</title></polygon>
+<polygon points="305.5,537.2 296.0,553.6 277.0,553.6 267.5,537.2 277.0,520.7 296.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,14: grass, height 0</title></polygon>
+<polygon points="305.5,570.1 296.0,586.5 277.0,586.5 267.5,570.1 277.0,553.6 296.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,15: grass, height 0</title></polygon>
+<polygon points="305.5,603.0 296.0,619.5 277.0,619.5 267.5,603.0 277.0,586.5 296.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,16: grass, height 0</title></polygon>
+<polygon points="305.5,635.9 296.0,652.4 277.0,652.4 267.5,635.9 277.0,619.5 296.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>9,17: grass, height 0</title></polygon>
+<polygon points="334.0,60.0 324.5,76.5 305.5,76.5 296.0,60.0 305.5,43.5 324.5,43.5" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>10,0: snow, height 0</title></polygon>
+<polygon points="334.0,92.9 324.5,109.4 305.5,109.4 296.0,92.9 305.5,76.5 324.5,76.5" fill="#756087" stroke="#303438" stroke-width="1"><title>10,1: darkness, height 0</title></polygon>
+<polygon points="334.0,125.8 324.5,142.3 305.5,142.3 296.0,125.8 305.5,109.4 324.5,109.4" fill="#756087" stroke="#303438" stroke-width="1"><title>10,2: darkness, height 0</title></polygon>
+<polygon points="334.0,158.7 324.5,175.2 305.5,175.2 296.0,158.7 305.5,142.3 324.5,142.3" fill="#756087" stroke="#303438" stroke-width="1"><title>10,3: darkness, height 0</title></polygon>
+<text x="315.0" y="162.726896031426" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">IC</text>
+<polygon points="334.0,191.6 324.5,208.1 305.5,208.1 296.0,191.6 305.5,175.2 324.5,175.2" fill="#9fd7eb" stroke="#303438" stroke-width="1"><title>10,4: ice, height 0</title></polygon>
+<polygon points="334.0,224.5 324.5,241.0 305.5,241.0 296.0,224.5 305.5,208.1 324.5,208.1" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,5: roads, height 0</title></polygon>
+<text x="315.0" y="228.54482671904333" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<polygon points="334.0,257.5 324.5,273.9 305.5,273.9 296.0,257.5 305.5,241.0 324.5,241.0" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,6: roads, height 0</title></polygon>
+<polygon points="334.0,290.4 324.5,306.8 305.5,306.8 296.0,290.4 305.5,273.9 324.5,273.9" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,7: roads, height 0</title></polygon>
+<polygon points="334.0,323.3 324.5,339.7 305.5,339.7 296.0,323.3 305.5,306.8 324.5,306.8" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,8: roads, height 0</title></polygon>
+<text x="315.0" y="327.27172275046934" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">NF</text>
+<polygon points="334.0,356.2 324.5,372.6 305.5,372.6 296.0,356.2 305.5,339.7 324.5,339.7" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,9: roads, height 0</title></polygon>
+<polygon points="334.0,389.1 324.5,405.5 305.5,405.5 296.0,389.1 305.5,372.6 324.5,372.6" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,10: roads, height 0</title></polygon>
+<polygon points="334.0,422.0 324.5,438.5 305.5,438.5 296.0,422.0 305.5,405.5 324.5,405.5" fill="#c4ad7c" stroke="#303438" stroke-width="1"><title>10,11: roads, height 0</title></polygon>
+<polygon points="334.0,454.9 324.5,471.4 305.5,471.4 296.0,454.9 305.5,438.5 324.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,12: grass, height 0</title></polygon>
+<polygon points="334.0,487.8 324.5,504.3 305.5,504.3 296.0,487.8 305.5,471.4 324.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,13: grass, height 0</title></polygon>
+<polygon points="334.0,520.7 324.5,537.2 305.5,537.2 296.0,520.7 305.5,504.3 324.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,14: grass, height 0</title></polygon>
+<polygon points="334.0,553.6 324.5,570.1 305.5,570.1 296.0,553.6 305.5,537.2 324.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,15: grass, height 0</title></polygon>
+<polygon points="334.0,586.5 324.5,603.0 305.5,603.0 296.0,586.5 305.5,570.1 324.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,16: grass, height 0</title></polygon>
+<polygon points="334.0,619.5 324.5,635.9 305.5,635.9 296.0,619.5 305.5,603.0 324.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>10,17: grass, height 0</title></polygon>
+<polygon points="362.5,76.5 353.0,92.9 334.0,92.9 324.5,76.5 334.0,60.0 353.0,60.0" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>11,0: snow, height 0</title></polygon>
+<polygon points="362.5,109.4 353.0,125.8 334.0,125.8 324.5,109.4 334.0,92.9 353.0,92.9" fill="#e2e9ec" stroke="#ef64ff" stroke-width="3"><title>11,1: snow, height 0</title></polygon>
+<polygon points="362.5,142.3 353.0,158.7 334.0,158.7 324.5,142.3 334.0,125.8 353.0,125.8" fill="#e2e9ec" stroke="#ef64ff" stroke-width="3"><title>11,2: snow, height 0</title></polygon>
+<polygon points="362.5,175.2 353.0,191.6 334.0,191.6 324.5,175.2 334.0,158.7 353.0,158.7" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>11,3: snow, height 0</title></polygon>
+<polygon points="362.5,208.1 353.0,224.5 334.0,224.5 324.5,208.1 334.0,191.6 353.0,191.6" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>11,4: snow, height 0</title></polygon>
+<polygon points="362.5,241.0 353.0,257.5 334.0,257.5 324.5,241.0 334.0,224.5 353.0,224.5" fill="#e2e9ec" stroke="#303438" stroke-width="1"><title>11,5: snow, height 0</title></polygon>
+<polygon points="362.5,273.9 353.0,290.4 334.0,290.4 324.5,273.9 334.0,257.5 353.0,257.5" fill="#397849" stroke="#303438" stroke-width="1"><title>11,6: jungle, height 0</title></polygon>
+<text x="343.5" y="277.90827473475633" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="362.5,306.8 353.0,323.3 334.0,323.3 324.5,306.8 334.0,290.4 353.0,290.4" fill="#c9a869" stroke="#303438" stroke-width="1"><title>11,7: dunes, height 1</title></polygon>
+<text x="334.5" y="298.81724007856496" fill="white" font-size="10">1</text>
+<polygon points="362.5,339.7 353.0,356.2 334.0,356.2 324.5,339.7 334.0,323.3 353.0,323.3" fill="#c9a869" stroke="#303438" stroke-width="1"><title>11,8: dunes, height 1</title></polygon>
+<text x="334.5" y="331.72620542237365" fill="white" font-size="10">1</text>
+<polygon points="362.5,372.6 353.0,389.1 334.0,389.1 324.5,372.6 334.0,356.2 353.0,356.2" fill="#c9a869" stroke="#303438" stroke-width="1"><title>11,9: dunes, height 1</title></polygon>
+<text x="343.5" y="376.63517076618234" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<text x="334.5" y="364.63517076618234" fill="white" font-size="10">1</text>
+<polygon points="362.5,405.5 353.0,422.0 334.0,422.0 324.5,405.5 334.0,389.1 353.0,389.1" fill="#397849" stroke="#303438" stroke-width="1"><title>11,10: jungle, height 0</title></polygon>
+<polygon points="362.5,438.5 353.0,454.9 334.0,454.9 324.5,438.5 334.0,422.0 353.0,422.0" fill="#397849" stroke="#303438" stroke-width="1"><title>11,11: jungle, height 0</title></polygon>
+<text x="343.5" y="442.45310145379966" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<polygon points="362.5,471.4 353.0,487.8 334.0,487.8 324.5,471.4 334.0,454.9 353.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,12: grass, height 0</title></polygon>
+<polygon points="362.5,504.3 353.0,520.7 334.0,520.7 324.5,504.3 334.0,487.8 353.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,13: grass, height 0</title></polygon>
+<polygon points="362.5,537.2 353.0,553.6 334.0,553.6 324.5,537.2 334.0,520.7 353.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,14: grass, height 0</title></polygon>
+<polygon points="362.5,570.1 353.0,586.5 334.0,586.5 324.5,570.1 334.0,553.6 353.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,15: grass, height 0</title></polygon>
+<polygon points="362.5,603.0 353.0,619.5 334.0,619.5 324.5,603.0 334.0,586.5 353.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,16: grass, height 0</title></polygon>
+<polygon points="362.5,635.9 353.0,652.4 334.0,652.4 324.5,635.9 334.0,619.5 353.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>11,17: grass, height 0</title></polygon>
+<polygon points="391.0,60.0 381.5,76.5 362.5,76.5 353.0,60.0 362.5,43.5 381.5,43.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,0: desert, height 0</title></polygon>
+<polygon points="391.0,92.9 381.5,109.4 362.5,109.4 353.0,92.9 362.5,76.5 381.5,76.5" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>12,1: desert, height 0</title></polygon>
+<polygon points="391.0,125.8 381.5,142.3 362.5,142.3 353.0,125.8 362.5,109.4 381.5,109.4" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>12,2: desert, height 0</title></polygon>
+<polygon points="391.0,158.7 381.5,175.2 362.5,175.2 353.0,158.7 362.5,142.3 381.5,142.3" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,3: desert, height 0</title></polygon>
+<text x="372.0" y="162.726896031426" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">HP</text>
+<polygon points="391.0,191.6 381.5,208.1 362.5,208.1 353.0,191.6 362.5,175.2 381.5,175.2" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,4: desert, height 0</title></polygon>
+<polygon points="391.0,224.5 381.5,241.0 362.5,241.0 353.0,224.5 362.5,208.1 381.5,208.1" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,5: desert, height 0</title></polygon>
+<text x="372.0" y="228.54482671904333" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">R</text>
+<polygon points="391.0,257.5 381.5,273.9 362.5,273.9 353.0,257.5 362.5,241.0 381.5,241.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,6: desert, height 0</title></polygon>
+<polygon points="391.0,290.4 381.5,306.8 362.5,306.8 353.0,290.4 362.5,273.9 381.5,273.9" fill="#c9a869" stroke="#303438" stroke-width="1"><title>12,7: dunes, height 1</title></polygon>
+<text x="363.0" y="282.36275740666065" fill="white" font-size="10">1</text>
+<polygon points="391.0,323.3 381.5,339.7 362.5,339.7 353.0,323.3 362.5,306.8 381.5,306.8" fill="#c9a869" stroke="#303438" stroke-width="1"><title>12,8: dunes, height 1</title></polygon>
+<text x="363.0" y="315.27172275046934" fill="white" font-size="10">1</text>
+<polygon points="391.0,356.2 381.5,372.6 362.5,372.6 353.0,356.2 362.5,339.7 381.5,339.7" fill="#c9a869" stroke="#303438" stroke-width="1"><title>12,9: dunes, height 1</title></polygon>
+<text x="363.0" y="348.180688094278" fill="white" font-size="10">1</text>
+<polygon points="391.0,389.1 381.5,405.5 362.5,405.5 353.0,389.1 362.5,372.6 381.5,372.6" fill="#c9a869" stroke="#303438" stroke-width="1"><title>12,10: dunes, height 1</title></polygon>
+<text x="372.0" y="393.08965343808666" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<text x="363.0" y="381.08965343808666" fill="white" font-size="10">1</text>
+<polygon points="391.0,422.0 381.5,438.5 362.5,438.5 353.0,422.0 362.5,405.5 381.5,405.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>12,11: desert, height 0</title></polygon>
+<polygon points="391.0,454.9 381.5,471.4 362.5,471.4 353.0,454.9 362.5,438.5 381.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,12: grass, height 0</title></polygon>
+<polygon points="391.0,487.8 381.5,504.3 362.5,504.3 353.0,487.8 362.5,471.4 381.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,13: grass, height 0</title></polygon>
+<polygon points="391.0,520.7 381.5,537.2 362.5,537.2 353.0,520.7 362.5,504.3 381.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,14: grass, height 0</title></polygon>
+<polygon points="391.0,553.6 381.5,570.1 362.5,570.1 353.0,553.6 362.5,537.2 381.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,15: grass, height 0</title></polygon>
+<polygon points="391.0,586.5 381.5,603.0 362.5,603.0 353.0,586.5 362.5,570.1 381.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,16: grass, height 0</title></polygon>
+<polygon points="391.0,619.5 381.5,635.9 362.5,635.9 353.0,619.5 362.5,603.0 381.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>12,17: grass, height 0</title></polygon>
+<polygon points="419.5,76.5 410.0,92.9 391.0,92.9 381.5,76.5 391.0,60.0 410.0,60.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>13,0: desert, height 0</title></polygon>
+<polygon points="419.5,109.4 410.0,125.8 391.0,125.8 381.5,109.4 391.0,92.9 410.0,92.9" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>13,1: desert, height 0</title></polygon>
+<polygon points="419.5,142.3 410.0,158.7 391.0,158.7 381.5,142.3 391.0,125.8 410.0,125.8" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>13,2: desert, height 0</title></polygon>
+<polygon points="419.5,175.2 410.0,191.6 391.0,191.6 381.5,175.2 391.0,158.7 410.0,158.7" fill="#ddc591" stroke="#303438" stroke-width="1"><title>13,3: desert, height 0</title></polygon>
+<polygon points="419.5,208.1 410.0,224.5 391.0,224.5 381.5,208.1 391.0,191.6 410.0,191.6" fill="#ddc591" stroke="#303438" stroke-width="1"><title>13,4: desert, height 0</title></polygon>
+<polygon points="419.5,241.0 410.0,257.5 391.0,257.5 381.5,241.0 391.0,224.5 410.0,224.5" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>13,5: desert, height 0</title></polygon>
+<polygon points="419.5,273.9 410.0,290.4 391.0,290.4 381.5,273.9 391.0,257.5 410.0,257.5" fill="#c9a869" stroke="#ef64ff" stroke-width="3"><title>13,6: dunes, height 1</title></polygon>
+<text x="391.5" y="265.90827473475633" fill="white" font-size="10">1</text>
+<polygon points="419.5,306.8 410.0,323.3 391.0,323.3 381.5,306.8 391.0,290.4 410.0,290.4" fill="#c9a869" stroke="#303438" stroke-width="1"><title>13,7: dunes, height 1</title></polygon>
+<text x="391.5" y="298.81724007856496" fill="white" font-size="10">1</text>
+<polygon points="419.5,339.7 410.0,356.2 391.0,356.2 381.5,339.7 391.0,323.3 410.0,323.3" fill="#c9a869" stroke="#303438" stroke-width="1"><title>13,8: dunes, height 2</title></polygon>
+<text x="391.5" y="331.72620542237365" fill="white" font-size="10">2</text>
+<polygon points="419.5,372.6 410.0,389.1 391.0,389.1 381.5,372.6 391.0,356.2 410.0,356.2" fill="#c9a869" stroke="#303438" stroke-width="1"><title>13,9: dunes, height 1</title></polygon>
+<text x="391.5" y="364.63517076618234" fill="white" font-size="10">1</text>
+<polygon points="419.5,405.5 410.0,422.0 391.0,422.0 381.5,405.5 391.0,389.1 410.0,389.1" fill="#c9a869" stroke="#303438" stroke-width="1"><title>13,10: dunes, height 1</title></polygon>
+<text x="391.5" y="397.544136109991" fill="white" font-size="10">1</text>
+<polygon points="419.5,438.5 410.0,454.9 391.0,454.9 381.5,438.5 391.0,422.0 410.0,422.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>13,11: desert, height 0</title></polygon>
+<polygon points="419.5,471.4 410.0,487.8 391.0,487.8 381.5,471.4 391.0,454.9 410.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,12: grass, height 0</title></polygon>
+<polygon points="419.5,504.3 410.0,520.7 391.0,520.7 381.5,504.3 391.0,487.8 410.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,13: grass, height 0</title></polygon>
+<polygon points="419.5,537.2 410.0,553.6 391.0,553.6 381.5,537.2 391.0,520.7 410.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,14: grass, height 0</title></polygon>
+<polygon points="419.5,570.1 410.0,586.5 391.0,586.5 381.5,570.1 391.0,553.6 410.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,15: grass, height 0</title></polygon>
+<polygon points="419.5,603.0 410.0,619.5 391.0,619.5 381.5,603.0 391.0,586.5 410.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,16: grass, height 0</title></polygon>
+<polygon points="419.5,635.9 410.0,652.4 391.0,652.4 381.5,635.9 391.0,619.5 410.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>13,17: grass, height 0</title></polygon>
+<polygon points="448.0,60.0 438.5,76.5 419.5,76.5 410.0,60.0 419.5,43.5 438.5,43.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,0: desert, height 0</title></polygon>
+<polygon points="448.0,92.9 438.5,109.4 419.5,109.4 410.0,92.9 419.5,76.5 438.5,76.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,1: desert, height 0</title></polygon>
+<polygon points="448.0,125.8 438.5,142.3 419.5,142.3 410.0,125.8 419.5,109.4 438.5,109.4" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,2: desert, height 0</title></polygon>
+<polygon points="448.0,158.7 438.5,175.2 419.5,175.2 410.0,158.7 419.5,142.3 438.5,142.3" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,3: desert, height 0</title></polygon>
+<polygon points="448.0,191.6 438.5,208.1 419.5,208.1 410.0,191.6 419.5,175.2 438.5,175.2" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,4: desert, height 0</title></polygon>
+<polygon points="448.0,224.5 438.5,241.0 419.5,241.0 410.0,224.5 419.5,208.1 438.5,208.1" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>14,5: desert, height 0</title></polygon>
+<polygon points="448.0,257.5 438.5,273.9 419.5,273.9 410.0,257.5 419.5,241.0 438.5,241.0" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>14,6: desert, height 0</title></polygon>
+<polygon points="448.0,290.4 438.5,306.8 419.5,306.8 410.0,290.4 419.5,273.9 438.5,273.9" fill="#c9a869" stroke="#ef64ff" stroke-width="3"><title>14,7: dunes, height 1</title></polygon>
+<text x="420.0" y="282.36275740666065" fill="white" font-size="10">1</text>
+<polygon points="448.0,323.3 438.5,339.7 419.5,339.7 410.0,323.3 419.5,306.8 438.5,306.8" fill="#c9a869" stroke="#303438" stroke-width="1"><title>14,8: dunes, height 1</title></polygon>
+<text x="420.0" y="315.27172275046934" fill="white" font-size="10">1</text>
+<polygon points="448.0,356.2 438.5,372.6 419.5,372.6 410.0,356.2 419.5,339.7 438.5,339.7" fill="#c9a869" stroke="#303438" stroke-width="1"><title>14,9: dunes, height 1</title></polygon>
+<text x="429.0" y="360.180688094278" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">NS</text>
+<text x="420.0" y="348.180688094278" fill="white" font-size="10">1</text>
+<polygon points="448.0,389.1 438.5,405.5 419.5,405.5 410.0,389.1 419.5,372.6 438.5,372.6" fill="#c9a869" stroke="#303438" stroke-width="1"><title>14,10: dunes, height 1</title></polygon>
+<text x="429.0" y="393.08965343808666" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">SP</text>
+<text x="420.0" y="381.08965343808666" fill="white" font-size="10">1</text>
+<polygon points="448.0,422.0 438.5,438.5 419.5,438.5 410.0,422.0 419.5,405.5 438.5,405.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>14,11: desert, height 0</title></polygon>
+<polygon points="448.0,454.9 438.5,471.4 419.5,471.4 410.0,454.9 419.5,438.5 438.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,12: grass, height 0</title></polygon>
+<polygon points="448.0,487.8 438.5,504.3 419.5,504.3 410.0,487.8 419.5,471.4 438.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,13: grass, height 0</title></polygon>
+<polygon points="448.0,520.7 438.5,537.2 419.5,537.2 410.0,520.7 419.5,504.3 438.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,14: grass, height 0</title></polygon>
+<polygon points="448.0,553.6 438.5,570.1 419.5,570.1 410.0,553.6 419.5,537.2 438.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,15: grass, height 0</title></polygon>
+<polygon points="448.0,586.5 438.5,603.0 419.5,603.0 410.0,586.5 419.5,570.1 438.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,16: grass, height 0</title></polygon>
+<polygon points="448.0,619.5 438.5,635.9 419.5,635.9 410.0,619.5 419.5,603.0 438.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>14,17: grass, height 0</title></polygon>
+<polygon points="476.5,76.5 467.0,92.9 448.0,92.9 438.5,76.5 448.0,60.0 467.0,60.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,0: desert, height 0</title></polygon>
+<polygon points="476.5,109.4 467.0,125.8 448.0,125.8 438.5,109.4 448.0,92.9 467.0,92.9" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,1: desert, height 0</title></polygon>
+<polygon points="476.5,142.3 467.0,158.7 448.0,158.7 438.5,142.3 448.0,125.8 467.0,125.8" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,2: desert, height 0</title></polygon>
+<polygon points="476.5,175.2 467.0,191.6 448.0,191.6 438.5,175.2 448.0,158.7 467.0,158.7" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,3: desert, height 0</title></polygon>
+<polygon points="476.5,208.1 467.0,224.5 448.0,224.5 438.5,208.1 448.0,191.6 467.0,191.6" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,4: desert, height 0</title></polygon>
+<polygon points="476.5,241.0 467.0,257.5 448.0,257.5 438.5,241.0 448.0,224.5 467.0,224.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,5: desert, height 0</title></polygon>
+<text x="457.5" y="244.99930939094767" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">Sh</text>
+<polygon points="476.5,273.9 467.0,290.4 448.0,290.4 438.5,273.9 448.0,257.5 467.0,257.5" fill="#ddc591" stroke="#ef64ff" stroke-width="3"><title>15,6: desert, height 0</title></polygon>
+<polygon points="476.5,306.8 467.0,323.3 448.0,323.3 438.5,306.8 448.0,290.4 467.0,290.4" fill="#c9a869" stroke="#303438" stroke-width="1"><title>15,7: dunes, height 1</title></polygon>
+<text x="457.5" y="310.81724007856496" text-anchor="middle" fill="white" stroke="#111" stroke-width="0.5" paint-order="stroke" font-family="sans-serif" font-size="12" font-weight="bold">T</text>
+<text x="448.5" y="298.81724007856496" fill="white" font-size="10">1</text>
+<polygon points="476.5,339.7 467.0,356.2 448.0,356.2 438.5,339.7 448.0,323.3 467.0,323.3" fill="#c9a869" stroke="#303438" stroke-width="1"><title>15,8: dunes, height 1</title></polygon>
+<text x="448.5" y="331.72620542237365" fill="white" font-size="10">1</text>
+<polygon points="476.5,372.6 467.0,389.1 448.0,389.1 438.5,372.6 448.0,356.2 467.0,356.2" fill="#c9a869" stroke="#303438" stroke-width="1"><title>15,9: dunes, height 1</title></polygon>
+<text x="448.5" y="364.63517076618234" fill="white" font-size="10">1</text>
+<polygon points="476.5,405.5 467.0,422.0 448.0,422.0 438.5,405.5 448.0,389.1 467.0,389.1" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,10: desert, height 0</title></polygon>
+<polygon points="476.5,438.5 467.0,454.9 448.0,454.9 438.5,438.5 448.0,422.0 467.0,422.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>15,11: desert, height 0</title></polygon>
+<polygon points="476.5,471.4 467.0,487.8 448.0,487.8 438.5,471.4 448.0,454.9 467.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,12: grass, height 0</title></polygon>
+<polygon points="476.5,504.3 467.0,520.7 448.0,520.7 438.5,504.3 448.0,487.8 467.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,13: grass, height 0</title></polygon>
+<polygon points="476.5,537.2 467.0,553.6 448.0,553.6 438.5,537.2 448.0,520.7 467.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,14: grass, height 0</title></polygon>
+<polygon points="476.5,570.1 467.0,586.5 448.0,586.5 438.5,570.1 448.0,553.6 467.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,15: grass, height 0</title></polygon>
+<polygon points="476.5,603.0 467.0,619.5 448.0,619.5 438.5,603.0 448.0,586.5 467.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,16: grass, height 0</title></polygon>
+<polygon points="476.5,635.9 467.0,652.4 448.0,652.4 438.5,635.9 448.0,619.5 467.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>15,17: grass, height 0</title></polygon>
+<polygon points="505.0,60.0 495.5,76.5 476.5,76.5 467.0,60.0 476.5,43.5 495.5,43.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,0: desert, height 0</title></polygon>
+<polygon points="505.0,92.9 495.5,109.4 476.5,109.4 467.0,92.9 476.5,76.5 495.5,76.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,1: desert, height 0</title></polygon>
+<polygon points="505.0,125.8 495.5,142.3 476.5,142.3 467.0,125.8 476.5,109.4 495.5,109.4" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,2: desert, height 0</title></polygon>
+<polygon points="505.0,158.7 495.5,175.2 476.5,175.2 467.0,158.7 476.5,142.3 495.5,142.3" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,3: desert, height 0</title></polygon>
+<polygon points="505.0,191.6 495.5,208.1 476.5,208.1 467.0,191.6 476.5,175.2 495.5,175.2" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,4: desert, height 0</title></polygon>
+<polygon points="505.0,224.5 495.5,241.0 476.5,241.0 467.0,224.5 476.5,208.1 495.5,208.1" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,5: desert, height 0</title></polygon>
+<polygon points="505.0,257.5 495.5,273.9 476.5,273.9 467.0,257.5 476.5,241.0 495.5,241.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,6: desert, height 0</title></polygon>
+<polygon points="505.0,290.4 495.5,306.8 476.5,306.8 467.0,290.4 476.5,273.9 495.5,273.9" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,7: desert, height 0</title></polygon>
+<polygon points="505.0,323.3 495.5,339.7 476.5,339.7 467.0,323.3 476.5,306.8 495.5,306.8" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,8: desert, height 0</title></polygon>
+<polygon points="505.0,356.2 495.5,372.6 476.5,372.6 467.0,356.2 476.5,339.7 495.5,339.7" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,9: desert, height 0</title></polygon>
+<polygon points="505.0,389.1 495.5,405.5 476.5,405.5 467.0,389.1 476.5,372.6 495.5,372.6" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,10: desert, height 0</title></polygon>
+<polygon points="505.0,422.0 495.5,438.5 476.5,438.5 467.0,422.0 476.5,405.5 495.5,405.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>16,11: desert, height 0</title></polygon>
+<polygon points="505.0,454.9 495.5,471.4 476.5,471.4 467.0,454.9 476.5,438.5 495.5,438.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,12: grass, height 0</title></polygon>
+<polygon points="505.0,487.8 495.5,504.3 476.5,504.3 467.0,487.8 476.5,471.4 495.5,471.4" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,13: grass, height 0</title></polygon>
+<polygon points="505.0,520.7 495.5,537.2 476.5,537.2 467.0,520.7 476.5,504.3 495.5,504.3" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,14: grass, height 0</title></polygon>
+<polygon points="505.0,553.6 495.5,570.1 476.5,570.1 467.0,553.6 476.5,537.2 495.5,537.2" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,15: grass, height 0</title></polygon>
+<polygon points="505.0,586.5 495.5,603.0 476.5,603.0 467.0,586.5 476.5,570.1 495.5,570.1" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,16: grass, height 0</title></polygon>
+<polygon points="505.0,619.5 495.5,635.9 476.5,635.9 467.0,619.5 476.5,603.0 495.5,603.0" fill="#87ad62" stroke="#303438" stroke-width="1"><title>16,17: grass, height 0</title></polygon>
+<polygon points="533.5,76.5 524.0,92.9 505.0,92.9 495.5,76.5 505.0,60.0 524.0,60.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,0: desert, height 0</title></polygon>
+<polygon points="533.5,109.4 524.0,125.8 505.0,125.8 495.5,109.4 505.0,92.9 524.0,92.9" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,1: desert, height 0</title></polygon>
+<polygon points="533.5,142.3 524.0,158.7 505.0,158.7 495.5,142.3 505.0,125.8 524.0,125.8" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,2: desert, height 0</title></polygon>
+<polygon points="533.5,175.2 524.0,191.6 505.0,191.6 495.5,175.2 505.0,158.7 524.0,158.7" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,3: desert, height 0</title></polygon>
+<polygon points="533.5,208.1 524.0,224.5 505.0,224.5 495.5,208.1 505.0,191.6 524.0,191.6" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,4: desert, height 0</title></polygon>
+<polygon points="533.5,241.0 524.0,257.5 505.0,257.5 495.5,241.0 505.0,224.5 524.0,224.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,5: desert, height 0</title></polygon>
+<polygon points="533.5,273.9 524.0,290.4 505.0,290.4 495.5,273.9 505.0,257.5 524.0,257.5" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,6: desert, height 0</title></polygon>
+<polygon points="533.5,306.8 524.0,323.3 505.0,323.3 495.5,306.8 505.0,290.4 524.0,290.4" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,7: desert, height 0</title></polygon>
+<polygon points="533.5,339.7 524.0,356.2 505.0,356.2 495.5,339.7 505.0,323.3 524.0,323.3" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,8: desert, height 0</title></polygon>
+<polygon points="533.5,372.6 524.0,389.1 505.0,389.1 495.5,372.6 505.0,356.2 524.0,356.2" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,9: desert, height 0</title></polygon>
+<polygon points="533.5,405.5 524.0,422.0 505.0,422.0 495.5,405.5 505.0,389.1 524.0,389.1" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,10: desert, height 0</title></polygon>
+<polygon points="533.5,438.5 524.0,454.9 505.0,454.9 495.5,438.5 505.0,422.0 524.0,422.0" fill="#ddc591" stroke="#303438" stroke-width="1"><title>17,11: desert, height 0</title></polygon>
+<polygon points="533.5,471.4 524.0,487.8 505.0,487.8 495.5,471.4 505.0,454.9 524.0,454.9" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,12: grass, height 0</title></polygon>
+<polygon points="533.5,504.3 524.0,520.7 505.0,520.7 495.5,504.3 505.0,487.8 524.0,487.8" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,13: grass, height 0</title></polygon>
+<polygon points="533.5,537.2 524.0,553.6 505.0,553.6 495.5,537.2 505.0,520.7 524.0,520.7" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,14: grass, height 0</title></polygon>
+<polygon points="533.5,570.1 524.0,586.5 505.0,586.5 495.5,570.1 505.0,553.6 524.0,553.6" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,15: grass, height 0</title></polygon>
+<polygon points="533.5,603.0 524.0,619.5 505.0,619.5 495.5,603.0 505.0,586.5 524.0,586.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,16: grass, height 0</title></polygon>
+<polygon points="533.5,635.9 524.0,652.4 505.0,652.4 495.5,635.9 505.0,619.5 524.0,619.5" fill="#87ad62" stroke="#303438" stroke-width="1"><title>17,17: grass, height 0</title></polygon>
+<text x="15" y="695.2703415323647" fill="white" font-family="sans-serif" font-size="12">Purple outline: Void deployment | P1/P2: starts | VP: Void Portal | T/R: blocked</text>
+<text x="15" y="714.2703415323647" fill="white" font-family="sans-serif" font-size="12">NF/NS/NW: focus/strength/warding nexus | HP/SP/PP: health/speed/power pickup</text>
+<text x="15" y="733.2703415323647" fill="white" font-family="sans-serif" font-size="12">FC/VC/IC/Sh: forest/fire/ice crystal/shrine | Small number: elevation</text>
+</svg>
