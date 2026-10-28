@@ -27,6 +27,15 @@ public sealed class CombatLogFormatterTests
     }
 
     [Fact]
+    public void Picking_up_dropping_and_losing_items_read_naturally()
+    {
+        var projection = BattleFixtures.Projection();
+        Assert.EndsWith("picks up a Power Potion.", CombatLogFormatter.Describe(Event("itemPickedUp", """{"unitId":"s1-u3","seatId":"seat-red","hex":"1,4","kind":"power-potion"}"""), projection));
+        Assert.EndsWith("drops a Health Potion.", CombatLogFormatter.Describe(Event("itemDropped", """{"unitId":"s1-u3","hex":"1,4","kind":"health-potion"}"""), projection));
+        Assert.EndsWith("'s Speed Potion is lost.", CombatLogFormatter.Describe(Event("itemLost", """{"unitId":"s1-u3","kind":"speed-potion"}"""), projection));
+    }
+
+    [Fact]
     public void Dragon_slayer_history_reports_the_permanent_award_level()
     {
         var line = CombatLogFormatter.Describe(

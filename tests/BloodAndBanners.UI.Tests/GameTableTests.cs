@@ -1194,6 +1194,126 @@ public sealed partial class GameTableTests : BunitContext
         Assert.Contains("Stunned", cut.Find("[data-hex='1,4']").GetAttribute("aria-label"));
     }
 
+    private static GameProjection WithPickup(params string[] options) => BattleFixtures.Projection() with
+    {
+        PendingChoice = new PendingChoiceProjection("choice-9", "seat-red", "itemPickup", options) { UnitId = "s1-u3", Item = "speed-potion" },
+        PendingChoiceSummary = new PendingChoiceSummary("choice-9", "seat-red", "s1-u3", null) { Kind = "itemPickup" },
+    };
+
+    [Fact]
+    public void The_pickup_prompt_offers_drink_keep_or_leave()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, WithPickup("drink", "keep", "leave"))
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        var prompt = cut.Find("[data-testid=item-pickup]");
+        Assert.Contains("Speed Potion", prompt.TextContent);
+        Assert.Contains("+2 Speed for 3 turns", prompt.TextContent);
+        Assert.Equal(["drink", "keep", "leave"], cut.FindAll("[data-testid=item-pickup] button").Select(b => b.GetAttribute("data-choice")!).ToArray());
+
+        cut.Find("button[data-choice=keep]").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("resolveChoice", sent.Single().Kind);
+        Assert.Equal("choice-9", payload.GetProperty("choiceId").GetString());
+        Assert.Equal("keep", payload.GetProperty("option").GetString());
+    }
+
+    [Fact]
+    public void Drink_now_is_disabled_when_the_unit_has_used_an_item()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, WithPickup("keep", "leave")));
+
+        Assert.True(cut.Find("button[data-choice=drink]").HasAttribute("disabled"));
+        Assert.False(cut.Find("button[data-choice=keep]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void The_waiting_opponent_sees_the_potion_found_title()
+    {
+        var projection = WithPickup("drink", "keep", "leave") with { Viewer = new ViewerPermissions("player", "seat-blue", true, true) };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+
+        Assert.Contains("Potion found", cut.Find("[data-testid=choice-waiting]").TextContent);
+    }
+
+    [Fact]
+    public void A_unit_without_items_shows_no_items_row()
+    {
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, BattleFixtures.Projection()));
+        cut.Find("[data-hex='1,4']").Click();
+
+        Assert.Empty(cut.FindAll("[data-testid=unit-items]"));
+    }
+
+    [Fact]
+    public void Carried_items_are_listed_with_use_buttons()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0] with { Items = ["power-potion", "health-potion"] }, projection.Units[1], projection.Units[2]],
+            LegalActions = [
+                ..projection.LegalActions,
+                new LegalAction("useItem", "s1-u3", []) { Item = "power-potion" },
+                new LegalAction("useItem", "s1-u3", []) { Item = "health-potion" },
+            ],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='1,4']").Click();
+
+        Assert.Equal(["power-potion", "health-potion"], cut.FindAll("[data-testid=unit-items] [data-item]").Select(i => i.GetAttribute("data-item")!).ToArray());
+        cut.Find("[data-item=health-potion] button[data-action=useItem]").Click();
+
+        var payload = JsonSerializer.SerializeToElement(sent.Single().Payload);
+        Assert.Equal("useItem", sent.Single().Kind);
+        Assert.Equal("s1-u3", payload.GetProperty("unitId").GetString());
+        Assert.Equal("health-potion", payload.GetProperty("item").GetString());
+    }
+
+    [Fact]
+    public void An_enemy_units_items_show_without_use_buttons()
+    {
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Units = [projection.Units[0], projection.Units[1] with { Items = ["power-potion"] }, projection.Units[2]],
+        };
+        var cut = Render<GameTable>(parameters => parameters.Add(component => component.Projection, projection));
+        cut.Find("[data-hex='3,4']").Click();
+
+        Assert.Single(cut.FindAll("[data-testid=unit-items] [data-item=power-potion]"));
+        Assert.Empty(cut.FindAll("[data-action=useItem]"));
+    }
+
+    [Fact]
+    public void Pick_up_offers_the_potion_under_the_unit()
+    {
+        var sent = new List<GameCommandRequest>();
+        var projection = BattleFixtures.Projection();
+        projection = projection with
+        {
+            Board = projection.Board with { Hexes = [new HexProjection(1, 4, "plains", "roads", 0, false, "s1-u3") { Object = "health-potion" }, ..projection.Board.Hexes.Skip(1)] },
+            LegalActions = [..projection.LegalActions, new LegalAction("pickUpItem", "s1-u3", [])],
+        };
+        var cut = Render<GameTable>(parameters => parameters
+            .Add(component => component.Projection, projection)
+            .Add(component => component.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+        cut.Find("[data-hex='1,4']").Click();
+
+        var button = cut.Find("button[data-action=pickUpItem]");
+        Assert.Equal("Pick up Health Potion", button.TextContent.Trim());
+        button.Click();
+
+        Assert.Equal("pickUpItem", sent.Single().Kind);
+        Assert.Equal("s1-u3", JsonSerializer.SerializeToElement(sent.Single().Payload).GetProperty("unitId").GetString());
+    }
+
     private static GameProjection TeleportBoard()
     {
         var hexes = new List<HexProjection>

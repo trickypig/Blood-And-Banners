@@ -295,6 +295,9 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .die:disabled { opacity: .55; }
 .choice-waiting { border-left: .3rem solid #9cc3df; padding-left: .9rem; }
 .unit-condition { margin: .25rem 0; padding: .25rem .5rem; color: #f6d6a8; background: #3b2a1a; border-left: .2rem solid #e0a35a; font-size: .85rem; }
+.unit-items { margin: .25rem 0; padding: .25rem .5rem; color: #d6e8f6; background: #1a2b3b; border-left: .2rem solid #5a9be0; font-size: .85rem; }
+.unit-items h4 { margin: 0 0 .15rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+.unit-item { display: inline-flex; align-items: center; gap: .4rem; margin-right: .75rem; }
 .condition-marker { font-size: 13px; text-anchor: middle; dominant-baseline: central; pointer-events: none; paint-order: stroke; stroke: #181814; stroke-width: 2px; }
 .condition-stunned { fill: #fff0a8; }
 .condition-unsteady, .condition-slipping { fill: #bde9ff; }

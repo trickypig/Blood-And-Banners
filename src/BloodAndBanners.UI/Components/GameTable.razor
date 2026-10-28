@@ -377,6 +377,19 @@
                 </div>
             </section>
         }
+        else if (Projection.PendingChoice is { Kind: "itemPickup" } pickup && pickup.SeatId == Projection.Viewer.SeatId)
+        {
+            var found = MapObjectArt.Display(pickup.Item ?? string.Empty);
+            <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="pickup-title" data-testid="item-pickup">
+                <h2 id="pickup-title">@found</h2>
+                <p>@(UnitById(pickup.UnitId)?.Name ?? "Your unit") has found a @found: @ItemText.Effect(pickup.Item ?? string.Empty).</p>
+                <div class="choice-options">
+                    <button type="button" data-choice="drink" disabled="@(IsBusy || !pickup.Options.Contains("drink"))" @onclick='() => Resolve(pickup.ChoiceId, "drink")'>Drink now</button>
+                    <button type="button" data-choice="keep" disabled="@IsBusy" @onclick='() => Resolve(pickup.ChoiceId, "keep")'>Keep</button>
+                    <button type="button" data-choice="leave" disabled="@IsBusy" @onclick='() => Resolve(pickup.ChoiceId, "leave")'>Leave it</button>
+                </div>
+            </section>
+        }
         else if (Projection.PendingChoice is not null && Projection.PendingChoice.SeatId == Projection.Viewer.SeatId)
         {
             <section class="choice-prompt" role="dialog" aria-modal="false" aria-labelledby="choice-title">
@@ -453,6 +466,27 @@
                         {
                             var summary = ConditionText.Summary(condition.Name, condition.Data.PowerPenalty, condition.Data.Level);
                             <p class="unit-condition" data-condition="@condition.Name">@ConditionLabel(condition) — @(string.IsNullOrEmpty(summary) ? null : summary + ", ")@ConditionText.Expiry(condition.Expires, condition.Name)</p>
+                        }
+                        @if (selected.Items.Count > 0)
+                        {
+                            <div class="unit-items" data-testid="unit-items">
+                                <h4>Items</h4>
+                                @foreach (var kind in selected.Items)
+                                {
+                                    <span class="unit-item" data-item="@kind">
+                                        @MapObjectArt.Display(kind)
+                                        @if (Projection.Viewer.CanCommand && Projection.LegalActions.Any(action => action.Kind == "useItem" && action.UnitId == selected.UnitId && action.Item == kind))
+                                        {
+                                            <button type="button" data-action="useItem" disabled="@IsBusy" @onclick='() => Send("useItem", new { unitId = selected.UnitId, item = kind })'>Use</button>
+                                        }
+                                    </span>
+                                }
+                            </div>
+                        }
+                        @if (Projection.Viewer.CanCommand && Projection.LegalActions.Any(action => action.Kind == "pickUpItem" && action.UnitId == selected.UnitId)
+                            && Projection.Board.Hexes.FirstOrDefault(hex => HexKey(hex) == selected.Hex)?.Object is { } potion)
+                        {
+                            <button type="button" class="action-button" data-action="pickUpItem" disabled="@IsBusy" @onclick='() => Send("pickUpItem", new { unitId = selected.UnitId })'>Pick up @MapObjectArt.Display(potion)</button>
                         }
                         <AbilityList Abilities="selected.Abilities"
                                      Actions="AbilityActions(selected.UnitId)"
@@ -1296,6 +1330,7 @@
         "panPipes" => "Pan Pipes",
         "skyToss" => "Sky Toss",
         "iceCollision" => "Ice collision",
+        "itemPickup" => "Potion found",
         _ => "Moonlight Glare",
     };
 
