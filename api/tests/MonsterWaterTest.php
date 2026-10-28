@@ -268,7 +268,6 @@ function monster_water_tests(): array
         'public service persists summons marks them spent and handles command retries without duplicates' => static function (): void {
             $match = coop_service_match();
             $match['games'] = new \BloodAndBanners\Game\GameService($match['db'], null, new ScriptedRandom(), new MatchEngine(new Catalog()));
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             $placement = array_values(array_filter($started['legalActions'], static fn(array $a): bool => ($a['monster'] ?? '') === 'Kraken'));

@@ -193,7 +193,6 @@ function monster_ability_tests(): array
             $match = ['db' => $db, 'games' => $games, 'gameId' => $created['gameId'],
                 'host' => ['identity' => $host['identityId'], 'token' => $created['seatToken'], 'seat' => $created['viewer']['seatId']],
                 'hero1' => ['identity' => $guest['identityId'], 'token' => $joined['seatToken'], 'seat' => $joined['viewer']['seatId']]];
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $started = $games->startGame($match['gameId'], $host['identityId'], $created['seatToken']);
             $roster = array_column($started['setup']['roster'], null, 'name');

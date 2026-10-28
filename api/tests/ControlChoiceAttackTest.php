@@ -51,7 +51,6 @@ function control_choice_service(array $state): array
 {
     $match = coop_service_match();
     $match['games'] = new \BloodAndBanners\Game\GameService($match['db'], null, new ScriptedRandom(), new MatchEngine(new \BloodAndBanners\Rules\Vanilla\Catalog()));
-    vanilla_submit($match, 'host', 'claimVoidLord', []);
     coop_ready_all($match);
     $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
     $void = $match['host']['seat'];

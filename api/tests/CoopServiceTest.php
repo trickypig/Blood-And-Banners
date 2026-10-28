@@ -35,6 +35,10 @@ function coop_service_tests(): array
     return [
         'any member claims the void lord, roles show in the lobby and readiness resets' => static function (): void {
             $match = coop_service_match();
+            $opened = $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same('voidLord', array_column($opened['memberships'], 'role', 'seatId')[$match['host']['seat']], 'the host starts as the void lord');
+            expect_true(in_array('releaseVoidLord', array_column($opened['legalActions'], 'kind'), true), 'the host may give the role up');
+            vanilla_submit($match, 'host', 'releaseVoidLord', []);
             vanilla_submit($match, 'hero1', 'setReady', ['ready' => true]);
             expect_true(in_array('claimVoidLord', array_column($match['games']->getGame($match['gameId'], $match['host']['identity'])['legalActions'], 'kind'), true), 'the role is offered');
             $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
@@ -69,6 +73,7 @@ function coop_service_tests(): array
 
         'co-op start needs a void lord and a hero player, then opens setup' => static function (): void {
             $match = coop_service_match();
+            vanilla_submit($match, 'host', 'releaseVoidLord', []);
             coop_ready_all($match);
             expect_game_error('voidLordRequired', static fn() => $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']));
             vanilla_submit($match, 'host', 'claimVoidLord', []);
@@ -79,14 +84,12 @@ function coop_service_tests(): array
             expect_same(['pickHero', 'pickArmy', 'setCommanderName'], array_column($match['games']->getGame($match['gameId'], $match['hero1']['identity'])['legalActions'], 'kind'), 'the hero player drafts at once');
 
             $solo = coop_service_match(0);
-            vanilla_submit($solo, 'host', 'claimVoidLord', []);
             vanilla_submit($solo, 'host', 'setReady', ['ready' => true]);
             expect_game_error('playersNotReady', static fn() => $solo['games']->startGame($solo['gameId'], $solo['host']['identity'], $solo['host']['token']));
         },
 
         'a scripted co-op match runs from setup through draft to a hero victory' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             expect_same(12, $started['setup']['budget'], 'one hero player: 4 + 8');

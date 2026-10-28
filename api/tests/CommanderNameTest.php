@@ -92,7 +92,6 @@ function commander_name_tests(): array
 
         'co-op hero players can rename while the void lord sets up' => static function (): void {
             $match = coop_service_match();
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
 

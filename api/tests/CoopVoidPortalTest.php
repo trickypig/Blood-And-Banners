@@ -112,7 +112,7 @@ function coop_void_portal_tests(): array
             $match = ['db' => $db, 'games' => $games, 'gameId' => $created['gameId'],
                 'host' => ['identity' => $host['identityId'], 'token' => $created['seatToken'], 'seat' => $created['viewer']['seatId']],
                 'hero1' => ['identity' => $guest['identityId'], 'token' => $joined['seatToken'], 'seat' => $joined['viewer']['seatId']]];
-            $lord = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            $lord = $games->getGame($match['gameId'], $host['identityId']);
             $marked = array_values(array_filter($lord['board']['hexes'], static fn(array $hex): bool => $hex['voidPortal']));
             expect_same([[-4, 12, CoopMode::VOID_PORTAL_ID]], array_map(static fn(array $hex): array => [$hex['q'], $hex['r'], $hex['occupantId']], $marked), 'the void lord sees the portal on its hex');
             $hero = $games->getGame($match['gameId'], $guest['identityId']);

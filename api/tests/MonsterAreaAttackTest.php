@@ -190,7 +190,6 @@ function monster_area_attack_tests(): array
         'public frost storm selection and cooldown persist through commands retries and reconnects' => static function (): void {
             $match = coop_service_match(2);
             $match['games'] = new \BloodAndBanners\Game\GameService($match['db'], null, new ScriptedRandom(), new MatchEngine(new Catalog()));
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             $void = $match['host']['seat'];

@@ -47,7 +47,7 @@ function coop_lobby_setup_tests(): array
     return [
         'the void lord places monsters in the war room on a live budget' => static function (): void {
             $match = coop_service_match(2);
-            $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            $claimed = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             expect_same(20, $claimed['setup']['budget'], 'two hero players: 4 + 8 × 2');
             expect_same('lobby', $claimed['lifecycle'], 'the war room stays open');
             $placed = coop_lobby_place($match, 'host', 'Test Wolf');
@@ -60,7 +60,6 @@ function coop_lobby_setup_tests(): array
 
         'leaves shrink the lobby budget and joins grow it, without moving monsters' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             foreach (range(1, 3) as $ignored) {
                 coop_lobby_place($match, 'host', 'Test Wyrm');
             }
@@ -75,7 +74,6 @@ function coop_lobby_setup_tests(): array
 
         'reassigning the void lord hands over the monsters; releasing clears them' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             vanilla_submit($match, 'host', 'assignVoidLord', ['seatId' => $match['hero1']['seat']]);
             $heir = $match['games']->getGame($match['gameId'], $match['hero1']['identity']);
@@ -93,12 +91,12 @@ function coop_lobby_setup_tests(): array
             $duel = vanilla_service_match();
             expect_game_error('unsupportedCommand', static fn() => vanilla_submit($duel, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '0,0']));
             $match = coop_service_match(1);
+            vanilla_submit($match, 'host', 'releaseVoidLord', []);
             expect_game_error('unsupportedCommand', static fn() => vanilla_submit($match, 'host', 'placeMonster', ['monster' => 'Test Wolf', 'hex' => '0,0']));
         },
 
         'the lobby board is deleted with the room' => static function (): void {
             $match = coop_service_match(0);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             expect_same(1, coop_lobby_state_count($match), 'the board is stored');
             $match['games']->leaveGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
@@ -107,7 +105,7 @@ function coop_lobby_setup_tests(): array
 
         'the war room lets the void lord go over the current budget, up to a full table' => static function (): void {
             $match = coop_service_match(1);
-            $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            $claimed = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             expect_same([12, 36], [$claimed['setup']['budget'], $claimed['setup']['maxBudget']], 'one hero now, four at most: 4 + 8 × 4');
             foreach (range(1, 9) as $ignored) {
                 $placed = coop_lobby_place($match, 'host', 'Test Wyrm');
@@ -120,7 +118,7 @@ function coop_lobby_setup_tests(): array
 
         'after the start the budget is strict again' => static function (): void {
             $match = coop_service_match(1);
-            $claimed = vanilla_submit($match, 'host', 'claimVoidLord', []);
+            $claimed = $match['games']->getGame($match['gameId'], $match['host']['identity']);
             foreach (range(1, 4) as $ignored) {
                 coop_lobby_place($match, 'host', 'Test Wyrm');
             }
@@ -137,7 +135,6 @@ function coop_lobby_setup_tests(): array
 
         'start carries the lobby horde into prep and opens the draft' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
@@ -151,7 +148,6 @@ function coop_lobby_setup_tests(): array
 
         'draft first, then the confirm starts the battle' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             coop_lobby_place($match, 'host', 'Test Wolf');
@@ -166,7 +162,6 @@ function coop_lobby_setup_tests(): array
 
         'confirm first, then the draft finishes the battle start' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);

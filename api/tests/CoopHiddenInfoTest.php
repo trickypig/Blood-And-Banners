@@ -5,7 +5,6 @@ declare(strict_types=1);
 function coop_hidden_prep(): array
 {
     $match = coop_service_match(1);
-    vanilla_submit($match, 'host', 'claimVoidLord', []);
     coop_lobby_place($match, 'host', 'Test Wolf');
     coop_ready_all($match);
     $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
@@ -30,7 +29,6 @@ function coop_hidden_info_tests(): array
     return [
         'simultaneous prep orders tolerate the other side version bump' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
@@ -56,7 +54,6 @@ function coop_hidden_info_tests(): array
 
         'heroes and spectators cannot see the lobby horde' => static function (): void {
             $match = coop_service_match(1);
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_lobby_place($match, 'host', 'Test Wolf');
             $hero = $match['games']->getGame($match['gameId'], $match['hero1']['identity']);
             expect_same([[], null], [$hero['units'], $hero['setup']], 'the hero sees no monsters or budget');

@@ -174,7 +174,6 @@ function dragon_breath_tests(): array
         'public dragon breath retries and saved defense choices never duplicate or reroll the shared attack' => static function (): void {
             $match = coop_service_match();
             $match['games'] = new GameService($match['db'], null, new ScriptedRandom(), new MatchEngine(new Catalog()));
-            vanilla_submit($match, 'host', 'claimVoidLord', []);
             coop_ready_all($match);
             $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
             $void = $match['host']['seat'];

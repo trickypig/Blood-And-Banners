@@ -77,6 +77,12 @@ final class GameService
             ]);
             $this->insertMembership($gameId, $hostIdentityId, 1, true, $seatToken);
             $this->presetCommanderName($gameId, $hostIdentityId);
+            if ($mode === 'coop') {
+                // The host usually runs the Void Lord, so they start in that seat and can release it.
+                $this->connection->prepare("UPDATE game_memberships SET role = 'voidLord' WHERE game_id = :game")
+                    ->execute(['game' => $gameId]);
+                $this->syncLobbySetup($this->gameRow($gameId), 1);
+            }
             $projection = $this->projection($gameId, $hostIdentityId);
             $this->writeSnapshot($gameId, 1, $projection);
             $this->connection->commit();

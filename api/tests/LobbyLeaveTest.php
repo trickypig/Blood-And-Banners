@@ -59,7 +59,7 @@ function lobby_leave_tests(): array
 
         'leaving the void lord seat frees the role' => static function (): void {
             $match = coop_service_match(2);
-            vanilla_submit($match, 'hero1', 'claimVoidLord', []);
+            vanilla_submit($match, 'host', 'assignVoidLord', ['seatId' => $match['hero1']['seat']]);
 
             $match['games']->leaveGame($match['gameId'], $match['hero1']['identity'], $match['hero1']['token']);
 
