@@ -23,6 +23,33 @@ function potion_resolve(array $state, string $option): array
     return vanilla_command($state, 'seat-a', 'resolveChoice', ['choiceId' => $state['pending']['choice']['choiceId'], 'option' => $option]);
 }
 
+/** a1 (0,0), a2 (0,1) and b1 (5,0) by default; $units overrides fields per unit id, $objects sets board objects. */
+function item_battle(array $units = [], array $objects = []): array
+{
+    $defaults = ['a1' => ['seat-a', '0,0'], 'a2' => ['seat-a', '0,1'], 'b1' => ['seat-b', '5,0']];
+    $list = [];
+    foreach ($defaults as $id => [$seat, $hex]) {
+        $over = $units[$id] ?? [];
+        $list[] = vanilla_unit($id, $seat, $over['hex'] ?? $hex, array_diff_key($over, ['hex' => 1]));
+    }
+    $state = vanilla_battle(vanilla_board(vanilla_line(6)), $list);
+    $state['board']['0,1'] = $state['board']['0,0'];
+    foreach ($objects as $hex => $kind) {
+        $state['board'][$hex]['object'] = $kind;
+    }
+    return $state;
+}
+
+function item_has(array $state, string $kind, string $unitId, ?string $item = null): bool
+{
+    foreach ((new \BloodAndBanners\Rules\Vanilla\MatchEngine(test_catalog()))->legalActions($state, 'seat-a') as $action) {
+        if ($action['kind'] === $kind && $action['unitId'] === $unitId && ($item === null || ($action['item'] ?? null) === $item)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function potion_tests(): array
 {
     return [
@@ -198,6 +225,104 @@ function potion_tests(): array
             $wasted = vanilla_command($s, 'seat-a', 'moveUnit', ['unitId' => 'a2', 'to' => '0,2']);
             $wasted = potion_resolve($wasted['state'], 'drink');
             expect_same(null, $wasted['state']['board']['0,2']['object'], 'an unhurt unit still drinks it');
+        },
+
+        'a unit standing on a potion may pick it up instead of moving' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0'], 'b1' => ['hex' => '1,0']], ['0,0' => 'speed-potion']);
+            expect_true(item_has($state, 'pickUpItem', 'a1'), 'offered to the unactivated unit');
+            $s = vanilla_command($state, 'seat-a', 'pickUpItem', ['unitId' => 'a1'])['state'];
+            expect_same(['speed-potion'], $s['units']['a1']['items'], 'carried');
+            expect_same(null, $s['board']['0,0']['object'], 'off the map');
+            expect_same('a1', $s['turn']['activeUnitId'], 'the pickup starts the activation');
+            expect_true($s['turn']['moved'], 'counts as the move');
+            expect_true(!item_has($s, 'moveUnit', 'a1'), 'no move afterwards');
+            expect_true(item_has($s, 'attackUnit', 'a1'), 'attack still open');
+            expect_true(item_has($s, 'useItem', 'a1', 'speed-potion'), 'and it may use what it holds');
+        },
+
+        'a unit that has moved cannot pick up what it stands on' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0']]);
+            $s = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0'])['state'];
+            $s['board']['1,0']['object'] = 'power-potion';
+            expect_true(!item_has($s, 'pickUpItem', 'a1'), 'not offered');
+            expect_game_error('alreadyMoved', static fn() => vanilla_command($s, 'seat-a', 'pickUpItem', ['unitId' => 'a1']));
+        },
+
+        'a full inventory blocks picking up' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['speed-potion', 'health-potion']]], ['0,0' => 'power-potion']);
+            expect_true(!item_has($state, 'pickUpItem', 'a1'), 'not offered');
+            expect_game_error('inventoryFull', static fn() => vanilla_command($state, 'seat-a', 'pickUpItem', ['unitId' => 'a1']));
+            expect_game_error('nothingToPickUp', static fn() => vanilla_command(item_battle(['a2' => []]), 'seat-a', 'pickUpItem', ['unitId' => 'a2']));
+        },
+
+        'using an item applies its effect, starts the activation and spends nothing else' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion']]]);
+            $s = vanilla_command($state, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion'])['state'];
+            expect_same(4, Stats::effective($s, 'a1', 'power'), '+2 power');
+            expect_same([], $s['units']['a1']['items'], 'used up');
+            expect_same(['a1'], $s['turn']['itemsUsed'], 'item used this turn');
+            expect_same('a1', $s['turn']['activeUnitId'], 'active');
+            expect_same(['a1'], $s['turn']['activated'], 'activated');
+            expect_true(item_has($s, 'moveUnit', 'a1'), 'may still move');
+        },
+
+        'only one item per unit per turn' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion', 'speed-potion']]]);
+            $s = vanilla_command($state, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion'])['state'];
+            expect_same(['speed-potion'], $s['units']['a1']['items'], 'the other is kept');
+            expect_true(!item_has($s, 'useItem', 'a1'), 'not offered again');
+            expect_game_error('itemUnavailable', static fn() => vanilla_command($s, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'speed-potion']));
+        },
+
+        'item use resets on the next turn' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion', 'speed-potion']]]);
+            $s = vanilla_command($state, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion'])['state'];
+            $s = vanilla_command($s, 'seat-a', 'endTurn')['state'];
+            $s = vanilla_command($s, 'seat-b', 'endTurn')['state'];
+            expect_true(item_has($s, 'useItem', 'a1', 'speed-potion'), 'available again');
+        },
+
+        'a normal unit cannot use an item after attacking' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion'], 'hex' => '0,0'], 'b1' => ['hex' => '1,0']]);
+            $s = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1, 1, 1, 1, 1])['state'];
+            expect_true(!item_has($s, 'useItem', 'a1'), 'not offered');
+            expect_game_error('unitAlreadyActivated', static fn() => vanilla_command($s, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion']));
+        },
+
+        'a stinging unit can use an item after attacking while it may still move' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                ability_unit('a1', 'seat-a', '0,0', ['Silent Sting'], ['move' => 3, 'range' => 4, 'power' => 1, 'items' => ['power-potion']]),
+                vanilla_unit('b1', 'seat-b', '3,0', ['defense' => 0, 'hp' => 5]),
+            ]);
+            $s = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1])['state'];
+            expect_true(item_has($s, 'useItem', 'a1', 'power-potion'), 'offered');
+        },
+
+        'stunned, petrified, entrapped and charmed units cannot pick up or use items' => static function (): void {
+            foreach (['Stunned', 'Petrified', 'Entrapped', 'Charmed'] as $name) {
+                $state = item_battle(['a1' => ['items' => ['power-potion'], 'hex' => '0,0']], ['0,0' => 'speed-potion']);
+                $events = [];
+                $state = \BloodAndBanners\Rules\Vanilla\UnitConditions::apply($state, $name, 'a1', 'b1', ['kind' => 'untilCleared'], $events);
+                expect_true(!item_has($state, 'pickUpItem', 'a1') && !item_has($state, 'useItem', 'a1'), "{$name}: nothing offered");
+                expect_game_error('unitCannotUseItems', static fn() => vanilla_command($state, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion']));
+                expect_game_error('unitCannotUseItems', static fn() => vanilla_command($state, 'seat-a', 'pickUpItem', ['unitId' => 'a1']));
+            }
+        },
+
+        'slowed or unsteady units still use items' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion']]]);
+            $events = [];
+            $state = \BloodAndBanners\Rules\Vanilla\UnitConditions::apply($state, 'Slowed', 'a1', 'b1', ['kind' => 'untilCleared'], $events);
+            expect_true(item_has($state, 'useItem', 'a1', 'power-potion'), 'offered');
+        },
+
+        'an old saved turn without itemsUsed still allows an item' => static function (): void {
+            $state = item_battle(['a1' => ['items' => ['power-potion']]]);
+            unset($state['turn']['itemsUsed']);
+            expect_true(item_has($state, 'useItem', 'a1', 'power-potion'), 'offered');
+            expect_true(!item_has($state, 'useItem', 'a2'), 'a unit with no items has none to use');
+            $s = vanilla_command($state, 'seat-a', 'useItem', ['unitId' => 'a1', 'item' => 'power-potion'])['state'];
+            expect_same(['a1'], $s['turn']['itemsUsed'], 'recorded');
         },
 
         'the projected board shows the live object, so a drunk potion disappears' => static function (): void {

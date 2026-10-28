@@ -40,6 +40,47 @@ final class Items
         return in_array($unitId, $state['turn']['itemsUsed'] ?? [], true);
     }
 
+    /** A unit may pick up the potion it stands on instead of moving, but not after it has moved or attacked. */
+    public static function canPickUp(array $state, string $unitId, bool $active): bool
+    {
+        if (self::blocked($state, $unitId) || self::potionUnder($state, $unitId) === null || count(self::carried($state, $unitId)) >= self::MAX) {
+            return false;
+        }
+        $turn = $state['turn'];
+        return !$active || (!$turn['moved'] && $turn['attacks'] === 0 && $turn['moveSpent'] === 0);
+    }
+
+    /** One item per unit per turn; after attacking only a unit that may still move (a stinger) can use one. */
+    public static function canUse(array $state, string $unitId, bool $active, bool $canMove): bool
+    {
+        if (self::blocked($state, $unitId) || self::carried($state, $unitId) === [] || self::usedThisTurn($state, $unitId)) {
+            return false;
+        }
+        return !$active || $state['turn']['attacks'] === 0 || $canMove;
+    }
+
+    public static function pickUp(array $state, string $unitId, array &$events): array
+    {
+        $hex = $state['units'][$unitId]['hex'];
+        $kind = (string)self::potionUnder($state, $unitId);
+        $state['board'][$hex]['object'] = null;
+        $state['units'][$unitId]['items'][] = $kind;
+        $state['turn']['moved'] = true;
+        $events[] = MatchEngine::event('itemPickedUp', [$hex], [
+            'unitId' => $unitId, 'seatId' => $state['units'][$unitId]['seatId'], 'hex' => $hex, 'kind' => $kind,
+        ]);
+        return $state;
+    }
+
+    public static function use(array $state, string $unitId, string $kind, array &$events): array
+    {
+        $items = $state['units'][$unitId]['items'];
+        unset($items[array_search($kind, $items, true)]);
+        $state['units'][$unitId]['items'] = array_values($items);
+        $state['turn']['itemsUsed'][] = $unitId;
+        return Potions::applyEffect($state, $unitId, $state['units'][$unitId]['hex'], $kind, $events);
+    }
+
     /** Call once the unit's own move has ended and nothing is pending. Opens the pickup choice if one applies. */
     public static function offerPickup(array $state, string $unitId, array &$events): array
     {

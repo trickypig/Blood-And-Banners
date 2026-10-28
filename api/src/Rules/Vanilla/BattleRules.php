@@ -17,7 +17,7 @@ final class BattleRules
 {
     public const CHOICE_TIMEOUT_SECONDS = 45;
 
-    private const KINDS = ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility', 'resolveChoice', 'endActivation', 'endTurn'];
+    private const KINDS = ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility', 'pickUpItem', 'useItem', 'resolveChoice', 'endActivation', 'endTurn'];
     private const MESSAGES = [
         'heroesActivationRequired' => 'While your heroes live, your other units are limited this turn; activate a hero.',
         'unitCannotAttack' => 'That unit cannot attack while petrified or entrapped.',
@@ -62,6 +62,11 @@ final class BattleRules
         'unknownChoice' => 'That decision is no longer open.',
         'choiceNotExpired' => 'Your opponent still has time to decide.',
         'noAttacksLeft' => 'That unit has already made all of its attacks this activation.',
+        'nothingToPickUp' => 'There is no potion here to pick up.',
+        'inventoryFull' => 'That unit already carries two items.',
+        'itemUnavailable' => 'That unit cannot use that item now.',
+        'unitCannotUseItems' => 'A stunned, petrified, entrapped or charmed unit cannot pick up or use items.',
+        'slideFirst' => 'That unit must slide on the ice before doing anything else.',
     ];
 
     public function __construct(private readonly int $now)
@@ -100,6 +105,8 @@ final class BattleRules
             $state = $this->specialAttack($state, $seatId, $payload, $random, $events);
         } elseif ($kind === 'useAbility') {
             $state = $this->useAbility($state, $seatId, $payload, $random, $events);
+        } elseif ($kind === 'pickUpItem' || $kind === 'useItem') {
+            $state = $this->handleItem($state, $seatId, $kind, $payload, $random, $events);
         } else {
             $unitId = self::text($payload, 'unitId');
             if ($state['turn']['activeUnitId'] === null || $state['turn']['activeUnitId'] !== $unitId) {
@@ -197,6 +204,14 @@ final class BattleRules
                         'targetHexes' => array_column($options, 'destination'),
                         'movementOptions' => $options,
                     ];
+                }
+            }
+            if (Items::canPickUp($state, $unitId, $active)) {
+                $actions[] = ['kind' => 'pickUpItem', 'unitId' => $unitId, 'targetHexes' => [$unit['hex']]];
+            }
+            if (Items::canUse($state, $unitId, $active, self::canMove($state, $unitId))) {
+                foreach (array_values(array_unique(Items::carried($state, $unitId))) as $item) {
+                    $actions[] = ['kind' => 'useItem', 'unitId' => $unitId, 'item' => $item, 'targetHexes' => [$unit['hex']]];
                 }
             }
             $targets = self::attacksLeft($state, $unitId) ? Combat::targets($state, $unitId) : [];
@@ -594,6 +609,46 @@ final class BattleRules
             'unitId' => $unitId, 'ability' => $name, 'targetUnitId' => $targetId,
         ]);
         return $ability->apply($state, $unitId, $targetId, $random, $events);
+    }
+
+    /** pickUpItem and useItem: both start the unit's activation if it has none, then re-check the rule. */
+    private function handleItem(array $state, string $seatId, string $kind, array $payload, RandomSource $random, array &$events): array
+    {
+        $unitId = self::text($payload, 'unitId');
+        $unit = $state['units'][$unitId] ?? null;
+        if ($unit === null || $unit['hex'] === null) {
+            self::fail('unknownUnit');
+        }
+        if ($unit['seatId'] !== $seatId) {
+            self::fail('notYourUnit');
+        }
+        if (Items::blocked($state, $unitId)) {
+            self::fail('unitCannotUseItems');
+        }
+        if ($state['turn']['activeUnitId'] !== $unitId && UnitConditions::has($state, $unitId, 'Slipping')) {
+            self::fail('slideFirst');
+        }
+        $state = $this->activate($state, $seatId, $unitId, $random, $events);
+        if ($state['phase'] !== 'active' || $state['pending'] !== null || $state['units'][$unitId]['hex'] === null) {
+            return $state;
+        }
+        if ($kind === 'pickUpItem') {
+            if (Items::potionUnder($state, $unitId) === null) {
+                self::fail('nothingToPickUp');
+            }
+            if (count(Items::carried($state, $unitId)) >= Items::MAX) {
+                self::fail('inventoryFull');
+            }
+            if (!Items::canPickUp($state, $unitId, true)) {
+                self::fail('alreadyMoved');
+            }
+            return Items::pickUp($state, $unitId, $events);
+        }
+        $item = self::text($payload, 'item');
+        if (!in_array($item, Items::carried($state, $unitId), true) || !Items::canUse($state, $unitId, true, self::canMove($state, $unitId))) {
+            self::fail('itemUnavailable');
+        }
+        return Items::use($state, $unitId, $item, $events);
     }
 
     private function resolveChoice(array $state, string $seatId, string $kind, array $payload, RandomSource $random): array
