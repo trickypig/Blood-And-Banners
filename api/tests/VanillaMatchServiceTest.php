@@ -147,7 +147,7 @@ function vanilla_match_service_tests(): array
             expect_same('s2-hero', $projection['units'][7]['unitId'], 'the second seat hero starts the second army');
             expect_same(
                 ['unitId', 'seatId', 'isHero', 'name', 'image', 'avatarImage', 'move', 'range', 'power', 'defense', 'hp', 'wounds', 'hex', 'activatedThisTurn',
-                    'abilities', 'side', 'tier', 'inactiveAbilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
+                    'abilities', 'side', 'tier', 'items', 'inactiveAbilities', 'effects', 'conditions', 'effectiveMove', 'effectiveRange', 'effectivePower', 'effectiveDefense'],
                 array_keys($projection['units'][0]),
                 'unit projections match the shared contract'
             );

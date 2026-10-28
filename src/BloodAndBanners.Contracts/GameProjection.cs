@@ -70,6 +70,7 @@ public sealed record PendingChoiceProjection(
     public string? Side { get; init; }
     public IReadOnlyList<string> Faces { get; init; } = [];
     public IReadOnlyList<string> TargetHexes { get; init; } = [];
+    public string? Item { get; init; }
     public DateTimeOffset? ExpiresAt { get; init; }
 }
 
@@ -99,6 +100,7 @@ public sealed record LegalAction(
 {
     public string? Ability { get; init; }
     public string? Monster { get; init; }
+    public string? Item { get; init; }
     public TargetSelectionProjection? TargetSelection { get; init; }
     public IReadOnlyList<MovementOptionProjection> MovementOptions { get; init; } = [];
 }

@@ -373,5 +373,39 @@ function potion_tests(): array
             expect_same('speed-potion', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['elevation' => 0]]), 'no object key: the map');
             expect_same('rune-of-focus', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, ['2,0' => ['object' => 'rune-of-magic']]), 'stored old name');
         },
+
+        'the projection shows carried items and the potion on offer' => static function (): void {
+            $match = vanilla_service_match();
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            foreach (vanilla_draft_picks($match) as [$by, $kind, $payload]) {
+                vanilla_submit($match, $by, $kind, $payload);
+            }
+            $load = static function () use ($match): array {
+                $statement = $match['db']->prepare('SELECT state_json FROM game_states WHERE game_id = :game');
+                $statement->execute(['game' => $match['gameId']]);
+                return json_decode((string)$statement->fetchColumn(), true, flags: JSON_THROW_ON_ERROR);
+            };
+            $save = static fn(array $state) => $match['db']->prepare('UPDATE game_states SET state_json = :state WHERE game_id = :game')
+                ->execute(['state' => json_encode($state, JSON_THROW_ON_ERROR), 'game' => $match['gameId']]);
+            $state = $load();
+            $who = $state['turn']['activeSeatId'] === $match['host']['seat'] ? 'host' : 'rival';
+            $mine = array_values(array_filter($state['units'], static fn(array $unit): bool => $unit['seatId'] === $match[$who]['seat']))[0]['unitId'];
+
+            $state['units'][$mine]['items'] = ['power-potion'];
+            $save($state);
+            $view = $match['games']->getGame($match['gameId'], $match[$who]['identity']);
+            $units = array_column($view['units'], null, 'unitId');
+            expect_same(['power-potion'], $units[$mine]['items'], 'the carried potion is projected');
+            $use = array_values(array_filter($view['legalActions'], static fn(array $a): bool => $a['kind'] === 'useItem' && $a['unitId'] === $mine));
+            expect_same('power-potion', $use[0]['item'] ?? null, 'the use action names the potion');
+
+            $state['pending'] = ['choice' => [
+                'choiceId' => 'choice-1', 'seatId' => $match[$who]['seat'], 'kind' => 'itemPickup', 'unitId' => $mine,
+                'options' => ['drink', 'keep', 'leave'], 'item' => 'speed-potion',
+            ], 'steps' => []];
+            $save($state);
+            $view = $match['games']->getGame($match['gameId'], $match[$who]['identity']);
+            expect_same('speed-potion', $view['pendingChoice']['item'], 'the owner sees which potion is on offer');
+        },
     ];
 }

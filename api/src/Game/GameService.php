@@ -1015,6 +1015,7 @@ final class GameService
             'abilities' => $abilities,
             'side' => $unit['side'] ?? $unit['seatId'],
             'tier' => $unit['tier'] ?? null,
+            'items' => array_values($unit['items'] ?? []),
             'inactiveAbilities' => array_map(
                 static fn(array $card): array => array_merge($card, ['playable' => false]),
                 self::abilityCards($unit['inactiveAbilities'] ?? [])
@@ -1078,6 +1079,7 @@ final class GameService
             'side' => $choice['side'] ?? null,
             'faces' => $choice['faces'] ?? [],
             'targetHexes' => $choice['targetHexes'] ?? [],
+            'item' => $choice['item'] ?? null,
             'expiresAt' => $choice['kind'] === 'moonlightGlare' && isset($choice['openedAt'])
                 ? gmdate('Y-m-d\TH:i:s\Z', $choice['openedAt'] + BattleRules::CHOICE_TIMEOUT_SECONDS)
                 : null,

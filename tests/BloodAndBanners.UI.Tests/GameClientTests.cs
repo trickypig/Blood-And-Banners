@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using BloodAndBanners.Contracts;
 using BloodAndBanners.UI.Services;
 
@@ -110,6 +111,29 @@ public sealed class GameClientTests
         Assert.False(PollingCadence.IsViewersMoment(viewer, activeSeatId: "seat-red", pickingSeatId: null));
         Assert.True(PollingCadence.IsViewersMoment(new ViewerPermissions("player", "seat-red", true, false), "seat-red", null));
         Assert.True(PollingCadence.IsViewersMoment(new ViewerPermissions("player", "seat-red", true, false), null, "seat-red"));
+    }
+
+    [Fact]
+    public void Projection_reads_items_and_item_choice()
+    {
+        const string json = """
+            {
+              "gameId":"game-1","version":3,"lifecycle":"active","mode":"vanillaPvp",
+              "viewer":{"role":"player","seatId":"seat-1","canCommand":true,"isHost":true},
+              "board":{"columns":0,"rows":0,"hexes":[]},
+              "turn":{"round":1,"activeSeatId":"seat-1","activationsRemaining":2},
+              "units":[{"unitId":"u1","seatId":"seat-1","isHero":false,"name":"Spearman","image":"x.png","move":3,"range":1,"power":2,"defense":1,"hp":3,"wounds":0,"hex":"0,0","activatedThisTurn":false,"items":["health-potion"]}],
+              "pendingChoice":{"choiceId":"c1","seatId":"seat-1","kind":"itemPickup","options":["drink","keep","leave"],"unitId":"u1","item":"health-potion"},
+              "legalActions":[{"kind":"useItem","unitId":"u1","targetHexes":[],"item":"health-potion"}],
+              "scores":{},"result":null
+            }
+            """;
+
+        var game = JsonSerializer.Deserialize<GameProjection>(json, ContractJson.Options)!;
+
+        Assert.Equal("health-potion", game.Units[0].Items[0]);
+        Assert.Equal("health-potion", game.PendingChoice!.Item);
+        Assert.Equal("health-potion", game.LegalActions[0].Item);
     }
 
     [Fact]
