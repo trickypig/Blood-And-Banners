@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Rules\Vanilla;
 
+use BloodAndBanners\Rules\RandomSource;
+
 /**
  * Carried items. A player unit that ends its own move on a potion is offered a choice: drink it now, keep it in
  * its inventory (up to MAX), or leave it where it lies. Pushes and teleports never offer it.
@@ -79,6 +81,26 @@ final class Items
         $state['units'][$unitId]['items'] = array_values($items);
         $state['turn']['itemsUsed'][] = $unitId;
         return Potions::applyEffect($state, $unitId, $state['units'][$unitId]['hex'], $kind, $events);
+    }
+
+    /** A defeated carrier drops one random item on its hex if that hex holds no map object; the rest are lost. */
+    public static function dropOnDefeat(array $state, string $unitId, string $hex, ?RandomSource $random, array &$events): array
+    {
+        $items = self::carried($state, $unitId);
+        if ($items === []) {
+            return $state;
+        }
+        $chosen = count($items) > 1 && $random !== null ? $random->roll(count($items)) - 1 : 0;
+        if (($state['board'][$hex]['object'] ?? null) === null) {
+            $state['board'][$hex]['object'] = $items[$chosen];
+            $events[] = MatchEngine::event('itemDropped', [$hex], ['unitId' => $unitId, 'hex' => $hex, 'kind' => $items[$chosen]]);
+            unset($items[$chosen]);
+        }
+        foreach ($items as $kind) {
+            $events[] = MatchEngine::event('itemLost', [$hex], ['unitId' => $unitId, 'kind' => $kind]);
+        }
+        $state['units'][$unitId]['items'] = [];
+        return $state;
     }
 
     /** Call once the unit's own move has ended and nothing is pending. Opens the pickup choice if one applies. */

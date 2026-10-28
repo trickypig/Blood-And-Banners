@@ -325,6 +325,42 @@ function potion_tests(): array
             expect_same(['a1'], $s['turn']['itemsUsed'], 'recorded');
         },
 
+        'a slain carrier drops one random item on its hex and loses the rest' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0'], 'b1' => ['hex' => '1,0', 'hp' => 1, 'defense' => 0, 'items' => ['power-potion', 'health-potion']]]);
+            $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1, 2]);
+            $s = $result['state'];
+            expect_same(null, $s['units']['b1']['hex'], 'defeated');
+            expect_same('health-potion', $s['board']['1,0']['object'], 'the second item, by the roll');
+            expect_same([], $s['units']['b1']['items'], 'inventory emptied');
+            $kinds = array_values(array_filter(array_column($result['events'], 'kind'), static fn(string $k): bool => str_starts_with($k, 'item')));
+            expect_same(['itemDropped', 'itemLost'], $kinds, 'one dropped, one lost');
+            $dropped = array_values(array_filter($result['events'], static fn(array $e): bool => $e['kind'] === 'itemDropped'));
+            expect_same(['unitId' => 'b1', 'hex' => '1,0', 'kind' => 'health-potion'], $dropped[0]['payload'], 'drop reported');
+        },
+
+        'a single carried item is dropped without a roll' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0'], 'b1' => ['hex' => '1,0', 'hp' => 1, 'defense' => 0, 'items' => ['speed-potion']]]);
+            $s = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1])['state'];
+            expect_same('speed-potion', $s['board']['1,0']['object'], 'dropped');
+            expect_same([], $s['units']['b1']['items'], 'emptied');
+        },
+
+        'nothing drops onto a hex that already holds a map object' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0'], 'b1' => ['hex' => '1,0', 'hp' => 1, 'defense' => 0, 'items' => ['power-potion', 'health-potion']]], ['1,0' => 'rune-of-strength']);
+            $result = vanilla_command($state, 'seat-a', 'attackUnit', ['unitId' => 'a1', 'targetUnitId' => 'b1'], [1, 1, 1]);
+            expect_same('rune-of-strength', $result['state']['board']['1,0']['object'], 'the rune stays');
+            $kinds = array_values(array_filter(array_column($result['events'], 'kind'), static fn(string $k): bool => str_starts_with($k, 'item')));
+            expect_same(['itemLost', 'itemLost'], $kinds, 'both lost');
+        },
+
+        'a carrier killed by a parting strike mid-move still drops' => static function (): void {
+            $state = item_battle(['a1' => ['hex' => '0,0'], 'b1' => ['hex' => '1,0', 'hp' => 1, 'defense' => 0, 'items' => ['speed-potion']]]);
+            $state['turn'] = \BloodAndBanners\Rules\Vanilla\Turn::fresh($state, 'seat-b', 1);
+            $s = vanilla_command($state, 'seat-b', 'moveUnit', ['unitId' => 'b1', 'to' => '2,0'], [1, 1])['state'];
+            expect_same(null, $s['units']['b1']['hex'], 'struck down');
+            expect_same('speed-potion', $s['board']['1,0']['object'], 'dropped on its start hex');
+        },
+
         'the projected board shows the live object, so a drunk potion disappears' => static function (): void {
             $hex = ['q' => 2, 'r' => 0, 'object' => 'speed-potion'];
             expect_same('speed-potion', \BloodAndBanners\Rules\Vanilla\Board::projectedObject($hex, null), 'no game yet: the map\'s object');

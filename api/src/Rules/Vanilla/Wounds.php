@@ -41,6 +41,7 @@ final class Wounds
         }
         $events[] = MatchEngine::event('unitDefeated', [$unit['hex']], ['unitId' => $unitId]);
         $state['units'][$unitId]['hex'] = null;
+        $state = Items::dropOnDefeat($state, $unitId, $unit['hex'], $random, $events);
         $state = UnitConditions::clearUnit($state, $unitId);
         if ($state['turn']['activeUnitId'] === $unitId) {
             $state['turn']['activeUnitId'] = null;
