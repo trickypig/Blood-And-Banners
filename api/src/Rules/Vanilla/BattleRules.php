@@ -704,7 +704,7 @@ final class BattleRules
                 $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
                 $state['turn']['movedAfterAttack'] = false;
             }
-                $active = $state['turn']['activeSeatId'];
+            $active = $state['turn']['activeSeatId'];
             if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
                 [$state, $passed] = self::passTurn($state, $random);
                 $events = array_merge($events, $passed);
@@ -809,6 +809,10 @@ final class BattleRules
     {
         foreach ($this->legalActions($state, $seatId) as $action) {
             if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
+                return true;
+            }
+            // Item actions only keep the turn open for the unit mid-activation; an idle carrier must not stall it.
+            if (in_array($action['kind'], ['pickUpItem', 'useItem'], true) && $action['unitId'] === $state['turn']['activeUnitId']) {
                 return true;
             }
         }

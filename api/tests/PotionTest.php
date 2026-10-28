@@ -191,11 +191,47 @@ function potion_tests(): array
             expect_same('seat-b', $left['state']['turn']['activeSeatId'], 'passes once decided');
         },
 
+        'a lone unit that picks up a potion keeps the turn so it can use it' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '5,0')]);
+            $state['board']['0,0']['object'] = 'power-potion';
+            $picked = vanilla_command($state, 'seat-a', 'pickUpItem', ['unitId' => 'a1'])['state'];
+            expect_same('seat-a', $picked['turn']['activeSeatId'], 'turn held open');
+            expect_true(item_has($picked, 'useItem', 'a1', 'power-potion'), 'use is still legal');
+        },
+
+        'a lone carrier that moves with no enemy in reach keeps the turn so it can use its item' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [vanilla_unit('a1', 'seat-a', '0,0', ['items' => ['power-potion']]), vanilla_unit('b1', 'seat-b', '5,0')]);
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0'])['state'];
+            expect_same('seat-a', $moved['turn']['activeSeatId'], 'turn held open');
+            expect_true(item_has($moved, 'useItem', 'a1', 'power-potion'), 'use is still legal');
+        },
+
+        'a lone unit that keeps the potion it moved onto holds the turn so it can use it' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [vanilla_unit('a1', 'seat-a', '0,0'), vanilla_unit('b1', 'seat-b', '5,0')]);
+            $state['board']['2,0']['object'] = 'power-potion';
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '2,0']);
+            $kept = potion_resolve($moved['state'], 'keep')['state'];
+            expect_same('seat-a', $kept['turn']['activeSeatId'], 'turn held open');
+            expect_true(item_has($kept, 'useItem', 'a1', 'power-potion'), 'use is still legal');
+        },
+
+        'an unactivated carrier does not hold the turn open once the activation is spent' => static function (): void {
+            $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
+                vanilla_unit('a1', 'seat-a', '0,0', ['move' => 1]), vanilla_unit('a2', 'seat-a', '0,1', ['items' => ['power-potion']]), vanilla_unit('b1', 'seat-b', '5,0'),
+            ]);
+            $state['board']['0,1'] = $state['board']['0,0'];
+            $state['turn']['allowance'] = 1;
+            $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '1,0'])['state'];
+            expect_same('seat-b', $moved['turn']['activeSeatId'], 'a2 has not activated, so it cannot keep the turn open');
+        },
+
         'a full-inventory unit ending its move with nothing left still passes the turn' => static function (): void {
             $state = vanilla_battle(vanilla_board(vanilla_line(6)), [
                 vanilla_unit('a1', 'seat-a', '0,0', ['items' => ['speed-potion', 'health-potion']]), vanilla_unit('b1', 'seat-b', '5,0'),
             ]);
             $state['board']['2,0']['object'] = 'power-potion';
+            // Its carried items are spent for the turn, so nothing is left to do after the move.
+            $state['turn']['itemsUsed'] = ['a1'];
             $moved = vanilla_command($state, 'seat-a', 'moveUnit', ['unitId' => 'a1', 'to' => '2,0']);
             expect_same('seat-b', $moved['state']['turn']['activeSeatId'], 'nothing to decide, so the turn passed');
         },
