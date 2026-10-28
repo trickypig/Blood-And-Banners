@@ -111,8 +111,6 @@ final class BattleRules
             $state['turn']['activeUnitId'] = null;
         }
 
-        // Units come to rest only once the command has resolved, so a potion passed over mid-move stays put.
-        $state = Potions::drinkAll($state, $events);
         if ($state['phase'] === 'active') {
             $state = Charm::cleanup($state, $events);
         }
@@ -346,6 +344,7 @@ final class BattleRules
         ]);
         if ($state['pending'] === null) {
             $state = Crystals::claim($state, $unitId, $events);
+            $state = Items::offerPickup($state, $unitId, $events);
         }
         return self::closeIfSpent($state, $unitId);
     }
@@ -607,6 +606,18 @@ final class BattleRules
         if (self::text($payload, 'choiceId') !== $choice['choiceId'] || !in_array($option, $choice['options'], true)) {
             self::fail('unknownChoice');
         }
+        if (($choice['kind'] ?? null) === 'itemPickup') {
+            if ($seatId !== $choice['seatId']) {
+                self::fail('notYourChoice');
+            }
+            $events = [];
+            $state = Items::resolvePickup($state, $option, $events);
+            if ($state['phase'] === 'active' && !$this->canAct($state, $seatId)) {
+                [$state, $passed] = self::passTurn($state, $random);
+                $events = array_merge($events, $passed);
+            }
+            return ['state' => $state, 'events' => $events];
+        }
         if (($choice['kind'] ?? null) === 'iceCollision') {
             if ($seatId !== $choice['seatId']) {
                 self::fail('notYourChoice');
@@ -619,6 +630,7 @@ final class BattleRules
             // The slide that paused was the unit's own move; now that it has ended, it may claim crystals.
             if (!$activateAfter && $state['pending'] === null && $state['phase'] === 'active' && $state['units'][$choice['unitId']]['hex'] !== null) {
                 $state = Crystals::claim($state, $choice['unitId'], $events);
+                $state = Items::offerPickup($state, $choice['unitId'], $events);
             }
             if (!$activateAfter && ($state['turn']['activeUnitId'] ?? null) === $choice['unitId']) {
                 $state['turn']['moveSpent'] += max(0, $remainingBeforeChoice - $resolved['remainingMove']);
@@ -637,8 +649,7 @@ final class BattleRules
                 $state['turn']['moveSpent'] = $move - $resolved['remainingMove'];
                 $state['turn']['movedAfterAttack'] = false;
             }
-            $state = Potions::drinkAll($state, $events);
-            $active = $state['turn']['activeSeatId'];
+                $active = $state['turn']['activeSeatId'];
             if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
                 [$state, $passed] = self::passTurn($state, $random);
                 $events = array_merge($events, $passed);
@@ -655,7 +666,6 @@ final class BattleRules
         }
         $events = [];
         $state = (new StepRunner($random, $this->now))->resolve($state, $option, $events);
-        $state = Potions::drinkAll($state, $events);
         $active = $state['turn']['activeSeatId'];
         if ($state['phase'] === 'active' && $state['pending'] === null && !$this->canAct($state, $active)) {
             [$state, $passed] = self::passTurn($state, $random);
@@ -779,7 +789,6 @@ final class BattleRules
         $events[] = MatchEngine::event('turnEnded', [], ['seatId' => $current, 'nextSeatId' => $next, 'round' => $round]);
         $state = Effects::expire($state, $next, Effects::UNTIL_NEXT_TURN, $events);
         $state = UnitConditions::atTurnStart($state, $events);
-        $state = Potions::drinkAll($state, $events);
         return [$state, $events];
     }
 
