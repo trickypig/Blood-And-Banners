@@ -62,6 +62,7 @@
 .board-interaction-surface { touch-action: none; user-select: none; }
 .hex { cursor: pointer; outline: none; }
 .hex-outline { fill: transparent; stroke: #d4af37; stroke-width: 1; }
+.hex.spawn-zone .hex-outline { fill: #b780ed55; stroke: #ebc5ff; stroke-width: 3.5; stroke-dasharray: 6 3; filter: drop-shadow(0 0 2px #240b36); }
 .hex-elevation { font: 700 12px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 
 .hex.reachable .hex-outline { fill: rgba(240, 207, 122, .22); stroke: #f0cf7a; stroke-width: 3; }
@@ -306,7 +307,6 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
 .hex.push-path .hex-outline { fill: rgba(156, 195, 223, .25); stroke: #9cc3df; stroke-dasharray: 4 3; stroke-width: 2.5; }
 .push-mark { fill: #e8f2fa; font: 700 20px Georgia, serif; text-anchor: middle; dominant-baseline: central; paint-order: stroke; stroke: #1f201d; stroke-width: 3; pointer-events: none; }
 
-.hex.spawn-zone .hex-outline { stroke: #b48cff; stroke-width: 2; stroke-dasharray: 4 3; }
 .hex.placeable .hex-outline { stroke: #e0c8ff; stroke-width: 3; stroke-dasharray: none; }
 
 .unit-token.seat-3 .token-plate { fill: #2f5b2a; stroke: #a8d79b; }
