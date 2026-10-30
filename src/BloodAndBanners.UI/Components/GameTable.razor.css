@@ -62,7 +62,7 @@
 .board-interaction-surface { touch-action: none; user-select: none; }
 .hex { cursor: pointer; outline: none; }
 .hex-outline { fill: transparent; stroke: #d4af37; stroke-width: 1; }
-.hex.spawn-zone .hex-outline { fill: #b780ed55; stroke: #ebc5ff; stroke-width: 3.5; stroke-dasharray: 6 3; filter: drop-shadow(0 0 2px #240b36); }
+.hex.spawn-zone .hex-outline { fill: #e040d926; stroke: #ff52e5; stroke-width: 5; stroke-dasharray: 6 3; filter: drop-shadow(0 0 2px #240b36); }
 .hex-elevation { font: 700 12px Arial, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 
 .hex.reachable .hex-outline { fill: rgba(240, 207, 122, .22); stroke: #f0cf7a; stroke-width: 3; }

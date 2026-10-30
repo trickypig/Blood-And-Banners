@@ -92,7 +92,7 @@ function coop_service_tests(): array
             $match = coop_service_match(1);
             coop_ready_all($match);
             $started = $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
-            expect_same(12, $started['setup']['budget'], 'one hero player: 4 + 8');
+            expect_same(42, $started['setup']['budget'], 'one hero player: 12 + 30');
             $voidArmy = ['name' => 'Void Lord', 'emblem' => '/images/armies/void-lord.svg'];
             expect_same($voidArmy, $started['armies'][$match['host']['seat']] ?? null, 'setup projects the void lord emblem');
             expect_same(['Test Wolf', 'Test Golem', 'Test Wyrm'], array_column($started['setup']['roster'], 'name'), 'the roster lists visible monsters');

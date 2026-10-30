@@ -60,6 +60,19 @@ function expect_canonical_rectangle(array $scenario, string $message): void
 function scenario_tests(): array
 {
     return [
+        'void incursion budgets give twelve plus thirty per hero player' => static function (): void {
+            $mode = \BloodAndBanners\Rules\Vanilla\Modes\CoopMode::class;
+            foreach ([1 => 42, 2 => 72, 3 => 102, 4 => 132] as $players => $budget) {
+                expect_same($budget, $mode::budget([], $players), 'custom map default budget');
+                foreach (glob(dirname(__DIR__) . '/scenarios/*.json') as $path) {
+                    $scenario = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+                    if (in_array('coop', $scenario['modeCompatibility'] ?? [], true)) {
+                        expect_same($budget, $mode::budget($scenario['coop'] ?? [], $players), basename($path) . ' budget');
+                    }
+                }
+            }
+            expect_same(20, $mode::budget(['basePoints' => 4, 'pointsPerHeroPlayer' => 8], 2), 'explicit custom budgets still apply');
+        },
         'generated scenario sight blockers have visible obstacles' => static function (): void {
             $directory = sys_get_temp_dir() . '/bb-generated-' . bin2hex(random_bytes(8));
             mkdir($directory);
@@ -173,7 +186,7 @@ function scenario_tests(): array
             $scenario = built_in_scenario('void-reaches');
             expect_same('Void Reaches', $scenario['name'], 'the map uses its approved name');
             expect_same(['coop'], $scenario['modeCompatibility'], 'the map is Co-op only');
-            expect_same(['basePoints' => 4, 'pointsPerHeroPlayer' => 8], $scenario['coop'], 'the budget is set by the scenario');
+            expect_same(['basePoints' => 12, 'pointsPerHeroPlayer' => 30], $scenario['coop'], 'the budget is set by the scenario');
             expect_canonical_rectangle($scenario, 'void reaches');
             expect_same(625, count($scenario['map']['hexes']), 'every hex exists');
 

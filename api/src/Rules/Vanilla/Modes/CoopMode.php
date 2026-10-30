@@ -256,7 +256,7 @@ final class CoopMode implements ModeRules
     /** Tier points for the Void Lord: base points plus a share per hero player. */
     public static function budget(array $rules, int $heroPlayers): int
     {
-        return (int)($rules['basePoints'] ?? 4) + (int)($rules['pointsPerHeroPlayer'] ?? 8) * $heroPlayers;
+        return (int)($rules['basePoints'] ?? 12) + (int)($rules['pointsPerHeroPlayer'] ?? 30) * $heroPlayers;
     }
 
     /** The Void Lord's board while the war room is still open: no hero seats, initiative or draft yet. */

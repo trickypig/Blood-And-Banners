@@ -5071,7 +5071,7 @@
         "coop": 4
     },
     "coop": {
-        "basePoints": 4,
-        "pointsPerHeroPlayer": 8
+        "basePoints": 12,
+        "pointsPerHeroPlayer": 30
     }
 }

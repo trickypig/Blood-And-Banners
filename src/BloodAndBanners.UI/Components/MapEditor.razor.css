@@ -42,7 +42,7 @@ input, select { box-sizing: border-box; display: block; width: 100%; min-height:
 .editor-board { display: block; height: auto; }
 .editor-hex { cursor: pointer; outline: none; }
 .hex-outline { fill: transparent; stroke: #d4af37; stroke-width: 1; }
-.spawn-zone-marker { fill: #b780ed55; stroke: #ebc5ff; stroke-width: 3.5; stroke-dasharray: 6 3; filter: drop-shadow(0 0 2px #240b36); pointer-events: none; }
+.spawn-zone-marker { fill: #e040d926; stroke: #ff52e5; stroke-width: 5; stroke-dasharray: 6 3; filter: drop-shadow(0 0 2px #240b36); pointer-events: none; }
 .editor-hex:hover .hex-outline, .editor-hex:focus .hex-outline { stroke: #fff3aa; stroke-width: 3; }
 .editor-hex.selected .hex-outline { stroke: #ffd700; stroke-width: 3; }
 .editor-hex.empty .hex-outline { stroke: transparent; pointer-events: all; }

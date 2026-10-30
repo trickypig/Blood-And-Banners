@@ -274,7 +274,7 @@ $voidReaches = [
     'placements' => [],
     'objectives' => [['kind' => 'destroyVoidPortal']],
     'scoring' => ['target' => 10, 'enemyHero' => 3, 'boss' => 2, 'terrainObject' => 1, 'completeObjectSetBonus' => 2],
-    'coop' => ['basePoints' => 4, 'pointsPerHeroPlayer' => 8],
+    'coop' => ['basePoints' => 12, 'pointsPerHeroPlayer' => 30],
 ];
 
 write_scenario($scenarioDirectory . DIRECTORY_SEPARATOR . 'four-corners.json', $fourCorners);
