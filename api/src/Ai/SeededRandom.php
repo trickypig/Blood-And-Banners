@@ -12,10 +12,13 @@ final class SeededRandom implements RandomSource
 
     public function __construct(int $seed)
     {
-        $this->state = ($seed * 2654435761 + 1013904223) & 0xFFFFFFFF;
+        $this->state = ((($seed & 0xFFFFFFFF) * 1664525) + 1013904223) & 0xFFFFFFFF;
         if ($this->state === 0) {
             $this->state = 0x9E3779B9;
         }
+        $this->roll(2);
+        $this->roll(2);
+        $this->roll(2);
     }
 
     public function roll(int $sides): int

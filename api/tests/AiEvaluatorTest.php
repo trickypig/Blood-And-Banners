@@ -28,9 +28,105 @@ function ai_evaluator_tests(): array
             expect_true(min($seq(7)) >= 1 && max($seq(7)) <= 6, 'in range');
         },
         'an illegal candidate has no outcomes' => static function (): void {
-            $state = coop_battle(ai_eval_units(0), 'void-lord');
+            $state = coop_battle(ai_eval_units(0, '3,0'), 'void-lord', 1);
             $sim = new Simulator(new MatchEngine(test_catalog()), 1000);
             expect_same([], $sim->outcomes($state, 'void-lord', 'attackUnit', ['unitId' => 'v-m1', 'targetUnitId' => 'nobody'], 2, 1), 'illegal');
+        },
+        'a legal candidate yields one outcome per sample and leaves the input alone' => static function (): void {
+            $state = coop_battle([
+                coop_hero('h1', 'hero-a', '2,0', ['hp' => 9]),
+                vanilla_unit('v-m1', 'void-lord', '3,0', ['side' => 'void', 'tier' => 'common', 'power' => 3]),
+            ], 'void-lord', 1);
+            $before = $state;
+            $sim = new Simulator(new MatchEngine(test_catalog()), 1000);
+            $payload = ['unitId' => 'v-m1', 'targetUnitId' => 'h1'];
+            $a = $sim->outcomes($state, 'void-lord', 'attackUnit', $payload, 8, 5);
+            expect_same(8, count($a), 'one per sample');
+            expect_same($a, $sim->outcomes($state, 'void-lord', 'attackUnit', $payload, 8, 5), 'same seed repeats');
+            expect_same($before, $state, 'input untouched');
+            expect_true(count(array_unique(array_map('serialize', $a))) > 1, 'different seeds diverge');
+        },
+        'seeds near 32 bits stay valid and deterministic' => static function (): void {
+            foreach ([crc32('some-game-id'), 4294967295, 0] as $seed) {
+                $seq = static function () use ($seed): array {
+                    $r = new SeededRandom($seed);
+                    return array_map(static fn () => $r->roll(6), range(1, 20));
+                };
+                expect_same($seq(), $seq(), 'repeats');
+                expect_true(min($seq()) >= 1 && max($seq()) <= 6, 'range');
+            }
+        },
+        'each feature scores on its own' => static function (): void {
+            $only = static fn (string $k): array => [$k => 1.0];
+            $score = static fn (array $units, string $k, string $side = 'void'): float =>
+                (new Evaluator(Personalities::get('ravager')))->score(coop_battle($units), $side, $only($k));
+            $hero = static fn (string $id, ?string $hex, array $s = []) => coop_hero($id, 'hero-a', $hex, $s + ['hp' => 4]);
+            $mon = static fn (string $id, ?string $hex, array $s = []) => vanilla_unit($id, 'void-lord', $hex, $s + ['side' => 'void', 'tier' => 'common']);
+
+            expect_true($score([$hero('h1', null), $hero('h2', '0,0'), $mon('m1', '5,0')], 'kill', 'void') === 0.5, 'kill share');
+            $nothingLost = $score([$mon('m1', '5,0', ['tier' => 'elite']), $mon('m2', '6,0'), $hero('h1', '0,0'), $hero('h2', '1,0')], 'loss', 'heroes');
+            expect_same(0.0, $nothingLost, 'nothing lost');
+            $heroLost = $score([$hero('h1', null), $hero('h2', '1,0'), $mon('m1', '5,0')], 'loss', 'heroes');
+            expect_true(abs($heroLost - 0.5) < 1e-9, 'dead hero is 4 of 8');
+            $eliteLost = $score([$mon('m1', null, ['tier' => 'elite']), $mon('m2', '6,0'), $mon('m3', '7,0'), $hero('h1', '0,0')], 'loss');
+            expect_true(abs($eliteLost - 0.5) < 1e-9, 'dead elite is 2 of 4');
+            expect_true($score([$mon('m1', '5,0'), $mon('m2', '6,0'), $hero('h1', '0,0')], 'cohesion') === 1.0, 'cohesion');
+            expect_true($score([$mon('m1', '4,0'), $mon('m2', '8,0'), $hero('h1', '0,0')], 'cohesion') === 0.0, 'no cohesion');
+            expect_true($score([$mon('m1', '8,0', ['move' => 2, 'range' => 1]), $hero('h1', '0,0')], 'threat', 'heroes') === 0.0, 'out of reach');
+            expect_true($score([$mon('m1', '2,0', ['move' => 2, 'range' => 1]), $hero('h1', '0,0')], 'threat', 'heroes') === -1.0, 'threatened');
+            expect_true(abs($score([$hero('h1', '0,0', ['wounds' => 1]), $hero('h2', '1,0', ['wounds' => 3]), $mon('m1', '5,0')], 'focus') - 0.75) < 1e-9, 'focus');
+            $near = $score([$mon('m1', '2,0'), $hero('h1', '0,0')], 'advance');
+            $far = $score([$mon('m1', '8,0'), $hero('h1', '0,0')], 'advance');
+            expect_true($near > $far, 'closer is better');
+            $portal = static fn (string $hex): array => vanilla_unit('v-portal', 'void-lord', $hex, ['side' => 'void', 'fixed' => true]);
+            $guarded = coop_battle([$mon('m1', '3,0'), $hero('h1', '8,0'), $portal('2,0')]);
+            $exposed = coop_battle([$mon('m1', '8,0'), $hero('h1', '3,0'), $portal('2,0')]);
+            $e = new Evaluator(Personalities::get('ravager'));
+            expect_true($e->score($guarded, 'void', $only('portalGuard')) > $e->score($exposed, 'void', $only('portalGuard')), 'portal guard');
+        },
+        'empty sides and off-board units give finite scores' => static function (): void {
+            $p = Personalities::get('warden');
+            $e = new Evaluator($p);
+            $mon = vanilla_unit('m1', 'void-lord', '3,0', ['side' => 'void', 'tier' => 'common']);
+            $noEnemies = coop_battle([$mon]);
+            $offBoard = coop_battle([coop_hero('h1', 'hero-a', null), $mon]);
+            foreach ([$noEnemies, $offBoard] as $state) {
+                foreach (['void', 'heroes'] as $side) {
+                    expect_true(is_finite($e->score($state, $side, $p->weights)), "finite for {$side}");
+                }
+            }
+        },
+        'a win by seat resolves through sides and an unknown seat is no result' => static function (): void {
+            $e = new Evaluator(Personalities::get('ravager'));
+            $w = ['damage' => 1.0];
+            $state = coop_battle(ai_eval_units(0));
+            $state['result'] = ['winningSeatId' => 'hero-b'];
+            expect_true($e->score($state, 'heroes', $w) > 1e5 && $e->score($state, 'void', $w) < -1e5, 'seat mapped');
+            $state['result'] = ['winningSeatId' => 'ghost'];
+            expect_true(abs($e->score($state, 'void', $w)) < 1e5, 'unknown seat ignored');
+        },
+        'scoring a Co-op sized state is fast' => static function (): void {
+            $def = json_decode((string)file_get_contents(__DIR__ . '/../scenarios/void-reaches.json'), true);
+            $board = \BloodAndBanners\Rules\Vanilla\Board::fromScenario($def);
+            $keys = array_keys($board);
+            $units = [];
+            for ($i = 0; $i < 10; $i++) {
+                $units[] = vanilla_unit("m{$i}", 'void-lord', $keys[$i * 7], ['side' => 'void', 'tier' => 'common']);
+            }
+            for ($i = 0; $i < 5; $i++) {
+                $units[] = coop_hero("h{$i}", 'hero-a', $keys[count($keys) - 1 - $i * 5], ['hp' => 5]);
+            }
+            $state = coop_battle($units);
+            $state['board'] = $board;
+            $p = Personalities::get('huntress');
+            $e = new Evaluator($p);
+            $start = microtime(true);
+            for ($i = 0; $i < 200; $i++) {
+                $e->score($state, 'void', $p->weights);
+            }
+            $ms = (microtime(true) - $start) * 1000 / 200;
+            fwrite(STDERR, sprintf("  evaluator: %.2f ms per score\n", $ms));
+            expect_true($ms < 20, 'under 20 ms per score');
         },
         'wounding a hero scores higher for the void' => static function (): void {
             $p = Personalities::get('ravager');
