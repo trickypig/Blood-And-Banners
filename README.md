@@ -55,6 +55,12 @@ The development PWA reads `wwwroot/appsettings.Development.json` and calls the A
 
 In a Void incursion, the Void Portal stands on the map's portal hex (placed in the editor after the four starts), or else on the void spawn hex farthest from the heroes. It belongs to the Void Lord for free, cannot move or be pushed, and attacks at range 5 with power 5. When the battle begins it appears, rises and activates, then idles until the heroes destroy it to win.
 
+### Play against the AI Void Lord
+
+In a Void incursion war room the host can seat an AI as the Void Lord instead of finding a human for the role. Pick one of four personalities: **The Ravager** (easy: a cheap-unit swarm that rushes the heroes), **The Warden** (medium: elites ringing the portal, holding ground), **The Huntress** (hard: ambushes from cover and water, one hero at a time) or **The Hollow King** (hardest). The AI builds and places its horde when the battle starts, without seeing the heroes' draft picks, and with an AI seated a match can start with one to four human heroes.
+
+The AI plays one action at a time, after a pause the host sets as **Slow** (about 2 seconds), **Normal** (about 1) or **Fast** (about 0.3). Change it in the war room or from the match menu. The game has no background workers, so the AI only acts while someone, player or spectator, has the match open; leave it closed and the Void Lord waits where it stands.
+
 This slice implements Vanilla duel rules and abilities. Co-op and Battle Royale still open their current direct scenarios, but their complete mode-specific rules are not yet playable.
 
 ### Sign in and friends (optional)
