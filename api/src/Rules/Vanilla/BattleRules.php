@@ -130,28 +130,35 @@ final class BattleRules
 
     public function legalActions(array $state, string $seatId): array
     {
+        return iterator_to_array($this->actions($state, $seatId), false);
+    }
+
+    /** Legal actions one at a time, so canAct can stop at the first that keeps the turn open. */
+    private function actions(array $state, string $seatId): \Generator
+    {
         if ($state['phase'] !== 'active') {
-            return [];
+            return;
         }
         if ($state['pending'] !== null) {
             $choice = $state['pending']['choice'];
             if (($choice['kind'] ?? null) !== 'moonlightGlare') {
-                return $seatId === $choice['seatId']
-                    ? [[
+                if ($seatId === $choice['seatId']) {
+                    yield [
                         'kind' => 'resolveChoice', 'unitId' => $choice['unitId'],
                         'targetHexes' => $choice['targetHexes'] ?? [],
-                    ]]
-                    : [];
+                    ];
+                }
+                return;
             }
             $mayKeep = $this->now - $choice['openedAt'] >= self::CHOICE_TIMEOUT_SECONDS;
-            return $seatId === $choice['seatId'] || $mayKeep
-                ? [['kind' => 'resolveChoice', 'unitId' => $choice['unitId'], 'targetHexes' => []]]
-                : [];
+            if ($seatId === $choice['seatId'] || $mayKeep) {
+                yield ['kind' => 'resolveChoice', 'unitId' => $choice['unitId'], 'targetHexes' => []];
+            }
+            return;
         }
         if ($state['turn']['activeSeatId'] !== $seatId) {
-            return [];
+            return;
         }
-        $actions = [];
         $held = self::charmHolds($state, $seatId);
         foreach ($state['units'] as $unitId => $unit) {
             $unitId = (string)$unitId;
@@ -163,7 +170,7 @@ final class BattleRules
             $activated = in_array($unitId, $state['turn']['activated'], true);
             $canStart = !$activated && $this->activationError($state, $unitId) === null;
             if (!$active && $canStart && UnitConditions::has($state, $unitId, 'Slipping')) {
-                $actions[] = ['kind' => 'activateUnit', 'unitId' => $unitId, 'targetHexes' => []];
+                yield ['kind' => 'activateUnit', 'unitId' => $unitId, 'targetHexes' => []];
                 continue;
             }
             if (($activated || $canStart) && !$charmed) {
@@ -173,7 +180,7 @@ final class BattleRules
                     }
                     $targets = $ability->targets($state, $unitId);
                     if ($targets !== []) {
-                        $actions[] = [
+                        yield [
                             'kind' => 'useAbility',
                             'unitId' => $unitId,
                             'ability' => $ability->name,
@@ -191,7 +198,7 @@ final class BattleRules
                 }
                 $options = $ability->options($state, $unitId);
                 if ($options !== []) {
-                    $actions[] = ['kind' => 'moveAbility', 'unitId' => $unitId, 'ability' => $ability->name,
+                    yield ['kind' => 'moveAbility', 'unitId' => $unitId, 'ability' => $ability->name,
                         'targetHexes' => array_column($options, 'destination'), 'movementOptions' => $options];
                 }
             }
@@ -199,7 +206,7 @@ final class BattleRules
                 $budget = Stats::effective($state, $unitId, 'move') - ($active ? $state['turn']['moveSpent'] : 0);
                 $options = Charm::allowed($state, $unitId, Movement::options($state, $unitId, $budget));
                 if ($options !== []) {
-                    $actions[] = [
+                    yield [
                         'kind' => 'moveUnit', 'unitId' => $unitId,
                         'targetHexes' => array_column($options, 'destination'),
                         'movementOptions' => $options,
@@ -207,16 +214,16 @@ final class BattleRules
                 }
             }
             if (Items::canPickUp($state, $unitId, $active)) {
-                $actions[] = ['kind' => 'pickUpItem', 'unitId' => $unitId, 'targetHexes' => [$unit['hex']]];
+                yield ['kind' => 'pickUpItem', 'unitId' => $unitId, 'targetHexes' => [$unit['hex']]];
             }
             if (Items::canUse($state, $unitId, $active, self::canMove($state, $unitId))) {
                 foreach (array_values(array_unique(Items::carried($state, $unitId))) as $item) {
-                    $actions[] = ['kind' => 'useItem', 'unitId' => $unitId, 'item' => $item, 'targetHexes' => [$unit['hex']]];
+                    yield ['kind' => 'useItem', 'unitId' => $unitId, 'item' => $item, 'targetHexes' => [$unit['hex']]];
                 }
             }
             $targets = self::attacksLeft($state, $unitId) ? Combat::targets($state, $unitId) : [];
             if ($targets !== []) {
-                $actions[] = [
+                yield [
                     'kind' => 'attackUnit',
                     'unitId' => $unitId,
                     'targetHexes' => array_map(static fn(string $id): string => $state['units'][$id]['hex'], $targets),
@@ -229,7 +236,7 @@ final class BattleRules
                     }
                     $hexes = $ability->targetHexes($state, $unitId);
                     if ($hexes !== []) {
-                        $actions[] = [
+                        yield [
                             'kind' => 'specialAttack',
                             'unitId' => $unitId,
                             'ability' => $ability->name,
@@ -241,12 +248,11 @@ final class BattleRules
             }
         }
         if ($state['turn']['activeUnitId'] !== null && !self::mustApproach($state, $state['turn']['activeUnitId'])) {
-            $actions[] = ['kind' => 'endActivation', 'unitId' => $state['turn']['activeUnitId'], 'targetHexes' => []];
+            yield ['kind' => 'endActivation', 'unitId' => $state['turn']['activeUnitId'], 'targetHexes' => []];
         }
         if ($held === null) {
-            $actions[] = ['kind' => 'endTurn', 'unitId' => null, 'targetHexes' => []];
+            yield ['kind' => 'endTurn', 'unitId' => null, 'targetHexes' => []];
         }
-        return $actions;
     }
 
     private function move(array $state, string $seatId, array $payload, RandomSource $random, array &$events): array
@@ -807,7 +813,7 @@ final class BattleRules
 
     private function canAct(array $state, string $seatId): bool
     {
-        foreach ($this->legalActions($state, $seatId) as $action) {
+        foreach ($this->actions($state, $seatId) as $action) {
             if (in_array($action['kind'], ['activateUnit', 'moveUnit', 'moveAbility', 'attackUnit', 'specialAttack', 'useAbility'], true)) {
                 return true;
             }

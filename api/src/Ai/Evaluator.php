@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BloodAndBanners\Ai;
 
+use BloodAndBanners\Rules\HexLineOfSight;
 use BloodAndBanners\Rules\Vanilla\Combat;
 use BloodAndBanners\Rules\Vanilla\Hex;
 use BloodAndBanners\Rules\Vanilla\Modes\CoopMode;
@@ -16,8 +17,24 @@ final class Evaluator
 {
     private const TERMINAL = 1e6;
     private const SIGHT_CAP = 10;
+    private const NEIGHBOURS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 
-    public function __construct(private readonly Personality $personality)
+    /** @var array<string, array{0:int, 1:int}> parsed hex keys */
+    private static array $coords = [];
+
+    /** @var array<string, array<string, true>> hexes an enemy can strike this turn, by unit, hex and modifiers, when memoised */
+    private array $zones = [];
+    /** @var array<string, array<string, true>> */
+    private array $unions = [];
+    /** @var array<string, bool> sight between two hexes, when memoised */
+    private array $sight = [];
+
+    /**
+     * $memoReach keeps each enemy's strike zone per (unit, hex, effects and conditions) and sight per hex pair for the
+     * life of this instance. That ignores units that moved into (or out of) the way since, which is fine
+     * inside one planning step: create a fresh instance per step.
+     */
+    public function __construct(private readonly Personality $personality, private readonly bool $memoReach = false)
     {
     }
 
@@ -103,57 +120,56 @@ final class Evaluator
             $wantCohesion = $want('cohesion');
             $wantCover = $want('cover');
             $wantAdvance = $want('advance');
-            foreach ($ourOn as $id => $unit) {
+            $sight = $wantCover ? Combat::sightBoard($state) : [];
+            $lineOfSight = new HexLineOfSight();
+            $enemyAt = [];
+            foreach ($theirOn as $enemy) {
+                $enemyAt[] = [(string)$enemy['hex'], ...self::coords((string)$enemy['hex'])];
+            }
+            $ourHexes = [];
+            foreach ($ourOn as $unit) {
+                $ourHexes[(string)$unit['hex']] = true;
+            }
+            foreach ($wantAdvance || $wantCover || $wantCohesion ? $ourOn : [] as $unit) {
+                $hex = (string)$unit['hex'];
+                [$q, $r] = self::coords($hex);
                 $nearest = null;
-                if ($wantAdvance) {
-                    foreach ($theirOn as $enemy) {
-                        $d = Hex::distance((string)$unit['hex'], (string)$enemy['hex']);
-                        $nearest = $nearest === null ? $d : min($nearest, $d);
+                $seen = false;
+                foreach ($wantAdvance || $wantCover ? $enemyAt : [] as [$enemyHex, $eq, $er]) {
+                    $gap = (abs($q - $eq) + abs($r - $er) + abs($q + $r - $eq - $er)) / 2;
+                    $nearest = $nearest === null ? $gap : min($nearest, $gap);
+                    // Beyond SIGHT_CAP nothing there is a threat, and long open-board sight checks are costly.
+                    if ($wantCover && !$seen && $gap <= self::SIGHT_CAP && ($gap === 0 || $this->sees($lineOfSight, $sight, $enemyHex, $hex))) {
+                        $seen = true;
                     }
                 }
-                $distSum += $nearest ?? 0;
+                $distSum += $wantAdvance ? ($nearest ?? 0) : 0;
                 if ($wantCohesion) {
-                    foreach ($ourOn as $otherId => $other) {
-                        if ($otherId !== $id && Hex::distance((string)$unit['hex'], (string)$other['hex']) === 1) {
+                    foreach (self::NEIGHBOURS as [$dq, $dr]) {
+                        if (isset($ourHexes[($q + $dq) . ',' . ($r + $dr)])) {
                             $cohesive++;
                             break;
                         }
                     }
                 }
-                if ($wantCover) {
-                    $seen = false;
-                    foreach ($theirOn as $enemy) {
-                        // Beyond SIGHT_CAP the ray enumeration explodes on open ground and nothing there is a threat.
-                        $gap = Hex::distance((string)$enemy['hex'], (string)$unit['hex']);
-                        if ($gap <= self::SIGHT_CAP && ($gap === 0 || Combat::visible($state, (string)$enemy['hex'], (string)$unit['hex']))) {
-                            $seen = true;
-                            break;
-                        }
-                    }
-                    $hidden += $seen ? 0 : 1;
-                }
+                $hidden += $wantCover && !$seen ? 1 : 0;
             }
-            $f['advance'] = -min(1.0, ($distSum / $n) / 10.0);
+            // Unclamped: on a big board the mean starts far above 10 hexes, and every step closer must still count.
+            $f['advance'] = -($distSum / $n) / 10.0;
             $f['cohesion'] = $cohesive / $n;
             $f['cover'] = $hidden / $n;
 
-            $reach = [];
+            $zones = [];
+            // Move and range come from effects and conditions; while those stand still, so does each zone.
+            $modifiers = $this->memoReach && $want('threat') ? crc32(serialize([$state['effects'] ?? [], $state['conditions'] ?? []])) : 0;
             foreach ($want('threat') ? $theirOn : [] as $eid => $enemy) {
-                $move = Stats::effective($state, (string)$eid, 'move');
-                $range = max(1, (int)Stats::effective($state, (string)$eid, 'range'));
-                $hexes = Movement::reachable($state, (string)$eid, $move);
-                $hexes[] = (string)$enemy['hex'];
-                $reach[] = [$hexes, $range];
+                $zones[] = $this->dangerZone($state, (string)$eid, (string)$enemy['hex'], $modifiers);
             }
             $threatened = 0;
-            foreach ($reach ? $ourOn : [] as $unit) {
-                foreach ($reach as [$hexes, $range]) {
-                    foreach ($hexes as $h) {
-                        if (Hex::distance($h, (string)$unit['hex']) <= $range) {
-                            $threatened++;
-                            continue 3;
-                        }
-                    }
+            if ($zones !== []) {
+                $danger = $this->union($zones);
+                foreach ($ourOn as $unit) {
+                    $threatened += isset($danger[(string)$unit['hex']]) ? 1 : 0;
                 }
             }
             $f['threat'] = -$threatened / $n;
@@ -175,6 +191,62 @@ final class Evaluator
             $total += (float)($weights[$key] ?? 0) * $value;
         }
         return $total;
+    }
+
+    /** Hexes within the enemy's range of somewhere it can move to (its own hex included). */
+    private function dangerZone(array $state, string $enemyId, string $hex, int $modifiers): array
+    {
+        $key = "{$enemyId}@{$hex}/{$modifiers}";
+        if ($this->memoReach && isset($this->zones[$key])) {
+            return ['key' => $key, 'hexes' => $this->zones[$key]];
+        }
+        $move = Stats::effective($state, $enemyId, 'move');
+        $range = max(1, (int)Stats::effective($state, $enemyId, 'range'));
+        $offsets = [];
+        for ($dq = -$range; $dq <= $range; $dq++) {
+            for ($dr = max(-$range, -$dq - $range); $dr <= min($range, -$dq + $range); $dr++) {
+                $offsets[] = [$dq, $dr];
+            }
+        }
+        $zone = [];
+        foreach ([...Movement::reachable($state, $enemyId, $move), $hex] as $from) {
+            [$q, $r] = Hex::parse($from);
+            foreach ($offsets as [$dq, $dr]) {
+                $zone[($q + $dq) . ',' . ($r + $dr)] = true;
+            }
+        }
+        if ($this->memoReach) {
+            $this->zones[$key] = $zone;
+        }
+        return ['key' => $key, 'hexes' => $zone];
+    }
+
+    /** @param list<array{key:string, hexes:array<string,true>}> $zones */
+    private function union(array $zones): array
+    {
+        $key = implode('|', array_column($zones, 'key'));
+        if ($this->memoReach && isset($this->unions[$key])) {
+            return $this->unions[$key];
+        }
+        $danger = array_replace(...array_column($zones, 'hexes'));
+        if ($this->memoReach) {
+            $this->unions[$key] = $danger;
+        }
+        return $danger;
+    }
+
+    private function sees(HexLineOfSight $lineOfSight, array $sight, string $from, string $to): bool
+    {
+        if (!$this->memoReach) {
+            return $lineOfSight->isVisible($from, $to, $sight);
+        }
+        return $this->sight["{$from}>{$to}"] ??= $lineOfSight->isVisible($from, $to, $sight);
+    }
+
+    /** @return array{0:int, 1:int} */
+    private static function coords(string $hex): array
+    {
+        return self::$coords[$hex] ??= Hex::parse($hex);
     }
 
     private static function winner(array $state): ?string

@@ -57,7 +57,8 @@ final class Combat
         return ['faces' => $roll['faces'], 'wounds' => $roll['swords']];
     }
 
-    private static function sightBoard(array $state): array
+    /** The board as line of sight sees it (elevation, blockers, occupants); build once to test many pairs. */
+    public static function sightBoard(array $state): array
     {
         $board = [];
         foreach ($state['board'] as $key => $hex) {

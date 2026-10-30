@@ -18,22 +18,36 @@ final class HexLineOfSight
             return true;
         }
         $endpointHeight = max((int)$board[$startKey]['elevation'], (int)$board[$targetKey]['elevation']);
-        foreach ($this->shortestRays($startKey, $targetKey, $board) as $ray) {
-            $clear = true;
-            foreach (array_slice($ray, 1, -1) as $key) {
-                $hex = $board[$key];
-                if (($hex['occupantId'] ?? null) !== null
-                    || (bool)($hex['sightBlocker'] ?? false)
-                    || (int)($hex['elevation'] ?? 0) >= $endpointHeight + 2) {
-                    $clear = false;
-                    break;
+        // Some shortest ray is clear iff the target can be reached by stepping one hex closer at a time
+        // through clear hexes only. Walking the layers costs O(distance²) instead of one walk per ray.
+        [$targetQ, $targetR] = self::coordinates($targetKey);
+        $layer = [self::coordinates($startKey)];
+        $remaining = self::distance($layer[0][0], $layer[0][1], $targetQ, $targetR);
+        while ($remaining > 1) {
+            $next = [];
+            foreach ($layer as [$q, $r]) {
+                foreach (self::DIRECTIONS as [$deltaQ, $deltaR]) {
+                    $nextQ = $q + $deltaQ;
+                    $nextR = $r + $deltaR;
+                    $key = "{$nextQ},{$nextR}";
+                    if (isset($next[$key]) || !isset($board[$key]) || self::distance($nextQ, $nextR, $targetQ, $targetR) !== $remaining - 1) {
+                        continue;
+                    }
+                    $hex = $board[$key];
+                    if (($hex['occupantId'] ?? null) === null
+                        && !(bool)($hex['sightBlocker'] ?? false)
+                        && (int)($hex['elevation'] ?? 0) < $endpointHeight + 2) {
+                        $next[$key] = [$nextQ, $nextR];
+                    }
                 }
             }
-            if ($clear) {
-                return true;
+            if ($next === []) {
+                return false;
             }
+            $layer = array_values($next);
+            $remaining--;
         }
-        return false;
+        return true;
     }
 
     public function shortestRays(string $startKey, string $targetKey, array $board): array
