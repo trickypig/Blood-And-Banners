@@ -424,6 +424,11 @@ function ai_soak_tests(): array
             expect_same('ravager', array_key_first($posture['hero']), 'the ravager presses closest to the heroes ' . $show($posture['hero']));
             arsort($posture['cover']);
             expect_same('huntress', array_key_first($posture['cover']), 'the huntress keeps most to cover ' . $show($posture['cover']));
+            // Adaptive: patient until ahead, then aggressive. Over the opening rounds he stands off nearer than the
+            // warden holding its post, but not in the heroes' faces like the ravager.
+            $hero = $posture['hero'];
+            expect_true($hero['ravager'] < $hero['hollowKing'] && $hero['hollowKing'] < $hero['warden'],
+                'the hollow king presses in between the ravager and the warden ' . $show($hero));
         },
         'a planner step stays inside its budget' => static function (): void {
             $engine = new MatchEngine(ai_catalog());
