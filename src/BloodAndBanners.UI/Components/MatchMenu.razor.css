@@ -25,3 +25,9 @@ button:focus-visible { outline: .22rem solid #fff3aa; outline-offset: .16rem; }
     align-items: center;
     gap: .5rem;
 }
+
+.match-menu-pace { display: grid; gap: .1rem; margin-top: .3rem; padding-top: .3rem; border-top: 1px solid #4a463a; }
+.match-menu-pace > span { padding: .25rem .8rem; color: #ddbf76; font-size: .85rem; }
+.match-menu-panel .match-menu-pace button[aria-checked="true"] { color: #f8f0dc; background: #3a3a33; font-weight: 700; box-shadow: inset .25rem 0 #b48cff; }
+.match-menu-panel .match-menu-pace button:disabled { cursor: default; }
+.match-menu-panel .match-menu-pace button:disabled:not([aria-checked="true"]) { opacity: .55; }

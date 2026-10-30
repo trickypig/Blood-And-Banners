@@ -172,4 +172,41 @@ public sealed class MatchMenuTests : BunitContext
         cut.Find("[data-menu=backdrop]").Click();
         Assert.Empty(cut.FindAll("[data-menu=copyLink]"));
     }
+
+    [Fact]
+    public void Host_changes_ai_pace_from_menu()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        string? chosen = null;
+        var cut = Render<MatchMenu>(p => p
+            .Add(m => m.GameId, "g1")
+            .Add(m => m.AiPace, "normal")
+            .Add(m => m.CanSetAiPace, true)
+            .Add(m => m.OnSetAiPace, (string pace) => chosen = pace));
+        cut.Find("[data-menu=toggle]").Click();
+
+        Assert.Equal("true", cut.Find("[data-menu=aiPace-normal]").GetAttribute("aria-checked"));
+        cut.Find("[data-menu=aiPace-fast]").Click();
+        Assert.Equal("fast", chosen);
+    }
+
+    [Fact]
+    public void Non_host_sees_pace_read_only()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = Render<MatchMenu>(p => p.Add(m => m.GameId, "g1").Add(m => m.AiPace, "slow"));
+        cut.Find("[data-menu=toggle]").Click();
+
+        Assert.All(cut.FindAll("[data-menu^=aiPace-]"), item => Assert.True(item.HasAttribute("disabled")));
+        Assert.Equal("true", cut.Find("[data-menu=aiPace-slow]").GetAttribute("aria-checked"));
+    }
+
+    [Fact]
+    public void No_ai_means_no_pace_items()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var cut = RenderMenu();
+        cut.Find("[data-menu=toggle]").Click();
+        Assert.Empty(cut.FindAll("[data-menu^=aiPace-]"));
+    }
 }

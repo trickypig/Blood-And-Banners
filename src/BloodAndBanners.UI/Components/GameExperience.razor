@@ -525,6 +525,17 @@ else
         }
     }
 
+    private static bool AiIsActing(GameProjection game)
+    {
+        if (game.Lifecycle != GameLifecycle.Active)
+        {
+            return false;
+        }
+        bool IsAi(string? seatId) =>
+            seatId is not null && game.Memberships.Any(member => member.SeatId == seatId && member.AiPersonality is not null);
+        return IsAi(game.Turn.ActiveSeatId) || IsAi(game.PendingChoiceSummary?.SeatId);
+    }
+
     private async Task PollAsync(CancellationToken cancellationToken)
     {
         var failures = 0;
@@ -542,7 +553,8 @@ else
                 current.PendingChoiceSummary is not null
                     || PollingCadence.IsViewersMoment(current.Viewer, null, current.Draft?.PickingSeatId),
                 backgrounded: false,
-                failures);
+                failures,
+                AiIsActing(current) ? PollingCadence.AiInterval(current.AiPace) : null);
 
             try
             {

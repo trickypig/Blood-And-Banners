@@ -8,6 +8,9 @@
                IsSpectator="@(!Projection.Viewer.CanCommand)"
                OnLeave="OnReturnToWarRoom"
                Members="@Projection.Memberships"
+               AiPace="@Projection.AiPace"
+               CanSetAiPace="@CanSetAiPace"
+               OnSetAiPace='pace => Send("setAiPace", new { pace })'
                ViewerSeatId="@Projection.Viewer.SeatId" />
     <header class="draft-ribbon">
         <div>
@@ -233,6 +236,8 @@
     private string SeatName(string seatId) => SeatNames.Display(Projection, seatId);
 
     private string ClaimText(string seatId) => seatId == ViewerSeat ? "Yours" : $"Claimed by {SeatName(seatId)}";
+
+    private bool CanSetAiPace => Projection.LegalActions.Any(action => action.Kind == "setAiPace");
 
     private Task Send(string kind, object payload) => OnCommand.InvokeAsync(new GameCommandRequest(kind, payload));
 

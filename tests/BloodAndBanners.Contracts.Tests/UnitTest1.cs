@@ -195,6 +195,10 @@ public sealed class ContractFixtureTests
         Assert.Equal(global::BloodAndBanners.Contracts.GameLifecycle.Setup, projection.Lifecycle);
         Assert.Equal(global::BloodAndBanners.Contracts.GameMode.Coop, projection.Mode);
         Assert.Equal("voidLord", projection.Memberships[0].Role);
+        Assert.Equal("warden", projection.Memberships[0].AiPersonality);
+        Assert.Null(projection.Memberships[1].AiPersonality);
+        Assert.Equal("fast", projection.AiPace);
+        Assert.Equal("The Warden", projection.AiPersonalities.Single().Name);
         Assert.Equal(new[] { "seat-void" }, projection.Sides!["void"].SeatIds);
         Assert.Equal(12, projection.Setup!.Budget);
         Assert.Equal(1, projection.Setup.Roster.Single().Cost);

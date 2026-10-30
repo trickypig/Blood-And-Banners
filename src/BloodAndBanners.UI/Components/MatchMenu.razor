@@ -39,6 +39,18 @@
                     }
                 </div>
             }
+            @if (AiPace is not null)
+            {
+                <div class="match-menu-pace" role="group" aria-label="AI pace" data-menu="aiPace">
+                    <span>AI pace</span>
+                    @foreach (var pace in Paces)
+                    {
+                        <button type="button" role="menuitemradio" aria-checked="@(AiPace == pace ? "true" : "false")"
+                                data-menu="aiPace-@pace" disabled="@(!CanSetAiPace)"
+                                @onclick="() => SetPace(pace)">@(char.ToUpper(pace[0]) + pace[1..])</button>
+                    }
+                </div>
+            }
             <button type="button" role="menuitem" data-menu="copyLink" @onclick="CopyLink">Copy Link</button>
             <button type="button" role="menuitem" data-menu="copyGameId" @onclick="CopyGameId">Copy Game ID</button>
             @if (_confirming)
@@ -89,6 +101,24 @@
 
     [Parameter]
     public string? ViewerSeatId { get; set; }
+
+    /// <summary>The AI Void Lord's pace (slow, normal, fast); null when no AI is seated.</summary>
+    [Parameter]
+    public string? AiPace { get; set; }
+
+    /// <summary>Only the host may change the pace.</summary>
+    [Parameter]
+    public bool CanSetAiPace { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnSetAiPace { get; set; }
+
+    private static readonly string[] Paces = ["slow", "normal", "fast"];
+
+    private async Task SetPace(string pace)
+    {
+        await OnSetAiPace.InvokeAsync(pace);
+    }
 
     private bool SignedIn => (ServiceProvider.GetService(typeof(IAccountSession)) as IAccountSession)?.Current is not null;
 

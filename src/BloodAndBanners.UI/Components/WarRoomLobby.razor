@@ -66,13 +66,20 @@
                     {
                         <div>
                             <strong>@(string.IsNullOrEmpty(seat.Name) ? $"Commander {seat.SeatIndex}" : seat.Name) @ViewerLabel(seat)</strong>
-                            <AddFriendButton GameId="@Projection.GameId" Seat="seat" ViewerSeatId="@Projection.Viewer.SeatId" />
-                            <span>@(seat.IsHost ? "Host" : "Player")</span>
+                            @if (seat.AiPersonality is null)
+                            {
+                                <AddFriendButton GameId="@Projection.GameId" Seat="seat" ViewerSeatId="@Projection.Viewer.SeatId" />
+                                <span>@(seat.IsHost ? "Host" : "Player")</span>
+                            }
+                            else
+                            {
+                                <span class="seat__ai" data-testid="ai-seat">AI Void Lord</span>
+                            }
                             @if (SeatNames.IsVoidLord(Projection, seat.SeatId))
                             {
                                 <span class="seat__role">Void Lord</span>
                             }
-                            else if (IsCoop && Can("assignVoidLord"))
+                            else if (IsCoop && seat.AiPersonality is null && Can("assignVoidLord"))
                             {
                                 <button type="button" class="seat__assign" data-assign-seat="@seat.SeatId" disabled="@IsBusy"
                                         @onclick='() => Send("assignVoidLord", new { seatId = seat.SeatId })'>Make Void Lord</button>
@@ -102,6 +109,46 @@
                 </li>
             }
         </ol>
+
+        @if (IsCoop && Can("seatAiVoidLord") && Projection.AiPersonalities.Count > 0)
+        {
+            <section class="ai-picker" data-testid="ai-picker" aria-labelledby="ai-heading">
+                <h3 id="ai-heading">AI Void Lord</h3>
+                <p>No friend to play the dark side? Seat a machine commander.</p>
+                <ul class="ai-picker__list">
+                    @foreach (var personality in Projection.AiPersonalities)
+                    {
+                        <li>
+                            <button type="button" class="ai-picker__option" data-ai-personality="@personality.Id"
+                                    aria-pressed="@(SeatedAi == personality.Id ? "true" : "false")" disabled="@IsBusy"
+                                    @onclick='() => Send("seatAiVoidLord", new { personality = personality.Id })'>
+                                <strong>@personality.Name</strong>
+                                <em>@personality.Difficulty</em>
+                                <span>@personality.Pitch</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+        @if (Projection.AiPace is { } pace)
+        {
+            @if (Can("setAiPace"))
+            {
+                <div class="ai-pace" role="group" aria-label="AI pace">
+                    <span>AI pace</span>
+                    @foreach (var option in Paces)
+                    {
+                        <button type="button" data-ai-pace="@option" aria-pressed="@(pace == option ? "true" : "false")" disabled="@IsBusy"
+                                @onclick='() => Send("setAiPace", new { pace = option })'>@(char.ToUpper(option[0]) + option[1..])</button>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="ai-pace ai-pace--readonly" data-testid="ai-pace-readonly">Pace: @(char.ToUpper(pace[0]) + pace[1..])</p>
+            }
+        }
     </section>
 
     <footer class="war-room__orders">
@@ -225,6 +272,10 @@
     private bool IsCoop => Projection.Mode == GameMode.Coop;
 
     private int VoidLordCount => LobbyRules.VoidLordCount(Projection);
+
+    private static readonly string[] Paces = ["slow", "normal", "fast"];
+
+    private string? SeatedAi => Projection.Memberships.Select(seat => seat.AiPersonality).FirstOrDefault(id => id is not null);
 
     private bool CanStart => LobbyRules.CanStart(Projection);
 

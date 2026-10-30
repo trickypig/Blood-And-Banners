@@ -196,4 +196,66 @@ public sealed class WarRoomLobbyTests : BunitContext
         Assert.Empty(hero.FindAll("[data-action=place-monsters]"));
         Assert.Contains("The Void Lord is preparing the horde", hero.Find("[data-testid=void-preparing]").TextContent);
     }
+
+    private static readonly AiPersonalityProjection[] Personalities =
+    [
+        new("ravager", "The Ravager", "Easy", "Charges in."),
+        new("warden", "The Warden", "Medium", "Holds the line."),
+        new("huntress", "The Huntress", "Hard", "Picks off the weak."),
+        new("hollowKing", "The Hollow King", "Hardest", "Plays to win."),
+    ];
+
+    private static GameProjection WithAi(GameProjection lobby, string? seated, string? pace) => lobby with
+    {
+        AiPace = pace,
+        AiPersonalities = Personalities,
+        Memberships = seated is null ? lobby.Memberships : [.. lobby.Memberships,
+            new MembershipProjection("seat-ai", 3, true, false) { Role = "voidLord", Name = "The Ravager", AiPersonality = seated }],
+    };
+
+    [Fact]
+    public void Host_sees_four_ai_personalities_and_seats_one()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<WarRoomLobby>(p => p
+            .Add(c => c.Projection, WithAi(CoopLobby("seat-1", true, null, "setReady", "seatAiVoidLord"), null, null))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        Assert.Equal(4, cut.FindAll("[data-ai-personality]").Count);
+        cut.Find("[data-ai-personality=warden]").Click();
+        var command = sent.Single();
+        Assert.Equal("seatAiVoidLord", command.Kind);
+        Assert.Contains("warden", JsonSerializer.Serialize(command.Payload));
+    }
+
+    [Fact]
+    public void Ai_seat_row_is_labelled_and_pace_is_offered()
+    {
+        var sent = new List<GameCommandRequest>();
+        var cut = Render<WarRoomLobby>(p => p
+            .Add(c => c.Projection, WithAi(CoopLobby("seat-1", true, null, "setReady", "seatAiVoidLord", "setAiPace"), "ravager", "normal"))
+            .Add(c => c.OnCommand, (GameCommandRequest request) => sent.Add(request)));
+
+        Assert.Contains("AI Void Lord", cut.Find("[data-testid=ai-seat]").TextContent);
+        Assert.Empty(cut.FindAll("[data-seat='3'] [data-add-friend]"));
+        Assert.Empty(cut.FindAll("[data-seat='3'] [data-assign-seat]"));
+        Assert.Single(cut.FindAll("[data-seat='3'] [data-remove-seat]"));
+        Assert.Equal("true", cut.Find("[data-ai-personality=ravager]").GetAttribute("aria-pressed"));
+        Assert.Equal("true", cut.Find("[data-ai-pace=normal]").GetAttribute("aria-pressed"));
+        cut.Find("[data-ai-pace=fast]").Click();
+        Assert.Equal("setAiPace", sent.Single().Kind);
+        Assert.Contains("fast", JsonSerializer.Serialize(sent.Single().Payload));
+    }
+
+    [Fact]
+    public void Non_host_cannot_pick_ai()
+    {
+        var cut = Render<WarRoomLobby>(p => p
+            .Add(c => c.Projection, WithAi(CoopLobby("seat-2", false, null, "setReady"), "warden", "slow")));
+
+        Assert.Empty(cut.FindAll("[data-testid=ai-picker]"));
+        Assert.Empty(cut.FindAll("[data-ai-pace]"));
+        Assert.NotEmpty(cut.FindAll("[data-testid=ai-seat]"));
+        Assert.Contains("Pace: Slow", cut.Find("[data-testid=ai-pace-readonly]").TextContent);
+    }
 }

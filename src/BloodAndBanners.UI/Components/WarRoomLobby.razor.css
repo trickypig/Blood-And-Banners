@@ -116,3 +116,22 @@
 .seat__remove--confirm { color: #f8f0dc; background: var(--oxblood); border-color: #b18b48; }
 .seat__remove--confirm:hover { background: #7d262d; }
 .seat__remove:disabled { opacity: .45; cursor: not-allowed; }
+
+.seat__ai { font-weight: 700; color: #b48cff; letter-spacing: .04em; }
+.ai-picker { display: grid; gap: .5rem; margin-block: .4rem 1rem; padding: .9rem; border: 1px solid #655f51; border-left: .3rem solid #b48cff; background: #2b2c27; }
+.ai-picker h3 { margin: 0; font: 700 1.1rem Georgia, serif; color: #d7b66c; }
+.ai-picker p { margin: 0; color: #aaa394; }
+.ai-picker__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.ai-picker__option { display: grid; gap: .15rem; width: 100%; min-height: 4.5rem; padding: .6rem .75rem; text-align: left; font: inherit; color: #f0ead9; background: #373830; border: 1px solid #6a6252; cursor: pointer; }
+.ai-picker__option:hover:not(:disabled) { background: #45463e; }
+.ai-picker__option[aria-pressed="true"] { border-color: #b48cff; box-shadow: inset .3rem 0 #b48cff; background: #45463e; }
+.ai-picker__option:disabled { opacity: .45; cursor: not-allowed; }
+.ai-picker__option em { color: #cfbd78; font-style: normal; font-size: .85rem; }
+.ai-picker__option span { color: #c9c2b2; font-size: .9rem; }
+.ai-pace { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .2rem 0 0; color: #c9c2b2; }
+.ai-pace button { min-height: 2.5rem; padding: .3rem .9rem; font: inherit; color: #f0ead9; background: #373830; border: 1px solid #6a6252; cursor: pointer; }
+.ai-pace button[aria-pressed="true"] { border-color: #b48cff; background: #45463e; font-weight: 700; }
+.ai-pace button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 700px) {
+    .ai-picker__list { grid-template-columns: 1fr; }
+}

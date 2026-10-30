@@ -135,7 +135,12 @@ public sealed record MembershipProjection(
 
     /// <summary>True when the viewing account has a pending friend request out to this seat's account.</summary>
     public bool FriendRequested { get; init; }
+
+    /// <summary>The AI personality id when this seat is the AI Void Lord; null for people.</summary>
+    public string? AiPersonality { get; init; }
 }
+
+public sealed record AiPersonalityProjection(string Id, string Name, string Difficulty, string Pitch);
 
 public sealed record SideProjection(string Kind, IReadOnlyList<string> SeatIds);
 
@@ -191,4 +196,8 @@ public sealed record GameProjection(
     public PendingChoiceSummary? PendingChoiceSummary { get; init; }
     public IReadOnlyDictionary<string, SideProjection>? Sides { get; init; }
     public SetupProjection? Setup { get; init; }
+    /// <summary>"slow", "normal" or "fast" while an AI Void Lord is seated; null otherwise and from older servers.</summary>
+    public string? AiPace { get; init; }
+    /// <summary>The AI Void Lords the host can seat; filled only in a Co-op lobby.</summary>
+    public IReadOnlyList<AiPersonalityProjection> AiPersonalities { get; init; } = [];
 }

@@ -12,6 +12,9 @@
                IsFinished="@(Projection.Result is not null)"
                OnLeave="OnReturnToWarRoom"
                Members="@Projection.Memberships"
+               AiPace="@Projection.AiPace"
+               CanSetAiPace="@CanSetAiPace"
+               OnSetAiPace='pace => Send("setAiPace", new { pace })'
                ViewerSeatId="@Projection.Viewer.SeatId"
                Details="@([ModeLabel(Projection.Mode), Projection.Viewer.CanCommand ? "Commanding" : "Spectating"])" />
     <header class="turn-ribbon @RibbonState" data-turn="@RibbonState">
@@ -1359,6 +1362,8 @@
         "shield" => "⛨",
         _ => "·",
     };
+
+    private bool CanSetAiPace => Projection.LegalActions.Any(action => action.Kind == "setAiPace");
 
     private Task Send(string kind, object payload)
     {

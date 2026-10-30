@@ -11,9 +11,11 @@
   "pendingChoiceSummary": null,
   "legalActions": [ { "kind": "placeMonster", "unitId": null, "targetHexes": ["0,0"], "ability": null } ],
   "scores": {},
+  "aiPace": "fast",
+  "aiPersonalities": [ { "id": "warden", "name": "The Warden", "difficulty": "Medium", "pitch": "Holds the line." } ],
   "result": { "reason": "monstersDefeated", "winningSeatId": null, "winningSide": "heroes", "finalScores": {} },
   "memberships": [
-    { "seatId": "seat-void", "seatIndex": 1, "ready": true, "isHost": true, "role": "voidLord" },
+    { "seatId": "seat-void", "seatIndex": 1, "ready": true, "isHost": true, "role": "voidLord", "aiPersonality": "warden" },
     { "seatId": "seat-hero", "seatIndex": 2, "ready": true, "isHost": false, "role": "player" }
   ],
   "sides": {
