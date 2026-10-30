@@ -193,6 +193,32 @@ function ai_planner_tests(): array
             }
             expect_true(true, 'every command applied');
         },
+        'after a unit is done it goes straight to the next unit, not a silent endActivation' => static function (): void {
+            $engine = new MatchEngine(test_catalog());
+            // v-m1 has moved and has no one in reach: it is done. v-m2 stands beside a hero.
+            $state = ai_planner_void_turn([
+                coop_hero('h1', 'hero-a', '2,0', ['hp' => 6, 'defense' => 1]),
+                vanilla_unit('v-m1', 'void-lord', '7,0', ['side' => 'void', 'tier' => 'common', 'move' => 1]),
+                vanilla_unit('v-m2', 'void-lord', '3,0', ['side' => 'void', 'tier' => 'common', 'power' => 3]),
+            ], 'v-m1');
+            $state['turn']['moved'] = true;
+            $state['turn']['moveSpent'] = 1;
+            foreach (array_keys(Personalities::all()) as $id) {
+                $command = ai_planner($id, $engine)->next($state, 'void-lord', 1);
+                expect_true($command['kind'] !== 'endActivation', "{$id} does not spend a step on endActivation ({$command['kind']})");
+                expect_same('v-m2', $command['payload']['unitId'] ?? null, "{$id} acts with the next unit");
+                // Legal as it stands, with v-m1 still active.
+                $engine->apply($state, 'void-lord', $command['kind'], $command['payload'], new SeededRandom(1), AI_PLANNER_NOW);
+            }
+            // With nobody else able to act, it ends the turn instead.
+            $alone = $state;
+            $alone['turn']['activated'] = ['v-m1', 'v-m2'];
+            $alone['turn']['allowance'] = 2;
+            foreach (array_keys(Personalities::all()) as $id) {
+                $command = ai_planner($id, $engine)->next($alone, 'void-lord', 1);
+                expect_same('endTurn', $command['kind'], "{$id} ends the turn");
+            }
+        },
         'it ends the turn when nothing is left' => static function (): void {
             $state = ai_planner_void_turn([
                 coop_hero('h1', 'hero-a', '0,0'),
