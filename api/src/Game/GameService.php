@@ -871,8 +871,10 @@ final class GameService
     }
 
     /**
-     * Claims the AI's next step by moving ai_stepped_at to now, only if it still holds the value this poll read
-     * (null-safe for both MySQL and SQLite). A concurrent due poll loses and does not plan.
+     * Claims the AI's next step by moving ai_stepped_at to the end of the planning budget, only if it still holds
+     * the value this poll read (null-safe for both MySQL and SQLite). A concurrent due poll loses and does not plan,
+     * and while the stamp lies ahead no later poll is due either (now - stamp is negative). Applying the command
+     * restamps the real time; a step that dies is retried once the budget and a pause have passed.
      */
     private function takeAiLease(array $game): bool
     {
@@ -881,7 +883,7 @@ final class GameService
              WHERE id = :id AND version = :version AND (ai_stepped_at = :seen OR (ai_stepped_at IS NULL AND :seen2 IS NULL))'
         );
         $seen = $game['ai_stepped_at'] === null ? null : (int)$game['ai_stepped_at'];
-        $claim->execute(['now' => ($this->clockMs)(), 'id' => $game['id'], 'version' => (int)$game['version'], 'seen' => $seen, 'seen2' => $seen]);
+        $claim->execute(['now' => ($this->clockMs)() + TurnPlanner::STEP_BUDGET_MS, 'id' => $game['id'], 'version' => (int)$game['version'], 'seen' => $seen, 'seen2' => $seen]);
         return $claim->rowCount() === 1;
     }
 

@@ -242,6 +242,56 @@ function ai_tick_tests(): array
             expect_same(1, $stub->calls, 'the planner ran once');
             expect_same($before + 1, ai_tick_version($match), 'one step');
         },
+        'a poll past the pause while another is still planning does not plan again' => static function (): void {
+            $clock = 0;
+            $stub = new class {
+                public ?Closure $during = null;
+                public int $calls = 0;
+                public function next(array $state, string $seatId, int $seed): ?array
+                {
+                    $this->calls++;
+                    if ($this->during !== null) {
+                        ($this->during)();
+                    }
+                    return ['kind' => 'endTurn', 'payload' => []];
+                }
+            };
+            $match = ai_tick_match($clock, static fn() => $stub);
+            ai_tick_to_ai_turn($match);
+            $stub->during = static function () use ($match, &$clock, $stub): void {
+                // Planning runs longer than the pause: the lease must still cover it. (Once only, should it plan again.)
+                $stub->during = null;
+                $clock += 1200;
+                $match['games']->getWatchedGame($match['gameId']);
+            };
+            $clock += 1000;
+            $before = ai_tick_version($match);
+            ai_tick_poll($match);
+            expect_same(1, $stub->calls, 'the planner ran once');
+            expect_same($before + 1, ai_tick_version($match), 'one step');
+        },
+        'a step that dies still retries once the lease runs out' => static function (): void {
+            $clock = 0;
+            $stub = new class {
+                public int $calls = 0;
+                public function next(array $state, string $seatId, int $seed): ?array
+                {
+                    $this->calls++;
+                    return null;
+                }
+            };
+            $match = ai_tick_match($clock, static fn() => $stub);
+            ai_tick_to_ai_turn($match);
+            $clock += 1000;
+            ai_tick_poll($match);
+            expect_same(1, $stub->calls, 'the first step planned');
+            $clock += 1000;
+            ai_tick_poll($match);
+            expect_same(1, $stub->calls, 'not again while the lease covers planning');
+            $clock += BloodAndBanners\Ai\TurnPlanner::STEP_BUDGET_MS;
+            ai_tick_poll($match);
+            expect_same(2, $stub->calls, 'retried after budget and pause');
+        },
         'a hero turn poll with no choice for the ai writes nothing' => static function (): void {
             $clock = 0;
             $match = ai_tick_match($clock);
