@@ -806,8 +806,10 @@ final class GameService
     }
 
     /**
-     * Runs inside every poll (the server has no background workers): at most one AI step once the pace
-     * pause is over. It never fails the poll; whatever goes wrong is logged and the poll answers as usual.
+     * Runs inside every projection poll (the server has no background workers): at most one AI step once the
+     * pace pause is over. Every client poll, player or spectator, fetches a projection (reconnect or watch) before
+     * its events page, so the events endpoints never step and a page cannot run ahead of its projection.
+     * It never fails the poll; whatever goes wrong is logged and the poll answers as usual.
      */
     private function advanceAi(string $gameId): void
     {
@@ -1055,9 +1057,9 @@ final class GameService
         }
     }
 
+    /** Never steps the AI: a client's poll asks for the projection first, and the page must not run ahead of it. */
     public function getEvents(string $gameId, string $identityId, string $seatToken, int $afterSequence): array
     {
-        $this->advanceAi($gameId);
         $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
         return $this->eventPage($gameId, $afterSequence, $membership['role'] === 'voidLord' ? 'void' : 'heroes');
     }
@@ -1065,7 +1067,6 @@ final class GameService
     /** Anyone may read a game's event log by its id; before a Co-op battle it carries neither side's preparations. */
     public function getWatchedEvents(string $gameId, int $afterSequence): array
     {
-        $this->advanceAi($gameId);
         $this->gameRow($gameId);
         return $this->eventPage($gameId, $afterSequence, null);
     }

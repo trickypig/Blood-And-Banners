@@ -60,8 +60,10 @@ function ai_tick_to_ai_turn(array $match): void
     expect_same($match['ai'], ai_tick_owed($match), 'the AI is up');
 }
 
+/** One client poll: the projection (which may step the AI) comes first, then the events page. */
 function ai_tick_poll(array $match): array
 {
+    $match['games']->reconnect($match['gameId'], $match['host']['identity'], $match['host']['token']);
     return $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0);
 }
 
@@ -234,7 +236,7 @@ function ai_tick_tests(): array
             ai_tick_to_ai_turn($match);
             $stub->during = static function () use ($match): void {
                 // The lease is already taken: this poll is not due and must not reach the planner.
-                $match['games']->getWatchedEvents($match['gameId'], 0);
+                $match['games']->getWatchedGame($match['gameId']);
             };
             $clock += 1000;
             $before = ai_tick_version($match);
@@ -343,15 +345,15 @@ function ai_tick_tests(): array
                 ->execute(['json' => json_encode($state), 'game' => $match['gameId']]);
             expect_true(!ai_seat_state($match)['setup']['confirmed'], 'the horde is unconfirmed');
             $before = ai_tick_version($match);
-            $match['games']->getWatchedEvents($match['gameId'], 0);
+            $match['games']->getWatchedGame($match['gameId']);
             expect_same($before, ai_tick_version($match), 'the safety net is paced like a step');
             $clock += 1000;
-            $match['games']->getWatchedEvents($match['gameId'], 0);
+            $match['games']->getWatchedGame($match['gameId']);
             $after = ai_seat_state($match);
             expect_true($after['setup']['confirmed'], 'the safety net confirmed it');
             expect_true($after['setup']['spent'] >= 1, 'with a real horde');
             expect_same($before + 1, ai_tick_version($match), 'one version');
-            $match['games']->getWatchedEvents($match['gameId'], 0);
+            $match['games']->getWatchedGame($match['gameId']);
             expect_same($before + 1, ai_tick_version($match), 'and only once');
         },
         'spectators drive the ai too' => static function (): void {
@@ -359,11 +361,23 @@ function ai_tick_tests(): array
             $match = ai_tick_match($clock);
             ai_tick_to_ai_turn($match);
             $before = ai_tick_version($match);
-            $match['games']->getWatchedEvents($match['gameId'], 0);
+            $match['games']->getWatchedGame($match['gameId']);
             expect_same($before, ai_tick_version($match), 'not due yet');
             $clock += 1000;
-            $match['games']->getWatchedEvents($match['gameId'], 0);
+            $match['games']->getWatchedGame($match['gameId']);
             expect_same($before + 1, ai_tick_version($match), 'a watcher poll steps the AI');
+        },
+        'only projection polls step the ai, never an events page' => static function (): void {
+            $clock = 0;
+            $match = ai_tick_match($clock);
+            ai_tick_to_ai_turn($match);
+            $before = ai_tick_version($match);
+            $clock += 1000;
+            $match['games']->getEvents($match['gameId'], $match['host']['identity'], $match['host']['token'], 0);
+            $match['games']->getWatchedEvents($match['gameId'], 0);
+            expect_same($before, ai_tick_version($match), 'events pages do not step');
+            $match['games']->getGame($match['gameId'], $match['host']['identity']);
+            expect_same($before + 1, ai_tick_version($match), 'the game projection steps');
         },
     ];
 }
