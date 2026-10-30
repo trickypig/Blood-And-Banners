@@ -18,6 +18,7 @@ use BloodAndBanners\Rules\Vanilla\Terrain;
 final class HordeBuilder
 {
     private const TENTACLES = ['Kraken Tentacle (Lesser)', 'Kraken Tentacle (Greater)'];
+    /** Mirrors CoopSetup::canPlace, which refuses a fifth Kraken tentacle in prep. */
     private const TENTACLE_LIMIT = 4;
 
     public function __construct(private readonly Catalog $catalog)
@@ -68,8 +69,9 @@ final class HordeBuilder
         $stalled = 0;
         for ($visit = 0; $s['remaining'] > 0 && $stalled < count($order) && $visit < 400; $visit++) {
             $free = count($ctx['spawn']) - count($s['taken']);
-            if ($free <= 0 || intdiv($s['remaining'] + $free - 1, $free) >= 3) {
-                break; // hexes are the scarce resource now: leave the rest to the dearer fillers
+            // A package always comes first; after that, if hexes are the scarce resource, leave the rest to the dearer fillers.
+            if ($free <= 0 || ($s['plan'] !== [] && intdiv($s['remaining'] + $free - 1, $free) >= 3)) {
+                break;
             }
             $region = $regions[$order[$visit % count($order)]];
             $stalled = $this->placePackage($s, $region, $packages) ? 0 : $stalled + 1;
@@ -218,16 +220,21 @@ final class HordeBuilder
         if ($onBiome === [] && $offBiome === []) {
             return false;
         }
-        $off = $rng->roll(1000) <= (int)round(1000 * (float)($p->horde['offBiome'] ?? 0));
+        $offChance = (int)round(1000 * (float)($p->horde['offBiome'] ?? 0));
+        $off = $offChance > 0 && $rng->roll(1000) <= $offChance;
         $pool = $off && $offBiome !== [] ? $offBiome : ($onBiome !== [] ? $onBiome : $offBiome);
 
+        $free = count($s['ctx']['spawn']) - count($s['taken']);
+        $need = $free > 0 ? min(4, intdiv($s['remaining'] + $free - 1, $free)) : 1;
+        $dear = array_values(array_filter($pool, fn (int $i): bool => $s['info'][$packages[$i]['creatures'][0]]['cost'] >= $need));
+        $pool = $dear !== [] ? $dear : $pool;
         $shares = $p->horde['shares'];
         $wanted = array_values(array_filter($pool, fn (int $i): bool => ($shares[$s['info'][$packages[$i]['creatures'][0]]['tier']] ?? 0) > 0));
         $pool = $wanted !== [] ? $wanted : $pool;
         $tagged = array_values(array_filter($pool, static fn (int $i): bool => in_array($p->horde['tag'] ?? '', $packages[$i]['tags'], true)));
         $unused = array_values(array_filter($pool, static fn (int $i): bool => !isset($s['used'][$i])));
         $both = array_values(array_intersect($tagged, $unused));
-        foreach ([$both, $unused, $tagged, $pool] as $tier) {
+        foreach ([$both, $tagged, $unused, $pool] as $tier) {
             if ($tier !== []) {
                 $pool = $tier;
                 break;
@@ -245,6 +252,9 @@ final class HordeBuilder
             $e = $s['info'][$name] ?? null;
             if ($e === null || $e['cost'] > $left) {
                 continue;
+            }
+            if ($n > 0 && $e['cost'] < $need) {
+                continue; // hexes are short: spend them on dearer members
             }
             if ($n > 0 && $tierSpent[$e['tier']] >= ($shares[$e['tier']] ?? 0) * $s['budget']) {
                 continue;
@@ -267,8 +277,15 @@ final class HordeBuilder
         if ($coreHex === null) {
             return false;
         }
-        foreach (array_merge($melee, $ranged) as $name) {
-            $this->take($s, $name, $regionSet, $coreHex);
+        $front = null;
+        foreach ($melee as $name) {
+            $hex = $this->take($s, $name, $regionSet, $coreHex, null);
+            if ($hex !== null) {
+                $front = max($front ?? 0, $s['ctx']['hero'][$hex]);
+            }
+        }
+        foreach ($ranged as $name) {
+            $this->take($s, $name, $regionSet, $coreHex, $front);
         }
         return true;
     }
@@ -294,7 +311,7 @@ final class HordeBuilder
      * Places a creature in the region: the core on the hex farthest from the heroes, followers close to it
      * (melee toward the heroes, ranged behind). Returns the hex, or null when nothing fits.
      */
-    private function take(array &$s, string $name, array $regionSet, ?string $coreHex): ?string
+    private function take(array &$s, string $name, array $regionSet, ?string $coreHex, ?int $behind = null): ?string
     {
         $e = $s['info'][$name];
         if (!$this->fits($s, $name, $regionSet, $s['remaining'])) {
@@ -309,10 +326,10 @@ final class HordeBuilder
                 continue;
             }
             if ($coreHex === null) {
-                $key = [$cover && $ctx['cover'][$hex] ? 0 : 1, -$ctx['hero'][$hex], $hex];
+                $key = [0, $cover && $ctx['cover'][$hex] ? 0 : 1, -$ctx['hero'][$hex], $hex];
             } else {
                 $near = $this->dist($ctx['xy'][$coreHex], $ctx['xy'][$hex]);
-                $key = [$cover && $ctx['cover'][$hex] ? 0 : 1, $near, $e['ranged'] ? -$ctx['hero'][$hex] : $ctx['hero'][$hex], $hex];
+                $key = [$behind !== null && $ctx['hero'][$hex] < $behind ? 1 : 0, $cover && $ctx['cover'][$hex] ? 0 : 1, $near, $e['ranged'] ? -$ctx['hero'][$hex] : $ctx['hero'][$hex], $hex];
             }
             if ($bestKey === null || $key < $bestKey) {
                 $best = $hex;

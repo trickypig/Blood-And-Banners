@@ -99,6 +99,39 @@ function ai_near_cover(array $board, string $hex): bool
     return false;
 }
 
+/** Mean cost, distance to the portal, cover share and biome count per personality over seeds 1..5. */
+function ai_horde_stats(array $state): array
+{
+    $board = $state['board'];
+    $portal = null;
+    foreach ($board as $key => $hex) {
+        if ($hex['voidPortal']) {
+            $portal = (string)$key;
+        }
+    }
+    $stats = [];
+    foreach (array_keys(Personalities::all()) as $id) {
+        $cost = $creatures = $distance = $cover = 0;
+        $biomes = [];
+        foreach ([1, 2, 3, 4, 5] as $seed) {
+            foreach (ai_plan($state, $id, $seed) as $placement) {
+                $monster = ai_catalog()->monster($placement['monster']);
+                $creatures++;
+                $cost += CoopSetup::cost($monster);
+                $distance += Hex::distance($placement['hex'], $portal);
+                $cover += ai_near_cover($board, $placement['hex']) ? 1 : 0;
+                $biomes[$monster['biome']] = true;
+            }
+        }
+        $stats[$id] = ['cost' => $cost / $creatures, 'distance' => $distance / $creatures, 'cover' => $cover / $creatures, 'biomes' => count($biomes)];
+    }
+    if (getenv('AI_HORDE_STATS')) {
+        fwrite(STDERR, count($state['sides']['heroes']['seatIds']) . ' heroes: ' . json_encode($stats) . "
+");
+    }
+    return $stats;
+}
+
 function ai_horde_tests(): array
 {
     return [
@@ -167,36 +200,23 @@ function ai_horde_tests(): array
             expect_true(count($distinct) >= 2, 'seeds vary the horde');
         },
         'personalities build recognisably different hordes' => static function (): void {
-            $state = ai_prep_state('void-reaches', 2);
-            $board = $state['board'];
-            $portal = null;
-            foreach ($board as $key => $hex) {
-                if ($hex['voidPortal']) {
-                    $portal = (string)$key;
-                }
-            }
-            $stats = [];
-            foreach (array_keys(Personalities::all()) as $id) {
-                $cost = $creatures = $distance = $cover = 0;
-                $biomes = [];
-                foreach ([1, 2, 3, 4, 5] as $seed) {
-                    foreach (ai_plan($state, $id, $seed) as $placement) {
-                        $monster = ai_catalog()->monster($placement['monster']);
-                        $creatures++;
-                        $cost += CoopSetup::cost($monster);
-                        $distance += Hex::distance($placement['hex'], $portal);
-                        $cover += ai_near_cover($board, $placement['hex']) ? 1 : 0;
-                        $biomes[$monster['biome']] = true;
-                    }
-                }
-                $stats[$id] = ['cost' => $cost / $creatures, 'distance' => $distance / $creatures, 'cover' => $cover / $creatures, 'biomes' => count($biomes)];
-            }
+            $stats = ai_horde_stats(ai_prep_state('void-reaches', 2));
             expect_true($stats['ravager']['cost'] < $stats['warden']['cost'], 'ravager swarms cheaper creatures than warden');
             expect_true($stats['warden']['distance'] < $stats['ravager']['distance'], 'warden sits nearer the portal');
             foreach (['ravager', 'warden', 'hollowKing'] as $other) {
                 expect_true($stats['huntress']['cover'] > $stats[$other]['cover'], "huntress hugs cover more than {$other}");
             }
             expect_true($stats['hollowKing']['biomes'] >= 3, 'hollow king mixes three or more biomes');
+        },
+        'personalities stay different with four heroes' => static function (): void {
+            $big = ai_horde_stats(ai_prep_state('void-reaches', 4));
+            expect_true($big['warden']['distance'] < $big['ravager']['distance'], 'void reaches: warden sits nearer the portal');
+            expect_true($big['ravager']['cost'] < $big['warden']['cost'], 'void reaches: ravager swarms cheaper creatures');
+            expect_true($big['hollowKing']['biomes'] >= 3, 'void reaches: hollow king mixes three or more biomes');
+            // Lakeheart's spawn zone is nearly filled at 132 points, so where creatures stand barely differs; what they are still does.
+            $small = ai_horde_stats(ai_prep_state('incursion-lakeheart', 4));
+            expect_true($small['ravager']['cost'] < $small['warden']['cost'], 'lakeheart: ravager swarms cheaper creatures');
+            expect_true($small['hollowKing']['biomes'] >= 3, 'lakeheart: hollow king mixes three or more biomes');
         },
         'the horde ignores hero picks' => static function (): void {
             $a = ai_prep_state('void-reaches', 2);
@@ -211,10 +231,12 @@ function ai_horde_tests(): array
         'mostly on theme' => static function (): void {
             $state = ai_prep_state('void-reaches', 2);
             $on = $all = 0;
-            foreach (ai_plan($state, 'ravager') as $placement) {
-                $hex = $state['board'][$placement['hex']];
-                $all++;
-                $on += in_array(ai_catalog()->monster($placement['monster'])['biome'], BiomeMap::monsterBiomes($hex['biome'], $hex['terrain']), true) ? 1 : 0;
+            foreach ([1, 2, 3, 4, 5] as $seed) {
+                foreach (ai_plan($state, 'ravager', $seed) as $placement) {
+                    $hex = $state['board'][$placement['hex']];
+                    $all++;
+                    $on += in_array(ai_catalog()->monster($placement['monster'])['biome'], BiomeMap::monsterBiomes($hex['biome'], $hex['terrain']), true) ? 1 : 0;
+                }
             }
             expect_true($all > 0 && $on / $all >= 0.8, "on-theme share {$on}/{$all}");
         },
