@@ -125,6 +125,23 @@ function ai_seat_tests(): array
             expect_true(ai_seat_membership($after) === null, 'the AI seat is gone');
             expect_true(!in_array('voidLord', array_column($after['memberships'], 'role'), true), 'nobody holds the role');
         },
+        'the host cannot reassign the ai seat to a person' => static function (): void {
+            $match = ai_seat_match(1);
+            $view = vanilla_submit($match, 'host', 'seatAiVoidLord', ['personality' => 'warden']);
+            $aiSeat = ai_seat_membership($view)['seatId'];
+            $other = $match['auth']->createGuest('ai-takeover-' . bin2hex(random_bytes(4)));
+            expect_game_error('seatNotFound', static fn() => $match['games']->reassignSeat(
+                $match['gameId'], $match['host']['identity'], $match['host']['token'], $aiSeat, $other['identityId']
+            ));
+        },
+        'ai horde events are credited to the ai seat, not the host' => static function (): void {
+            $match = ai_seat_match(0);
+            vanilla_submit($match, 'host', 'seatAiVoidLord', ['personality' => 'warden']);
+            vanilla_submit($match, 'host', 'setReady', ['ready' => true]);
+            $match['games']->startGame($match['gameId'], $match['host']['identity'], $match['host']['token']);
+            $actors = $match['db']->query("SELECT DISTINCT acting_identity_id FROM game_events WHERE game_id = '{$match['gameId']}' AND kind IN ('setupConfirmed', 'monsterPlaced')")->fetchAll(PDO::FETCH_COLUMN);
+            expect_true($actors !== [] && !in_array($match['host']['identity'], $actors, true), 'the host is not credited');
+        },
         'only the host changes the pace and only to a known pace' => static function (): void {
             $match = ai_seat_match(1);
             expect_game_error('noAiSeat', static fn() => vanilla_submit($match, 'host', 'setAiPace', ['pace' => 'fast']));

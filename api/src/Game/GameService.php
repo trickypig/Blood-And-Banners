@@ -310,6 +310,7 @@ final class GameService
             }
             $aiSeat = $game['mode'] === 'coop' ? $this->aiSeat($memberships) : null;
             $aiEvents = [];
+            // Trade-off: if the AI horde cannot be applied, the whole Start rolls back; there is no fallback horde.
             if ($aiSeat !== null) {
                 [$started['state'], $aiEvents] = $this->buildAiHorde($started['state'], $aiSeat, $gameId, count($memberships) - 1);
             }
@@ -328,7 +329,7 @@ final class GameService
             }
             foreach ($aiEvents as $event) {
                 $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : 'void';
-                $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes'], $side);
+                $this->appendEvent($gameId, $version, $event['kind'], (string)$aiSeat['identity_id'], $event['payload'], $event['focusHexes'], $side);
             }
             $this->writeSnapshot($gameId, $version, $projection);
             $this->connection->commit();
@@ -779,7 +780,7 @@ final class GameService
             throw self::versionConflict($currentVersion);
         }
         $this->saveState($game['id'], $newVersion, $result['state']);
-        if ($game['mode'] === 'coop' && $this->aiSeat($this->memberships($game['id'])) !== null) {
+        if ($game['mode'] === 'coop' && $this->scalar('SELECT COUNT(*) FROM game_memberships WHERE game_id = :game AND ai_personality IS NOT NULL', ['game' => $game['id']]) > 0) {
             $this->connection->prepare('UPDATE games SET ai_stepped_at = :stepped WHERE id = :id')
                 ->execute(['stepped' => ($this->clockMs)(), 'id' => $game['id']]);
         }
@@ -835,11 +836,11 @@ final class GameService
                 throw new GameServiceException('identityAlreadySeated', 'The replacement identity already controls a seat.', (int)$game['version']);
             }
             $statement = $this->connection->prepare(
-                'SELECT id, is_host FROM game_memberships WHERE game_id = :game AND id = :seat'
+                'SELECT id, is_host, ai_personality FROM game_memberships WHERE game_id = :game AND id = :seat'
             );
             $statement->execute(['game' => $gameId, 'seat' => $seatId]);
             $seat = $statement->fetch();
-            if (!$seat) {
+            if (!$seat || $seat['ai_personality'] !== null) {
                 throw new GameServiceException('seatNotFound', 'The requested seat does not exist.', (int)$game['version']);
             }
 
