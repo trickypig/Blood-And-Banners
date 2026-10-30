@@ -185,7 +185,9 @@ function ai_evaluator_tests(): array
                 $e->score($state, 'void', $p->weights);
             }
             $ms = (microtime(true) - $start) * 1000 / 200;
-            fwrite(STDERR, sprintf("  evaluator: %.2f ms per score\n", $ms));
+            if (getenv('AI_EVAL_TIMING')) {
+                fwrite(STDERR, sprintf("  evaluator: %.2f ms per score\n", $ms));
+            }
             expect_true($ms < 20, 'under 20 ms per score');
         },
         'wounding a hero scores higher for the void' => static function (): void {

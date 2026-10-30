@@ -136,7 +136,9 @@ function ai_tick_tests(): array
             $reject->on = true;
             $clock += 1000;
             $before = ai_tick_version($match);
+            $logged = ini_set('error_log', sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-tick-test.log');
             ai_tick_poll($match);
+            ini_set('error_log', (string)$logged);
             expect_same($before + 1, ai_tick_version($match), 'the fallback was applied');
             expect_true(ai_tick_owed($match) !== $match['ai'], 'endTurn passed the turn');
 
@@ -156,7 +158,9 @@ function ai_tick_tests(): array
             $reject->on = true;
             $clock += 1000;
             $before = ai_tick_version($match);
+            $logged = ini_set('error_log', sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-tick-test.log');
             ai_tick_poll($match);
+            ini_set('error_log', (string)$logged);
             expect_same($before + 1, ai_tick_version($match), 'the fallback was applied');
             expect_same(null, ai_seat_state($match)['turn']['activeUnitId'] ?? null, 'endActivation closed the unit');
         },
