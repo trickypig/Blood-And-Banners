@@ -29,7 +29,7 @@ const AI_SOAK_STEP_CAP = 20000;
  * Plays one whole co-op battle on the real catalog: the personality plans and confirms its horde, the
  * draft takes the first legal pick, then every owed command comes from a fresh TurnPlanner (heroes are
  * the ravager in 'bot' mode, or end their turns at once in 'passive' mode).
- * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, endTurnInReach:int, posture:?array{portal:float, hero:float, cover:float}, steps:int, ms:int}
+ * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, endTurnInReach:int, posture:?array{portal:float, hero:float, cover:float}, steps:int, voidStepsPerTurn:float, endActivations:int, ms:int}
  */
 function ai_soak(string $scenario, string $personality, int $heroes, string $heroMode, int $roundCap, int $seed = 1): array
 {
@@ -57,6 +57,9 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
     $previous = [];
     $planMs = ['void' => 0.0, 'heroes' => 0.0];
     $endTurnInReach = 0;
+    $voidSteps = 0;
+    $voidTurns = 0;
+    $endActivations = 0;
     $postures = [];
     // Any warning or notice during the battle is a bug: make it throw.
     set_error_handler(static function (int $level, string $message, string $file, int $line): bool {
@@ -121,6 +124,9 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
                 $firstContact ??= $round;
                 $open[$unitId]['attacked'] = true;
             }
+            if ($before['turn']['activeSeatId'] === $void && $state['turn']['activeSeatId'] !== $void) {
+                $voidTurns++;
+            }
             if ($command['kind'] === 'endTurn' && !Stance::holding($before, $void, $own)) {
                 // Passing the turn while a monster that may still act has an enemy in reach wastes it.
                 $left = array_keys(ai_soak_strikers($engine, $before, $void));
@@ -133,16 +139,21 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
                 && ($posture = ai_soak_posture($state)) !== null) {
                 $postures[] = $posture;
             }
-            // A unit that closes its activation with an enemy in reach and no swing taken wastes the activation.
-            if ($command['kind'] === 'endActivation' && !$open[$unitId]['attacked'] && ai_soak_could_strike($engine, $before, $void, $unitId)) {
-                $idleInReach++;
-                if (getenv('AI_SOAK_LOG')) {
-                    fwrite(STDERR, "  idle in reach: {$unitId} round {$round} at {$state['units'][$unitId]['hex']}" . PHP_EOL);
-                }
-            }
+            $voidSteps++;
+            $endActivations += $command['kind'] === 'endActivation' ? 1 : 0;
             foreach ($open as $id => $activation) {
                 if (($state['turn']['activeUnitId'] ?? null) === $id && $state['turn']['activeSeatId'] === $void) {
                     continue;
+                }
+                // A unit whose activation closes with an enemy in reach and no swing taken wastes the activation.
+                // It closes by its own endActivation, or implicitly when another unit acts or the turn ends; a
+                // close by the unit's own move or attack leaves nothing it could still have struck with.
+                $closedByOther = $command['kind'] === 'endActivation' || $unitId !== $id;
+                if ($closedByOther && !$activation['attacked'] && ai_soak_could_strike($engine, $before, $void, (string)$id)) {
+                    $idleInReach++;
+                    if (getenv('AI_SOAK_LOG')) {
+                        fwrite(STDERR, "  idle in reach: {$id} round {$round} at {$before['units'][$id]['hex']} (closed by {$command['kind']})" . PHP_EOL);
+                    }
                 }
                 // Closed. Two attack-free activations in a row that undo each other are a purposeless shuffle.
                 $end = (string)($state['units'][$id]['hex'] ?? '');
@@ -183,12 +194,15 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
             'cover' => array_sum(array_column($postures, 'cover')) / count($postures),
         ],
         'steps' => $steps,
+        'voidStepsPerTurn' => $voidTurns > 0 ? $voidSteps / $voidTurns : 0.0,
+        'endActivations' => $endActivations,
         'ms' => (int)floor(microtime(true) * 1000) - $startedMs,
     ];
     if (getenv('AI_SOAK_LOG')) {
         fwrite(STDERR, sprintf(
-            "soak %s %s %d %s: %s in %d rounds, %d steps, %d illegal, %d attacks, contact r%s, idle-in-reach %d, end-turn-in-reach %d, shuffles %d, posture %s, %d ms (planning: void %d, heroes %d)\n",
-            $scenario, $personality, $heroes, $heroMode, $result['result']['winningSide'] ?? 'cap', $result['rounds'], $steps, $illegal,
+            "soak %s %s %d %s: %s in %d rounds, %d steps (void %.1f a turn, %d endActivation), %d illegal, %d attacks, contact r%s, idle-in-reach %d, end-turn-in-reach %d, shuffles %d, posture %s, %d ms (planning: void %d, heroes %d)\n",
+            $scenario, $personality, $heroes, $heroMode, $result['result']['winningSide'] ?? 'cap', $result['rounds'], $steps,
+            $result['voidStepsPerTurn'], $endActivations, $illegal,
             $aiAttacks, $firstContact ?? '-', $idleInReach, $endTurnInReach, $shuffles,
             json_encode(array_map(static fn (float $v): float => round($v, 2), $result['posture'] ?? [])), $result['ms'], $planMs['void'], $planMs['heroes']
         ));

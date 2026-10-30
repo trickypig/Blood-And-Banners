@@ -119,7 +119,10 @@ final class TurnPlanner
         return $pick['command'] ?? $choices[0] ?? $commands[0];
     }
 
-    /** Step 2: the rest of the active unit's activation, or endActivation when nothing beats standing still. */
+    /**
+     * Step 2: the rest of the active unit's activation. When nothing beats standing still the activation is over,
+     * but endActivation shows nothing on the board, so the step goes on to what comes next instead (see chainPast).
+     */
     private function finishActivation(array $state, array $legal, array $commands, string $unitId, SeededRandom $dice): array
     {
         $weights = $this->weightsFor($state, $unitId);
@@ -135,7 +138,43 @@ final class TurnPlanner
             }
         }
         $pick = $this->pick($pool, $dice);
+        if ($pick !== null && $pick['command']['kind'] === 'endActivation') {
+            return $this->chainPast($state, $commands, $pick['command'], $dice);
+        }
         return $pick['command'] ?? $end ?? self::fallback($commands);
+    }
+
+    /**
+     * The engine closes an activation by itself when another unit acts (or the turn ends), so instead of a silent
+     * endActivation step this plays it on paper and returns the next visible command: another unit's move or
+     * attack, or endTurn. When closing leaves nobody able to act (the engine would pass the turn) it is endTurn.
+     * It keeps endActivation when that is safer: the search clock has run out (the next step searches afresh
+     * rather than pass the turn untried), closing opens a choice, or the next command would not be legal while
+     * this unit is still active.
+     */
+    private function chainPast(array $state, array $commands, array $end, SeededRandom $dice): array
+    {
+        if ($this->timeUp()) {
+            return $end;
+        }
+        $closed = $this->outcomes($state, $end, 1)[0] ?? null;
+        if ($closed !== null && $closed['phase'] === 'active' && $closed['pending'] === null && $closed['turn']['activeSeatId'] !== $this->seatId) {
+            return self::find($commands, 'endTurn') ?? $end;
+        }
+        if ($closed === null || $closed['phase'] !== 'active' || $closed['pending'] !== null || $closed['turn']['activeUnitId'] !== null) {
+            return $end;
+        }
+        $legal = $this->engine->legalActions($closed, $this->seatId, $this->nowSeconds);
+        $commands = CommandCandidates::for($closed, $this->seatId, $legal);
+        if ($commands === []) {
+            return $end;
+        }
+        $next = $this->chooseActivation($closed, $legal, $commands, $dice);
+        if ($next['kind'] === 'endActivation' || ($next['kind'] === 'endTurn' && $this->expired)) {
+            return $end;
+        }
+        // Legal as things stand, with this unit still active? (Played on the real state, so the answer is the engine's.)
+        return $this->outcomes($state, $next, 1) === [] ? $end : $next;
     }
 
     /**
