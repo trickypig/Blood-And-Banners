@@ -6,8 +6,10 @@ use BloodAndBanners\Ai\Personalities;
 use BloodAndBanners\Ai\SeededRandom;
 use BloodAndBanners\Ai\TurnPlanner;
 use BloodAndBanners\Rules\HexLineOfSight;
+use BloodAndBanners\Ai\Stance;
 use BloodAndBanners\Rules\Vanilla\Hex;
 use BloodAndBanners\Rules\Vanilla\MatchEngine;
+use BloodAndBanners\Rules\Vanilla\Modes\CoopMode;
 use BloodAndBanners\Rules\Vanilla\Sides;
 
 /**
@@ -18,6 +20,8 @@ use BloodAndBanners\Rules\Vanilla\Sides;
 const AI_SOAK_STEP_TICKS = 40;
 /** The hero bot is only the opposition here, so it searches less than the Void Lord (it is half the planning time). */
 const AI_SOAK_HERO_STEP_TICKS = 30;
+/** Rounds whose end-of-Void-turn positions make up the posture (how each personality stands early on). */
+const AI_SOAK_POSTURE_ROUNDS = 4;
 /** Hard cap on commands per battle, in case something loops without ending turns. */
 const AI_SOAK_STEP_CAP = 20000;
 
@@ -25,7 +29,7 @@ const AI_SOAK_STEP_CAP = 20000;
  * Plays one whole co-op battle on the real catalog: the personality plans and confirms its horde, the
  * draft takes the first legal pick, then every owed command comes from a fresh TurnPlanner (heroes are
  * the ravager in 'bot' mode, or end their turns at once in 'passive' mode).
- * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, steps:int, ms:int}
+ * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, endTurnInReach:int, posture:?array{portal:float, hero:float, cover:float}, steps:int, ms:int}
  */
 function ai_soak(string $scenario, string $personality, int $heroes, string $heroMode, int $roundCap, int $seed = 1): array
 {
@@ -52,84 +56,106 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
     $open = [];
     $previous = [];
     $planMs = ['void' => 0.0, 'heroes' => 0.0];
+    $endTurnInReach = 0;
+    $postures = [];
+    // Any warning or notice during the battle is a bug: make it throw.
+    set_error_handler(static function (int $level, string $message, string $file, int $line): bool {
+        throw new ErrorException($message, 0, $level, $file, $line);
+    });
     $steps = 0;
-    while ($state['phase'] === 'active' && (int)$state['turn']['round'] <= $roundCap && $steps < AI_SOAK_STEP_CAP) {
-        $steps++;
-        $choice = $state['pending']['choice'] ?? null;
-        $seat = $choice !== null ? (string)$choice['seatId'] : (string)$state['turn']['activeSeatId'];
-        $round = (int)$state['turn']['round'];
-        $stepSeed = $seed * 100_000 + $steps;
-        $command = null;
-        if ($seat !== $void && $heroMode === 'passive') {
-            $commands = CommandCandidates::for($state, $seat, $engine->legalActions($state, $seat, AI_PLANNER_NOW));
-            foreach ($commands as $candidate) {
-                if ($candidate['kind'] === ($choice !== null ? 'resolveChoice' : 'endTurn')) {
-                    $command = $candidate;
-                    break;
+    try {
+        while ($state['phase'] === 'active' && (int)$state['turn']['round'] <= $roundCap && $steps < AI_SOAK_STEP_CAP) {
+            $steps++;
+            $choice = $state['pending']['choice'] ?? null;
+            $seat = $choice !== null ? (string)$choice['seatId'] : (string)$state['turn']['activeSeatId'];
+            $round = (int)$state['turn']['round'];
+            $stepSeed = $seed * 100_000 + $steps;
+            $command = null;
+            if ($seat !== $void && $heroMode === 'passive') {
+                $commands = CommandCandidates::for($state, $seat, $engine->legalActions($state, $seat, AI_PLANNER_NOW));
+                foreach ($commands as $candidate) {
+                    if ($candidate['kind'] === ($choice !== null ? 'resolveChoice' : 'endTurn')) {
+                        $command = $candidate;
+                        break;
+                    }
                 }
             }
-        }
-        if ($command === null) {
-            $ticks = 0;
-            $clock = static function () use (&$ticks): int {
-                return $ticks++;
-            };
-            $planner = new TurnPlanner($engine, $seat === $void ? $own : $ravager, AI_PLANNER_NOW, $seat === $void ? AI_SOAK_STEP_TICKS : AI_SOAK_HERO_STEP_TICKS, $clock);
-            $planStart = microtime(true);
-            $command = $planner->next($state, $seat, $stepSeed);
-            $planMs[$seat === $void ? 'void' : 'heroes'] += (microtime(true) - $planStart) * 1000;
-        }
-        if ($command === null) {
-            throw new RuntimeException("{$seat} owes a command but the planner returned none (round {$round})");
-        }
-        $before = $state;
-        try {
-            $state = $engine->apply($state, $seat, $command['kind'], $command['payload'], new SeededRandom($stepSeed), AI_PLANNER_NOW)['state'];
-        } catch (Throwable $error) {
-            $illegal++;
-            // Keep the battle going: pass the turn (or the first legal option) instead.
-            $fallback = CommandCandidates::for($state, $seat, $engine->legalActions($state, $seat, AI_PLANNER_NOW));
-            $pass = array_values(array_filter($fallback, static fn (array $c): bool => in_array($c['kind'], ['resolveChoice', 'endTurn'], true)))[0] ?? $fallback[0];
-            $state = $engine->apply($state, $seat, $pass['kind'], $pass['payload'], new SeededRandom($stepSeed), AI_PLANNER_NOW)['state'];
-            continue;
-        }
-        if ($seat !== $void) {
-            continue;
-        }
-        $unitId = isset($command['payload']['unitId']) ? (string)$command['payload']['unitId'] : null;
-        if ($unitId !== null && !isset($open[$unitId]) && isset($before['units'][$unitId])) {
-            $open[$unitId] = ['start' => (string)$before['units'][$unitId]['hex'], 'attacked' => false];
-        }
-        if (in_array($command['kind'], ['attackUnit', 'specialAttack'], true)) {
-            $aiAttacks++;
-            $attacksByRound[$round] = ($attacksByRound[$round] ?? 0) + 1;
-            $firstContact ??= $round;
-            $open[$unitId]['attacked'] = true;
-        }
-        // A unit that closes its activation with an enemy in reach and no swing taken wastes the activation.
-        if ($command['kind'] === 'endActivation' && !$open[$unitId]['attacked'] && ai_soak_could_strike($engine, $before, $void, $unitId)) {
-            $idleInReach++;
-            if (getenv('AI_SOAK_LOG')) {
-                fwrite(STDERR, "  idle in reach: {$unitId} round {$round} at {$state['units'][$unitId]['hex']}" . PHP_EOL);
+            if ($command === null) {
+                $ticks = 0;
+                $clock = static function () use (&$ticks): int {
+                    return $ticks++;
+                };
+                $planner = new TurnPlanner($engine, $seat === $void ? $own : $ravager, AI_PLANNER_NOW, $seat === $void ? AI_SOAK_STEP_TICKS : AI_SOAK_HERO_STEP_TICKS, $clock);
+                $planStart = microtime(true);
+                $command = $planner->next($state, $seat, $stepSeed);
+                $planMs[$seat === $void ? 'void' : 'heroes'] += (microtime(true) - $planStart) * 1000;
             }
-        }
-        foreach ($open as $id => $activation) {
-            if (($state['turn']['activeUnitId'] ?? null) === $id && $state['turn']['activeSeatId'] === $void) {
+            if ($command === null) {
+                throw new RuntimeException("{$seat} owes a command but the planner returned none (round {$round})");
+            }
+            $before = $state;
+            try {
+                $state = $engine->apply($state, $seat, $command['kind'], $command['payload'], new SeededRandom($stepSeed), AI_PLANNER_NOW)['state'];
+            } catch (Throwable $error) {
+                $illegal++;
+                // Keep the battle going: pass the turn (or the first legal option) instead.
+                $fallback = CommandCandidates::for($state, $seat, $engine->legalActions($state, $seat, AI_PLANNER_NOW));
+                $pass = array_values(array_filter($fallback, static fn (array $c): bool => in_array($c['kind'], ['resolveChoice', 'endTurn'], true)))[0] ?? $fallback[0];
+                $state = $engine->apply($state, $seat, $pass['kind'], $pass['payload'], new SeededRandom($stepSeed), AI_PLANNER_NOW)['state'];
                 continue;
             }
-            // Closed. Two attack-free activations in a row that undo each other are a purposeless shuffle.
-            $end = (string)($state['units'][$id]['hex'] ?? '');
-            $last = $previous[$id] ?? null;
-            if (!$activation['attacked'] && $last !== null && !$last['attacked'] && $activation['start'] !== $end
-                && $last['start'] === $end && $last['end'] === $activation['start']) {
-                $shuffles++;
-                if (getenv('AI_SOAK_LOG')) {
-                    fwrite(STDERR, "  back again: {$id} round {$round} {$activation['start']} -> {$end}" . PHP_EOL);
+            if ($seat !== $void) {
+                continue;
+            }
+            $unitId = isset($command['payload']['unitId']) ? (string)$command['payload']['unitId'] : null;
+            if ($unitId !== null && !isset($open[$unitId]) && isset($before['units'][$unitId])) {
+                $open[$unitId] = ['start' => (string)$before['units'][$unitId]['hex'], 'attacked' => false];
+            }
+            if (in_array($command['kind'], ['attackUnit', 'specialAttack'], true)) {
+                $aiAttacks++;
+                $attacksByRound[$round] = ($attacksByRound[$round] ?? 0) + 1;
+                $firstContact ??= $round;
+                $open[$unitId]['attacked'] = true;
+            }
+            if ($command['kind'] === 'endTurn' && !Stance::holding($before, $void, $own)) {
+                // Passing the turn while a monster that may still act has an enemy in reach wastes it.
+                $left = array_keys(ai_soak_strikers($engine, $before, $void));
+                $endTurnInReach += count($left);
+                if ($left !== [] && getenv('AI_SOAK_LOG')) {
+                    fwrite(STDERR, '  end turn in reach: ' . implode(',', $left) . " round {$round}" . PHP_EOL);
                 }
             }
-            $previous[$id] = $activation + ['end' => $end];
-            unset($open[$id]);
+            if ($round <= AI_SOAK_POSTURE_ROUNDS && $state['phase'] === 'active' && $state['turn']['activeSeatId'] !== $void
+                && ($posture = ai_soak_posture($state)) !== null) {
+                $postures[] = $posture;
+            }
+            // A unit that closes its activation with an enemy in reach and no swing taken wastes the activation.
+            if ($command['kind'] === 'endActivation' && !$open[$unitId]['attacked'] && ai_soak_could_strike($engine, $before, $void, $unitId)) {
+                $idleInReach++;
+                if (getenv('AI_SOAK_LOG')) {
+                    fwrite(STDERR, "  idle in reach: {$unitId} round {$round} at {$state['units'][$unitId]['hex']}" . PHP_EOL);
+                }
+            }
+            foreach ($open as $id => $activation) {
+                if (($state['turn']['activeUnitId'] ?? null) === $id && $state['turn']['activeSeatId'] === $void) {
+                    continue;
+                }
+                // Closed. Two attack-free activations in a row that undo each other are a purposeless shuffle.
+                $end = (string)($state['units'][$id]['hex'] ?? '');
+                $last = $previous[$id] ?? null;
+                if (!$activation['attacked'] && $last !== null && !$last['attacked'] && $activation['start'] !== $end
+                    && $last['start'] === $end && $last['end'] === $activation['start']) {
+                    $shuffles++;
+                    if (getenv('AI_SOAK_LOG')) {
+                        fwrite(STDERR, "  back again: {$id} round {$round} {$activation['start']} -> {$end}" . PHP_EOL);
+                    }
+                }
+                $previous[$id] = $activation + ['end' => $end];
+                unset($open[$id]);
+            }
         }
+    } finally {
+        restore_error_handler();
     }
     $result = [
         'result' => $state['result'] ?? null,
@@ -140,46 +166,96 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
         'attacksByRound' => $attacksByRound,
         'idleInReach' => $idleInReach,
         'shuffles' => $shuffles,
+        'endTurnInReach' => $endTurnInReach,
+        'posture' => $postures === [] ? null : [
+            'portal' => array_sum(array_column($postures, 'portal')) / count($postures),
+            'hero' => array_sum(array_column($postures, 'hero')) / count($postures),
+            'cover' => array_sum(array_column($postures, 'cover')) / count($postures),
+        ],
         'steps' => $steps,
         'ms' => (int)floor(microtime(true) * 1000) - $startedMs,
     ];
     if (getenv('AI_SOAK_LOG')) {
         fwrite(STDERR, sprintf(
-            "soak %s %s %d %s: %s in %d rounds, %d steps, %d illegal, %d attacks, contact r%s, idle-in-reach %d, shuffles %d, %d ms (planning: void %d, heroes %d)\n",
+            "soak %s %s %d %s: %s in %d rounds, %d steps, %d illegal, %d attacks, contact r%s, idle-in-reach %d, end-turn-in-reach %d, shuffles %d, posture %s, %d ms (planning: void %d, heroes %d)\n",
             $scenario, $personality, $heroes, $heroMode, $result['result']['winningSide'] ?? 'cap', $result['rounds'], $steps, $illegal,
-            $aiAttacks, $firstContact ?? '-', $idleInReach, $shuffles, $result['ms'], $planMs['void'], $planMs['heroes']
+            $aiAttacks, $firstContact ?? '-', $idleInReach, $endTurnInReach, $shuffles,
+            json_encode(array_map(static fn (float $v): float => round($v, 2), $result['posture'] ?? [])), $result['ms'], $planMs['void'], $planMs['heroes']
         ));
     }
     return $cache[$key] = $result;
 }
 
-function ai_soak_nearest_enemy(array $state, string $unitId, string $hex): int
-{
-    $nearest = PHP_INT_MAX;
-    foreach ($state['units'] as $id => $unit) {
-        if ($unit['hex'] !== null && empty($unit['fixed']) && Sides::ofUnit($state, (string)$id) !== Sides::ofUnit($state, $unitId)) {
-            $nearest = min($nearest, Hex::distance($hex, (string)$unit['hex']));
-        }
-    }
-    return $nearest;
-}
-
 /** Whether the unit has an attack or special attack aimed at an enemy-held hex right now. */
 function ai_soak_could_strike(MatchEngine $engine, array $state, string $seatId, string $unitId): bool
 {
-    $enemyHexes = [];
+    return isset(ai_soak_strikers($engine, $state, $seatId)[$unitId]);
+}
+
+/** @return array<string,true> the seat's units with an attack or special attack aimed at an enemy-held hex right now */
+function ai_soak_strikers(MatchEngine $engine, array $state, string $seatId): array
+{
+    $occupant = [];
     foreach ($state['units'] as $id => $unit) {
-        if ($unit['hex'] !== null && Sides::ofUnit($state, (string)$id) !== Sides::ofUnit($state, $unitId)) {
-            $enemyHexes[(string)$unit['hex']] = true;
+        if ($unit['hex'] !== null) {
+            $occupant[(string)$unit['hex']] = (string)$id;
         }
     }
+    $strikers = [];
     foreach ($engine->legalActions($state, $seatId, AI_PLANNER_NOW) as $action) {
-        if (($action['unitId'] ?? null) === $unitId && in_array($action['kind'], ['attackUnit', 'specialAttack'], true)) {
-            foreach ($action['targetHexes'] ?? [] as $hex) {
-                if (isset($enemyHexes[(string)$hex])) {
-                    return true;
-                }
+        $unitId = $action['unitId'] ?? null;
+        if ($unitId === null || !in_array($action['kind'], ['attackUnit', 'specialAttack'], true)) {
+            continue;
+        }
+        foreach ($action['targetHexes'] ?? [] as $hex) {
+            $target = $occupant[(string)$hex] ?? null;
+            if ($target !== null && Sides::ofUnit($state, $target) !== Sides::ofUnit($state, (string)$unitId)) {
+                $strikers[(string)$unitId] = true;
+                break;
             }
+        }
+    }
+    return $strikers;
+}
+
+/**
+ * Where the horde stands at the end of a Void Lord turn: mean distance to the portal, mean distance to the
+ * nearest hero-side unit, and the share of monsters in cover (beside a sight blocker or a wall).
+ * @return array{portal:float, hero:float, cover:float}|null
+ */
+function ai_soak_posture(array $state): ?array
+{
+    $portal = $state['units'][CoopMode::VOID_PORTAL_ID]['hex'] ?? null;
+    $monsters = [];
+    $heroes = [];
+    foreach ($state['units'] as $id => $unit) {
+        if ($unit['hex'] === null || !empty($unit['fixed'])) {
+            continue;
+        }
+        if (Sides::ofUnit($state, (string)$id) === 'void') {
+            $monsters[] = (string)$unit['hex'];
+        } else {
+            $heroes[] = (string)$unit['hex'];
+        }
+    }
+    if ($monsters === [] || $heroes === [] || $portal === null) {
+        return null;
+    }
+    $sum = ['portal' => 0, 'hero' => 0, 'cover' => 0];
+    foreach ($monsters as $hex) {
+        $sum['portal'] += Hex::distance($hex, (string)$portal);
+        $sum['hero'] += min(array_map(static fn (string $h): int => Hex::distance($hex, $h), $heroes));
+        $sum['cover'] += ai_soak_beside_blocker($state['board'], $hex) ? 1 : 0;
+    }
+    return array_map(static fn (int $v): float => $v / count($monsters), $sum);
+}
+
+/** Whether a neighbouring hex blocks sight or is impassable (trees, rocks, walls). */
+function ai_soak_beside_blocker(array $board, string $hex): bool
+{
+    foreach (Hex::neighbors($hex, $board) as $n) {
+        if (($board[$n]['sightBlocker'] ?? false) || ($board[$n]['impassable'] ?? false)) {
+            return true;
         }
     }
     return false;
@@ -274,6 +350,7 @@ function ai_soak_tests(): array
                 $soak = ai_soak('void-reaches', $id, 2, 'passive', 40);
                 expect_same(0, $soak['illegal'], "{$id} plays legally");
                 expect_same(0, $soak['idleInReach'], "{$id} never ends an activation with an enemy in reach unstruck");
+                expect_same(0, $soak['endTurnInReach'], "{$id} never ends its turn while an unused monster could strike");
                 expect_true($soak['shuffles'] <= 2, "{$id} rarely walks a unit back and forth ({$soak['shuffles']})");
                 expect_same('void', $soak['result']['winningSide'] ?? null, "{$id} wins (after {$soak['rounds']} rounds)");
             }
@@ -284,6 +361,7 @@ function ai_soak_tests(): array
                     $soak = ai_soak($scenario, $id, 1, 'bot', 60);
                     expect_same(0, $soak['illegal'], "{$id} on {$scenario} plays legally");
                     expect_same(0, $soak['idleInReach'], "{$id} on {$scenario} never ends an activation with an enemy in reach unstruck");
+                    expect_same(0, $soak['endTurnInReach'], "{$id} on {$scenario} never ends its turn while an unused monster could strike");
                     expect_true($soak['shuffles'] <= 2, "{$id} on {$scenario} rarely walks a unit back and forth ({$soak['shuffles']})");
                     if ($soak['result'] === null) {
                         expect_same([], ai_soak_pressure_gaps($soak), "{$id} on {$scenario} attacks every round after first contact");
@@ -300,6 +378,25 @@ function ai_soak_tests(): array
                 $ravager['firstContactRound'] < $warden['firstContactRound'],
                 "the ravager strikes first (round {$ravager['firstContactRound']} vs {$warden['firstContactRound']})"
             );
+        },
+        'each personality stands its own way against the same bot heroes' => static function (): void {
+            // Mean end-of-Void-turn posture over rounds 1-4, averaged over both bot maps (seed 1). Hero bots
+            // walk in at once, so these do not rest on the passive heroes' hold gate.
+            $posture = [];
+            foreach (array_keys(Personalities::all()) as $id) {
+                foreach (['portal', 'hero', 'cover'] as $key) {
+                    $values = array_map(static fn (string $map): float => ai_soak($map, $id, 1, 'bot', 60)['posture'][$key],
+                        ['void-reaches', 'incursion-lakeheart']);
+                    $posture[$key][$id] = array_sum($values) / count($values);
+                }
+            }
+            $show = static fn (array $by): string => json_encode(array_map(static fn (float $v): float => round($v, 2), $by));
+            asort($posture['portal']);
+            expect_same('warden', array_key_first($posture['portal']), 'the warden stays closest to its portal ' . $show($posture['portal']));
+            asort($posture['hero']);
+            expect_same('ravager', array_key_first($posture['hero']), 'the ravager presses closest to the heroes ' . $show($posture['hero']));
+            arsort($posture['cover']);
+            expect_same('huntress', array_key_first($posture['cover']), 'the huntress keeps most to cover ' . $show($posture['cover']));
         },
         'a planner step stays inside its budget' => static function (): void {
             $engine = new MatchEngine(ai_catalog());

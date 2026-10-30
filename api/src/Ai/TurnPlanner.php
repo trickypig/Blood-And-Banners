@@ -208,6 +208,7 @@ final class TurnPlanner
                 if ($hazardous) {
                     continue;
                 }
+                // Scored standing where the move leaves it, as planUnit scores a plain move for bestPlanFor.
                 $outcome = $this->outcomes($state, $command, 1)[0] ?? null;
                 if ($outcome !== null && $this->evaluator->score($outcome, $this->side, $weights) - $this->baseScore($state, $weights) > self::EPSILON) {
                     return $command;

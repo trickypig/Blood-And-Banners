@@ -108,7 +108,8 @@ final class Evaluator
                     $lostCost += $cost;
                 }
             }
-            $f['loss'] = $totalCost > 0 ? $lostCost / $totalCost : 0.0;
+            // A penalty, like threat: a positive loss weight means losses hurt.
+            $f['loss'] = $totalCost > 0 ? -$lostCost / $totalCost : 0.0;
         }
 
         $ourOn = array_filter($ours, static fn(array $u): bool => $u['hex'] !== null);

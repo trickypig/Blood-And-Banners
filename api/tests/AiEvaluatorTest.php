@@ -72,7 +72,7 @@ function ai_evaluator_tests(): array
                 restore_error_handler();
             }
             expect_same([], $warnings, 'no warnings');
-            expect_true(abs(abs($score) - 0.2) < 1e-9, "an army unit counts as a common beside a 4-point hero ({$score})");
+            expect_true(abs($score + 0.2) < 1e-9, "a lost army unit counts as a common beside a 4-point hero, as a penalty ({$score})");
         },
         'each feature scores on its own' => static function (): void {
             $only = static fn (string $k): array => [$k => 1.0];
@@ -85,9 +85,9 @@ function ai_evaluator_tests(): array
             $nothingLost = $score([$mon('m1', '5,0', ['tier' => 'elite']), $mon('m2', '6,0'), $hero('h1', '0,0'), $hero('h2', '1,0')], 'loss', 'heroes');
             expect_same(0.0, $nothingLost, 'nothing lost');
             $heroLost = $score([$hero('h1', null), $hero('h2', '1,0'), $mon('m1', '5,0')], 'loss', 'heroes');
-            expect_true(abs($heroLost - 0.5) < 1e-9, 'dead hero is 4 of 8');
+            expect_true(abs($heroLost + 0.5) < 1e-9, 'dead hero is 4 of 8, scored as a penalty');
             $eliteLost = $score([$mon('m1', null, ['tier' => 'elite']), $mon('m2', '6,0'), $mon('m3', '7,0'), $hero('h1', '0,0')], 'loss');
-            expect_true(abs($eliteLost - 0.5) < 1e-9, 'dead elite is 2 of 4');
+            expect_true(abs($eliteLost + 0.5) < 1e-9, 'dead elite is 2 of 4, scored as a penalty');
             expect_true($score([$mon('m1', '5,0'), $mon('m2', '6,0'), $hero('h1', '0,0')], 'cohesion') === 1.0, 'cohesion');
             expect_true($score([$mon('m1', '4,0'), $mon('m2', '8,0'), $hero('h1', '0,0')], 'cohesion') === 0.0, 'no cohesion');
             expect_true($score([$mon('m1', '8,0', ['move' => 2, 'range' => 1]), $hero('h1', '0,0')], 'threat', 'heroes') === 0.0, 'out of reach');
