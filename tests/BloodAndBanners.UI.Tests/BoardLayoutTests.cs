@@ -25,6 +25,21 @@ public sealed class BoardLayoutTests
     }
 
     [Fact]
+    public void A_plan_view_places_every_hex_where_a_flattened_board_would()
+    {
+        List<HexProjection> hexes = [Hex(0, 0, elevation: 3), Hex(1, 0), Hex(0, 1, elevation: 1), Hex(2, -1)];
+        var flat = BoardLayout.For(hexes.Select(hex => hex with { Elevation = 0 }).ToList());
+        var plan = BoardLayout.Plan(hexes);
+
+        Assert.Equal(flat.Width, plan.Width, 6);
+        Assert.Equal(flat.Height, plan.Height, 6);
+        Assert.Equal(
+            flat.Tiles.Select(tile => (tile.Hex.Q, tile.Hex.R, Math.Round(tile.X, 6), Math.Round(tile.Y, 6))),
+            plan.Dots.Select(dot => (dot.Hex.Q, dot.Hex.R, Math.Round(dot.X, 6), Math.Round(dot.Y, 6))));
+        Assert.Empty(BoardLayout.Plan([]).Dots);
+    }
+
+    [Fact]
     public void Raised_tiles_lift_by_their_elevation_and_draw_after_the_tiles_behind_them()
     {
         var layout = BoardLayout.For([Hex(1, 0, elevation: 2), Hex(0, 0)]);

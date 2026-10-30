@@ -37,6 +37,28 @@ public sealed class MapPreviewTests : BunitContext
     }
 
     [Fact]
+    public void A_parent_rerender_with_the_same_board_does_not_redraw_the_preview()
+    {
+        var board = MapPreviewFixtures.Board();
+        var cut = Render<MapPreview>(parameters => parameters
+            .Add(component => component.Board, board)
+            .Add(component => component.Name, "Proving Field"));
+        var renders = cut.RenderCount;
+
+        cut.Render(parameters => parameters
+            .Add(component => component.Board, board)
+            .Add(component => component.Name, "Proving Field"));
+        Assert.Equal(renders, cut.RenderCount);
+
+        cut.Render(parameters => parameters
+            .Add(component => component.Board, board)
+            .Add(component => component.Name, "Proving Field")
+            .Add(component => component.HighlightStart, 1));
+        Assert.Equal(renders + 1, cut.RenderCount);
+        Assert.Contains("mine", cut.Find("g.map-start[data-start='1']").ClassList);
+    }
+
+    [Fact]
     public void An_empty_board_renders_nothing()
     {
         var cut = Render<MapPreview>(parameters => parameters

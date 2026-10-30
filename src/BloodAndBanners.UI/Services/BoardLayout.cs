@@ -20,6 +20,35 @@ public sealed record BoardLayout(double Width, double Height, IReadOnlyList<HexT
     private const double Padding = 20;
     private static readonly double Root3 = Math.Sqrt(3);
 
+    /// <summary>
+    /// Hex centres only, with elevation flattened: the same grid <see cref="For"/> lays out, without the
+    /// outline and side paths a preview never draws.
+    /// </summary>
+    public static PlanLayout Plan(IReadOnlyList<HexProjection> hexes)
+    {
+        if (hexes.Count == 0)
+        {
+            return new PlanLayout(2 * Padding, 2 * Padding, []);
+        }
+
+        var ground = hexes.Select(hex => new PlanDot(hex, 1.5 * Size * hex.R, Root3 * Size * (hex.Q + hex.R / 2.0))).ToList();
+        var minX = ground.Min(dot => dot.X);
+        var maxX = ground.Max(dot => dot.X);
+        var minY = ground.Min(dot => dot.Y);
+        var maxY = ground.Max(dot => dot.Y);
+        var offsetX = Padding + Size - minX;
+        var offsetY = Padding + Root3 / 2 * Size - minY;
+
+        return new PlanLayout(
+            maxX - minX + 2 * (Size + Padding),
+            maxY - minY + Root3 * Size + 2 * Padding,
+            ground
+                .OrderBy(dot => dot.Y)
+                .ThenBy(dot => dot.X)
+                .Select(dot => dot with { X = dot.X + offsetX, Y = dot.Y + offsetY })
+                .ToList());
+    }
+
     public static BoardLayout For(IReadOnlyList<HexProjection> hexes)
     {
         if (hexes.Count == 0)
@@ -53,7 +82,13 @@ public sealed record BoardLayout(double Width, double Height, IReadOnlyList<HexT
     }
 }
 
-/// <summary>A positioned hex: <see cref="X"/>/<see cref="Y"/> is the centre of its raised top face.</summary>
+/// <summary>A flattened plan view of a board: each hex's centre, listed back to front like <see cref="BoardLayout"/>.</summary>
+public sealed record PlanLayout(double Width, double Height, IReadOnlyList<PlanDot> Dots);
+
+/// <summary>A hex centre in a <see cref="PlanLayout"/>.</summary>
+public sealed record PlanDot(HexProjection Hex, double X, double Y);
+
+/// <summary>A positioned hex:<see cref="X"/>/<see cref="Y"/> is the centre of its raised top face.</summary>
 public sealed record HexTile(HexProjection Hex, double X, double Y, double Lift, string TopPoints, string SidePath, string SideEdges)
 {
     internal static HexTile Create(HexProjection hex, double x, double y, double lift)

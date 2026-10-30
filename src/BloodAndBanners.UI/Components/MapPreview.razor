@@ -8,14 +8,14 @@
          viewBox="0 0 @Num(layout.Width) @Num(layout.Height)"
          role="img"
          aria-label="@($"{Name} map preview with {_starts.Count} starting points")">
-        @foreach (var tile in layout.Tiles)
+        @foreach (var dot in layout.Dots)
         {
             <circle class="map-dot"
-                    data-hex="@($"{tile.Hex.Q},{tile.Hex.R}")"
-                    cx="@Num(tile.X)"
-                    cy="@Num(tile.Y)"
+                    data-hex="@($"{dot.Hex.Q},{dot.Hex.R}")"
+                    cx="@Num(dot.X)"
+                    cy="@Num(dot.Y)"
                     r="@Num(DotRadius)"
-                    fill="@TerrainArt.Color(tile.Hex.Biome)" />
+                    fill="@TerrainArt.Color(dot.Hex.Biome)" />
         }
         @foreach (var start in _starts)
         {
@@ -25,7 +25,7 @@
                 <text x="@Num(start.X)" y="@Num(start.Y)" font-size="@Num(_markerRadius * 1.3)" text-anchor="middle" dominant-baseline="central">@start.Hex.PlayerStart</text>
             </g>
         }
-        @foreach (var gate in layout.Tiles.Where(tile => tile.Hex.VoidPortal))
+        @foreach (var gate in layout.Dots.Where(dot => dot.Hex.VoidPortal))
         {
             <VoidPortal X="gate.X" Y="gate.Y" Size="@(_markerRadius * 2.4)" Phase="VoidPortalArt.Phase.Icon" ImageBaseUrl="@ImageBaseUrl" />
         }
@@ -48,12 +48,31 @@
     [Parameter]
     public int? HighlightStart { get; set; }
 
-    private BoardLayout? _layout;
-    private IReadOnlyList<HexTile> _starts = [];
+    private PlanLayout? _layout;
+    private IReadOnlyList<PlanDot> _starts = [];
     private double _markerRadius;
+
+    // What the last render drew. A picker re-renders every card each time another board arrives, and
+    // Blazor cannot tell an unchanged board apart, so a preview skips both the layout and the render itself.
+    private BoardProjection? _laidOut;
+    private (string Name, string? ImageBaseUrl, int? HighlightStart) _drawn;
+    private bool _changed = true;
 
     protected override void OnParametersSet()
     {
+        var drawn = (Name, ImageBaseUrl, HighlightStart);
+        if (ReferenceEquals(Board, _laidOut) && drawn == _drawn)
+        {
+            return;
+        }
+        _changed = true;
+        _drawn = drawn;
+        if (ReferenceEquals(Board, _laidOut))
+        {
+            return;
+        }
+        _laidOut = Board;
+
         if (Board.Hexes.Count == 0)
         {
             _layout = null;
@@ -61,12 +80,16 @@
             return;
         }
 
-        // A preview is a plan view: flatten elevation so every dot sits on the same grid.
-        _layout = BoardLayout.For(Board.Hexes.Select(hex => hex with { Elevation = 0 }).ToList());
-        _starts = _layout.Tiles.Where(tile => tile.Hex.PlayerStart is not null).OrderBy(tile => tile.Hex.PlayerStart).ToList();
+        // A preview is a plan view: elevation is flattened so every dot sits on the same grid.
+        _layout = BoardLayout.Plan(Board.Hexes);
+        _starts = _layout.Dots.Where(dot => dot.Hex.PlayerStart is not null).OrderBy(dot => dot.Hex.PlayerStart).ToList();
         // Markers grow with the board so they stay legible however far a large map is scaled down.
         _markerRadius = Math.Max(BoardLayout.Size, Math.Max(_layout.Width, _layout.Height) * .07);
     }
+
+    protected override bool ShouldRender() => _changed;
+
+    protected override void OnAfterRender(bool firstRender) => _changed = false;
 
     private static string Num(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 }
