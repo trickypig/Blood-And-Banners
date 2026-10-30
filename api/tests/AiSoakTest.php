@@ -62,6 +62,10 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
     set_error_handler(static function (int $level, string $message, string $file, int $line): bool {
         throw new ErrorException($message, 0, $level, $file, $line);
     });
+    // The Simulator drops (and logs) a candidate the engine throws on, so a warning turned exception there
+    // would pass unseen: any [ai] log line during the battle fails the soak too.
+    $aiLog = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-soak-' . bin2hex(random_bytes(4)) . '.log';
+    $previousLog = ini_set('error_log', $aiLog);
     $steps = 0;
     try {
         while ($state['phase'] === 'active' && (int)$state['turn']['round'] <= $roundCap && $steps < AI_SOAK_STEP_CAP) {
@@ -156,6 +160,12 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
         }
     } finally {
         restore_error_handler();
+        ini_set('error_log', (string)$previousLog);
+    }
+    $logged = is_file($aiLog) ? trim((string)file_get_contents($aiLog)) : '';
+    @unlink($aiLog);
+    if ($logged !== '') {
+        throw new RuntimeException("the AI logged during the battle: {$logged}");
     }
     $result = [
         'result' => $state['result'] ?? null,

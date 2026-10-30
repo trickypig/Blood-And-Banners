@@ -32,6 +32,24 @@ function ai_evaluator_tests(): array
             $sim = new Simulator(new MatchEngine(test_catalog()), 1000);
             expect_same([], $sim->outcomes($state, 'void-lord', 'attackUnit', ['unitId' => 'v-m1', 'targetUnitId' => 'nobody'], 2, 1), 'illegal');
         },
+        'a candidate the engine chokes on is dropped and logged once per step' => static function (): void {
+            $state = coop_battle(ai_eval_units(0, '3,0'), 'void-lord', 1);
+            $sim = new Simulator(new MatchEngine(test_catalog()), 1000);
+            $log = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-simulator-test-' . bin2hex(random_bytes(4)) . '.log';
+            $previous = ini_set('error_log', $log);
+            try {
+                // A malformed payload the rules never validated: the engine throws a TypeError, not a rules error.
+                $payload = ['unitId' => 'v-m1', 'ability' => 'Anything', 'targetUnitIds' => 'h1'];
+                expect_same([], $sim->outcomes($state, 'void-lord', 'specialAttack', $payload, 2, 1), 'dropped');
+                expect_same([], $sim->outcomes($state, 'void-lord', 'specialAttack', $payload, 2, 2), 'dropped again');
+            } finally {
+                ini_set('error_log', (string)$previous);
+            }
+            $lines = is_file($log) ? array_values(array_filter(explode("\n", (string)file_get_contents($log)))) : [];
+            @unlink($log);
+            expect_same(1, count($lines), 'logged once for the step');
+            expect_true(str_contains($lines[0] ?? '', '[ai]') && str_contains($lines[0] ?? '', 'TypeError'), 'with the [ai] prefix and the error');
+        },
         'a legal candidate yields one outcome per sample and leaves the input alone' => static function (): void {
             $state = coop_battle([
                 coop_hero('h1', 'hero-a', '2,0', ['hp' => 9]),
