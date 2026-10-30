@@ -56,6 +56,24 @@ function ai_evaluator_tests(): array
                 expect_true(min($seq()) >= 1 && max($seq()) <= 6, 'range');
             }
         },
+        'the hero side scores its losses without tiers' => static function (): void {
+            $army = vanilla_unit('s1-u1', 'hero-a', '1,0', ['hp' => 2]);
+            unset($army['tier']);
+            $state = coop_battle([coop_hero('h1', 'hero-a', '2,0'), $army, vanilla_unit('v-m1', 'void-lord', '5,0', ['side' => 'void', 'tier' => 'common'])], 'hero-a');
+            $state['units']['s1-u1']['hex'] = null;
+            $warnings = [];
+            set_error_handler(static function (int $no, string $message) use (&$warnings): bool {
+                $warnings[] = $message;
+                return true;
+            });
+            try {
+                $score = (new Evaluator(Personalities::get('ravager')))->score($state, 'heroes', ['loss' => 1.0]);
+            } finally {
+                restore_error_handler();
+            }
+            expect_same([], $warnings, 'no warnings');
+            expect_true(abs(abs($score) - 0.2) < 1e-9, "an army unit counts as a common beside a 4-point hero ({$score})");
+        },
         'each feature scores on its own' => static function (): void {
             $only = static fn (string $k): array => [$k => 1.0];
             $score = static fn (array $units, string $k, string $side = 'void'): float =>

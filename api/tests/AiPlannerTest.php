@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use BloodAndBanners\Ai\Personalities;
+use BloodAndBanners\Ai\Personality;
 use BloodAndBanners\Ai\SeededRandom;
 use BloodAndBanners\Ai\TurnPlanner;
 use BloodAndBanners\Rules\Vanilla\Board;
@@ -58,29 +59,36 @@ function ai_planner_strip(): array
     return $board;
 }
 
+/** Drafts by taking the first legal pick for whichever seat is picking, until the battle begins. */
+function ai_draft_to_battle(array $state): array
+{
+    $engine = new MatchEngine(ai_catalog());
+    $heroNames = array_column(ai_catalog()->heroes(), 'name');
+    $armyNames = array_column(ai_catalog()->armies(), 'name');
+    while ($state['phase'] !== 'active') {
+        $seat = (string)$state['draft']['pickingSeatId'];
+        $kinds = array_column($engine->legalActions($state, $seat), 'kind');
+        $kind = in_array('pickHero', $kinds, true) ? 'pickHero' : 'pickArmy';
+        if ($kind === 'pickHero') {
+            $taken = array_merge(...array_values($state['draft']['heroesBySeat']));
+            $payload = ['hero' => array_values(array_diff($heroNames, $taken))[0]];
+        } else {
+            $payload = ['army' => array_values(array_diff($armyNames, array_filter($state['draft']['armyBySeat'])))[0]];
+        }
+        $state = $engine->apply($state, $seat, $kind, $payload, new SeededRandom(1))['state'];
+    }
+    return $state;
+}
+
 /** Void Reaches with the personality's horde, the draft finished and the board shuffled into a seeded mid-battle. */
 function ai_planner_reaches(string $personality, int $seed, int $heroes = 2): array
 {
     static $battles = [];
     $key = "{$personality}:{$heroes}";
     if (!isset($battles[$key])) {
-        $engine = new MatchEngine(ai_catalog());
         $state = ai_prep_state('void-reaches', $heroes);
         $state = ai_apply_plan($state, ai_plan($state, $personality));
-        $heroNames = array_column(ai_catalog()->heroes(), 'name');
-        $armyNames = array_column(ai_catalog()->armies(), 'name');
-        while ($state['phase'] !== 'active') {
-            $seat = (string)$state['draft']['pickingSeatId'];
-            $kinds = array_column($engine->legalActions($state, $seat), 'kind');
-            $kind = in_array('pickHero', $kinds, true) ? 'pickHero' : 'pickArmy';
-            if ($kind === 'pickHero') {
-                $taken = array_merge(...array_values($state['draft']['heroesBySeat']));
-                $payload = ['hero' => array_values(array_diff($heroNames, $taken))[0]];
-            } else {
-                $payload = ['army' => array_values(array_diff($armyNames, array_filter($state['draft']['armyBySeat'])))[0]];
-            }
-            $state = $engine->apply($state, $seat, $kind, $payload, new SeededRandom(1))['state'];
-        }
+        $state = ai_draft_to_battle($state);
         expect_same('active', $state['phase'], 'the battle begins');
         $battles[$key] = $state;
     }
@@ -116,6 +124,31 @@ function ai_planner_reaches(string $personality, int $seed, int $heroes = 2): ar
     }
     $state['turn'] = Turn::fresh($state, 'void-lord', $random->roll(4));
     return $state;
+}
+
+/**
+ * Four powerless monsters hug a hero on an open 16 × 5 board and one more stands far off: only the far one
+ * can gain by moving. Returns the Void Lord's turn and an advance-only personality searching $candidates units.
+ * @return array{0: array, 1: Personality}
+ */
+function ai_planner_front_line(int $candidates): array
+{
+    $elevations = [];
+    for ($q = 0; $q < 16; $q++) {
+        for ($r = 0; $r < 5; $r++) {
+            $elevations["{$q},{$r}"] = 0;
+        }
+    }
+    $units = [coop_hero('h1', 'hero-a', '2,2', ['hp' => 9])];
+    foreach (['1,2', '3,2', '2,1', '2,3'] as $i => $hex) {
+        $units[] = vanilla_unit("v-near{$i}", 'void-lord', $hex, ['side' => 'void', 'tier' => 'common', 'power' => 0, 'range' => 0, 'move' => 1]);
+    }
+    $units[] = vanilla_unit('v-far', 'void-lord', '15,2', ['side' => 'void', 'tier' => 'common', 'move' => 3]);
+    $state = coop_battle($units, 'void-lord', 2);
+    $state['board'] = vanilla_board($elevations);
+    $narrow = new Personality('narrow', 'Narrow', 'test', 'Only advances.', ['advance' => 1.0], [],
+        ['candidates' => $candidates, 'samples' => 1, 'blunder' => 0, 'pairs' => false], ['mode' => 'attack']);
+    return [$state, $narrow];
 }
 
 function ai_planner_tests(): array
@@ -225,6 +258,30 @@ function ai_planner_tests(): array
             $command = ai_planner('warden')->next($state, 'void-lord', 1);
             expect_same('moveUnit', $command['kind'], 'warden steps in');
             expect_same('3,0', $command['payload']['to'], 'next to the hero');
+        },
+        'a far monster still advances when the front line has nothing to gain' => static function (): void {
+            // With room to search only four units, the planner must still look past the nearest four.
+            [$state, $narrow] = ai_planner_front_line(4);
+            $start = (int)floor(microtime(true) * 1000);
+            $command = (new TurnPlanner(new MatchEngine(test_catalog()), $narrow, AI_PLANNER_NOW, $start + 5000))->next($state, 'void-lord', 1);
+            expect_same('moveUnit', $command['kind'] ?? null, 'it moves rather than ending the turn');
+            expect_same('v-far', $command['payload']['unitId'], 'the far monster moves');
+        },
+        'it does not pass the turn just because the clock ran out' => static function (): void {
+            [$state, $narrow] = ai_planner_front_line(8);
+            // The clock expires during the first unit's scan, so the search itself finds nothing.
+            $tick = 0;
+            $clock = static function () use (&$tick): int {
+                return $tick++;
+            };
+            $command = (new TurnPlanner(new MatchEngine(test_catalog()), $narrow, AI_PLANNER_NOW, 3, $clock))->next($state, 'void-lord', 1);
+            expect_same('moveUnit', $command['kind'] ?? null, 'it still moves');
+            expect_same('v-far', $command['payload']['unitId'], 'the far monster moves');
+            $nothing = $state;
+            $nothing['units']['v-far'] = ['hex' => '3,1', 'power' => 0, 'range' => 0] + $nothing['units']['v-far'];
+            $tick = 0;
+            $command = (new TurnPlanner(new MatchEngine(test_catalog()), $narrow, AI_PLANNER_NOW, 3, $clock))->next($nothing, 'void-lord', 1);
+            expect_same('endTurn', $command['kind'] ?? null, 'with nothing to gain it still passes');
         },
         'it respects the deadline' => static function (): void {
             $tick = -1000;

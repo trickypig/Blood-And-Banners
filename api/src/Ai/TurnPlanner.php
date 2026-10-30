@@ -31,6 +31,8 @@ final class TurnPlanner
     private const SCAN_DESTINATIONS = 2;
     /** Units reranked by the two-unit lookahead. */
     private const PAIR_POOL = 3;
+    /** Units given a last quick look when the clock runs out before any plan gains. */
+    private const SALVAGE_UNITS = 3;
 
     private readonly Simulator $simulator;
     private readonly Evaluator $evaluator;
@@ -144,10 +146,12 @@ final class TurnPlanner
     {
         $endTurn = self::find($commands, 'endTurn');
         $results = [];
-        foreach ($this->rankUnits($state, $commands) as $unitId) {
+        $unscanned = $this->rankUnits($state, $commands);
+        while ($unscanned !== []) {
             if ($this->timeUp()) {
                 break;
             }
+            $unitId = array_shift($unscanned);
             $result = $this->bestPlanFor($state, $legal, $commands, $unitId, self::SCAN_DESTINATIONS);
             if ($result !== null) {
                 $results[$unitId] = $result;
@@ -169,6 +173,13 @@ final class TurnPlanner
         }
         $ranked = array_values(array_filter($results, static fn (array $r): bool => $r['gain'] > self::EPSILON));
         usort($ranked, static fn (array $a, array $b): int => $b['gain'] <=> $a['gain']);
+        if ($ranked === [] && $this->expired) {
+            // The clock ran out before any unit showed a gain: never pass the turn on that alone.
+            $salvaged = $this->salvage($state, $legal, $commands, $unscanned);
+            if ($salvaged !== null) {
+                return $salvaged;
+            }
+        }
         if ($ranked === []) {
             // A charmed unit that must walk first leaves no endTurn; then its best plan is the only way on.
             $first = $results === [] ? null : reset($results);
@@ -179,6 +190,31 @@ final class TurnPlanner
             $chosen = $ranked[1];
         }
         return $chosen['plan']['command'];
+    }
+
+    /**
+     * Past the deadline: give a few units the search never reached one quick look each (their most promising
+     * safe destination, one sample, no follow-up) and return the first move that gains, else null. Bounded work.
+     */
+    private function salvage(array $state, array $legal, array $commands, array $unscanned): ?array
+    {
+        // The farthest unreached unit first (the near ones are the likeliest to be stuck), then the nearest.
+        $look = $unscanned === [] ? [] : array_unique([end($unscanned), ...$unscanned]);
+        foreach (array_slice($look, 0, self::SALVAGE_UNITS) as $unitId) {
+            $weights = $this->weightsFor($state, $unitId);
+            $moves = array_values(array_filter($commands, static fn (array $c): bool
+                => ($c['payload']['unitId'] ?? null) === $unitId && in_array($c['kind'], self::MOVE_KINDS, true)));
+            foreach ($this->pruneMoves($state, $legal, $unitId, $moves, 1) as [$command, $hazardous]) {
+                if ($hazardous) {
+                    continue;
+                }
+                $outcome = $this->outcomes($state, $command, 1)[0] ?? null;
+                if ($outcome !== null && $this->evaluator->score($outcome, $this->side, $weights) - $this->baseScore($state, $weights) > self::EPSILON) {
+                    return $command;
+                }
+            }
+        }
+        return null;
     }
 
     /** @return array{gain:float, plan:array, unitId:string}|null */
@@ -432,7 +468,29 @@ final class TurnPlanner
             $ranked[] = [[isset($attacks[$unitId]) ? 0 : 1, $nearest, $unitId], $unitId];
         }
         usort($ranked, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
-        return array_slice(array_column($ranked, 1), 0, $this->destinationLimit());
+        $ids = array_column($ranked, 1);
+        $limit = $this->destinationLimit();
+        if (count($ids) <= $limit) {
+            return $ids;
+        }
+        // Mostly the nearest units, but every fourth slot goes to a spread of the rest (farthest first), so a
+        // stalled front line cannot leave the far monsters standing for the whole battle.
+        $headCount = (int)ceil($limit * 0.75);
+        $rest = array_slice($ids, $headCount);
+        $want = $limit - $headCount;
+        $spread = [];
+        for ($i = 0; $i < $want; $i++) {
+            $spread[] = $rest[count($rest) - 1 - intdiv($i * count($rest), $want)];
+        }
+        $head = array_slice($ids, 0, $headCount);
+        $order = [];
+        while ($head !== [] || $spread !== []) {
+            array_push($order, ...array_splice($head, 0, 3));
+            if ($spread !== []) {
+                $order[] = array_shift($spread);
+            }
+        }
+        return $order;
     }
 
     /**

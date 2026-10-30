@@ -101,7 +101,8 @@ final class Evaluator
             $lostCost = 0;
             $totalCost = 0;
             foreach ($ours as $unit) {
-                $cost = !empty($unit['isHero']) ? 4 : CoopSetup::cost($unit);
+                // Hero-side army units carry no tier; they count as commons.
+                $cost = !empty($unit['isHero']) ? 4 : CoopSetup::cost($unit + ['tier' => 'common']);
                 $totalCost += $cost;
                 if ($unit['hex'] === null) {
                     $lostCost += $cost;
