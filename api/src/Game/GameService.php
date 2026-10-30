@@ -4,8 +4,11 @@ declare(strict_types=1);
 namespace BloodAndBanners\Game;
 
 use BloodAndBanners\Account\FriendService;
+use BloodAndBanners\Ai\CommandCandidates;
 use BloodAndBanners\Ai\HordeBuilder;
 use BloodAndBanners\Ai\Personalities;
+use BloodAndBanners\Ai\Personality;
+use BloodAndBanners\Ai\TurnPlanner;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\SecureRandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
@@ -41,6 +44,8 @@ final class GameService
         ?RandomSource $random = null,
         ?MatchEngine $engine = null,
         ?\Closure $clockMs = null,
+        /** Test seam: fn(MatchEngine, Personality, int $nowSeconds, int $deadlineMs, \Closure $clockMs): object with next() */
+        private readonly ?\Closure $plannerFactory = null,
     ) {
         $this->clockMs = $clockMs ?? static fn(): int => (int)floor(microtime(true) * 1000);
         $this->scenarios = $scenarios ?? new ScenarioService($connection);
@@ -327,9 +332,8 @@ final class GameService
             foreach ($started['events'] as $event) {
                 $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
             }
-            foreach ($aiEvents as $event) {
-                $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : 'void';
-                $this->appendEvent($gameId, $version, $event['kind'], (string)$aiSeat['identity_id'], $event['payload'], $event['focusHexes'], $side);
+            if ($aiSeat !== null) {
+                $this->appendAiEvents($gameId, $version, $aiSeat, $aiEvents);
             }
             $this->writeSnapshot($gameId, $version, $projection);
             $this->connection->commit();
@@ -790,14 +794,162 @@ final class GameService
         }
     }
 
+    /** The pause after the last match command in an AI game, by pace. */
+    private const AI_PACE_MS = ['slow' => 2000, 'normal' => 1000, 'fast' => 300];
+
+    private function appendAiEvents(string $gameId, int $version, array $aiSeat, array $events): void
+    {
+        foreach ($events as $event) {
+            $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : 'void';
+            $this->appendEvent($gameId, $version, $event['kind'], (string)$aiSeat['identity_id'], $event['payload'], $event['focusHexes'], $side);
+        }
+    }
+
+    /**
+     * Runs inside every poll (the server has no background workers): at most one AI step once the pace
+     * pause is over. It never fails the poll; whatever goes wrong is logged and the poll answers as usual.
+     */
+    private function advanceAi(string $gameId): void
+    {
+        try {
+            $statement = $this->connection->prepare('SELECT * FROM games WHERE id = :id');
+            $statement->execute(['id' => $gameId]);
+            $game = $statement->fetch();
+            if (!$game || $game['mode'] !== 'coop' || !in_array($game['lifecycle'], ['draft', 'active'], true)) {
+                return;
+            }
+            $ai = $this->aiSeat($this->memberships($gameId));
+            if ($ai === null) {
+                return;
+            }
+            if ($game['lifecycle'] === 'draft') {
+                $prep = $this->loadState($gameId);
+                if ($prep !== null && ($prep['phase'] ?? null) === 'prep' && !$prep['setup']['confirmed']) {
+                    $this->ensureAiHorde($game, $ai);
+                }
+                return;
+            }
+            $pause = self::AI_PACE_MS[(string)($game['ai_pace'] ?? 'normal')] ?? self::AI_PACE_MS['normal'];
+            if ($game['ai_stepped_at'] !== null && ($this->clockMs)() - (int)$game['ai_stepped_at'] < $pause) {
+                return;
+            }
+            $state = $this->loadState($gameId);
+            if ($state === null) {
+                return;
+            }
+            $seatId = (string)$ai['id'];
+            $make = $this->plannerFactory ?? static fn(MatchEngine $engine, Personality $personality, int $now, int $deadline, \Closure $clockMs): TurnPlanner
+                => new TurnPlanner($engine, $personality, $now, $deadline, $clockMs);
+            // A fresh planner every step: it keeps per-search state.
+            $planner = $make($this->engine, Personalities::get((string)$ai['ai_personality']), time(), ($this->clockMs)() + TurnPlanner::STEP_BUDGET_MS, $this->clockMs);
+            try {
+                $command = $planner->next($state, $seatId, (int)$game['version']);
+            } catch (Throwable $error) {
+                error_log("[ai] planner failed in game {$gameId}: " . $error->getMessage());
+                $command = $this->aiFallbackCommand($state, $seatId);
+            }
+            if ($command !== null) {
+                $this->applyAiCommand($gameId, $ai, (int)$game['version'], $command, true);
+            }
+        } catch (Throwable $error) {
+            $this->rollback();
+            error_log("[ai] step failed in game {$gameId}: " . $error->getMessage());
+        }
+    }
+
+    /** One AI command, atomically. A conflict means another poll stepped first; a rejection falls back to ending. */
+    private function applyAiCommand(string $gameId, array $ai, int $plannedVersion, array $command, bool $mayFallBack): void
+    {
+        $seatId = (string)$ai['id'];
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            if ((int)$game['version'] !== $plannedVersion) {
+                $this->rollback();
+                return;
+            }
+            $newVersion = $plannedVersion + 1;
+            $this->applyMatchCommand($game, $seatId, (string)$ai['identity_id'], $command, $newVersion);
+            $this->writeSnapshot($gameId, $newVersion, $this->spectatorProjection($this->gameRow($gameId)));
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->rollback();
+            if ($error instanceof GameServiceException && $error->errorCode === 'versionConflict') {
+                return;
+            }
+            error_log("[ai] command {$command['kind']} rejected in game {$gameId}: " . $error->getMessage());
+            if (!$mayFallBack) {
+                return;
+            }
+            $state = $this->loadState($gameId);
+            $fallback = $state === null ? null : $this->aiFallbackCommand($state, $seatId);
+            if ($fallback !== null && $fallback !== $command) {
+                $this->applyAiCommand($gameId, $ai, (int)$this->gameRow($gameId)['version'], $fallback, false);
+            }
+        }
+    }
+
+    /** What always ends the AI's obligation: answer its choice, else close the active unit, else end the turn. */
+    private function aiFallbackCommand(array $state, string $seatId): ?array
+    {
+        $state = MatchEngine::normalize($state);
+        $commands = CommandCandidates::for($state, $seatId, $this->engine->legalActions($state, $seatId, time()));
+        foreach (['resolveChoice', 'endActivation', 'endTurn'] as $kind) {
+            foreach ($commands as $command) {
+                if ($command['kind'] === $kind) {
+                    return $command;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Safety net for a legacy state: a preparation whose AI horde was never confirmed gets it now. */
+    private function ensureAiHorde(array $game, array $ai): void
+    {
+        $gameId = (string)$game['id'];
+        $this->connection->beginTransaction();
+        try {
+            $game = $this->gameRow($gameId);
+            $state = $this->loadState($gameId);
+            if ($state === null || ($state['phase'] ?? null) !== 'prep' || $state['setup']['confirmed']
+                || $state['voidLordSeatId'] !== (string)$ai['id']) {
+                $this->rollback();
+                return;
+            }
+            [$state, $events] = $this->buildAiHorde($state, $ai, $gameId, count($this->memberships($gameId)) - 1);
+            $version = (int)$game['version'] + 1;
+            $bump = $this->connection->prepare(
+                'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated, ai_stepped_at = :stepped WHERE id = :id AND version = :expected'
+            );
+            $bump->execute([
+                'lifecycle' => self::lifecycleOf($state), 'version' => $version, 'updated' => self::now(),
+                'stepped' => ($this->clockMs)(), 'id' => $gameId, 'expected' => (int)$game['version'],
+            ]);
+            if ($bump->rowCount() === 0) {
+                $this->rollback();
+                return;
+            }
+            $this->saveState($gameId, $version, $state);
+            $this->appendAiEvents($gameId, $version, $ai, $events);
+            $this->writeSnapshot($gameId, $version, $this->spectatorProjection($this->gameRow($gameId)));
+            $this->connection->commit();
+        } catch (Throwable $error) {
+            $this->rollback();
+            throw $error;
+        }
+    }
+
     public function getGame(string $gameId, string $identityId): array
     {
+        $this->advanceAi($gameId);
         $this->requireMembership($gameId, $identityId);
         return $this->projection($gameId, $identityId);
     }
 
     public function reconnect(string $gameId, string $identityId, string $seatToken): array
     {
+        $this->advanceAi($gameId);
         $this->requireSeatCredential($gameId, $identityId, $seatToken);
         return $this->projection($gameId, $identityId);
     }
@@ -875,6 +1027,7 @@ final class GameService
 
     public function getEvents(string $gameId, string $identityId, string $seatToken, int $afterSequence): array
     {
+        $this->advanceAi($gameId);
         $membership = $this->requireSeatCredential($gameId, $identityId, $seatToken);
         return $this->eventPage($gameId, $afterSequence, $membership['role'] === 'voidLord' ? 'void' : 'heroes');
     }
@@ -882,6 +1035,7 @@ final class GameService
     /** Anyone may read a game's event log by its id; before a Co-op battle it carries neither side's preparations. */
     public function getWatchedEvents(string $gameId, int $afterSequence): array
     {
+        $this->advanceAi($gameId);
         $this->gameRow($gameId);
         return $this->eventPage($gameId, $afterSequence, null);
     }
@@ -993,12 +1147,14 @@ final class GameService
         if ($gameId === false) {
             throw new GameServiceException('spectatorLinkInvalid', 'This spectator link is invalid or has been revoked.');
         }
+        $this->advanceAi((string)$gameId);
         return $this->spectatorProjection($this->gameRow($gameId));
     }
 
     /** Anyone holding the game id may watch; spectators never receive actions or seat credentials. */
     public function getWatchedGame(string $gameId): array
     {
+        $this->advanceAi($gameId);
         return $this->spectatorProjection($this->gameRow($gameId));
     }
 
