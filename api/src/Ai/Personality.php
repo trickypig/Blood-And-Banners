@@ -6,7 +6,7 @@ namespace BloodAndBanners\Ai;
 /**
  * One Void Lord personality: what it values, how it builds its horde, how sharp it plays and when it commits.
  *
- * weights:   damage, kill, loss, portalGuard, advance, cohesion, cover, threat, focus (numbers).
+ * weights:   damage, kill, loss, material, portalGuard, advance, cohesion, cover, threat, focus (numbers).
  * horde:     shares {common, elite, boss} (sum 1), placement (forward|portal|cover|combo),
  *            tag (swarm|fortress|ambush|combo), offBiome (0..1 share allowed outside the chosen biome).
  * sharpness: candidates (int), samples (int), blunder (0..1 chance of a random pick), pairs (bool two-unit lookahead).

@@ -66,7 +66,7 @@ final class Evaluator
         }
 
         $want = static fn(string $key): bool => (float)($weights[$key] ?? 0) !== 0.0;
-        $f = ['damage' => 0.0, 'kill' => 0.0, 'loss' => 0.0, 'portalGuard' => 0.0, 'advance' => 0.0,
+        $f = ['damage' => 0.0, 'kill' => 0.0, 'loss' => 0.0, 'material' => 0.0, 'portalGuard' => 0.0, 'advance' => 0.0,
             'cohesion' => 0.0, 'cover' => 0.0, 'threat' => 0.0, 'focus' => 0.0];
 
         if ($want('damage') || $want('focus') || $want('kill')) {
@@ -97,7 +97,7 @@ final class Evaluator
             $f['focus'] = $maxShare;
         }
 
-        if ($want('loss')) {
+        if ($want('loss') || $want('material')) {
             $lostCost = 0;
             $totalCost = 0;
             foreach ($ours as $unit) {
@@ -110,9 +110,14 @@ final class Evaluator
             }
             // A penalty, like threat: a positive loss weight means losses hurt.
             $f['loss'] = $totalCost > 0 ? -$lostCost / $totalCost : 0.0;
+            // Everything fielded, living or dead, against the setup budget: only a summon moves it, so a new unit
+            // (a Kraken's tentacle) is worth something, while a death is scored by loss alone and not twice.
+            $budget = (int)($state['setup']['budget'] ?? 0);
+            $f['material'] = $budget > 0 ? $totalCost / $budget : 0.0;
         }
 
-        $ourOn = array_filter($ours, static fn(array $u): bool => $u['hex'] !== null);
+        // Where the horde stands leaves out a unit that is fresh from a summon (see freshlySummoned).
+        $ourOn = array_filter($ours, static fn(array $u): bool => $u['hex'] !== null && !self::freshlySummoned($state, $u));
         $theirOn = array_filter($theirs, static fn(array $u): bool => $u['hex'] !== null);
         $n = count($ourOn);
         if ($n > 0) {
@@ -243,6 +248,22 @@ final class Evaluator
             return $lineOfSight->isVisible($from, $to, $sight);
         }
         return $this->sight["{$from}>{$to}"] ??= $lineOfSight->isVisible($from, $to, $sight);
+    }
+
+    /**
+     * Summoned on this turn, or on its seat's turn that just passed: it has not yet had a turn to act, and its hex
+     * was the summoner's pick, so until then it counts through material only. Else a tentacle summoned behind the
+     * line would score as the horde falling back, and no summon would ever look worth it.
+     */
+    private static function freshlySummoned(array $state, array $unit): bool
+    {
+        $on = $unit['flags']['summonedOnTurn'] ?? null;
+        $number = $state['turn']['number'] ?? null;
+        if ($on === null || $number === null) {
+            return false;
+        }
+        return (int)$on === (int)$number
+            || ((int)$on === (int)$number - 1 && ($state['turn']['activeSeatId'] ?? null) !== $unit['seatId']);
     }
 
     /** @return array{0:int, 1:int} */

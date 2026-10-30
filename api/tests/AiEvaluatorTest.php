@@ -120,6 +120,30 @@ function ai_evaluator_tests(): array
             $e = new Evaluator(Personalities::get('ravager'));
             expect_true($e->score($guarded, 'void', $only('portalGuard')) > $e->score($exposed, 'void', $only('portalGuard')), 'portal guard');
         },
+        'material counts every unit fielded against the budget, so a summon gains and a death is left to loss' => static function (): void {
+            $only = ['material' => 1.0];
+            $e = new Evaluator(Personalities::get('ravager'));
+            $mon = static fn (string $id, ?string $hex, array $s = []) => vanilla_unit($id, 'void-lord', $hex, $s + ['side' => 'void', 'tier' => 'common']);
+            $hero = coop_hero('h1', 'hero-a', '0,0', ['hp' => 4]);
+            // coop_battle budgets 20 points.
+            $two = coop_battle([$mon('m1', '5,0', ['tier' => 'boss']), $mon('m2', '6,0'), $hero]);
+            expect_true(abs($e->score($two, 'void', $only) - 5 / 20) < 1e-9, 'a boss and a common are 5 of 20');
+            $summoned = $two;
+            $summoned['units']['m3'] = $mon('m3', '7,0');
+            expect_true(abs($e->score($summoned, 'void', $only) - 6 / 20) < 1e-9, 'a summoned common adds 1');
+            $dead = $two;
+            $dead['units']['m2']['hex'] = null;
+            expect_same($e->score($two, 'void', $only), $e->score($dead, 'void', $only), 'a death does not move material (loss scores it)');
+            expect_true(Personalities::get('warden')->weights['material'] > 0, 'personalities value material');
+            // Until it has had a turn to act, a summoned unit does not count where the horde stands.
+            $fresh = $two;
+            $fresh['units']['m3'] = $mon('m3', '8,0', ['flags' => ['summonedOnTurn' => $two['turn']['number']]]);
+            $advance = ['advance' => 1.0];
+            expect_same($e->score($two, 'void', $advance), $e->score($fresh, 'void', $advance), 'a fresh summon behind the line is not a retreat');
+            $later = $fresh;
+            $later['turn']['number'] += 2;
+            expect_true($e->score($later, 'void', $advance) < $e->score($two, 'void', $advance), 'once it could act, it counts');
+        },
         'empty sides and off-board units give finite scores' => static function (): void {
             $p = Personalities::get('warden');
             $e = new Evaluator($p);

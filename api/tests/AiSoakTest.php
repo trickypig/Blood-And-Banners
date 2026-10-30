@@ -29,7 +29,7 @@ const AI_SOAK_STEP_CAP = 20000;
  * Plays one whole co-op battle on the real catalog: the personality plans and confirms its horde, the
  * draft takes the first legal pick, then every owed command comes from a fresh TurnPlanner (heroes are
  * the ravager in 'bot' mode, or end their turns at once in 'passive' mode).
- * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, endTurnInReach:int, posture:?array{portal:float, hero:float, cover:float}, steps:int, voidStepsPerTurn:float, endActivations:int, ms:int}
+ * @return array{result:?array, rounds:int, illegal:int, aiAttacks:int, firstContactRound:?int, attacksByRound:array<int,int>, idleInReach:int, shuffles:int, endTurnInReach:int, posture:?array{portal:float, hero:float, cover:float}, steps:int, voidStepsPerTurn:float, endActivations:int, summons:int, ms:int}
  */
 function ai_soak(string $scenario, string $personality, int $heroes, string $heroMode, int $roundCap, int $seed = 1): array
 {
@@ -60,6 +60,7 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
     $voidSteps = 0;
     $voidTurns = 0;
     $endActivations = 0;
+    $summons = 0;
     $postures = [];
     // Any warning or notice during the battle is a bug: make it throw.
     set_error_handler(static function (int $level, string $message, string $file, int $line): bool {
@@ -141,6 +142,7 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
             }
             $voidSteps++;
             $endActivations += $command['kind'] === 'endActivation' ? 1 : 0;
+            $summons += ($command['payload']['ability'] ?? null) === 'Tentacle Regeneration' ? 1 : 0;
             foreach ($open as $id => $activation) {
                 if (($state['turn']['activeUnitId'] ?? null) === $id && $state['turn']['activeSeatId'] === $void) {
                     continue;
@@ -196,13 +198,14 @@ function ai_soak(string $scenario, string $personality, int $heroes, string $her
         'steps' => $steps,
         'voidStepsPerTurn' => $voidTurns > 0 ? $voidSteps / $voidTurns : 0.0,
         'endActivations' => $endActivations,
+        'summons' => $summons,
         'ms' => (int)floor(microtime(true) * 1000) - $startedMs,
     ];
     if (getenv('AI_SOAK_LOG')) {
         fwrite(STDERR, sprintf(
-            "soak %s %s %d %s: %s in %d rounds, %d steps (void %.1f a turn, %d endActivation), %d illegal, %d attacks, contact r%s, idle-in-reach %d, end-turn-in-reach %d, shuffles %d, posture %s, %d ms (planning: void %d, heroes %d)\n",
+            "soak %s %s %d %s: %s in %d rounds, %d steps (void %.1f a turn, %d endActivation), %d summons, %d illegal, %d attacks, contact r%s, idle-in-reach %d, end-turn-in-reach %d, shuffles %d, posture %s, %d ms (planning: void %d, heroes %d)\n",
             $scenario, $personality, $heroes, $heroMode, $result['result']['winningSide'] ?? 'cap', $result['rounds'], $steps,
-            $result['voidStepsPerTurn'], $endActivations, $illegal,
+            $result['voidStepsPerTurn'], $endActivations, $summons, $illegal,
             $aiAttacks, $firstContact ?? '-', $idleInReach, $endTurnInReach, $shuffles,
             json_encode(array_map(static fn (float $v): float => round($v, 2), $result['posture'] ?? [])), $result['ms'], $planMs['void'], $planMs['heroes']
         ));

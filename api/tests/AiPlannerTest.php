@@ -219,6 +219,33 @@ function ai_planner_tests(): array
                 expect_same('endTurn', $command['kind'], "{$id} ends the turn");
             }
         },
+        'a kraken beside open water summons a tentacle' => static function (): void {
+            $engine = new MatchEngine(ai_catalog());
+            // The catalog's own Kraken (power 0, Water Bound) at the near edge of a pool, a Merman beside it (already
+            // activated), the heroes far off. Moving gains nothing; a tentacle is a free unit.
+            $board = ai_planner_strip();
+            foreach ($board as $key => $hex) {
+                if ((int)explode(',', (string)$key)[0] >= 12) {
+                    $board[$key]['terrain'] = 'shallow-water';
+                }
+            }
+            $state = ai_planner_void_turn([
+                coop_hero('h1', 'hero-a', '2,1', ['hp' => 6]),
+                monster_unit('v-kraken', 'Kraken', '12,1'),
+                monster_unit('v-merman', 'Merman', '11,1'),
+            ]);
+            $state['board'] = $board;
+            $state['turn']['activated'] = ['v-merman'];
+            $tentacles = static fn (array $s): int => count(array_filter($s['units'], static fn (array $u): bool
+                => $u['hex'] !== null && str_starts_with((string)$u['name'], 'Kraken Tentacle')));
+            foreach (array_keys(Personalities::all()) as $id) {
+                $command = ai_planner($id, $engine)->next($state, 'void-lord', 1);
+                expect_same('specialAttack', $command['kind'], "{$id} uses the kraken");
+                expect_same('Tentacle Regeneration', $command['payload']['ability'] ?? null, "{$id} summons a tentacle");
+                $after = $engine->apply($state, 'void-lord', $command['kind'], $command['payload'], new SeededRandom(1), AI_PLANNER_NOW)['state'];
+                expect_same(1, $tentacles($after), "{$id} has a tentacle");
+            }
+        },
         'it ends the turn when nothing is left' => static function (): void {
             $state = ai_planner_void_turn([
                 coop_hero('h1', 'hero-a', '0,0'),
