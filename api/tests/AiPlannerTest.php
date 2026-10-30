@@ -246,6 +246,51 @@ function ai_planner_tests(): array
                 expect_same(1, $tentacles($after), "{$id} has a tentacle");
             }
         },
+        'a personality that values cover keeps cover destinations through pruning' => static function (): void {
+            // Spawn zone q >= 8; a line of trees at q = 14 far from the hero. The holding monster's nearest
+            // destinations are all open ground, the ones beside the trees are the farthest it can reach.
+            $elevations = [];
+            for ($q = 0; $q < 16; $q++) {
+                for ($r = 0; $r < 7; $r++) {
+                    $elevations["{$q},{$r}"] = 0;
+                }
+            }
+            $board = vanilla_board($elevations);
+            foreach ($board as $key => $hex) {
+                $board[$key]['spawnZone'] = (int)explode(',', (string)$key)[0] >= 8 ? 'void' : null;
+                $board[$key]['sightBlocker'] = in_array($key, ['14,1', '14,2', '14,3', '14,4', '14,5'], true);
+            }
+            $state = ai_planner_void_turn([
+                coop_hero('h1', 'hero-a', '2,3', ['hp' => 6]),
+                vanilla_unit('v-m1', 'void-lord', '11,3', ['side' => 'void', 'tier' => 'common', 'move' => 3, 'range' => 1]),
+            ]);
+            $state['board'] = $board;
+            $engine = new MatchEngine(test_catalog());
+            $legal = $engine->legalActions($state, 'void-lord', AI_PLANNER_NOW);
+            $moves = array_values(array_filter(BloodAndBanners\Ai\CommandCandidates::for($state, 'void-lord', $legal),
+                static fn (array $c): bool => $c['kind'] === 'moveUnit'));
+            expect_true(count($moves) > 12, 'plenty of destinations (' . count($moves) . ')');
+            $pruned = static function (string $id) use ($state, $legal, $moves, $engine): array {
+                $planner = ai_planner($id, $engine);
+                $set = static function (string $name, mixed $value) use ($planner): void {
+                    $property = new ReflectionProperty(TurnPlanner::class, $name);
+                    $property->setValue($planner, $value);
+                };
+                $set('seatId', 'void-lord');
+                $set('side', 'void');
+                $set('post', BloodAndBanners\Ai\Stance::post($state));
+                $set('holding', BloodAndBanners\Ai\Stance::holding($state, 'void-lord', Personalities::get($id)));
+                $weights = BloodAndBanners\Ai\Stance::weights($state, 'void-lord', Personalities::get($id));
+                $kept = (new ReflectionMethod(TurnPlanner::class, 'pruneMoves'))->invoke($planner, $state, $legal, 'v-m1', $moves, 4, $weights);
+                return array_map(static fn (array $k): string => $k[0]['payload']['to'], $kept);
+            };
+            $beside = static fn (string $hex): bool => count(array_filter(Hex::neighbors($hex, $board), static fn (string $n): bool => $board[$n]['sightBlocker'])) > 0;
+            expect_true(BloodAndBanners\Ai\Stance::holding($state, 'void-lord', Personalities::get('huntress')), 'the huntress is holding');
+            $huntress = $pruned('huntress');
+            expect_true(count(array_filter($huntress, $beside)) >= 2, 'the huntress keeps cover destinations ' . json_encode($huntress));
+            $ravager = $pruned('ravager');
+            expect_same(0, count(array_filter(array_slice($ravager, 0, 3), $beside)), 'the ravager still ranks by distance ' . json_encode($ravager));
+        },
         'it ends the turn when nothing is left' => static function (): void {
             $state = ai_planner_void_turn([
                 coop_hero('h1', 'hero-a', '0,0'),

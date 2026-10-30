@@ -33,6 +33,8 @@ final class TurnPlanner
     private const PAIR_POOL = 3;
     /** Units given a last quick look when the clock runs out before any plan gains. */
     private const SALVAGE_UNITS = 3;
+    /** How much nearer, per point of cover weight, a destination beside a sight blocker ranks in pruning. */
+    private const COVER_HEXES = 2;
 
     private readonly Simulator $simulator;
     private readonly Evaluator $evaluator;
@@ -243,7 +245,7 @@ final class TurnPlanner
             $weights = $this->weightsFor($state, $unitId);
             $moves = array_values(array_filter($commands, static fn (array $c): bool
                 => ($c['payload']['unitId'] ?? null) === $unitId && in_array($c['kind'], self::MOVE_KINDS, true)));
-            foreach ($this->pruneMoves($state, $legal, $unitId, $moves, 1) as [$command, $hazardous]) {
+            foreach ($this->pruneMoves($state, $legal, $unitId, $moves, 1, $weights) as [$command, $hazardous]) {
                 if ($hazardous) {
                     continue;
                 }
@@ -356,7 +358,7 @@ final class TurnPlanner
                 $plans[] = ['score' => $score, 'command' => $command, 'attack' => self::isAttack($command) && $this->hitsEnemy($state, $unitId, $command)];
             }
         }
-        foreach ($this->pruneMoves($state, $legal, $unitId, $moves, $destinations) as [$command, $hazardous]) {
+        foreach ($this->pruneMoves($state, $legal, $unitId, $moves, $destinations, $weights) as [$command, $hazardous]) {
             if ($this->timeUp()) {
                 return;
             }
@@ -434,9 +436,11 @@ final class TurnPlanner
     /**
      * Destinations worth simulating: a holding unit stays at its post; the rest are ranked by a cheap
      * heuristic (an enemy in range, then distance to the nearest enemy), with a spread of the others.
+     * A personality that values cover also ranks hexes beside a sight blocker ahead: first of all while it
+     * holds (distance then means nothing to it), else as if they were COVER_HEXES × cover weight closer.
      * @return list<array{0: array, 1: bool}> command and whether its path crosses a hazard
      */
-    private function pruneMoves(array $state, array $legal, string $unitId, array $moves, int $limit): array
+    private function pruneMoves(array $state, array $legal, string $unitId, array $moves, int $limit, array $weights): array
     {
         if ($moves === []) {
             return [];
@@ -452,6 +456,8 @@ final class TurnPlanner
         $holding = $this->holdsPost($state, $unitId);
         $enemies = $this->enemyHexes($state);
         $range = max(1, Stats::effective($state, $unitId, 'range'));
+        $cover = (float)($weights['cover'] ?? 0);
+        $still = (float)($weights['advance'] ?? 0) === 0.0;
         $ranked = [];
         foreach ($moves as $command) {
             $to = (string)($command['payload']['to'] ?? $command['payload']['toHex']);
@@ -462,7 +468,11 @@ final class TurnPlanner
             foreach ($enemies as $hex) {
                 $nearest = min($nearest, Hex::distance($to, $hex));
             }
-            $ranked[] = [[$nearest <= $range ? 0 : 1, $nearest, $to, $command['kind']], $command, $hazards[$command['kind'] . ':' . $to] ?? false];
+            $covered = $cover > 0 && self::besideSightBlocker($state['board'], $to);
+            $key = $cover <= 0 ? [$nearest <= $range ? 0 : 1, $nearest]
+                : ($still ? [$nearest <= $range ? 0 : 1, $covered ? 0 : 1, $nearest]
+                    : [$nearest <= $range ? 0 : 1, $nearest - ($covered ? self::COVER_HEXES * $cover : 0)]);
+            $ranked[] = [[...$key, $to, $command['kind']], $command, $hazards[$command['kind'] . ':' . $to] ?? false];
         }
         usort($ranked, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
         if (count($ranked) > $limit) {
@@ -667,6 +677,16 @@ final class TurnPlanner
         $targets = $command['kind'] === 'attackUnit' ? [$command['payload']['targetUnitId']] : ($command['payload']['targetUnitIds'] ?? []);
         foreach ($targets as $target) {
             if (isset($state['units'][$target]) && Sides::ofUnit($state, (string)$target) !== $this->side) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static function besideSightBlocker(array $board, string $hex): bool
+    {
+        foreach (Hex::neighbors($hex, $board) as $near) {
+            if ($board[$near]['sightBlocker'] ?? false) {
                 return true;
             }
         }
