@@ -209,8 +209,76 @@ function ai_tick_tests(): array
             $match['db']->prepare('UPDATE game_states SET state_json = :json WHERE game_id = :game')
                 ->execute(['json' => json_encode($state), 'game' => $match['gameId']]);
             $clock += 1000;
+            $before = ai_tick_version($match);
             ai_tick_poll($match);
             expect_same(null, ai_seat_state($match)['pending'] ?? null, 'the choice was answered');
+            expect_same($before + 1, ai_tick_version($match), 'exactly one step');
+        },
+        'a poll that arrives while another is planning does not plan again' => static function (): void {
+            $clock = 0;
+            $calls = 0;
+            $nested = null;
+            $stub = new class {
+                public ?Closure $during = null;
+                public int $calls = 0;
+                public function next(array $state, string $seatId, int $seed): ?array
+                {
+                    $this->calls++;
+                    if ($this->during !== null) {
+                        ($this->during)();
+                    }
+                    return ['kind' => 'endTurn', 'payload' => []];
+                }
+            };
+            $match = ai_tick_match($clock, static fn() => $stub);
+            ai_tick_to_ai_turn($match);
+            $stub->during = static function () use ($match): void {
+                // The lease is already taken: this poll is not due and must not reach the planner.
+                $match['games']->getWatchedEvents($match['gameId'], 0);
+            };
+            $clock += 1000;
+            $before = ai_tick_version($match);
+            ai_tick_poll($match);
+            expect_same(1, $stub->calls, 'the planner ran once');
+            expect_same($before + 1, ai_tick_version($match), 'one step');
+        },
+        'a hero turn poll with no choice for the ai writes nothing' => static function (): void {
+            $clock = 0;
+            $match = ai_tick_match($clock);
+            $stepped = static fn(): mixed => $match['db']->query("SELECT ai_stepped_at FROM games WHERE id = '{$match['gameId']}'")->fetchColumn();
+            $seen = $stepped();
+            $clock += 5000;
+            if (ai_tick_owed($match) !== $match['host']['seat']) {
+                vanilla_submit($match, 'host', 'endTurn', []);
+                $seen = $stepped();
+                $clock += 5000;
+            }
+            expect_same($match['host']['seat'], ai_tick_owed($match), 'the hero is up');
+            ai_tick_poll($match);
+            expect_same($seen, $stepped(), 'no lease is taken when the AI owes nothing');
+        },
+        'the fallback tries another command when the first candidate was the rejected one' => static function (): void {
+            $clock = 0;
+            $match = ai_tick_match($clock);
+            $state = ai_seat_state($match);
+            $unitId = null;
+            foreach ($state['units'] as $id => $unit) {
+                if (($unit['seatId'] ?? null) === $match['ai'] && $unit['hex'] !== null && empty($unit['fixed'])) {
+                    $unitId = (string)$id;
+                    break;
+                }
+            }
+            $hex = (string)$state['units'][$unitId]['hex'];
+            $state['board'][$hex]['object'] = 'power-potion';
+            $state['pending'] = ['choice' => [
+                'choiceId' => 'choice-fb', 'seatId' => $match['ai'], 'kind' => 'itemPickup', 'unitId' => $unitId,
+                'item' => 'power-potion', 'options' => ['drink', 'keep', 'leave'], 'targetHexes' => [$hex], 'openedAt' => time(),
+            ], 'context' => []];
+            $fallback = new ReflectionMethod(GameService::class, 'aiFallbackCommand');
+            $first = $fallback->invoke($match['games'], $state, $match['ai'], null);
+            expect_same('resolveChoice', $first['kind'], 'the choice is answered first');
+            $second = $fallback->invoke($match['games'], $state, $match['ai'], $first);
+            expect_true($second !== null && $second != $first, 'a different command is offered after a rejection');
         },
         'a draft whose ai horde was never confirmed gets it on the next poll' => static function (): void {
             $clock = 5000;
@@ -225,6 +293,9 @@ function ai_tick_tests(): array
                 ->execute(['json' => json_encode($state), 'game' => $match['gameId']]);
             expect_true(!ai_seat_state($match)['setup']['confirmed'], 'the horde is unconfirmed');
             $before = ai_tick_version($match);
+            $match['games']->getWatchedEvents($match['gameId'], 0);
+            expect_same($before, ai_tick_version($match), 'the safety net is paced like a step');
+            $clock += 1000;
             $match['games']->getWatchedEvents($match['gameId'], 0);
             $after = ai_seat_state($match);
             expect_true($after['setup']['confirmed'], 'the safety net confirmed it');

@@ -822,13 +822,6 @@ final class GameService
             if ($ai === null) {
                 return;
             }
-            if ($game['lifecycle'] === 'draft') {
-                $prep = $this->loadState($gameId);
-                if ($prep !== null && ($prep['phase'] ?? null) === 'prep' && !$prep['setup']['confirmed']) {
-                    $this->ensureAiHorde($game, $ai);
-                }
-                return;
-            }
             $pause = self::AI_PACE_MS[(string)($game['ai_pace'] ?? 'normal')] ?? self::AI_PACE_MS['normal'];
             if ($game['ai_stepped_at'] !== null && ($this->clockMs)() - (int)$game['ai_stepped_at'] < $pause) {
                 return;
@@ -837,7 +830,22 @@ final class GameService
             if ($state === null) {
                 return;
             }
+            if ($game['lifecycle'] === 'draft') {
+                // Paced like a step (the lease), so a malformed legacy state cannot log on every poll.
+                if (($state['phase'] ?? null) === 'prep' && !$state['setup']['confirmed'] && $this->takeAiLease($game)) {
+                    $this->ensureAiHorde($game, $ai);
+                }
+                return;
+            }
             $seatId = (string)$ai['id'];
+            $owed = ($state['phase'] ?? null) === 'active' && ($state['result'] ?? null) === null
+                && (($state['pending']['choice']['seatId'] ?? null) ?? ($state['turn']['activeSeatId'] ?? null)) === $seatId;
+            // Claim the step before the (costly) search, so concurrent due polls plan once; only then does a poll write.
+            if (!$owed || !$this->takeAiLease($game)) {
+                return;
+            }
+            // Fair play: once the battle is active the Void Lord's view conceals nothing, RNG is not kept in the
+            // state, and pending.context is resolved engine data, so the planner may read the raw state.
             $make = $this->plannerFactory ?? static fn(MatchEngine $engine, Personality $personality, int $now, int $deadline, \Closure $clockMs): TurnPlanner
                 => new TurnPlanner($engine, $personality, $now, $deadline, $clockMs);
             // A fresh planner every step: it keeps per-search state.
@@ -845,16 +853,36 @@ final class GameService
             try {
                 $command = $planner->next($state, $seatId, (int)$game['version']);
             } catch (Throwable $error) {
-                error_log("[ai] planner failed in game {$gameId}: " . $error->getMessage());
-                $command = $this->aiFallbackCommand($state, $seatId);
+                self::logAi("planner failed in game {$gameId}", $error);
+                $command = $this->aiFallbackCommand($state, $seatId, null);
             }
             if ($command !== null) {
                 $this->applyAiCommand($gameId, $ai, (int)$game['version'], $command, true);
             }
         } catch (Throwable $error) {
             $this->rollback();
-            error_log("[ai] step failed in game {$gameId}: " . $error->getMessage());
+            self::logAi("step failed in game {$gameId}", $error);
         }
+    }
+
+    private static function logAi(string $what, Throwable $error): void
+    {
+        error_log('[ai] ' . $what . ': ' . get_class($error) . ' ' . $error->getMessage() . ' at ' . $error->getFile() . ':' . $error->getLine());
+    }
+
+    /**
+     * Claims the AI's next step by moving ai_stepped_at to now, only if it still holds the value this poll read
+     * (null-safe for both MySQL and SQLite). A concurrent due poll loses and does not plan.
+     */
+    private function takeAiLease(array $game): bool
+    {
+        $claim = $this->connection->prepare(
+            'UPDATE games SET ai_stepped_at = :now
+             WHERE id = :id AND version = :version AND (ai_stepped_at = :seen OR (ai_stepped_at IS NULL AND :seen2 IS NULL))'
+        );
+        $seen = $game['ai_stepped_at'] === null ? null : (int)$game['ai_stepped_at'];
+        $claim->execute(['now' => ($this->clockMs)(), 'id' => $game['id'], 'version' => (int)$game['version'], 'seen' => $seen, 'seen2' => $seen]);
+        return $claim->rowCount() === 1;
     }
 
     /** One AI command, atomically. A conflict means another poll stepped first; a rejection falls back to ending. */
@@ -877,26 +905,26 @@ final class GameService
             if ($error instanceof GameServiceException && $error->errorCode === 'versionConflict') {
                 return;
             }
-            error_log("[ai] command {$command['kind']} rejected in game {$gameId}: " . $error->getMessage());
+            self::logAi("command {$command['kind']} rejected in game {$gameId}", $error);
             if (!$mayFallBack) {
                 return;
             }
             $state = $this->loadState($gameId);
-            $fallback = $state === null ? null : $this->aiFallbackCommand($state, $seatId);
-            if ($fallback !== null && $fallback !== $command) {
+            $fallback = $state === null ? null : $this->aiFallbackCommand($state, $seatId, $command);
+            if ($fallback !== null) {
                 $this->applyAiCommand($gameId, $ai, (int)$this->gameRow($gameId)['version'], $fallback, false);
             }
         }
     }
 
     /** What always ends the AI's obligation: answer its choice, else close the active unit, else end the turn. */
-    private function aiFallbackCommand(array $state, string $seatId): ?array
+    private function aiFallbackCommand(array $state, string $seatId, ?array $rejected): ?array
     {
         $state = MatchEngine::normalize($state);
         $commands = CommandCandidates::for($state, $seatId, $this->engine->legalActions($state, $seatId, time()));
         foreach (['resolveChoice', 'endActivation', 'endTurn'] as $kind) {
             foreach ($commands as $command) {
-                if ($command['kind'] === $kind) {
+                if ($command['kind'] === $kind && $command != $rejected) {
                     return $command;
                 }
             }
