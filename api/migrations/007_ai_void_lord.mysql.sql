@@ -1,0 +1,3 @@
+ALTER TABLE game_memberships ADD COLUMN ai_personality VARCHAR(32) NULL;
+ALTER TABLE games ADD COLUMN ai_pace VARCHAR(16) NULL;
+ALTER TABLE games ADD COLUMN ai_stepped_at BIGINT NULL;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace BloodAndBanners\Game;
 
 use BloodAndBanners\Account\FriendService;
+use BloodAndBanners\Ai\HordeBuilder;
+use BloodAndBanners\Ai\Personalities;
 use BloodAndBanners\Rules\RandomSource;
 use BloodAndBanners\Rules\SecureRandomSource;
 use BloodAndBanners\Rules\Vanilla\Abilities\AbilityRegistry;
@@ -30,13 +32,17 @@ final class GameService
     private readonly ScenarioService $scenarios;
     private readonly RandomSource $random;
     private readonly MatchEngine $engine;
+    /** @var \Closure(): int milliseconds, injectable so AI pacing can be tested */
+    private readonly \Closure $clockMs;
 
     public function __construct(
         private readonly PDO $connection,
         ?ScenarioService $scenarios = null,
         ?RandomSource $random = null,
         ?MatchEngine $engine = null,
+        ?\Closure $clockMs = null,
     ) {
+        $this->clockMs = $clockMs ?? static fn(): int => (int)floor(microtime(true) * 1000);
         $this->scenarios = $scenarios ?? new ScenarioService($connection);
         $this->random = $random ?? new SecureRandomSource();
         $this->engine = $engine ?? new MatchEngine(new Catalog());
@@ -234,12 +240,13 @@ final class GameService
         $this->connection->prepare('DELETE FROM game_memberships WHERE game_id = :game AND id = :seat')
             ->execute(['game' => $game['id'], 'seat' => $seat['id']]);
         $remaining = $this->memberships($game['id']);
-        if ($remaining === []) {
+        $humans = array_values(array_filter($remaining, static fn(array $row): bool => $row['ai_personality'] === null));
+        if ($humans === []) {
             $this->connection->prepare('DELETE FROM games WHERE id = :id')->execute(['id' => $game['id']]);
             return;
         }
         if ((bool)$seat['is_host']) {
-            $heir = $remaining[0];
+            $heir = $humans[0];
             $this->connection->prepare('UPDATE game_memberships SET is_host = 1 WHERE game_id = :game AND id = :seat')
                 ->execute(['game' => $game['id'], 'seat' => $heir['id']]);
             $this->connection->prepare('UPDATE games SET host_identity_id = :identity WHERE id = :game')
@@ -301,15 +308,27 @@ final class GameService
             } catch (GameServiceException $error) {
                 throw new GameServiceException($error->errorCode, $error->getMessage(), (int)$game['version']);
             }
+            $aiSeat = $game['mode'] === 'coop' ? $this->aiSeat($memberships) : null;
+            $aiEvents = [];
+            if ($aiSeat !== null) {
+                [$started['state'], $aiEvents] = $this->buildAiHorde($started['state'], $aiSeat, $gameId, count($memberships) - 1);
+            }
             $version = (int)$game['version'] + 1;
             $this->connection->prepare(
-                'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated WHERE id = :id'
-            )->execute(['lifecycle' => self::lifecycleOf($started['state']), 'version' => $version, 'updated' => self::now(), 'id' => $gameId]);
+                'UPDATE games SET lifecycle = :lifecycle, version = :version, updated_at = :updated, ai_stepped_at = :stepped WHERE id = :id'
+            )->execute([
+                'lifecycle' => self::lifecycleOf($started['state']), 'version' => $version, 'updated' => self::now(), 'id' => $gameId,
+                'stepped' => $aiSeat === null ? null : ($this->clockMs)(),
+            ]);
             $this->saveState($gameId, $version, $started['state']);
             $projection = $this->projection($gameId, $identityId);
             $this->appendEvent($gameId, $version, 'gameStarted', $identityId, ['lifecycle' => self::lifecycleOf($started['state'])]);
             foreach ($started['events'] as $event) {
                 $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes']);
+            }
+            foreach ($aiEvents as $event) {
+                $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : 'void';
+                $this->appendEvent($gameId, $version, $event['kind'], $identityId, $event['payload'], $event['focusHexes'], $side);
             }
             $this->writeSnapshot($gameId, $version, $projection);
             $this->connection->commit();
@@ -374,13 +393,17 @@ final class GameService
 
     /** Preparation events everyone may see: they only report that a side is finished. */
     private const PUBLIC_PREP_EVENTS = ['setupConfirmed', 'armiesPlaced'];
-    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName'];
+    private const LOBBY_COMMANDS = ['setReady', 'claimVoidLord', 'releaseVoidLord', 'assignVoidLord', 'setCommanderName', 'seatAiVoidLord', 'setAiPace'];
+    private const AI_PACES = ['slow', 'normal', 'fast'];
 
     /** Co-op preparation orders from the two sides touch disjoint state, so a stale expectedVersion from the other side's bump is tolerated; the rules re-validate against current state. */
     private const SIMULTANEOUS_PREP_COMMANDS = ['placeMonster', 'removeMonster', 'confirmSetup', 'pickHero', 'pickArmy'];
 
     private function skipsVersionCheck(array $game, string $kind): bool
     {
+        if ($kind === 'setAiPace') {
+            return true;
+        }
         return $game['mode'] === 'coop'
             && in_array($game['lifecycle'], ['lobby', 'draft'], true)
             && in_array($kind, self::SIMULTANEOUS_PREP_COMMANDS, true);
@@ -397,6 +420,10 @@ final class GameService
             $this->setCommanderName($game, $membership, $payload, $newVersion);
             return;
         }
+        if ($kind === 'setAiPace') {
+            $this->setAiPace($game, $payload, $identityId, $newVersion);
+            return;
+        }
         if ($kind === 'setReady') {
             if (!is_bool($payload['ready'] ?? null)) {
                 throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
@@ -411,6 +438,10 @@ final class GameService
             $this->appendEvent($game['id'], $newVersion, 'readinessChanged', $identityId, ['ready' => $payload['ready']]);
             return;
         }
+        if ($kind === 'seatAiVoidLord' && $game['mode'] === 'coop') {
+            $this->seatAiVoidLord($game, $this->memberships($game['id']), $payload, $identityId, $newVersion);
+            return;
+        }
         if ($game['mode'] !== 'coop' || $game['lifecycle'] !== 'lobby') {
             throw new GameServiceException('unsupportedCommand', 'This command is not legal in the current game phase.', $currentVersion);
         }
@@ -421,6 +452,7 @@ final class GameService
                 $current = (string)$seat['id'];
             }
         }
+        $aiSeat = $this->aiSeat($memberships);
         if ($kind === 'claimVoidLord') {
             if ($current === (string)$membership['id']) {
                 throw new GameServiceException('voidLordTaken', 'You are already the Void Lord.', $currentVersion);
@@ -439,11 +471,18 @@ final class GameService
                 throw new GameServiceException('hostRequired', 'Only the host can choose the Void Lord.', $currentVersion);
             }
             $target = $payload['seatId'] ?? null;
-            if (!is_string($target) || !in_array($target, array_map('strval', array_column($memberships, 'id')), true)) {
+            $humanIds = array_map('strval', array_column(array_filter($memberships, static fn(array $seat): bool => $seat['ai_personality'] === null), 'id'));
+            if (!is_string($target) || !in_array($target, $humanIds, true)) {
                 throw new GameServiceException('seatNotFound', 'The requested seat does not exist.', $currentVersion);
+            }
+            if ($aiSeat !== null) {
+                $this->connection->prepare('DELETE FROM game_memberships WHERE game_id = :game AND id = :seat')
+                    ->execute(['game' => $game['id'], 'seat' => $aiSeat['id']]);
             }
         }
         $this->connection->prepare("UPDATE game_memberships SET role = 'player', ready = 0 WHERE game_id = :game")
+            ->execute(['game' => $game['id']]);
+        $this->connection->prepare('UPDATE game_memberships SET ready = 1 WHERE game_id = :game AND ai_personality IS NOT NULL')
             ->execute(['game' => $game['id']]);
         if ($target !== null) {
             $this->connection->prepare("UPDATE game_memberships SET role = 'voidLord' WHERE game_id = :game AND id = :seat")
@@ -452,6 +491,114 @@ final class GameService
         $this->bumpVersion($game['id'], $currentVersion, $newVersion);
         $this->syncLobbySetup($game, $newVersion);
         $this->appendEvent($game['id'], $newVersion, 'voidLordChanged', $identityId, ['seatId' => $target]);
+    }
+
+    /** @return array|null the AI Void Lord's membership row */
+    private function aiSeat(array $memberships): ?array
+    {
+        foreach ($memberships as $seat) {
+            if ($seat['ai_personality'] !== null) {
+                return $seat;
+            }
+        }
+        return null;
+    }
+
+    /** Seats (or retunes) the AI Void Lord: the host plays a hero, and any human horde is discarded. */
+    private function seatAiVoidLord(array $game, array $memberships, array $payload, string $identityId, int $newVersion): void
+    {
+        $currentVersion = (int)$game['version'];
+        if ($game['host_identity_id'] !== $identityId) {
+            throw new GameServiceException('hostRequired', 'Only the host can seat an AI Void Lord.', $currentVersion);
+        }
+        if ($game['lifecycle'] !== 'lobby') {
+            throw new GameServiceException('illegalLifecycle', 'The AI Void Lord can only be seated in the war room.', $currentVersion);
+        }
+        $personality = is_string($payload['personality'] ?? null) ? (Personalities::all()[$payload['personality']] ?? null) : null;
+        if ($personality === null) {
+            throw new GameServiceException('unknownPersonality', 'That Void Lord personality does not exist.', $currentVersion);
+        }
+        $existing = $this->aiSeat($memberships);
+        if ($existing !== null) {
+            $this->connection->prepare('UPDATE game_memberships SET ai_personality = :personality, commander_name = :name WHERE game_id = :game AND id = :seat')
+                ->execute(['personality' => $personality->id, 'name' => $personality->name, 'game' => $game['id'], 'seat' => $existing['id']]);
+            $seatId = (string)$existing['id'];
+        } else {
+            if (count($memberships) >= self::seatLimit((string)$game['mode'], $game['seat_limit'] ?? null)) {
+                throw new GameServiceException('gameFull', 'This game has no open player seats.', $currentVersion);
+            }
+            $this->connection->prepare("UPDATE game_memberships SET role = 'player', ready = 0 WHERE game_id = :game")
+                ->execute(['game' => $game['id']]);
+            $this->connection->prepare('DELETE FROM game_states WHERE game_id = :game')->execute(['game' => $game['id']]);
+            $taken = array_map('intval', array_column($memberships, 'seat_index'));
+            $seatIndex = 1;
+            while (in_array($seatIndex, $taken, true)) {
+                $seatIndex++;
+            }
+            $seatId = self::id();
+            $this->connection->prepare(
+                "INSERT INTO game_memberships
+                 (id, game_id, identity_id, seat_index, role, is_host, ready, seat_token_hash, joined_at, commander_name, ai_personality)
+                 VALUES (:id, :game, :identity, :seat, 'voidLord', 0, 1, :token, :joined, :name, :personality)"
+            )->execute([
+                'id' => $seatId, 'game' => $game['id'], 'identity' => 'ai' . bin2hex(random_bytes(15)), 'seat' => $seatIndex,
+                'token' => hash('sha256', self::token()), 'joined' => self::now(), 'name' => $personality->name, 'personality' => $personality->id,
+            ]);
+            $this->connection->prepare("UPDATE games SET ai_pace = 'normal' WHERE id = :game AND ai_pace IS NULL")->execute(['game' => $game['id']]);
+        }
+        $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+        $this->syncLobbySetup($game, $newVersion);
+        $this->appendEvent($game['id'], $newVersion, 'voidLordChanged', $identityId, ['seatId' => $seatId, 'aiPersonality' => $personality->id]);
+    }
+
+    /** Game metadata, not game state: the host sets how fast the AI steps; no rules engine, no event. */
+    private function setAiPace(array $game, array $payload, string $identityId, int $newVersion): void
+    {
+        $currentVersion = (int)$game['version'];
+        if ($game['host_identity_id'] !== $identityId) {
+            throw new GameServiceException('hostRequired', 'Only the host sets the AI pace.', $currentVersion);
+        }
+        if ($game['lifecycle'] === 'completed') {
+            throw new GameServiceException('illegalLifecycle', 'The match is over.', $currentVersion);
+        }
+        if ($this->aiSeat($this->memberships($game['id'])) === null) {
+            throw new GameServiceException('noAiSeat', 'There is no AI Void Lord in this game.', $currentVersion);
+        }
+        $pace = $payload['pace'] ?? null;
+        if (!is_string($pace) || !in_array($pace, self::AI_PACES, true)) {
+            throw new GameServiceException('invalidPace', 'The AI pace must be slow, normal or fast.', $currentVersion);
+        }
+        $this->connection->prepare('UPDATE games SET ai_pace = :pace WHERE id = :game')->execute(['pace' => $pace, 'game' => $game['id']]);
+        $this->bumpVersion($game['id'], $currentVersion, $newVersion);
+    }
+
+    /**
+     * The AI Void Lord's horde, planned from the board and the legal placements alone (never the draft) and
+     * applied through the same engine commands a human would send.
+     * @return array{0: array, 1: list<array>} the confirmed prep state and its events
+     */
+    private function buildAiHorde(array $state, array $aiSeat, string $gameId, int $heroPlayers): array
+    {
+        $seatId = (string)$aiSeat['id'];
+        $placeable = [];
+        foreach ($this->engine->legalActions($state, $seatId) as $action) {
+            if ($action['kind'] === 'placeMonster') {
+                $placeable[(string)$action['monster']] = $action['targetHexes'];
+            }
+        }
+        $plan = (new HordeBuilder($this->engine->catalog()))->plan(
+            $state['board'], $placeable, (int)$state['setup']['budget'], $heroPlayers,
+            Personalities::get((string)$aiSeat['ai_personality']), crc32($gameId)
+        );
+        $events = [];
+        foreach ($plan as $placement) {
+            $result = $this->engine->apply($state, $seatId, 'placeMonster', $placement, $this->random);
+            $state = $result['state'];
+            array_push($events, ...$result['events']);
+        }
+        $result = $this->engine->apply($state, $seatId, 'confirmSetup', [], $this->random);
+        array_push($events, ...$result['events']);
+        return [$result['state'], $events];
     }
 
     /** Seat metadata, not game state: no rules engine, no event, and locked once battle begins. */
@@ -575,6 +722,10 @@ final class GameService
         }
         if ($viewer['isHost']) {
             $actions[] = ['kind' => 'assignVoidLord', 'unitId' => null, 'targetHexes' => []];
+            $actions[] = ['kind' => 'seatAiVoidLord', 'unitId' => null, 'targetHexes' => []];
+            if ($this->aiSeat($memberships) !== null) {
+                $actions[] = ['kind' => 'setAiPace', 'unitId' => null, 'targetHexes' => []];
+            }
         }
         if ($lobbySetup !== null && $lobbySetup['voidLordSeatId'] === $viewer['seatId']) {
             foreach ((new CoopSetup($this->engine->catalog()))->legalActions($lobbySetup, (string)$viewer['seatId']) as $action) {
@@ -628,6 +779,10 @@ final class GameService
             throw self::versionConflict($currentVersion);
         }
         $this->saveState($game['id'], $newVersion, $result['state']);
+        if ($game['mode'] === 'coop' && $this->aiSeat($this->memberships($game['id'])) !== null) {
+            $this->connection->prepare('UPDATE games SET ai_stepped_at = :stepped WHERE id = :id')
+                ->execute(['stepped' => ($this->clockMs)(), 'id' => $game['id']]);
+        }
         foreach ($result['events'] as $event) {
             $side = in_array($event['kind'], self::PUBLIC_PREP_EVENTS, true) ? null : $concealedSide;
             $this->appendEvent($game['id'], $newVersion, $event['kind'], $identityId, $event['payload'], $event['focusHexes'], $side);
@@ -911,6 +1066,10 @@ final class GameService
             $state !== null => $this->engine->legalActions($state, $viewer['seatId']),
             default => [],
         };
+        if ($viewer['role'] === 'player' && $viewer['isHost'] && in_array($game['lifecycle'], ['setup', 'draft', 'active'], true)
+            && $this->aiSeat($memberships) !== null) {
+            $legalActions[] = ['kind' => 'setAiPace', 'unitId' => null, 'targetHexes' => []];
+        }
         if ($viewer['role'] === 'player' && in_array($game['lifecycle'], ['setup', 'draft'], true)) {
             $legalActions[] = ['kind' => 'setCommanderName', 'unitId' => null, 'targetHexes' => []];
         }
@@ -926,6 +1085,8 @@ final class GameService
             'mode' => $game['mode'],
             'scenarioName' => $game['scenario_name'],
             'seatLimit' => self::seatLimit((string)$game['mode'], $game['seat_limit'] ?? null),
+            'aiPace' => $this->aiSeat($memberships) === null ? null : (string)($game['ai_pace'] ?? 'normal'),
+            'aiPersonalities' => $game['mode'] === 'coop' && $game['lifecycle'] === 'lobby' ? Personalities::catalogue() : [],
             'viewer' => $viewer,
             'board' => $this->boardProjection($game, $shown),
             'sides' => $state === null ? null : (object)$state['sides'],
@@ -959,6 +1120,7 @@ final class GameService
                 'ready' => (bool)$seat['ready'],
                 'isHost' => (bool)$seat['is_host'],
                 'name' => $seat['commander_name'] === null ? null : (string)$seat['commander_name'],
+                'aiPersonality' => $seat['ai_personality'] === null ? null : (string)$seat['ai_personality'],
             ] + $accountFlags[(string)$seat['identity_id']], $memberships),
             'armies' => $this->armiesProjection($state, !$concealed || $side === 'heroes'),
             'draft' => $state !== null && in_array($state['phase'], ['draft', 'prep'], true)
@@ -1389,7 +1551,7 @@ final class GameService
     private function memberships(string $gameId): array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, identity_id, seat_index, role, is_host, ready, commander_name FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
+            'SELECT id, identity_id, seat_index, role, is_host, ready, commander_name, ai_personality FROM game_memberships WHERE game_id = :game ORDER BY seat_index'
         );
         $statement->execute(['game' => $gameId]);
         return $statement->fetchAll();
