@@ -9,7 +9,7 @@ There are two independent publishers. Choose by target and never substitute one 
 
 | Target | Script | Live URL |
 |---|---|---|
-| Legacy static pages | `scripts\deploy.ps1` | <https://trickypig.com/blood/public/> |
+| Legacy static pages | `scripts\deploy.ps1` | <https://blood.trickypig.com/> |
 | Digital game and API | `scripts\deploy-game.ps1` | <https://blood.trickypig.com/play/> |
 
 ## Deploying is the user's call
@@ -106,7 +106,7 @@ zero-byte `rsync.exe` that exits 0 and transfers nothing.
 After a legacy push, load the page and hard-refresh (Ctrl+F5) - the browser caches the old HTML and SVGs. For a quick check from the shell:
 
 ```powershell
-curl.exe -sI https://trickypig.com/blood/public/hex_map_editor.html
+curl.exe -sI https://blood.trickypig.com/hex_map_editor.html
 ```
 
 After a game push, confirm `/play/`, `/play/service-worker.js`, a deep `/play/...` path, and `/play/api/v1/compatibility`. Then smoke-test two independent browser profiles through create, join, ready, draft, one action per seat, and refresh/reconnect.

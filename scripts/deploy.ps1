@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Pushes the site to https://trickypig.com/blood/public/.
+    Pushes the site to https://blood.trickypig.com/.
 
 .DESCRIPTION
     Dry run unless you pass -Push. Read what it says it would change, then
@@ -61,7 +61,7 @@ Import-Module $DeploymentHelpers -Force
 
 # The public URL. The SFTP hostname is the hosting box, not the domain it
 # serves, so it is spelled out here.
-$SiteUrl = 'https://trickypig.com/blood/public/'
+$SiteUrl = 'https://blood.trickypig.com/'
 
 # What the site serves: the pages at the root, the data they fetch, the
 # images and the Android app-link proof the game app is verified against.

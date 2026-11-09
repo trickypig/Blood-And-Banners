@@ -15,7 +15,7 @@ public sealed class MainMenuTests : BunitContext
         var menu = cut.Find("details.main-menu");
         Assert.False(menu.HasAttribute("open"));
         Assert.Equal("editor", menu.QuerySelector("[data-menu='editor']")!.GetAttribute("href"));
-        Assert.Equal("https://trickypig.com/blood/public/rulebook.html", menu.QuerySelector("[data-menu='rulebook']")!.GetAttribute("href"));
+        Assert.Equal("https://blood.trickypig.com/rulebook.html", menu.QuerySelector("[data-menu='rulebook']")!.GetAttribute("href"));
         Assert.Equal("Ash", menu.QuerySelector("[data-account='chip']")!.TextContent.Trim());
         Assert.Equal("Log Out", menu.QuerySelector("[data-account='sign-out']")!.TextContent.Trim());
         Assert.Empty(cut.FindAll(".intro-copy [data-account]"));

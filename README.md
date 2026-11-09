@@ -253,6 +253,6 @@ The game publisher is dry-run-first:
 
 Review the dry run before changing anything remotely. Before `-Push`, set only `trickypig/blood/.env` to mode `600` and verify it with `stat -c %a`. Activation syntax-checks every staged PHP file and runs migrations explicitly with `php8.4-cli server/api/tools/migrate.php --env-file .env`. It retains the prior public and private trees together at `.deploy/previous-<release-id>`; a failed HTTPS check invokes rollback automatically. Never run `-Push` without explicit production authorization.
 
-The older static-site publisher remains separate: `scripts/deploy.ps1` publishes the root HTML, `data/`, and `images/` at <https://trickypig.com/blood/public/>. Its rsync rules protect `/play/`, including prune runs.
+The older static-site publisher remains separate: `scripts/deploy.ps1` publishes the root HTML, `data/`, and `images/` at <https://blood.trickypig.com/>. Its rsync rules protect `/play/`, including prune runs.
 
 The MAUI host uses `https://blood.trickypig.com/play/` as its HTTP base address in `src/BloodAndBanners.Maui/MauiProgram.cs`. The shared client appends `api/v1/...`, producing `https://blood.trickypig.com/play/api/v1/...`. Keep the trailing slash and do not append `/api/` to the base address. `Components/Pages/Home.razor` uses `https://blood.trickypig.com/play/` for public invite links and `https://blood.trickypig.com/` for artwork. For staging, update these URLs together to match that deployment. Never embed database or signing credentials in either client.
